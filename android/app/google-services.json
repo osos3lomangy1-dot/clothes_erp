@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "919966582585",
+    "project_id": "app1-ca2709ac",
+    "storage_bucket": "app1-ca2709ac.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:919966582585:android:1a6b68a5e70f28f16e4ae8",
+        "android_client_info": {
+          "package_name": "com.example.clothes_erp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDMG0ZPgfvLkIz_VcXpBa4l5ark-w_OhZM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
