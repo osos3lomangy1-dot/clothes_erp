@@ -6,6 +6,8 @@ class ProductEntity extends Equatable {
   final String description;
   final String categoryId;
   final String categoryName;
+  final List<String>? images;
+  final String? barcode;
   final DateTime createdAt;
 
   const ProductEntity({
@@ -14,9 +16,11 @@ class ProductEntity extends Equatable {
     required this.description,
     required this.categoryId,
     required this.categoryName,
+    this.images,
+    this.barcode,
     required this.createdAt,
   });
 
   @override
-  List<Object?> get props => [id, name, description, categoryId, categoryName, createdAt];
+  List<Object?> get props => [id, name, description, categoryId, categoryName, images, barcode, createdAt];
 }

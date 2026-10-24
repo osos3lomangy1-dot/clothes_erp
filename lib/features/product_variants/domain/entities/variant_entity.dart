@@ -10,6 +10,7 @@ class VariantEntity extends Equatable {
   final double costPrice;
   final double salePrice;
   final int minStock;
+  final String? barcode;
   final DateTime createdAt;
 
   const VariantEntity({
@@ -22,6 +23,7 @@ class VariantEntity extends Equatable {
     required this.costPrice,
     required this.salePrice,
     required this.minStock,
+    this.barcode,
     required this.createdAt,
   });
 
@@ -36,6 +38,7 @@ class VariantEntity extends Equatable {
         costPrice,
         salePrice,
         minStock,
+        barcode,
         createdAt,
       ];
 }

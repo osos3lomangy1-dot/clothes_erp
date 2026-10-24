@@ -8,6 +8,8 @@ class ProductModel extends ProductEntity {
     required super.description,
     required super.categoryId,
     required super.categoryName,
+    super.images,
+    super.barcode,
     required super.createdAt,
   });
 
@@ -17,6 +19,8 @@ class ProductModel extends ProductEntity {
     String? description,
     String? categoryId,
     String? categoryName,
+    List<String>? images,
+    String? barcode,
     DateTime? createdAt,
   }) {
     return ProductModel(
@@ -25,6 +29,8 @@ class ProductModel extends ProductEntity {
       description: description ?? this.description,
       categoryId: categoryId ?? this.categoryId,
       categoryName: categoryName ?? this.categoryName,
+      images: images ?? this.images,
+      barcode: barcode ?? this.barcode,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -36,6 +42,8 @@ class ProductModel extends ProductEntity {
       description: entity.description,
       categoryId: entity.categoryId,
       categoryName: entity.categoryName,
+      images: entity.images,
+      barcode: entity.barcode,
       createdAt: entity.createdAt,
     );
   }
@@ -47,6 +55,8 @@ class ProductModel extends ProductEntity {
       description: json['description'] ?? '',
       categoryId: json['categoryId'] ?? '',
       categoryName: json['categoryName'] ?? '',
+      images: (json['images'] as List?)?.map((e) => e.toString()).toList(),
+      barcode: json['barcode'],
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : DateTime.now(),
@@ -60,6 +70,8 @@ class ProductModel extends ProductEntity {
       'description': description,
       'categoryId': categoryId,
       'categoryName': categoryName,
+      'images': images,
+      'barcode': barcode,
       'createdAt': createdAt.toIso8601String(),
     };
   }
@@ -74,6 +86,8 @@ class ProductModel extends ProductEntity {
       description: data['description'] ?? '',
       categoryId: data['categoryId'] ?? '',
       categoryName: data['categoryName'] ?? '',
+      images: (data['images'] as List?)?.map((e) => e.toString()).toList(),
+      barcode: data['barcode'],
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
@@ -84,6 +98,8 @@ class ProductModel extends ProductEntity {
       'description': description,
       'categoryId': categoryId,
       'categoryName': categoryName,
+      'images': images,
+      'barcode': barcode,
       'createdAt': Timestamp.fromDate(createdAt),
     };
   }

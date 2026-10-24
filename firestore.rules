@@ -1,0 +1,83 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Helper functions ---
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isActive() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isActive == true;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && isActive() && getUserRole() == 'admin';
+    }
+
+    function isManager() {
+      return isSignedIn() && isActive() && getUserRole() == 'manager';
+    }
+
+    function isCashier() {
+      return isSignedIn() && isActive() && getUserRole() == 'cashier';
+    }
+
+    function isAdminOrManager() {
+      return isAdmin() || isManager();
+    }
+
+    // --- Collection rules ---
+
+    // users: Admin full CRUD. Manager read all, write own. Cashier read own only.
+    match /users/{userId} {
+      allow read: if isAdmin() || isManager() || (isCashier() && request.auth.uid == userId);
+      allow create: if isAdmin();
+      allow update: if isAdmin() || (isManager() && request.auth.uid == userId);
+      allow delete: if isAdmin();
+    }
+
+    // categories: Admin + Manager read/write. Cashier read only.
+    match /categories/{categoryId} {
+      allow read: if isAdminOrManager() || isCashier();
+      allow create, update, delete: if isAdminOrManager();
+    }
+
+    // products: Admin + Manager read/write. Cashier read only.
+    match /products/{productId} {
+      allow read: if isAdminOrManager() || isCashier();
+      allow create, update, delete: if isAdminOrManager();
+    }
+
+    // product_variants: Admin + Manager read/write. Cashier read only.
+    match /product_variants/{variantId} {
+      allow read: if isAdminOrManager() || isCashier();
+      allow create, update, delete: if isAdminOrManager();
+    }
+
+    // sales: Admin + Manager read all. Cashier read own + create.
+    match /sales/{saleId} {
+      allow read: if isAdminOrManager() || (isCashier() && resource.data.cashierId == request.auth.uid);
+      allow create: if isAdminOrManager() || isCashier();
+      allow update, delete: if isAdminOrManager();
+    }
+
+    // inventory_logs: Admin + Manager read/write. Cashier read only.
+    match /inventory_logs/{logId} {
+      allow read: if isAdminOrManager() || isCashier();
+      allow create: if isAdminOrManager();
+      allow update, delete: if isAdmin();
+    }
+
+    // Deny everything else by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
