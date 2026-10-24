@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../di/injection.dart';
-import 'refresh_listenable.dart';
 import '../../features/auth/presentation/cubits/auth_cubit.dart';
 import '../../features/auth/presentation/cubits/auth_state.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
@@ -33,7 +31,6 @@ class AppRoutes {
 
   static final GoRouter router = GoRouter(
     initialLocation: login,
-    refreshListenable: GoRouterRefreshStream(getIt<AuthCubit>().stream),
     redirect: (context, state) {
       final authState = getIt<AuthCubit>().state;
       final isLoggingIn = state.matchedLocation == login;
@@ -88,16 +85,28 @@ class AppRoutes {
       GoRoute(
         path: variants,
         builder: (context, state) {
-          final product = state.extra as ProductEntity;
+          final product = state.extra;
+          if (product == null || product is! ProductEntity) {
+            return const LoginScreen();
+          }
           return VariantListScreen(product: product);
         },
       ),
       GoRoute(
         path: variantForm,
         builder: (context, state) {
-          final extra = state.extra as Map<String, dynamic>;
-          final product = extra['product'] as ProductEntity;
-          final variant = extra['variant'] as VariantEntity?;
+          final extra = state.extra;
+          if (extra == null || extra is! Map<String, dynamic>) {
+            return const LoginScreen();
+          }
+          final product = extra['product'];
+          if (product == null || product is! ProductEntity) {
+            return const LoginScreen();
+          }
+          final variant = extra['variant'];
+          if (variant != null && variant is! VariantEntity) {
+            return const LoginScreen();
+          }
           return VariantFormScreen(product: product, variant: variant);
         },
       ),

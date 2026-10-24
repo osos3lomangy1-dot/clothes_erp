@@ -23,19 +23,24 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   void _monitorAuthState() {
-    _authSubscription = _getAuthStatusUseCase().listen((user) {
-      if (user != null) {
-        emit(AuthAuthenticated(user));
-      } else {
+    _authSubscription = _getAuthStatusUseCase().listen(
+      (user) {
+        if (user != null) {
+          emit(AuthAuthenticated(user));
+        } else {
+          emit(AuthUnauthenticated());
+        }
+      },
+      onError: (e) {
+        Logging.error('⚠️ [Cubit] Stream error: $e');
         emit(AuthUnauthenticated());
-      }
-    });
+      },
+    );
   }
 
   Future<void> login(String email, String password) async {
     emit(AuthLoading());
     final result = await _loginUseCase(email, password);
-    Logging.info('Login result: $result');
     result.fold(
       (failure) => emit(AuthError(failure.message)),
       (user) => emit(AuthAuthenticated(user)),
@@ -43,7 +48,11 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   Future<void> logout() async {
-    await _logoutUseCase();
+    try {
+      await _logoutUseCase();
+    } catch (e) {
+      Logging.error('Logout failed: $e');
+    }
     emit(AuthUnauthenticated());
   }
 

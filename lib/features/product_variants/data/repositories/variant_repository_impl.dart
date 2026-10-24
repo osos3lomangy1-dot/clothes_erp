@@ -1,5 +1,6 @@
 import 'package:dartz/dartz.dart';
 import 'package:injectable/injectable.dart';
+import '../../../../core/errors/exceptions.dart';
 import '../../../../core/errors/failures.dart';
 import '../../domain/entities/variant_entity.dart';
 import '../../domain/repositories/variant_repository.dart';
@@ -17,6 +18,8 @@ class VariantRepositoryImpl implements VariantRepository {
     try {
       final result = await _remoteDataSource.getVariants(productId);
       return Right(result);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -39,6 +42,8 @@ class VariantRepositoryImpl implements VariantRepository {
       );
       await _remoteDataSource.addVariant(model);
       return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -61,6 +66,8 @@ class VariantRepositoryImpl implements VariantRepository {
       );
       await _remoteDataSource.updateVariant(model);
       return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -71,6 +78,8 @@ class VariantRepositoryImpl implements VariantRepository {
     try {
       await _remoteDataSource.deleteVariant(id);
       return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

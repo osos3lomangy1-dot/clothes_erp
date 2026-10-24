@@ -5,6 +5,8 @@ import '../cubits/auth_cubit.dart';
 import '../cubits/auth_state.dart';
 import '../cubits/login_form_cubit.dart';
 import '../cubits/login_state.dart';
+import '../../../dashboard/presentation/screens/admin_dashboard_screen.dart';
+import '../../../dashboard/presentation/screens/cashier_dashboard_screen.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -30,6 +32,18 @@ class _LoginView extends StatelessWidget {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(state.message)),
             );
+          }
+          if (state is AuthAuthenticated) {
+            final user = state.user;
+            if (user.role == 'admin') {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
+              );
+            } else {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (context) => const CashierDashboardScreen()),
+              );
+            }
           }
         },
         child: Center(

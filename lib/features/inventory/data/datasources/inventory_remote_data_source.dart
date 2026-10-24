@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:injectable/injectable.dart';
+import '../../../../core/errors/exceptions.dart';
 import '../../../product_variants/data/models/variant_model.dart';
 
 abstract class InventoryRemoteDataSource {
@@ -15,20 +16,24 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
 
   @override
   Future<List<VariantModel>> getAllInventory() async {
-    final snapshot = await _firestore.collection('variants').orderBy('quantity', descending: false).get();
-    return snapshot.docs.map((doc) => VariantModel.fromFirestore(doc.data(),doc.id)).toList();
+    try {
+      final snapshot = await _firestore.collection('variants').orderBy('quantity', descending: false).get();
+      return snapshot.docs.map((doc) => VariantModel.fromFirestore(doc.data(), doc.id)).toList();
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
   }
 
   @override
   Future<List<VariantModel>> getLowStockInventory() async {
-    // Note: Firestore doesn't support comparing two fields in a single query (quantity <= minStock) 
-    // without a composite index or extra field. For MVP, we fetch all and filter in memory, 
-    // or suggest adding a 'isLowStock' flag.
-    // Given the "Keep code simple" rule, we'll fetch all and filter.
-    final snapshot = await _firestore.collection('variants').get();
-    return snapshot.docs
-        .map((doc) => VariantModel.fromFirestore(doc.data(),doc.id))
-        .where((variant) => variant.quantity <= variant.minStock)
-        .toList();
+    try {
+      final snapshot = await _firestore.collection('variants').get();
+      return snapshot.docs
+          .map((doc) => VariantModel.fromFirestore(doc.data(), doc.id))
+          .where((variant) => variant.quantity <= variant.minStock)
+          .toList();
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
   }
 }

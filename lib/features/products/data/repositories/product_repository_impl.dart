@@ -1,5 +1,6 @@
 import 'package:dartz/dartz.dart';
 import 'package:injectable/injectable.dart';
+import '../../../../core/errors/exceptions.dart';
 import '../../../../core/errors/failures.dart';
 import '../../domain/entities/product_entity.dart';
 import '../../domain/repositories/product_repository.dart';
@@ -17,6 +18,8 @@ class ProductRepositoryImpl implements ProductRepository {
     try {
       final result = await _remoteDataSource.getProducts();
       return Right(result);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -35,6 +38,8 @@ class ProductRepositoryImpl implements ProductRepository {
       );
       await _remoteDataSource.addProduct(model);
       return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -53,6 +58,8 @@ class ProductRepositoryImpl implements ProductRepository {
       );
       await _remoteDataSource.updateProduct(model);
       return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -63,6 +70,8 @@ class ProductRepositoryImpl implements ProductRepository {
     try {
       await _remoteDataSource.deleteProduct(id);
       return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

@@ -1,5 +1,6 @@
 import 'package:dartz/dartz.dart';
 import 'package:injectable/injectable.dart';
+import '../../../../core/errors/exceptions.dart';
 import '../../../../core/errors/failures.dart';
 import '../../domain/entities/employee_entity.dart';
 import '../../domain/repositories/employee_repository.dart';
@@ -22,6 +23,8 @@ class EmployeeRepositoryImpl implements EmployeeRepository {
     try {
       await _remoteDataSource.addEmployee(EmployeeModel.fromEntity(employee));
       return const Right(unit);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -32,6 +35,8 @@ class EmployeeRepositoryImpl implements EmployeeRepository {
     try {
       await _remoteDataSource.updateEmployeeStatus(id, isActive);
       return const Right(unit);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -42,6 +47,8 @@ class EmployeeRepositoryImpl implements EmployeeRepository {
     try {
       await _remoteDataSource.deleteEmployee(id);
       return const Right(unit);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

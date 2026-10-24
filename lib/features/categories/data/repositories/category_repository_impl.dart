@@ -1,5 +1,6 @@
 import 'package:dartz/dartz.dart';
 import 'package:injectable/injectable.dart';
+import '../../../../core/errors/exceptions.dart';
 import '../../../../core/errors/failures.dart';
 import '../../domain/entities/category_entity.dart';
 import '../../domain/repositories/category_repository.dart';
@@ -17,6 +18,8 @@ class CategoryRepositoryImpl implements CategoryRepository {
     try {
       final result = await _remoteDataSource.getCategories();
       return Right(result);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -33,6 +36,8 @@ class CategoryRepositoryImpl implements CategoryRepository {
       );
       await _remoteDataSource.addCategory(model);
       return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -49,6 +54,8 @@ class CategoryRepositoryImpl implements CategoryRepository {
       );
       await _remoteDataSource.updateCategory(model);
       return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -59,6 +66,8 @@ class CategoryRepositoryImpl implements CategoryRepository {
     try {
       await _remoteDataSource.deleteCategory(id);
       return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

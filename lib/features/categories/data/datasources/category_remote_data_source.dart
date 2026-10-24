@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:injectable/injectable.dart';
+import '../../../../core/errors/exceptions.dart';
 import '../models/category_model.dart';
 
 abstract class CategoryRemoteDataSource {
@@ -17,22 +18,38 @@ class CategoryRemoteDataSourceImpl implements CategoryRemoteDataSource {
 
   @override
   Future<List<CategoryModel>> getCategories() async {
-    final snapshot = await _firestore.collection('categories').orderBy('createdAt', descending: true).get();
-    return snapshot.docs.map((doc) => CategoryModel.fromFirestore(doc.data(),doc.id)).toList();
+    try {
+      final snapshot = await _firestore.collection('categories').orderBy('createdAt', descending: true).get();
+      return snapshot.docs.map((doc) => CategoryModel.fromFirestore(doc.data(),doc.id)).toList();
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
   }
 
   @override
   Future<void> addCategory(CategoryModel category) async {
-    await _firestore.collection('categories').add(category.toFirestore());
+    try {
+      await _firestore.collection('categories').add(category.toFirestore());
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
   }
 
   @override
   Future<void> updateCategory(CategoryModel category) async {
-    await _firestore.collection('categories').doc(category.id).update(category.toFirestore());
+    try {
+      await _firestore.collection('categories').doc(category.id).update(category.toFirestore());
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
   }
 
   @override
   Future<void> deleteCategory(String id) async {
-    await _firestore.collection('categories').doc(id).delete();
+    try {
+      await _firestore.collection('categories').doc(id).delete();
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
   }
 }
