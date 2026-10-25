@@ -5,33 +5,42 @@ import 'sale_item_model.dart';
 class SaleModel extends SaleEntity {
   const SaleModel({
     required super.id,
-    required super.items,
-    required super.totalAmount,
-    required super.paymentMethod,
+    required super.date,
     required super.cashierId,
-    required super.cashierName,
-    required super.timestamp,
+    super.cashierName,
+    required super.items,
+    super.subtotal,
+    super.discount,
+    super.total,
+    required super.paymentMethod,
+    super.customerId,
     super.syncStatus,
   });
 
   SaleModel copyWith({
     String? id,
-    List<SaleItemModel>? items,
-    double? totalAmount,
-    String? paymentMethod,
+    DateTime? date,
     String? cashierId,
     String? cashierName,
-    DateTime? timestamp,
+    List<SaleItemModel>? items,
+    double? subtotal,
+    double? discount,
+    double? total,
+    String? paymentMethod,
+    String? customerId,
     String? syncStatus,
   }) {
     return SaleModel(
       id: id ?? this.id,
-      items: items ?? this.items,
-      totalAmount: totalAmount ?? this.totalAmount,
-      paymentMethod: paymentMethod ?? this.paymentMethod,
+      date: date ?? this.date,
       cashierId: cashierId ?? this.cashierId,
       cashierName: cashierName ?? this.cashierName,
-      timestamp: timestamp ?? this.timestamp,
+      items: items ?? this.items,
+      subtotal: subtotal ?? this.subtotal,
+      discount: discount ?? this.discount,
+      total: total ?? this.total,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      customerId: customerId ?? this.customerId,
       syncStatus: syncStatus ?? this.syncStatus,
     );
   }
@@ -39,17 +48,18 @@ class SaleModel extends SaleEntity {
   factory SaleModel.fromJson(Map<String, dynamic> json) {
     return SaleModel(
       id: json['id'] ?? '',
+      date: json['date'] != null ? DateTime.parse(json['date']) : DateTime.now(),
       items: (json['items'] as List?)
               ?.map((item) => SaleItemModel.fromJson(item))
               .toList() ??
           [],
-      totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0.0,
-      paymentMethod: json['paymentMethod'] ?? '',
+      subtotal: (json['subtotal'] as num?)?.toDouble() ?? 0.0,
+      discount: (json['discount'] as num?)?.toDouble() ?? 0.0,
+      total: (json['total'] as num?)?.toDouble() ?? 0.0,
+      paymentMethod: json['paymentMethod'] ?? 'cash',
       cashierId: json['cashierId'] ?? '',
       cashierName: json['cashierName'] ?? '',
-      timestamp: json['timestamp'] != null
-          ? DateTime.parse(json['timestamp'])
-          : DateTime.now(),
+      customerId: json['customerId'],
       syncStatus: json['syncStatus'] ?? 'pendingSync',
     );
   }
@@ -57,12 +67,15 @@ class SaleModel extends SaleEntity {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'date': date.toIso8601String(),
       'items': items.map((item) => (item as SaleItemModel).toJson()).toList(),
-      'totalAmount': totalAmount,
+      'subtotal': subtotal,
+      'discount': discount,
+      'total': total,
       'paymentMethod': paymentMethod,
       'cashierId': cashierId,
       'cashierName': cashierName,
-      'timestamp': timestamp.toIso8601String(),
+      'customerId': customerId,
       'syncStatus': syncStatus,
     };
   }
@@ -73,27 +86,33 @@ class SaleModel extends SaleEntity {
   ) {
     return SaleModel(
       id: documentId,
+      date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
       items: (data['items'] as List?)
               ?.map((item) => SaleItemModel.fromJson(item))
               .toList() ??
           [],
-      totalAmount: (data['totalAmount'] as num?)?.toDouble() ?? 0.0,
-      paymentMethod: data['paymentMethod'] ?? '',
+      subtotal: (data['subtotal'] as num?)?.toDouble() ?? 0.0,
+      discount: (data['discount'] as num?)?.toDouble() ?? 0.0,
+      total: (data['total'] as num?)?.toDouble() ?? 0.0,
+      paymentMethod: data['paymentMethod'] ?? 'cash',
       cashierId: data['cashierId'] ?? '',
       cashierName: data['cashierName'] ?? '',
-      timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      customerId: data['customerId'],
       syncStatus: data['syncStatus'] ?? 'synced',
     );
   }
 
   Map<String, dynamic> toFirestore() {
     return {
+      'date': Timestamp.fromDate(date),
       'items': items.map((item) => (item as SaleItemModel).toJson()).toList(),
-      'totalAmount': totalAmount,
+      'subtotal': subtotal,
+      'discount': discount,
+      'total': total,
       'paymentMethod': paymentMethod,
       'cashierId': cashierId,
       'cashierName': cashierName,
-      'timestamp': Timestamp.fromDate(timestamp),
+      'customerId': customerId,
       'syncStatus': syncStatus,
     };
   }
@@ -101,14 +120,17 @@ class SaleModel extends SaleEntity {
   factory SaleModel.fromEntity(SaleEntity entity) {
     return SaleModel(
       id: entity.id,
+      date: entity.date,
+      cashierId: entity.cashierId,
+      cashierName: entity.cashierName,
       items: entity.items
           .map((item) => SaleItemModel.fromEntity(item))
           .toList(),
-      totalAmount: entity.totalAmount,
+      subtotal: entity.subtotal,
+      discount: entity.discount,
+      total: entity.total,
       paymentMethod: entity.paymentMethod,
-      cashierId: entity.cashierId,
-      cashierName: entity.cashierName,
-      timestamp: entity.timestamp,
+      customerId: entity.customerId,
       syncStatus: entity.syncStatus,
     );
   }

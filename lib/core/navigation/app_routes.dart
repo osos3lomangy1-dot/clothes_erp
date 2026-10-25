@@ -16,6 +16,7 @@ import '../../features/product_variants/presentation/screens/variant_list_screen
 import '../../features/product_variants/presentation/screens/variant_form_screen.dart';
 import '../../features/product_variants/domain/entities/variant_entity.dart';
 import '../../features/inventory/presentation/screens/inventory_screen.dart';
+import '../../features/pos/presentation/screens/pos_screen.dart';
 
 class AppRoutes {
   static const String login = '/login';
@@ -28,6 +29,7 @@ class AppRoutes {
   static const String variants = '/variants';
   static const String variantForm = '/variants-form';
   static const String inventory = '/inventory';
+  static const String pos = '/pos';
 
   static final GoRouter router = GoRouter(
     initialLocation: login,
@@ -113,6 +115,10 @@ class AppRoutes {
       GoRoute(
         path: inventory,
         builder: (context, state) => const InventoryScreen(),
+      ),
+      GoRoute(
+        path: pos,
+        builder: (context, state) => const PosScreen(),
       ),
     ],
   );

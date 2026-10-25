@@ -14,11 +14,11 @@ class PosRepositoryImpl implements PosRepository {
   PosRepositoryImpl(this._remoteDataSource);
 
   @override
-  Future<Either<Failure, void>> createSale(SaleEntity sale) async {
+  Future<Either<Failure, SaleEntity>> createSale(SaleEntity sale) async {
     try {
       final model = SaleModel.fromEntity(sale);
-      await _remoteDataSource.createSale(model);
-      return const Right(null);
+      final result = await _remoteDataSource.createSale(model);
+      return Right(result);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {

@@ -10,7 +10,7 @@ class CreateSaleUseCase {
 
   CreateSaleUseCase(this.repository);
 
-  Future<Either<Failure, void>> call(SaleEntity sale) {
+  Future<Either<Failure, SaleEntity>> call(SaleEntity sale) {
     return repository.createSale(sale);
   }
 }

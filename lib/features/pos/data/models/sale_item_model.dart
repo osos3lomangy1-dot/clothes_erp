@@ -3,20 +3,26 @@ import '../../domain/entities/sale_item_entity.dart';
 class SaleItemModel extends SaleItemEntity {
   const SaleItemModel({
     required super.variantId,
-    required super.productCode,
+    required super.productName,
+    required super.size,
+    required super.color,
     required super.price,
     required super.quantity,
   });
 
   SaleItemModel copyWith({
     String? variantId,
-    String? productCode,
+    String? productName,
+    String? size,
+    String? color,
     double? price,
     int? quantity,
   }) {
     return SaleItemModel(
       variantId: variantId ?? this.variantId,
-      productCode: productCode ?? this.productCode,
+      productName: productName ?? this.productName,
+      size: size ?? this.size,
+      color: color ?? this.color,
       price: price ?? this.price,
       quantity: quantity ?? this.quantity,
     );
@@ -25,7 +31,9 @@ class SaleItemModel extends SaleItemEntity {
   factory SaleItemModel.fromJson(Map<String, dynamic> json) {
     return SaleItemModel(
       variantId: json['variantId'] ?? '',
-      productCode: json['productCode'] ?? '',
+      productName: json['productName'] ?? '',
+      size: json['size'] ?? '',
+      color: json['color'] ?? '',
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       quantity: json['quantity'] ?? 0,
     );
@@ -34,7 +42,9 @@ class SaleItemModel extends SaleItemEntity {
   Map<String, dynamic> toJson() {
     return {
       'variantId': variantId,
-      'productCode': productCode,
+      'productName': productName,
+      'size': size,
+      'color': color,
       'price': price,
       'quantity': quantity,
     };
@@ -43,7 +53,9 @@ class SaleItemModel extends SaleItemEntity {
   factory SaleItemModel.fromEntity(SaleItemEntity entity) {
     return SaleItemModel(
       variantId: entity.variantId,
-      productCode: entity.productCode,
+      productName: entity.productName,
+      size: entity.size,
+      color: entity.color,
       price: entity.price,
       quantity: entity.quantity,
     );
