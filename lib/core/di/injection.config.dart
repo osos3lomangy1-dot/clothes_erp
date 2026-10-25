@@ -46,6 +46,12 @@ import 'package:clothes_erp/features/categories/presentation/cubits/category_cub
     as _i147;
 import 'package:clothes_erp/features/categories/presentation/cubits/category_form_cubit.dart'
     as _i304;
+import 'package:clothes_erp/features/customers/data/repositories/customer_repository_impl.dart'
+    as _i707;
+import 'package:clothes_erp/features/customers/domain/repositories/customer_repository.dart'
+    as _i610;
+import 'package:clothes_erp/features/customers/presentation/cubits/customer_cubit.dart'
+    as _i1043;
 import 'package:clothes_erp/features/dashboard/data/datasources/dashboard_remote_data_source.dart'
     as _i788;
 import 'package:clothes_erp/features/dashboard/data/repositories/dashboard_repository_impl.dart'
@@ -56,10 +62,16 @@ import 'package:clothes_erp/features/dashboard/domain/usecases/get_dashboard_sta
     as _i1040;
 import 'package:clothes_erp/features/dashboard/presentation/cubits/dashboard_cubit.dart'
     as _i774;
+import 'package:clothes_erp/features/employees/data/datasources/attendance_remote_data_source.dart'
+    as _i101;
 import 'package:clothes_erp/features/employees/data/datasources/employee_remote_data_source.dart'
     as _i751;
+import 'package:clothes_erp/features/employees/data/repositories/attendance_repository_impl.dart'
+    as _i578;
 import 'package:clothes_erp/features/employees/data/repositories/employee_repository_impl.dart'
     as _i466;
+import 'package:clothes_erp/features/employees/domain/repositories/attendance_repository.dart'
+    as _i540;
 import 'package:clothes_erp/features/employees/domain/repositories/employee_repository.dart'
     as _i506;
 import 'package:clothes_erp/features/employees/domain/usecases/add_employee_usecase.dart'
@@ -70,14 +82,20 @@ import 'package:clothes_erp/features/employees/domain/usecases/get_employees_use
     as _i248;
 import 'package:clothes_erp/features/employees/domain/usecases/update_employee_status_usecase.dart'
     as _i500;
+import 'package:clothes_erp/features/employees/presentation/cubits/attendance_cubit.dart'
+    as _i583;
 import 'package:clothes_erp/features/employees/presentation/cubits/employee_cubit.dart'
     as _i164;
 import 'package:clothes_erp/features/employees/presentation/cubits/employee_form_cubit.dart'
     as _i361;
 import 'package:clothes_erp/features/inventory/data/datasources/inventory_remote_data_source.dart'
     as _i303;
+import 'package:clothes_erp/features/inventory/data/repositories/inventory_log_repository_impl.dart'
+    as _i284;
 import 'package:clothes_erp/features/inventory/data/repositories/inventory_repository_impl.dart'
     as _i351;
+import 'package:clothes_erp/features/inventory/domain/repositories/inventory_log_repository.dart'
+    as _i861;
 import 'package:clothes_erp/features/inventory/domain/repositories/inventory_repository.dart'
     as _i898;
 import 'package:clothes_erp/features/inventory/domain/usecases/get_all_inventory_usecase.dart'
@@ -86,6 +104,8 @@ import 'package:clothes_erp/features/inventory/domain/usecases/get_low_stock_use
     as _i232;
 import 'package:clothes_erp/features/inventory/presentation/cubits/inventory_cubit.dart'
     as _i779;
+import 'package:clothes_erp/features/inventory/presentation/cubits/inventory_log_cubit.dart'
+    as _i94;
 import 'package:clothes_erp/features/pos/data/datasources/pos_remote_data_source.dart'
     as _i967;
 import 'package:clothes_erp/features/pos/data/repositories/pos_repository_impl.dart'
@@ -169,6 +189,14 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i375.VariantRemoteDataSource>(
       () => _i375.VariantRemoteDataSourceImpl(gh<_i974.FirebaseFirestore>()),
     );
+    gh.lazySingleton<_i101.AttendanceRemoteDataSource>(
+      () => _i101.AttendanceRemoteDataSourceImpl(gh<_i974.FirebaseFirestore>()),
+    );
+    gh.lazySingleton<_i540.AttendanceRepository>(
+      () => _i578.AttendanceRepositoryImpl(
+        gh<_i101.AttendanceRemoteDataSource>(),
+      ),
+    );
     gh.lazySingleton<_i967.PosRemoteDataSource>(
       () => _i967.PosRemoteDataSourceImpl(gh<_i974.FirebaseFirestore>()),
     );
@@ -185,6 +213,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i303.InventoryRemoteDataSource>(
       () => _i303.InventoryRemoteDataSourceImpl(gh<_i974.FirebaseFirestore>()),
     );
+    gh.lazySingleton<_i610.CustomerRepository>(
+      () => _i707.CustomerRepositoryImpl(gh<_i974.FirebaseFirestore>()),
+    );
+    gh.lazySingleton<_i861.InventoryLogRepository>(
+      () => _i284.InventoryLogRepositoryImpl(gh<_i974.FirebaseFirestore>()),
+    );
     gh.lazySingleton<_i687.CategoryRepository>(
       () => _i932.CategoryRepositoryImpl(gh<_i171.CategoryRemoteDataSource>()),
     );
@@ -200,6 +234,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i898.InventoryRepository>(
       () =>
           _i351.InventoryRepositoryImpl(gh<_i303.InventoryRemoteDataSource>()),
+    );
+    gh.factory<_i1043.CustomerCubit>(
+      () => _i1043.CustomerCubit(gh<_i610.CustomerRepository>()),
     );
     gh.lazySingleton<_i1040.GetDashboardStatsUseCase>(
       () => _i1040.GetDashboardStatsUseCase(gh<_i682.DashboardRepository>()),
@@ -219,6 +256,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i419.UpdateCategoryUseCase>(
       () => _i419.UpdateCategoryUseCase(gh<_i687.CategoryRepository>()),
     );
+    gh.factory<_i583.AttendanceCubit>(
+      () => _i583.AttendanceCubit(gh<_i540.AttendanceRepository>()),
+    );
     gh.factory<_i147.CategoryCubit>(
       () => _i147.CategoryCubit(
         gh<_i368.GetCategoriesUseCase>(),
@@ -233,6 +273,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i77.VariantRepository>(
       () => _i780.VariantRepositoryImpl(gh<_i375.VariantRemoteDataSource>()),
+    );
+    gh.factory<_i94.InventoryLogCubit>(
+      () => _i94.InventoryLogCubit(gh<_i861.InventoryLogRepository>()),
     );
     gh.lazySingleton<_i747.CreateSaleUseCase>(
       () => _i747.CreateSaleUseCase(gh<_i862.PosRepository>()),

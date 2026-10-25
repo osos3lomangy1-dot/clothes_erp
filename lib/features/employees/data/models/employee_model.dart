@@ -9,6 +9,7 @@ class EmployeeModel extends EmployeeEntity {
     required super.role,
     required super.isActive,
     required super.createdAt,
+    super.salary,
   });
 
   EmployeeModel copyWith({
@@ -18,6 +19,7 @@ class EmployeeModel extends EmployeeEntity {
     String? role,
     bool? isActive,
     DateTime? createdAt,
+    double? salary,
   }) {
     return EmployeeModel(
       id: id ?? this.id,
@@ -26,6 +28,7 @@ class EmployeeModel extends EmployeeEntity {
       role: role ?? this.role,
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
+      salary: salary ?? this.salary,
     );
   }
 
@@ -37,6 +40,7 @@ class EmployeeModel extends EmployeeEntity {
       role: entity.role,
       isActive: entity.isActive,
       createdAt: entity.createdAt,
+      salary: entity.salary,
     );
   }
 
@@ -50,6 +54,7 @@ class EmployeeModel extends EmployeeEntity {
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : DateTime.now(),
+      salary: (json['salary'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -61,6 +66,7 @@ class EmployeeModel extends EmployeeEntity {
       'role': role,
       'isActive': isActive,
       'createdAt': createdAt.toIso8601String(),
+      'salary': salary,
     };
   }
 
@@ -75,6 +81,7 @@ class EmployeeModel extends EmployeeEntity {
       role: data['role'] ?? '',
       isActive: data['isActive'] ?? true,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      salary: (data['salary'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -85,6 +92,7 @@ class EmployeeModel extends EmployeeEntity {
       'role': role,
       'isActive': isActive,
       'createdAt': Timestamp.fromDate(createdAt),
+      'salary': salary,
     };
   }
 }

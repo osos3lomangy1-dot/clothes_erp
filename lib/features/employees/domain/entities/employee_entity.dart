@@ -7,6 +7,7 @@ class EmployeeEntity extends Equatable {
   final String role;
   final bool isActive;
   final DateTime createdAt;
+  final double salary;
 
   const EmployeeEntity({
     required this.id,
@@ -15,8 +16,9 @@ class EmployeeEntity extends Equatable {
     required this.role,
     required this.isActive,
     required this.createdAt,
+    this.salary = 0.0,
   });
 
   @override
-  List<Object?> get props => [id, name, email, role, isActive, createdAt];
+  List<Object?> get props => [id, name, email, role, isActive, createdAt, salary];
 }

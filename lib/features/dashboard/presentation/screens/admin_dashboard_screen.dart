@@ -10,6 +10,10 @@ import '../../../products/presentation/screens/product_list_screen.dart';
 import '../../../categories/presentation/screens/category_list_screen.dart';
 import '../../../employees/presentation/screens/employee_list_screen.dart';
 import '../../../inventory/presentation/screens/inventory_screen.dart';
+import '../../../inventory/presentation/screens/inventory_logs_screen.dart';
+import '../../../customers/presentation/screens/customer_screen.dart';
+import '../../../returns/presentation/screens/return_screen.dart';
+import '../../../reports/presentation/screens/reports_screen.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -146,6 +150,38 @@ class _AdminDashboardView extends StatelessWidget {
                       color: Colors.brown,
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(builder: (context) => const InventoryScreen()),
+                      ),
+                    ),
+                    _NavCard(
+                      icon: Icons.history,
+                      title: 'Inv. Logs',
+                      color: Colors.grey,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => const InventoryLogsScreen()),
+                      ),
+                    ),
+                    _NavCard(
+                      icon: Icons.people_outline,
+                      title: 'Customers',
+                      color: Colors.pink,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => const CustomerScreen()),
+                      ),
+                    ),
+                    _NavCard(
+                      icon: Icons.assignment_return,
+                      title: 'Returns',
+                      color: Colors.deepOrange,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => const ReturnScreen()),
+                      ),
+                    ),
+                    _NavCard(
+                      icon: Icons.bar_chart,
+                      title: 'Reports',
+                      color: Colors.indigo,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => const ReportsScreen()),
                       ),
                     ),
                   ],
