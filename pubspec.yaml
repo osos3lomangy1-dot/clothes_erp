@@ -23,6 +23,8 @@ dependencies:
   flutter_bloc: ^8.1.6
   bloc: ^8.1.4
   equatable: ^2.0.7
+  excel: ^4.0.6
+  file_picker: ^8.1.2
 
 dev_dependencies:
   flutter_test:

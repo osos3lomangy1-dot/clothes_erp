@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/services/excel_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/navigation/app_navigator.dart';
@@ -16,6 +17,46 @@ class ProductListScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Products'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.download),
+              onPressed: () async {
+                try {
+                  await ExcelService().exportProducts();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Export completed')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Export failed: $e')),
+                    );
+                  }
+                }
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.upload),
+              onPressed: () async {
+                try {
+                  // Import logic would use file_picker here
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Import not yet implemented')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Import failed: $e')),
+                    );
+                  }
+                }
+              },
+            ),
+          ],
         ),
         body: BlocBuilder<ProductCubit, ProductState>(
           builder: (context, state) {
