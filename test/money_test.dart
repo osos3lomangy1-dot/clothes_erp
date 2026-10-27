@@ -48,5 +48,17 @@ void main() {
     test('multiplication works', () {
       expect((const Money(100) * 3).piasters, 300);
     });
+
+    test('fromString handles empty string', () {
+      expect(Money.fromString('').piasters, 0);
+    });
+
+    test('fromString handles negative amount', () {
+      expect(Money.fromString('-10.50').piasters, -1050);
+    });
+
+
   });
 }
+
+

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' hide Category;
 import 'package:drift/drift.dart';
 import 'package:injectable/injectable.dart';
 import 'package:uuid/uuid.dart';
@@ -9,6 +10,9 @@ class CategoryLocalDataSource {
   final AppDatabase _db;
   final BranchProvider _branchProvider;
   final _uuid = const Uuid();
+
+  @visibleForTesting
+  Future<void> Function()? beforeAuditWrite;
 
   CategoryLocalDataSource(this._db, this._branchProvider);
 
@@ -44,6 +48,7 @@ class CategoryLocalDataSource {
         createdAt: now,
         updatedAt: now,
       ));
+      if (beforeAuditWrite != null) await beforeAuditWrite!();
       await _db.into(_db.auditLogs).insert(AuditLogsCompanion.insert(
         id: _uuid.v4(),
         branchId: branchId,
@@ -73,6 +78,7 @@ class CategoryLocalDataSource {
         createdAt: now,
         updatedAt: now,
       ));
+      if (beforeAuditWrite != null) await beforeAuditWrite!();
       await _db.into(_db.auditLogs).insert(AuditLogsCompanion.insert(
         id: _uuid.v4(),
         branchId: branchId,
@@ -102,6 +108,7 @@ class CategoryLocalDataSource {
         createdAt: now,
         updatedAt: now,
       ));
+      if (beforeAuditWrite != null) await beforeAuditWrite!();
       await _db.into(_db.auditLogs).insert(AuditLogsCompanion.insert(
         id: _uuid.v4(),
         branchId: branchId,

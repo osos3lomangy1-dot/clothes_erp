@@ -4,14 +4,19 @@ class Money {
   const Money(this.piasters);
 
   static Money fromString(String value) {
+    final negative = value.trim().startsWith('-');
     final cleaned = value.replaceAll(RegExp(r'[^\d.]'), '');
+    if (cleaned.isEmpty) return const Money(0);
     final parts = cleaned.split('.');
+    int result;
     if (parts.length == 1) {
-      return Money(int.parse(parts[0]) * 100);
+      result = int.parse(parts[0]) * 100;
+    } else {
+      final whole = int.parse(parts[0]);
+      final frac = parts[1].padRight(2, '0').substring(0, 2);
+      result = whole * 100 + int.parse(frac);
     }
-    final whole = int.parse(parts[0]);
-    final frac = parts[1].padRight(2, '0').substring(0, 2);
-    return Money(whole * 100 + int.parse(frac));
+    return Money(negative ? -result : result);
   }
 
   static Money percentDiscount(Money total, int percent) {

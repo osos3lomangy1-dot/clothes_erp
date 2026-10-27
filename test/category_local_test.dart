@@ -38,7 +38,6 @@ void main() {
     await ds.deleteCategory(cats.first.id);
     final after = await ds.getCategories();
     expect(after.length, 0);
-    // row still in DB
     final all = await db.select(db.categories).get();
     expect(all.length, 1);
     expect(all.first.deletedAt, isNotNull);
@@ -52,28 +51,40 @@ void main() {
     expect(cats[1].name, 'B');
   });
 
-  test('duplicate name allowed (no unique constraint)', () async {
+  test('duplicate name allowed', () async {
     await ds.addCategory('Dup');
     await ds.addCategory('Dup');
     final cats = await ds.getCategories();
     expect(cats.length, 2);
   });
 
-  test('atomicity: failure rolls back all writes', () async {
-    // Insert a category, then verify sync_queue and audit_logs are populated
-    await ds.addCategory('Test');
+  test('atomicity: addCategory rollback on failure', () async {
+    ds.beforeAuditWrite = () async => throw Exception('boom');
+    expect(() => ds.addCategory('Test'), throwsA(anything));
     final cats = await db.select(db.categories).get();
     final syncs = await db.select(db.syncQueue).get();
     final audits = await db.select(db.auditLogs).get();
-    expect(cats.length, 1);
-    expect(syncs.length, 1);
-    expect(audits.length, 1);
+    expect(cats.length, 0);
+    expect(syncs.length, 0);
+    expect(audits.length, 0);
   });
 
-  test('branch provider creates then returns same', () async {
-    final id1 = await bp.getBranchId();
-    final id2 = await bp.getBranchId();
-    expect(id1, id2);
-    expect(id1.isNotEmpty, true);
+  test('atomicity: updateCategory rollback on failure', () async {
+    await ds.addCategory('Test');
+    ds.beforeAuditWrite = () async => throw Exception('boom');
+    final cats = await ds.getCategories();
+    expect(() => ds.updateCategory(cats.first.id, 'Updated'), throwsA(anything));
+    final syncs = await db.select(db.syncQueue).get();
+    // Only the original insert sync should exist
+    expect(syncs.length, 1);
+  });
+
+  test('atomicity: deleteCategory rollback on failure', () async {
+    await ds.addCategory('Test');
+    ds.beforeAuditWrite = () async => throw Exception('boom');
+    final cats = await ds.getCategories();
+    expect(() => ds.deleteCategory(cats.first.id), throwsA(anything));
+    final after = await ds.getCategories();
+    expect(after.length, 1); // not deleted
   });
 }

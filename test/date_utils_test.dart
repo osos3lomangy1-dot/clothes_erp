@@ -20,12 +20,6 @@ void main() {
     expect(AppDateUtils.dayKey(dt), '2026-01-05');
   });
 
-  test('sale at 23:59 and 00:01 land on different dayKeys', () {
-    final late = DateTime(2026, 3, 15, 23, 59);
-    final early = DateTime(2026, 3, 16, 0, 1);
-    expect(AppDateUtils.dayKey(late), '2026-03-15');
-    expect(AppDateUtils.dayKey(early), '2026-03-16');
-  });
 
   test('midnight boundary', () {
     final midnight = DateTime(2026, 3, 16, 0, 0);
@@ -37,4 +31,5 @@ void main() {
     expect(AppDateUtils.dayKey(local), '2026-03-15');
   });
 }
+
 

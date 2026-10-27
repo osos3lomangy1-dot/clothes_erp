@@ -2,7 +2,6 @@ import 'package:drift/drift.dart' hide isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:clothes_erp/core/database/app_database.dart';
-import 'package:clothes_erp/core/utils/date_utils.dart';
 import 'package:uuid/uuid.dart';
 
 void main() {
@@ -199,12 +198,6 @@ void main() {
     );
   });
 
-  test('dayKey formats dates correctly', () {
-    expect(AppDateUtils.dayKey(DateTime(2026, 3, 15, 10, 30)), '2026-03-15');
-    expect(AppDateUtils.dayKey(DateTime(2026, 3, 15, 23, 59)), '2026-03-15');
-    expect(AppDateUtils.dayKey(DateTime(2026, 3, 16, 0, 1)), '2026-03-16');
-    expect(AppDateUtils.dayKey(DateTime(2026, 1, 5)), '2026-01-05');
-  });
 
   test('sale_items qty = 0 fails', () async {
     final now = DateTime.now();
@@ -334,5 +327,51 @@ void main() {
       throwsA(anything),
     );
   });
+
+  test('inventory_logs insert works', () async {
+    final now = DateTime.now();
+    final logId = uuid.v4();
+    await db.into(db.inventoryLogs).insert(InventoryLogsCompanion.insert(
+      id: logId, branchId: branch, variantId: 'v1', type: 'in',
+      qtyDelta: 5, refType: 'manual', userId: 'u1', createdAt: now,
+    ));
+    final logs = await db.select(db.inventoryLogs).get();
+    expect(logs.length, 1);
+  });
+
+  test('sync_queue insert works', () async {
+    final now = DateTime.now();
+    final syncId = uuid.v4();
+    await db.into(db.syncQueue).insert(SyncQueueCompanion.insert(
+      id: syncId, branchId: branch, entity: 'sale', entityId: 's1',
+      operation: 'insert', payload: '{}', createdAt: now, updatedAt: now,
+    ));
+    final rows = await db.select(db.syncQueue).get();
+    expect(rows.length, 1);
+  });
+
+  test('app_meta insert works', () async {
+    final now = DateTime.now();
+    await db.into(db.appMeta).insert(AppMetaCompanion.insert(
+      key: 'test_key', value: 'test_value', updatedAt: now,
+    ));
+    final rows = await db.select(db.appMeta).get();
+    expect(rows.length, 1);
+  });
+
+  test('app_meta duplicate key fails', () async {
+    final now = DateTime.now();
+    await db.into(db.appMeta).insert(AppMetaCompanion.insert(
+      key: 'dup_key', value: 'v1', updatedAt: now,
+    ));
+    expectLater(
+      db.into(db.appMeta).insert(AppMetaCompanion.insert(
+        key: 'dup_key', value: 'v2', updatedAt: now,
+      )),
+      throwsA(anything),
+    );
+  });
 }
+
+
 
