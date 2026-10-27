@@ -34,8 +34,8 @@ class VariantFormCubit extends Cubit<VariantFormState> {
   void onColorChanged(String value) => emit(state.copyWith(color: value));
   void onSizeChanged(String value) => emit(state.copyWith(size: value));
   void onQuantityChanged(int value) => emit(state.copyWith(quantity: value));
-  void onCostPriceChanged(double value) => emit(state.copyWith(costPrice: value));
-  void onSalePriceChanged(double value) => emit(state.copyWith(salePrice: value));
+  void onCostPriceChanged(int value) => emit(state.copyWith(costPrice: value));
+  void onSalePriceChanged(int value) => emit(state.copyWith(salePrice: value));
   void onMinStockChanged(int value) => emit(state.copyWith(minStock: value));
 
   Future<void> submit({required String? id, required String productId}) async {
@@ -75,3 +75,4 @@ class VariantFormCubit extends Cubit<VariantFormState> {
     );
   }
 }
+

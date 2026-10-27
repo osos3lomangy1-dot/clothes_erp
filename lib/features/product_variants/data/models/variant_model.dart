@@ -23,8 +23,8 @@ class VariantModel extends VariantEntity {
     String? color,
     String? size,
     int? quantity,
-    double? costPrice,
-    double? salePrice,
+    int? costPrice,
+    int? salePrice,
     int? minStock,
     String? barcode,
     DateTime? createdAt,
@@ -68,8 +68,8 @@ class VariantModel extends VariantEntity {
       color: json['color'] ?? '',
       size: json['size'] ?? '',
       quantity: json['quantity'] ?? 0,
-      costPrice: (json['costPrice'] as num?)?.toDouble() ?? 0.0,
-      salePrice: (json['salePrice'] as num?)?.toDouble() ?? 0.0,
+      costPrice: (json['costPrice'] as num?)?.toInt() ?? 0,
+      salePrice: (json['salePrice'] as num?)?.toInt() ?? 0,
       minStock: json['minStock'] ?? 0,
       barcode: json['barcode'],
       createdAt: json['createdAt'] != null
@@ -105,8 +105,8 @@ class VariantModel extends VariantEntity {
       color: data['color'] ?? '',
       size: data['size'] ?? '',
       quantity: data['quantity'] ?? 0,
-      costPrice: (data['costPrice'] as num?)?.toDouble() ?? 0.0,
-      salePrice: (data['salePrice'] as num?)?.toDouble() ?? 0.0,
+      costPrice: (data['costPrice'] as num?)?.toInt() ?? 0,
+      salePrice: (data['salePrice'] as num?)?.toInt() ?? 0,
       minStock: data['minStock'] ?? 0,
       barcode: data['barcode'],
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -128,3 +128,4 @@ class VariantModel extends VariantEntity {
     };
   }
 }
+

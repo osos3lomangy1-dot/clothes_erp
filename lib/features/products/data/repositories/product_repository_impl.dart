@@ -1,25 +1,31 @@
 import 'package:dartz/dartz.dart';
 import 'package:injectable/injectable.dart';
-import '../../../../core/errors/exceptions.dart';
 import '../../../../core/errors/failures.dart';
 import '../../domain/entities/product_entity.dart';
 import '../../domain/repositories/product_repository.dart';
-import '../datasources/product_remote_data_source.dart';
-import '../models/product_model.dart';
+import '../datasources/product_local_data_source.dart';
 
 @LazySingleton(as: ProductRepository)
 class ProductRepositoryImpl implements ProductRepository {
-  final ProductRemoteDataSource _remoteDataSource;
+  final ProductLocalDataSource _localDataSource;
 
-  ProductRepositoryImpl(this._remoteDataSource);
+  ProductRepositoryImpl(this._localDataSource);
 
   @override
   Future<Either<Failure, List<ProductEntity>>> getProducts() async {
     try {
-      final result = await _remoteDataSource.getProducts();
-      return Right(result);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
+      final rows = await _localDataSource.getProducts();
+      final entities = rows.map((r) => ProductEntity(
+        id: r.id,
+        name: r.name,
+        description: r.description ?? '',
+        categoryId: r.categoryId,
+        categoryName: '',
+        createdAt: r.createdAt,
+        minStock: r.minStock,
+        isActive: r.isActive,
+      )).toList();
+      return Right(entities);
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -28,18 +34,13 @@ class ProductRepositoryImpl implements ProductRepository {
   @override
   Future<Either<Failure, void>> addProduct(ProductEntity product) async {
     try {
-      final model = ProductModel(
-        id: product.id,
+      await _localDataSource.createProduct(
         name: product.name,
-        description: product.description,
         categoryId: product.categoryId,
-        categoryName: product.categoryName,
-        createdAt: product.createdAt,
+        description: product.description,
+        minStock: product.minStock,
       );
-      await _remoteDataSource.addProduct(model);
       return const Right(null);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -48,18 +49,13 @@ class ProductRepositoryImpl implements ProductRepository {
   @override
   Future<Either<Failure, void>> updateProduct(ProductEntity product) async {
     try {
-      final model = ProductModel(
-        id: product.id,
+      await _localDataSource.updateProduct(product.id,
         name: product.name,
         description: product.description,
-        categoryId: product.categoryId,
-        categoryName: product.categoryName,
-        createdAt: product.createdAt,
+        minStock: product.minStock,
+        isActive: product.isActive,
       );
-      await _remoteDataSource.updateProduct(model);
       return const Right(null);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -68,10 +64,8 @@ class ProductRepositoryImpl implements ProductRepository {
   @override
   Future<Either<Failure, void>> deleteProduct(String id) async {
     try {
-      await _remoteDataSource.deleteProduct(id);
+      await _localDataSource.softDeleteProduct(id);
       return const Right(null);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

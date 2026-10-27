@@ -16,7 +16,7 @@ class SaleItemModel extends SaleItemEntity {
     String? productName,
     String? size,
     String? color,
-    double? price,
+    int? price,
     int? quantity,
   }) {
     return SaleItemModel(
@@ -35,7 +35,7 @@ class SaleItemModel extends SaleItemEntity {
       productName: json['productName'] ?? '',
       size: json['size'] ?? '',
       color: json['color'] ?? '',
-      price: (json['price'] as num?)?.toDouble() ?? 0.0,
+      price: (json['price'] as num?)?.toInt() ?? 0,
       quantity: json['quantity'] ?? 0,
     );
   }

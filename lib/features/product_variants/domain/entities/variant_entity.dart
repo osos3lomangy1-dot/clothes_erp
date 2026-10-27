@@ -7,8 +7,8 @@ class VariantEntity extends Equatable {
   final String color;
   final String size;
   final int quantity;
-  final double costPrice;
-  final double salePrice;
+  final int costPrice;
+  final int salePrice;
   final int minStock;
   final String? barcode;
   final DateTime createdAt;

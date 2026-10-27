@@ -10,7 +10,7 @@ class CartItemEntity extends Equatable {
     required this.quantity,
   });
 
-  double get totalPrice => variant.salePrice * quantity;
+  int get totalPrice => variant.salePrice * quantity;
 
   CartItemEntity copyWith({int? quantity}) {
     return CartItemEntity(

@@ -5,7 +5,7 @@ class SaleItemEntity extends Equatable {
   final String productName;
   final String size;
   final String color;
-  final double price;
+  final int price;
   final int quantity;
 
   const SaleItemEntity({
@@ -22,7 +22,7 @@ class SaleItemEntity extends Equatable {
     String? productName,
     String? size,
     String? color,
-    double? price,
+    int? price,
     int? quantity,
   }) {
     return SaleItemEntity(
@@ -35,7 +35,7 @@ class SaleItemEntity extends Equatable {
     );
   }
 
-  double get total => price * quantity;
+  int get total => price * quantity;
 
   @override
   List<Object?> get props => [variantId, productName, size, color, price, quantity];
