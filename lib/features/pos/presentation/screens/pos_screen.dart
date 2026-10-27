@@ -88,7 +88,7 @@ class _SearchPanelState extends State<_SearchPanel> {
           child: TextField(
             controller: _searchController,
             decoration: const InputDecoration(
-              labelText: 'Search by product code or barcode',
+              labelText: 'Search by product code or SKU',
               border: OutlineInputBorder(),
               prefixIcon: Icon(Icons.search),
             ),

@@ -60,7 +60,6 @@ class ProductVariants extends Table {
   IntColumn get quantity => integer().withDefault(const Constant(0))();
   IntColumn get costPrice => integer()();
   IntColumn get sellPrice => integer()();
-  TextColumn get barcode => text().nullable()();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
@@ -361,7 +360,7 @@ class AppDatabase extends _$AppDatabase {
     onCreate: (Migrator m) async {
       await m.createAll();
       await customStatement(
-        'CREATE UNIQUE INDEX idx_variants_barcode_unique ON product_variants(barcode) WHERE deleted_at IS NULL AND barcode IS NOT NULL',
+        'CREATE UNIQUE INDEX idx_variants_sku_unique ON product_variants(sku) WHERE deleted_at IS NULL',
       );
     },
     onUpgrade: (Migrator m, int from, int to) async {},

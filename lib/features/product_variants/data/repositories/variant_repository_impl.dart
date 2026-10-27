@@ -25,7 +25,7 @@ class VariantRepositoryImpl implements VariantRepository {
         costPrice: r.costPrice,
         salePrice: r.sellPrice,
         minStock: 5,
-        barcode: r.barcode,
+        
         createdAt: r.createdAt,
       )).toList();
       return Right(entities);
@@ -45,7 +45,7 @@ class VariantRepositoryImpl implements VariantRepository {
         costPrice: variant.costPrice,
         sellPrice: variant.salePrice,
         quantity: variant.quantity,
-        barcode: variant.barcode,
+        
       );
       return const Right(null);
     } catch (e) {
@@ -82,3 +82,4 @@ class VariantRepositoryImpl implements VariantRepository {
     return const Right([]);
   }
 }
+

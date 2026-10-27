@@ -11,7 +11,6 @@ class ExcelService {
       TextCellValue('Category'),
       TextCellValue('Color'),
       TextCellValue('Size'),
-      TextCellValue('Barcode'),
       TextCellValue('Quantity'),
       TextCellValue('Sale Price'),
       TextCellValue('Cost Price'),
@@ -31,7 +30,6 @@ class ExcelService {
           TextCellValue(productData['category'] ?? ''),
           TextCellValue(v['color'] ?? ''),
           TextCellValue(v['size'] ?? ''),
-          TextCellValue(v['barcode'] ?? ''),
           IntCellValue((v['quantity'] as num?)?.toInt() ?? 0),
           DoubleCellValue((v['salePrice'] as num?)?.toDouble() ?? 0.0),
           DoubleCellValue((v['costPrice'] as num?)?.toDouble() ?? 0.0),
@@ -44,3 +42,4 @@ class ExcelService {
     // In a real app, use path_provider to save to device
   }
 }
+

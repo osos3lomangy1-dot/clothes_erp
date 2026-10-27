@@ -123,7 +123,7 @@ void main() {
     expect(products.first.deletedAt, isNotNull);
   });
 
-  test('duplicate non-deleted barcode fails, succeeds if soft-deleted', () async {
+  test('duplicate non-deleted sku fails, succeeds if soft-deleted', () async {
     final now = DateTime.now();
     final varId1 = uuid.v4();
     final varId2 = uuid.v4();
@@ -133,13 +133,13 @@ void main() {
     ));
     await db.into(db.productVariants).insert(ProductVariantsCompanion.insert(
       id: varId1, branchId: branch, productId: prodId, sku: 'SKU1',
-      color: 'Red', size: 'M', costPrice: 100, sellPrice: 200, barcode: const Value('BC1'),
+      color: 'Red', size: 'M', costPrice: 100, sellPrice: 200, sku: const Value('SKU1'),
       createdAt: now, updatedAt: now,
     ));
     expectLater(
       db.into(db.productVariants).insert(ProductVariantsCompanion.insert(
         id: varId2, branchId: branch, productId: prodId, sku: 'SKU2',
-        color: 'Blue', size: 'L', costPrice: 100, sellPrice: 200, barcode: const Value('BC1'),
+        color: 'Blue', size: 'L', costPrice: 100, sellPrice: 200, sku: const Value('SKU1'),
         createdAt: now, updatedAt: now,
       )),
       throwsA(anything),
@@ -148,7 +148,7 @@ void main() {
         .write(ProductVariantsCompanion(deletedAt: Value(now)));
     await db.into(db.productVariants).insert(ProductVariantsCompanion.insert(
       id: varId2, branchId: branch, productId: prodId, sku: 'SKU2',
-      color: 'Blue', size: 'L', costPrice: 100, sellPrice: 200, barcode: const Value('BC1'),
+      color: 'Blue', size: 'L', costPrice: 100, sellPrice: 200, sku: const Value('SKU1'),
       createdAt: now, updatedAt: now,
     ));
   });
@@ -372,6 +372,7 @@ void main() {
     );
   });
 }
+
 
 
 

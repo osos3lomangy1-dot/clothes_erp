@@ -12,7 +12,6 @@ class VariantModel extends VariantEntity {
     required super.costPrice,
     required super.salePrice,
     required super.minStock,
-    super.barcode,
     required super.createdAt,
   });
 
@@ -26,7 +25,6 @@ class VariantModel extends VariantEntity {
     int? costPrice,
     int? salePrice,
     int? minStock,
-    String? barcode,
     DateTime? createdAt,
   }) {
     return VariantModel(
@@ -39,7 +37,6 @@ class VariantModel extends VariantEntity {
       costPrice: costPrice ?? this.costPrice,
       salePrice: salePrice ?? this.salePrice,
       minStock: minStock ?? this.minStock,
-      barcode: barcode ?? this.barcode,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -55,7 +52,6 @@ class VariantModel extends VariantEntity {
       costPrice: entity.costPrice,
       salePrice: entity.salePrice,
       minStock: entity.minStock,
-      barcode: entity.barcode,
       createdAt: entity.createdAt,
     );
   }
@@ -71,7 +67,6 @@ class VariantModel extends VariantEntity {
       costPrice: (json['costPrice'] as num?)?.toInt() ?? 0,
       salePrice: (json['salePrice'] as num?)?.toInt() ?? 0,
       minStock: json['minStock'] ?? 0,
-      barcode: json['barcode'],
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : DateTime.now(),
@@ -89,7 +84,6 @@ class VariantModel extends VariantEntity {
       'costPrice': costPrice,
       'salePrice': salePrice,
       'minStock': minStock,
-      'barcode': barcode,
       'createdAt': createdAt.toIso8601String(),
     };
   }
@@ -108,7 +102,6 @@ class VariantModel extends VariantEntity {
       costPrice: (data['costPrice'] as num?)?.toInt() ?? 0,
       salePrice: (data['salePrice'] as num?)?.toInt() ?? 0,
       minStock: data['minStock'] ?? 0,
-      barcode: data['barcode'],
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
@@ -123,7 +116,6 @@ class VariantModel extends VariantEntity {
       'costPrice': costPrice,
       'salePrice': salePrice,
       'minStock': minStock,
-      'barcode': barcode,
       'createdAt': Timestamp.fromDate(createdAt),
     };
   }

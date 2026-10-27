@@ -33,26 +33,26 @@ void main() {
     expect(after.length, 0);
   });
 
-  test('duplicate barcode fails; reuse after soft delete succeeds', () async {
+  test('duplicate sku fails; reuse after soft delete succeeds', () async {
     await pds.createProduct(name: 'P1', categoryId: 'c1');
     final prod = (await pds.getProducts()).first;
-    final bc = await vds.autoGenerateBarcode();
-    await vds.createVariant(productId: prod.id, sku: 'SKU1', color: 'Red', size: 'M', costPrice: 100, sellPrice: 200, barcode: bc);
-    // duplicate barcode fails
+    final bc = await vds.autoGenerateSku('Shirt','Red','M');
+    await vds.createVariant(productId: prod.id, sku: 'SKU1', color: 'Red', size: 'M', costPrice: 100, sellPrice: 200, );
+    // duplicate sku fails
     expectLater(
-      vds.createVariant(productId: prod.id, sku: 'SKU2', color: 'Blue', size: 'L', costPrice: 100, sellPrice: 200, barcode: bc),
+      vds.createVariant(productId: prod.id, sku: 'SKU2', color: 'Blue', size: 'L', costPrice: 100, sellPrice: 200, ),
       throwsA(anything),
     );
     // soft delete first variant
     final variants = await vds.getVariants(prod.id);
     await vds.softDeleteVariant(variants.first.id);
     // reuse succeeds
-    await vds.createVariant(productId: prod.id, sku: 'SKU3', color: 'Green', size: 'S', costPrice: 100, sellPrice: 200, barcode: bc);
+    await vds.createVariant(productId: prod.id, sku: 'SKU3', color: 'Green', size: 'S', costPrice: 100, sellPrice: 200, );
   });
 
-  test('auto-generated barcodes are unique', () async {
-    final bc1 = await vds.autoGenerateBarcode();
-    final bc2 = await vds.autoGenerateBarcode();
+  test('auto-generated skus are unique', () async {
+    final bc1 = await vds.autoGenerateSku('Shirt','Red','M');
+    final bc2 = await vds.autoGenerateSku('Shirt','Red','M');
     expect(bc1, isNot(equals(bc2)));
   });
 
@@ -105,3 +105,4 @@ void main() {
     expect(() => pds.softDeleteProduct(prod.id), throwsA(anything));
   });
 }
+

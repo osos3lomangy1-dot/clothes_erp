@@ -24,14 +24,17 @@ class VariantLocalDataSource {
     return (_db.select(_db.productVariants)..where((t) => t.productId.equals(productId) & t.deletedAt.isNull())).get();
   }
 
-  Future<String> autoGenerateBarcode() async {
-    String barcode;
-    do {
-      barcode = 'BC${_uuid.v4().substring(0, 8).toUpperCase()}';
-      final existing = await (_db.select(_db.productVariants)..where((t) => t.barcode.equals(barcode) & t.deletedAt.isNull())).get();
+  Future<String> autoGenerateSku(String productName, String color, String size) async {
+    final base = '${productName.substring(0, 1).toUpperCase()}${color.substring(0, 1).toUpperCase()}${size.substring(0, 1).toUpperCase()}';
+    String sku = base;
+    int suffix = 1;
+    while (true) {
+      final existing = await (_db.select(_db.productVariants)..where((t) => t.sku.equals(sku) & t.deletedAt.isNull())).get();
       if (existing.isEmpty) break;
-    } while (true);
-    return barcode;
+      sku = '$base$suffix';
+      suffix++;
+    }
+    return sku;
   }
 
   Future<void> createVariant({
@@ -42,12 +45,12 @@ class VariantLocalDataSource {
     required int costPrice,
     required int sellPrice,
     int quantity = 0,
-    String? barcode,
+    
   }) async {
     final now = DateTime.now();
     final id = _uuid.v4();
     final branchId = await _branchId();
-    final bc = barcode ?? await autoGenerateBarcode();
+    final now = DateTime.now();
     await _tx.write(
       writeFn: () async {
         await _db.into(_db.productVariants).insert(ProductVariantsCompanion.insert(
@@ -60,7 +63,7 @@ class VariantLocalDataSource {
           quantity: Value(quantity),
           costPrice: costPrice,
           sellPrice: sellPrice,
-          barcode: Value(bc),
+          
           createdAt: now,
           updatedAt: now,
         ));
@@ -126,3 +129,6 @@ class VariantLocalDataSource {
     if (beforeAuditWrite != null) await beforeAuditWrite!();
   }
 }
+
+
+
