@@ -11,6 +11,7 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:clothes_erp/core/database/app_database.dart' as _i110;
 import 'package:clothes_erp/core/database/branch_provider.dart' as _i254;
+import 'package:clothes_erp/core/database/tx_writer.dart' as _i874;
 import 'package:clothes_erp/core/di/register_module.dart' as _i868;
 import 'package:clothes_erp/features/auth/data/datasources/auth_local_data_source.dart'
     as _i526;
@@ -128,6 +129,8 @@ import 'package:clothes_erp/features/product_variants/presentation/cubits/varian
     as _i348;
 import 'package:clothes_erp/features/product_variants/presentation/cubits/variant_form_cubit.dart'
     as _i624;
+import 'package:clothes_erp/features/products/data/datasources/product_local_data_source.dart'
+    as _i878;
 import 'package:clothes_erp/features/products/data/datasources/product_remote_data_source.dart'
     as _i441;
 import 'package:clothes_erp/features/products/data/repositories/product_repository_impl.dart'
@@ -177,6 +180,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i751.EmployeeRemoteDataSource>(
       () => _i751.EmployeeRemoteDataSourceImpl(gh<_i974.FirebaseFirestore>()),
     );
+    gh.factory<_i254.BranchProvider>(
+      () => _i254.BranchProvider(gh<_i110.AppDatabase>()),
+    );
     gh.lazySingleton<_i375.VariantRemoteDataSource>(
       () => _i375.VariantRemoteDataSourceImpl(gh<_i974.FirebaseFirestore>()),
     );
@@ -192,6 +198,13 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i862.PosRepository>(
       () => _i762.PosRepositoryImpl(gh<_i967.PosRemoteDataSource>()),
+    );
+    gh.lazySingleton<_i878.ProductLocalDataSource>(
+      () => _i878.ProductLocalDataSource(
+        gh<_i110.AppDatabase>(),
+        gh<_i254.BranchProvider>(),
+        gh<_i874.TxWriter>(),
+      ),
     );
     gh.lazySingleton<_i303.InventoryRemoteDataSource>(
       () => _i303.InventoryRemoteDataSourceImpl(gh<_i974.FirebaseFirestore>()),

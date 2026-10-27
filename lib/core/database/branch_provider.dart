@@ -1,6 +1,8 @@
+import 'package:injectable/injectable.dart';
 import 'package:uuid/uuid.dart';
 import '../database/app_database.dart';
 
+@injectable
 class BranchProvider {
   final AppDatabase _db;
   final _uuid = const Uuid();
