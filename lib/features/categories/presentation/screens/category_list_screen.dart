@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/injection.dart';
-import '../../../../core/navigation/app_navigator.dart';
-import '../../../../core/navigation/app_routes.dart';
+import './category_form_screen.dart';
 import '../cubits/category_cubit.dart';
 import '../cubits/category_state.dart';
 
@@ -34,10 +33,8 @@ class CategoryListScreen extends StatelessWidget {
                       children: [
                         IconButton(
                           icon: const Icon(Icons.edit),
-                          onPressed: () => AppNavigator.push(
-                            context,
-                            AppRoutes.categoryForm,
-                            extra: category,
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (context) => CategoryFormScreen(category: category)),
                           ),
                         ),
                         IconButton(
@@ -58,7 +55,9 @@ class CategoryListScreen extends StatelessWidget {
           },
         ),
         floatingActionButton: FloatingActionButton(
-          onPressed: () => AppNavigator.push(context, AppRoutes.categoryForm),
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => const CategoryFormScreen()),
+          ),
           child: const Icon(Icons.add),
         ),
       ),

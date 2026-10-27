@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:injectable/injectable.dart';
 import '../../../../core/di/injection.dart';
 import '../../domain/entities/customer_entity.dart';
 import '../cubits/customer_cubit.dart';

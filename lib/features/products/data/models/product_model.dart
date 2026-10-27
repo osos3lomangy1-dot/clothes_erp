@@ -11,6 +11,8 @@ class ProductModel extends ProductEntity {
     super.images,
     super.barcode,
     required super.createdAt,
+    super.minStock,
+    super.isActive,
   });
 
   ProductModel copyWith({
@@ -22,6 +24,8 @@ class ProductModel extends ProductEntity {
     List<String>? images,
     String? barcode,
     DateTime? createdAt,
+    int? minStock,
+    bool? isActive,
   }) {
     return ProductModel(
       id: id ?? this.id,
@@ -32,6 +36,8 @@ class ProductModel extends ProductEntity {
       images: images ?? this.images,
       barcode: barcode ?? this.barcode,
       createdAt: createdAt ?? this.createdAt,
+      minStock: minStock ?? this.minStock,
+      isActive: isActive ?? this.isActive,
     );
   }
 
@@ -45,6 +51,8 @@ class ProductModel extends ProductEntity {
       images: entity.images,
       barcode: entity.barcode,
       createdAt: entity.createdAt,
+      minStock: entity.minStock,
+      isActive: entity.isActive,
     );
   }
 
@@ -57,6 +65,8 @@ class ProductModel extends ProductEntity {
       categoryName: json['categoryName'] ?? '',
       images: (json['images'] as List?)?.map((e) => e.toString()).toList(),
       barcode: json['barcode'],
+      minStock: json['minStock'] ?? 5,
+      isActive: json['isActive'] ?? true,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : DateTime.now(),
@@ -72,6 +82,8 @@ class ProductModel extends ProductEntity {
       'categoryName': categoryName,
       'images': images,
       'barcode': barcode,
+      'minStock': minStock,
+      'isActive': isActive,
       'createdAt': createdAt.toIso8601String(),
     };
   }
@@ -88,6 +100,8 @@ class ProductModel extends ProductEntity {
       categoryName: data['categoryName'] ?? '',
       images: (data['images'] as List?)?.map((e) => e.toString()).toList(),
       barcode: data['barcode'],
+      minStock: data['minStock'] ?? 5,
+      isActive: data['isActive'] ?? true,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
@@ -100,6 +114,8 @@ class ProductModel extends ProductEntity {
       'categoryName': categoryName,
       'images': images,
       'barcode': barcode,
+      'minStock': minStock,
+      'isActive': isActive,
       'createdAt': Timestamp.fromDate(createdAt),
     };
   }

@@ -57,7 +57,7 @@ class EmployeeFormView extends StatelessWidget {
                   keyboardType: TextInputType.emailAddress,
                 ),
                 DropdownButtonFormField<String>(
-                  value: state.role,
+                  initialValue: state.role,
                   items: const [
                     DropdownMenuItem(value: 'admin', child: Text('Admin')),
                     DropdownMenuItem(value: 'cashier', child: Text('Cashier')),

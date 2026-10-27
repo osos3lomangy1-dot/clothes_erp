@@ -9,6 +9,8 @@
 // coverage:ignore-file
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+import 'package:clothes_erp/core/database/app_database.dart' as _i110;
+import 'package:clothes_erp/core/database/branch_provider.dart' as _i254;
 import 'package:clothes_erp/core/di/register_module.dart' as _i868;
 import 'package:clothes_erp/features/auth/data/datasources/auth_local_data_source.dart'
     as _i526;
@@ -28,8 +30,8 @@ import 'package:clothes_erp/features/auth/presentation/cubits/auth_cubit.dart'
     as _i217;
 import 'package:clothes_erp/features/auth/presentation/cubits/login_form_cubit.dart'
     as _i82;
-import 'package:clothes_erp/features/categories/data/datasources/category_remote_data_source.dart'
-    as _i171;
+import 'package:clothes_erp/features/categories/data/datasources/category_local_data_source.dart'
+    as _i178;
 import 'package:clothes_erp/features/categories/data/repositories/category_repository_impl.dart'
     as _i932;
 import 'package:clothes_erp/features/categories/domain/repositories/category_repository.dart'
@@ -62,16 +64,10 @@ import 'package:clothes_erp/features/dashboard/domain/usecases/get_dashboard_sta
     as _i1040;
 import 'package:clothes_erp/features/dashboard/presentation/cubits/dashboard_cubit.dart'
     as _i774;
-import 'package:clothes_erp/features/employees/data/datasources/attendance_remote_data_source.dart'
-    as _i101;
 import 'package:clothes_erp/features/employees/data/datasources/employee_remote_data_source.dart'
     as _i751;
-import 'package:clothes_erp/features/employees/data/repositories/attendance_repository_impl.dart'
-    as _i578;
 import 'package:clothes_erp/features/employees/data/repositories/employee_repository_impl.dart'
     as _i466;
-import 'package:clothes_erp/features/employees/domain/repositories/attendance_repository.dart'
-    as _i540;
 import 'package:clothes_erp/features/employees/domain/repositories/employee_repository.dart'
     as _i506;
 import 'package:clothes_erp/features/employees/domain/usecases/add_employee_usecase.dart'
@@ -82,8 +78,6 @@ import 'package:clothes_erp/features/employees/domain/usecases/get_employees_use
     as _i248;
 import 'package:clothes_erp/features/employees/domain/usecases/update_employee_status_usecase.dart'
     as _i500;
-import 'package:clothes_erp/features/employees/presentation/cubits/attendance_cubit.dart'
-    as _i583;
 import 'package:clothes_erp/features/employees/presentation/cubits/employee_cubit.dart'
     as _i164;
 import 'package:clothes_erp/features/employees/presentation/cubits/employee_form_cubit.dart'
@@ -180,22 +174,11 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i974.FirebaseFirestore>(),
       ),
     );
-    gh.lazySingleton<_i171.CategoryRemoteDataSource>(
-      () => _i171.CategoryRemoteDataSourceImpl(gh<_i974.FirebaseFirestore>()),
-    );
     gh.lazySingleton<_i751.EmployeeRemoteDataSource>(
       () => _i751.EmployeeRemoteDataSourceImpl(gh<_i974.FirebaseFirestore>()),
     );
     gh.lazySingleton<_i375.VariantRemoteDataSource>(
       () => _i375.VariantRemoteDataSourceImpl(gh<_i974.FirebaseFirestore>()),
-    );
-    gh.lazySingleton<_i101.AttendanceRemoteDataSource>(
-      () => _i101.AttendanceRemoteDataSourceImpl(gh<_i974.FirebaseFirestore>()),
-    );
-    gh.lazySingleton<_i540.AttendanceRepository>(
-      () => _i578.AttendanceRepositoryImpl(
-        gh<_i101.AttendanceRemoteDataSource>(),
-      ),
     );
     gh.lazySingleton<_i967.PosRemoteDataSource>(
       () => _i967.PosRemoteDataSourceImpl(gh<_i974.FirebaseFirestore>()),
@@ -219,8 +202,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i861.InventoryLogRepository>(
       () => _i284.InventoryLogRepositoryImpl(gh<_i974.FirebaseFirestore>()),
     );
-    gh.lazySingleton<_i687.CategoryRepository>(
-      () => _i932.CategoryRepositoryImpl(gh<_i171.CategoryRemoteDataSource>()),
+    gh.lazySingleton<_i178.CategoryLocalDataSource>(
+      () => _i178.CategoryLocalDataSource(
+        gh<_i110.AppDatabase>(),
+        gh<_i254.BranchProvider>(),
+      ),
     );
     gh.lazySingleton<_i441.ProductRemoteDataSource>(
       () => _i441.ProductRemoteDataSourceImpl(gh<_i974.FirebaseFirestore>()),
@@ -244,27 +230,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i506.EmployeeRepository>(
       () => _i466.EmployeeRepositoryImpl(gh<_i751.EmployeeRemoteDataSource>()),
     );
-    gh.lazySingleton<_i745.AddCategoryUseCase>(
-      () => _i745.AddCategoryUseCase(gh<_i687.CategoryRepository>()),
-    );
-    gh.lazySingleton<_i544.DeleteCategoryUseCase>(
-      () => _i544.DeleteCategoryUseCase(gh<_i687.CategoryRepository>()),
-    );
-    gh.lazySingleton<_i368.GetCategoriesUseCase>(
-      () => _i368.GetCategoriesUseCase(gh<_i687.CategoryRepository>()),
-    );
-    gh.lazySingleton<_i419.UpdateCategoryUseCase>(
-      () => _i419.UpdateCategoryUseCase(gh<_i687.CategoryRepository>()),
-    );
-    gh.factory<_i583.AttendanceCubit>(
-      () => _i583.AttendanceCubit(gh<_i540.AttendanceRepository>()),
-    );
-    gh.factory<_i147.CategoryCubit>(
-      () => _i147.CategoryCubit(
-        gh<_i368.GetCategoriesUseCase>(),
-        gh<_i544.DeleteCategoryUseCase>(),
-      ),
-    );
     gh.factory<_i774.DashboardCubit>(
       () => _i774.DashboardCubit(gh<_i1040.GetDashboardStatsUseCase>()),
     );
@@ -280,11 +245,8 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i747.CreateSaleUseCase>(
       () => _i747.CreateSaleUseCase(gh<_i862.PosRepository>()),
     );
-    gh.factory<_i304.CategoryFormCubit>(
-      () => _i304.CategoryFormCubit(
-        gh<_i745.AddCategoryUseCase>(),
-        gh<_i419.UpdateCategoryUseCase>(),
-      ),
+    gh.lazySingleton<_i687.CategoryRepository>(
+      () => _i932.CategoryRepositoryImpl(gh<_i178.CategoryLocalDataSource>()),
     );
     gh.lazySingleton<_i1011.GetAuthStatusUseCase>(
       () => _i1011.GetAuthStatusUseCase(gh<_i689.AuthRepository>()),
@@ -343,10 +305,34 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i287.UpdateProductUseCase>(
       () => _i287.UpdateProductUseCase(gh<_i758.ProductRepository>()),
     );
+    gh.lazySingleton<_i745.AddCategoryUseCase>(
+      () => _i745.AddCategoryUseCase(gh<_i687.CategoryRepository>()),
+    );
+    gh.lazySingleton<_i544.DeleteCategoryUseCase>(
+      () => _i544.DeleteCategoryUseCase(gh<_i687.CategoryRepository>()),
+    );
+    gh.lazySingleton<_i368.GetCategoriesUseCase>(
+      () => _i368.GetCategoriesUseCase(gh<_i687.CategoryRepository>()),
+    );
+    gh.lazySingleton<_i419.UpdateCategoryUseCase>(
+      () => _i419.UpdateCategoryUseCase(gh<_i687.CategoryRepository>()),
+    );
+    gh.factory<_i147.CategoryCubit>(
+      () => _i147.CategoryCubit(
+        gh<_i368.GetCategoriesUseCase>(),
+        gh<_i544.DeleteCategoryUseCase>(),
+      ),
+    );
     gh.factory<_i624.VariantFormCubit>(
       () => _i624.VariantFormCubit(
         gh<_i202.AddVariantUseCase>(),
         gh<_i1031.UpdateVariantUseCase>(),
+      ),
+    );
+    gh.factory<_i304.CategoryFormCubit>(
+      () => _i304.CategoryFormCubit(
+        gh<_i745.AddCategoryUseCase>(),
+        gh<_i419.UpdateCategoryUseCase>(),
       ),
     );
     gh.factory<_i348.VariantCubit>(

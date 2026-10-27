@@ -18,6 +18,7 @@ class PosState extends Equatable {
   final double subtotal;
   final double discount;
   final double total;
+  final String notes;
 
   const PosState({
     this.cart = const [],
@@ -28,6 +29,7 @@ class PosState extends Equatable {
     this.subtotal = 0.0,
     this.discount = 0.0,
     this.total = 0.0,
+    this.notes = '',
   });
 
   PosState copyWith({
@@ -39,6 +41,7 @@ class PosState extends Equatable {
     double? subtotal,
     double? discount,
     double? total,
+    String? notes,
   }) {
     return PosState(
       cart: cart ?? this.cart,
@@ -49,11 +52,12 @@ class PosState extends Equatable {
       subtotal: subtotal ?? this.subtotal,
       discount: discount ?? this.discount,
       total: total ?? this.total,
+      notes: notes ?? this.notes,
     );
   }
 
   @override
-  List<Object?> get props => [cart, searchResults, paymentMethod, status, errorMessage, subtotal, discount, total];
+  List<Object?> get props => [cart, searchResults, paymentMethod, status, errorMessage, subtotal, discount, total, notes];
 }
 
 @injectable
@@ -160,6 +164,17 @@ class PosCubit extends Cubit<PosState> {
         clearCart();
       },
     );
+  }
+
+  void applyDiscount(double amount) {
+    emit(state.copyWith(
+      discount: amount,
+      total: state.subtotal - amount,
+    ));
+  }
+
+  void updateNotes(String notes) {
+    emit(state.copyWith(notes: notes));
   }
 
   void _updateCart(List<SaleItemEntity> newCart) {

@@ -37,7 +37,7 @@ class PosRemoteDataSourceImpl implements PosRemoteDataSource {
 
       // 2. Update Variant Quantities + inventory_logs
       for (final item in sale.items) {
-        final variantRef = _firestore.collection('variants').doc(item.variantId);
+        final variantRef = _firestore.collection('product_variants').doc(item.variantId);
         batch.update(variantRef, {
           'quantity': FieldValue.increment(-item.quantity),
         });

@@ -9,37 +9,35 @@ class ReturnScreen extends StatefulWidget {
 }
 
 class _ReturnScreenState extends State<ReturnScreen> {
-  final _saleIdController = TextEditingController();
-  Map<String, dynamic>? _saleData;
-  List<dynamic> _items = [];
-  final Set<int> _selectedItems = {};
+  final _searchController = TextEditingController();
+  List<Map<String, dynamic>> _variants = [];
+  Map<String, dynamic>? _selectedVariant;
+  final _qtyController = TextEditingController(text: '1');
+  final _refundController = TextEditingController();
   bool _loading = false;
   String? _error;
 
-  Future<void> _fetchSale() async {
+  Future<void> _searchVariants() async {
     setState(() {
       _loading = true;
       _error = null;
-      _saleData = null;
-      _items = [];
-      _selectedItems.clear();
+      _variants = [];
+      _selectedVariant = null;
     });
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('sales')
-          .doc(_saleIdController.text.trim())
+      final query = _searchController.text.trim().toLowerCase();
+      final snapshot = await FirebaseFirestore.instance
+          .collection('product_variants')
           .get();
-      if (!doc.exists) {
-        setState(() {
-          _error = 'Sale not found';
-          _loading = false;
-        });
-        return;
-      }
-      final data = doc.data()!;
+      final results = snapshot.docs
+          .map((doc) => {'id': doc.id, ...doc.data()})
+          .where((v) =>
+              (v['productCode'] as String? ?? '').toLowerCase().contains(query) ||
+              (v['color'] as String? ?? '').toLowerCase().contains(query) ||
+              (v['size'] as String? ?? '').toLowerCase().contains(query))
+          .toList();
       setState(() {
-        _saleData = data;
-        _items = (data['items'] as List?) ?? [];
+        _variants = results;
         _loading = false;
       });
     } catch (e) {
@@ -51,51 +49,38 @@ class _ReturnScreenState extends State<ReturnScreen> {
   }
 
   Future<void> _confirmReturn() async {
-    if (_selectedItems.isEmpty) return;
+    if (_selectedVariant == null) return;
+    final qty = int.tryParse(_qtyController.text) ?? 0;
+    if (qty <= 0) return;
     setState(() => _loading = true);
     try {
       await FirebaseFirestore.instance.runTransaction((transaction) async {
-        final saleRef = FirebaseFirestore.instance
-            .collection('sales')
-            .doc(_saleIdController.text.trim());
-        final saleDoc = await transaction.get(saleRef);
-        if (!saleDoc.exists) throw Exception('Sale not found');
+        final variantRef = FirebaseFirestore.instance
+            .collection('product_variants')
+            .doc(_selectedVariant!['id']);
+        final variantDoc = await transaction.get(variantRef);
+        if (!variantDoc.exists) throw Exception('Variant not found');
+        final currentQty = (variantDoc.data()?['quantity'] as num?)?.toInt() ?? 0;
+        transaction.update(variantRef, {'quantity': currentQty + qty});
 
-        for (final idx in _selectedItems) {
-          final item = _items[idx] as Map<String, dynamic>;
-          final variantId = item['variantId'] as String?;
-          final productId = item['productId'] as String?;
-          final qty = (item['quantity'] as num?)?.toInt() ?? 0;
-          if (variantId != null && productId != null) {
-            final variantRef = FirebaseFirestore.instance
-                .collection('product_variants')
-                .doc(variantId);
-            final variantDoc = await transaction.get(variantRef);
-            if (variantDoc.exists) {
-              final currentQty = (variantDoc.data()?['quantity'] as num?)?.toInt() ?? 0;
-              transaction.update(variantRef, {'quantity': currentQty + qty});
-            }
-            // Log inventory in
-            final logRef = FirebaseFirestore.instance.collection('inventory_logs').doc();
-            transaction.set(logRef, {
-              'productId': productId,
-              'variantId': variantId,
-              'type': 'in',
-              'quantity': qty,
-              'date': Timestamp.now(),
-              'userId': 'system',
-            });
-          }
-        }
-
-        transaction.update(saleRef, {'status': 'partially_refunded'});
+        final logRef = FirebaseFirestore.instance.collection('inventory_logs').doc();
+        transaction.set(logRef, {
+          'productId': _selectedVariant!['productId'],
+          'variantId': _selectedVariant!['id'],
+          'type': 'in',
+          'quantity': qty,
+          'date': Timestamp.now(),
+          'userId': 'cashier',
+          'note': 'Return',
+        });
       });
       setState(() {
         _loading = false;
-        _saleData = null;
-        _items = [];
-        _selectedItems.clear();
-        _saleIdController.clear();
+        _selectedVariant = null;
+        _variants = [];
+        _searchController.clear();
+        _qtyController.text = '1';
+        _refundController.clear();
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -112,12 +97,15 @@ class _ReturnScreenState extends State<ReturnScreen> {
 
   @override
   void dispose() {
-    _saleIdController.dispose();
+    _searchController.dispose();
+    _qtyController.dispose();
+    _refundController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(title: const Text('Returns')),
       body: Padding(
@@ -125,44 +113,67 @@ class _ReturnScreenState extends State<ReturnScreen> {
         child: Column(
           children: [
             TextField(
-              controller: _saleIdController,
+              controller: _searchController,
               decoration: const InputDecoration(
-                labelText: 'Sale ID',
-                suffixIcon: Icon(Icons.search),
+                labelText: 'Search by product name or SKU',
+                prefixIcon: Icon(Icons.search),
               ),
+              onSubmitted: (_) => _searchVariants(),
             ),
             const SizedBox(height: 8),
-            ElevatedButton(onPressed: _fetchSale, child: const Text('Fetch Sale')),
+            ElevatedButton(onPressed: _searchVariants, child: const Text('Search')),
             if (_loading) const CircularProgressIndicator(),
             if (_error != null) Text(_error!, style: const TextStyle(color: Colors.red)),
-            if (_items.isNotEmpty) ...[
+            if (_variants.isNotEmpty) ...[
               const SizedBox(height: 16),
               Expanded(
                 child: ListView.builder(
-                  itemCount: _items.length,
+                  itemCount: _variants.length,
                   itemBuilder: (context, index) {
-                    final item = _items[index] as Map<String, dynamic>;
-                    return CheckboxListTile(
-                      value: _selectedItems.contains(index),
-                      onChanged: (val) {
-                        setState(() {
-                          if (val == true) {
-                            _selectedItems.add(index);
-                          } else {
-                            _selectedItems.remove(index);
-                          }
-                        });
-                      },
-                      title: Text(item['productName'] ?? item['productCode'] ?? 'Item'),
-                      subtitle: Text('Qty: ${item['quantity']}'),
+                    final v = _variants[index];
+                    final isSelected = _selectedVariant?['id'] == v['id'];
+                    return Card(
+                      color: isSelected ? theme.colorScheme.primaryContainer : null,
+                      child: ListTile(
+                        title: Text('${v['productCode']} - ${v['color']} / ${v['size']}'),
+                        subtitle: Text('In stock: ${v['quantity']}'),
+                        trailing: isSelected ? const Icon(Icons.check, color: Colors.green) : null,
+                        onTap: () => setState(() => _selectedVariant = v),
+                      ),
                     );
                   },
                 ),
               ),
-              ElevatedButton(
-                onPressed: _confirmReturn,
-                child: const Text('Confirm Return'),
-              ),
+              if (_selectedVariant != null) ...[
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _qtyController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'Quantity to return'),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: TextField(
+                        controller: _refundController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'Refund amount'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _confirmReturn,
+                    child: const Text('Confirm Return'),
+                  ),
+                ),
+              ],
             ],
           ],
         ),

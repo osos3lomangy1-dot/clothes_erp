@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/injection.dart';
-import '../../../../core/navigation/app_navigator.dart';
-import '../../../../core/navigation/app_routes.dart';
+import './variant_form_screen.dart';
 import '../../../products/domain/entities/product_entity.dart';
 import '../cubits/variant_cubit.dart';
 import '../cubits/variant_state.dart';
@@ -37,10 +36,8 @@ class VariantListScreen extends StatelessWidget {
                       children: [
                         IconButton(
                           icon: const Icon(Icons.edit),
-                          onPressed: () => AppNavigator.push(
-                            context,
-                            AppRoutes.variantForm,
-                            extra: {'product': product, 'variant': variant},
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (context) => VariantFormScreen(product: product, variant: variant)),
                           ),
                         ),
                         IconButton(
@@ -61,10 +58,8 @@ class VariantListScreen extends StatelessWidget {
           },
         ),
         floatingActionButton: FloatingActionButton(
-          onPressed: () => AppNavigator.push(
-            context,
-            AppRoutes.variantForm,
-            extra: {'product': product},
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => VariantFormScreen(product: product)),
           ),
           child: const Icon(Icons.add),
         ),

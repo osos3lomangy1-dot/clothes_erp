@@ -27,13 +27,15 @@ class AuthCubit extends Cubit<AuthState> {
       (user) {
         if (user != null) {
           emit(AuthAuthenticated(user));
-        } else {
+        } else if (state is! AuthAuthenticated) {
           emit(AuthUnauthenticated());
         }
       },
       onError: (e) {
         Logging.error('⚠️ [Cubit] Stream error: $e');
-        emit(AuthUnauthenticated());
+        if (state is! AuthAuthenticated) {
+          emit(AuthUnauthenticated());
+        }
       },
     );
   }

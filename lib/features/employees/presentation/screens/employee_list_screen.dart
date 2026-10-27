@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/injection.dart';
-import '../../../../core/navigation/app_navigator.dart';
+import './employee_form_screen.dart';
 import '../cubits/employee_cubit.dart';
 import '../cubits/employee_state.dart';
 
@@ -27,7 +27,9 @@ class EmployeeListView extends StatelessWidget {
         title: const Text('Employees'),
         actions: [
           IconButton(
-            onPressed: () => AppNavigator.push(context, '/employees/add'),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const EmployeeFormScreen()),
+            ),
             icon: const Icon(Icons.add),
           ),
         ],

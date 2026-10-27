@@ -1,25 +1,27 @@
 import 'package:dartz/dartz.dart';
 import 'package:injectable/injectable.dart';
-import '../../../../core/errors/exceptions.dart';
 import '../../../../core/errors/failures.dart';
 import '../../domain/entities/category_entity.dart';
 import '../../domain/repositories/category_repository.dart';
-import '../datasources/category_remote_data_source.dart';
-import '../models/category_model.dart';
+import '../datasources/category_local_data_source.dart';
 
 @LazySingleton(as: CategoryRepository)
 class CategoryRepositoryImpl implements CategoryRepository {
-  final CategoryRemoteDataSource _remoteDataSource;
+  final CategoryLocalDataSource _localDataSource;
 
-  CategoryRepositoryImpl(this._remoteDataSource);
+  CategoryRepositoryImpl(this._localDataSource);
 
   @override
   Future<Either<Failure, List<CategoryEntity>>> getCategories() async {
     try {
-      final result = await _remoteDataSource.getCategories();
-      return Right(result);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
+      final rows = await _localDataSource.getCategories();
+      final entities = rows.map((r) => CategoryEntity(
+        id: r.id,
+        name: r.name,
+        description: '',
+        createdAt: r.createdAt,
+      )).toList();
+      return Right(entities);
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -28,16 +30,8 @@ class CategoryRepositoryImpl implements CategoryRepository {
   @override
   Future<Either<Failure, void>> addCategory(CategoryEntity category) async {
     try {
-      final model = CategoryModel(
-        id: category.id,
-        name: category.name,
-        description: category.description,
-        createdAt: category.createdAt,
-      );
-      await _remoteDataSource.addCategory(model);
+      await _localDataSource.addCategory(category.name, description: category.description);
       return const Right(null);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -46,16 +40,8 @@ class CategoryRepositoryImpl implements CategoryRepository {
   @override
   Future<Either<Failure, void>> updateCategory(CategoryEntity category) async {
     try {
-      final model = CategoryModel(
-        id: category.id,
-        name: category.name,
-        description: category.description,
-        createdAt: category.createdAt,
-      );
-      await _remoteDataSource.updateCategory(model);
+      await _localDataSource.updateCategory(category.id, category.name, description: category.description);
       return const Right(null);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -64,10 +50,8 @@ class CategoryRepositoryImpl implements CategoryRepository {
   @override
   Future<Either<Failure, void>> deleteCategory(String id) async {
     try {
-      await _remoteDataSource.deleteCategory(id);
+      await _localDataSource.deleteCategory(id);
       return const Right(null);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

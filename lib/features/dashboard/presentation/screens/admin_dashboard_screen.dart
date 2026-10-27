@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:injectable/injectable.dart';
 import '../../../../core/di/injection.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../cubits/dashboard_cubit.dart';
 import '../cubits/dashboard_state.dart';
-import '../../../pos/presentation/screens/pos_screen.dart';
+import '../../../products/presentation/cubits/product_cubit.dart';
 import '../../../products/presentation/screens/product_list_screen.dart';
 import '../../../categories/presentation/screens/category_list_screen.dart';
-import '../../../employees/presentation/screens/employee_list_screen.dart';
 import '../../../inventory/presentation/screens/inventory_screen.dart';
 import '../../../inventory/presentation/screens/inventory_logs_screen.dart';
 import '../../../customers/presentation/screens/customer_screen.dart';
@@ -113,19 +111,14 @@ class _AdminDashboardView extends StatelessWidget {
                   mainAxisSpacing: 12,
                   children: [
                     _NavCard(
-                      icon: Icons.point_of_sale,
-                      title: 'POS',
-                      color: Colors.deepPurple,
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (context) => const PosScreen()),
-                      ),
-                    ),
-                    _NavCard(
                       icon: Icons.inventory_2,
                       title: 'Products',
                       color: Colors.blue,
                       onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (context) => const ProductListScreen()),
+                        MaterialPageRoute(builder: (context) => BlocProvider(
+                          create: (_) => getIt<ProductCubit>()..getProducts(),
+                          child: const ProductListScreen(),
+                        )),
                       ),
                     ),
                     _NavCard(
@@ -134,14 +127,6 @@ class _AdminDashboardView extends StatelessWidget {
                       color: Colors.teal,
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(builder: (context) => const CategoryListScreen()),
-                      ),
-                    ),
-                    _NavCard(
-                      icon: Icons.people,
-                      title: 'Employees',
-                      color: Colors.indigo,
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (context) => const EmployeeListScreen()),
                       ),
                     ),
                     _NavCard(

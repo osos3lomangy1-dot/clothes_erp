@@ -173,7 +173,7 @@ class _CartPanel extends StatelessWidget {
                 ),
               ),
               DropdownButtonFormField<String>(
-                value: state.paymentMethod,
+                initialValue: state.paymentMethod,
                 decoration: const InputDecoration(
                   labelText: 'Payment Method',
                   border: OutlineInputBorder(),

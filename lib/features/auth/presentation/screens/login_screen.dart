@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/injection.dart';
-import '../cubits/auth_cubit.dart';
-import '../cubits/auth_state.dart';
 import '../cubits/login_form_cubit.dart';
 import '../cubits/login_state.dart';
-import '../../../dashboard/presentation/screens/admin_dashboard_screen.dart';
-import '../../../dashboard/presentation/screens/cashier_dashboard_screen.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -25,83 +21,68 @@ class _LoginView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      body: BlocListener<AuthCubit, AuthState>(
-        listener: (context, state) {
-          if (state is AuthError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message)),
-            );
-          }
-          if (state is AuthAuthenticated) {
-            final user = state.user;
-            if (user.role == 'admin') {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
-              );
-            } else {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (context) => const CashierDashboardScreen()),
-              );
-            }
-          }
-        },
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text(
-                  'Clothes ERP',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 40),
-                BlocBuilder<LoginFormCubit, LoginFormState>(
-                  buildWhen: (p, c) => p.email != c.email,
-                  builder: (context, state) {
-                    return TextField(
-                      onChanged: (val) => context.read<LoginFormCubit>().onEmailChanged(val),
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.email),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                BlocBuilder<LoginFormCubit, LoginFormState>(
-                  buildWhen: (p, c) => p.password != c.password,
-                  builder: (context, state) {
-                    return TextField(
-                      onChanged: (val) => context.read<LoginFormCubit>().onPasswordChanged(val),
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Password',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.lock),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 24),
-                BlocBuilder<LoginFormCubit, LoginFormState>(
-                  builder: (context, state) {
-                    return state.isSubmitting
-                        ? const CircularProgressIndicator()
-                        : SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton(
-                              onPressed: () => context.read<LoginFormCubit>().submit(),
-                              child: const Text('Login'),
-                            ),
-                          );
-                  },
-                ),
-              ],
-            ),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.storefront, size: 80, color: theme.colorScheme.primary),
+              const SizedBox(height: 16),
+              Text('Clothes ERP', style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Text('Clothing Store Management System', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey)),
+              const SizedBox(height: 48),
+              BlocBuilder<LoginFormCubit, LoginFormState>(
+                buildWhen: (p, c) => p.email != c.email,
+                builder: (context, state) {
+                  return TextField(
+                    onChanged: (val) => context.read<LoginFormCubit>().onEmailChanged(val),
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      prefixIcon: Icon(Icons.email_outlined),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              BlocBuilder<LoginFormCubit, LoginFormState>(
+                buildWhen: (p, c) => p.password != c.password,
+                builder: (context, state) {
+                  return TextField(
+                    onChanged: (val) => context.read<LoginFormCubit>().onPasswordChanged(val),
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Password',
+                      prefixIcon: Icon(Icons.lock_outlined),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 32),
+              BlocBuilder<LoginFormCubit, LoginFormState>(
+                builder: (context, state) {
+                  return SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton(
+                      onPressed: state.isSubmitting ? null : () => context.read<LoginFormCubit>().submit(),
+                      child: state.isSubmitting
+                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text('Login', style: TextStyle(fontSize: 16)),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+              Text('© 2026 Clothing Store ERP', style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey)),
+            ],
           ),
         ),
       ),

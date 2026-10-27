@@ -56,7 +56,7 @@ class ProductFormScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: state.categoryId,
+                    initialValue: state.categoryId,
                     decoration: const InputDecoration(labelText: 'Category'),
                     items: state.categories.map((category) {
                       return DropdownMenuItem(

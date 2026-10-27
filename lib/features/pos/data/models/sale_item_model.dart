@@ -10,6 +10,7 @@ class SaleItemModel extends SaleItemEntity {
     required super.quantity,
   });
 
+  @override
   SaleItemModel copyWith({
     String? variantId,
     String? productName,

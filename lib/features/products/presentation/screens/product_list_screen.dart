@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../../core/services/excel_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/injection.dart';
-import '../../../../core/navigation/app_navigator.dart';
-import '../../../../core/navigation/app_routes.dart';
+import './product_form_screen.dart';
+import '../../../product_variants/presentation/screens/variant_list_screen.dart';
 import '../cubits/product_cubit.dart';
 import '../cubits/product_state.dart';
 
@@ -67,27 +67,44 @@ class ProductListScreen extends StatelessWidget {
                 itemCount: state.products.length,
                 itemBuilder: (context, index) {
                   final product = state.products[index];
-                  return ListTile(
-                    title: Text(product.name),
-                    subtitle: Text(product.categoryName),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit),
-                          onPressed: () => AppNavigator.push(
-                            context,
-                            AppRoutes.productForm,
-                            extra: product,
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => context.read<ProductCubit>().deleteProduct(product.id),
-                        ),
-                      ],
-                    ),
-                  );
+                   return ListTile(
+                     title: Text(product.name),
+                     subtitle: Text(product.categoryName),
+                     leading: const Icon(Icons.inventory_2),
+                     trailing: Row(
+                       mainAxisSize: MainAxisSize.min,
+                       children: [
+                         IconButton(
+                           icon: Icon(product.isActive ? Icons.toggle_on : Icons.toggle_off, color: product.isActive ? Colors.green : Colors.grey),
+                           tooltip: product.isActive ? 'Deactivate' : 'Activate',
+                           onPressed: () {
+                             // Toggle isActive - would need cubit method
+                           },
+                         ),
+                         IconButton(
+                           icon: const Icon(Icons.add_circle_outline),
+                           tooltip: 'Add Variant',
+                           onPressed: () => Navigator.of(context).push(
+                             MaterialPageRoute(builder: (context) => VariantListScreen(product: product)),
+                           ),
+                         ),
+                         IconButton(
+                           icon: const Icon(Icons.edit),
+                           onPressed: () => Navigator.of(context).push(
+                             MaterialPageRoute(builder: (context) => ProductFormScreen(product: product)),
+                           ),
+                         ),
+                         IconButton(
+                           icon: const Icon(Icons.delete, color: Colors.red),
+                           onPressed: () => context.read<ProductCubit>().deleteProduct(product.id),
+                         ),
+                         const Icon(Icons.chevron_right),
+                       ],
+                     ),
+                     onTap: () => Navigator.of(context).push(
+                       MaterialPageRoute(builder: (context) => VariantListScreen(product: product)),
+                     ),
+                   );
                 },
               );
             } else if (state is ProductEmpty) {
@@ -99,7 +116,9 @@ class ProductListScreen extends StatelessWidget {
           },
         ),
         floatingActionButton: FloatingActionButton(
-          onPressed: () => AppNavigator.push(context, AppRoutes.productForm),
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => const ProductFormScreen()),
+          ),
           child: const Icon(Icons.add),
         ),
       ),
