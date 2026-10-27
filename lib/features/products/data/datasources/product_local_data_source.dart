@@ -5,12 +5,17 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/database/branch_provider.dart';
 import '../../../../core/database/tx_writer.dart';
 
+import 'package:flutter/foundation.dart' hide Category;
+
 @lazySingleton
 class ProductLocalDataSource {
   final AppDatabase _db;
   final BranchProvider _branchProvider;
   final TxWriter _tx;
   final _uuid = const Uuid();
+
+  @visibleForTesting
+  Future<void> Function()? beforeAuditWrite;
 
   ProductLocalDataSource(this._db, this._branchProvider, this._tx);
 
@@ -94,6 +99,9 @@ class ProductLocalDataSource {
       writeFn: () async {
         await (_db.update(_db.products)..where((t) => t.id.equals(id))).write(
           ProductsCompanion(deletedAt: Value(now), updatedAt: Value(now)),
+        );
+        await (_db.update(_db.productVariants)..where((t) => t.productId.equals(id))).write(
+          ProductVariantsCompanion(deletedAt: Value(now), updatedAt: Value(now)),
         );
       },
       branchId: branchId,

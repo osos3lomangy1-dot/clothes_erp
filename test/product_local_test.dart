@@ -75,6 +75,33 @@ void main() {
     expect(audits.length, 0);
   });
 
+  test('deleting a product soft-deletes its variants', () async {
+    await pds.createProduct(name: 'P1', categoryId: 'c1');
+    final prod = (await pds.getProducts()).first;
+    await vds.createVariant(productId: prod.id, sku: 'SKU1', color: 'Red', size: 'M', costPrice: 100, sellPrice: 200);
+    await pds.softDeleteProduct(prod.id);
+    final variants = await vds.getVariants(prod.id);
+    expect(variants.length, 0);
+  });
+
+  test('ATOMICITY with injected failure for update', () async {
+    await pds.createProduct(name: 'P1', categoryId: 'c1');
+    final prod = (await pds.getProducts()).first;
+    tx.beforeAuditWrite = () async => throw Exception('boom');
+    expect(() => pds.updateProduct(prod.id, name: 'P2'), throwsA(anything));
+    final products = await db.select(db.products).get();
+    expect(products.first.name, 'P1');
+  });
+
+  test('ATOMICITY with injected failure for delete', () async {
+    await pds.createProduct(name: 'P1', categoryId: 'c1');
+    final prod = (await pds.getProducts()).first;
+    tx.beforeAuditWrite = () async => throw Exception('boom');
+    expect(() => pds.softDeleteProduct(prod.id), throwsA(anything));
+    final products = await db.select(db.products).get();
+    expect(products.first.deletedAt, isNull);
+  });
+
   test('cashier projection does not expose costPrice', () async {
     await pds.createProduct(name: 'P1', categoryId: 'c1');
     final prod = (await pds.getProducts()).first;
