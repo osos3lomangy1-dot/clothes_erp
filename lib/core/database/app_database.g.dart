@@ -1901,17 +1901,6 @@ class $ProductVariantsTable extends ProductVariants
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _barcodeMeta = const VerificationMeta(
-    'barcode',
-  );
-  @override
-  late final GeneratedColumn<String> barcode = GeneratedColumn<String>(
-    'barcode',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
   static const VerificationMeta _isActiveMeta = const VerificationMeta(
     'isActive',
   );
@@ -1971,7 +1960,6 @@ class $ProductVariantsTable extends ProductVariants
     quantity,
     costPrice,
     sellPrice,
-    barcode,
     isActive,
     createdAt,
     updatedAt,
@@ -2056,12 +2044,6 @@ class $ProductVariantsTable extends ProductVariants
     } else if (isInserting) {
       context.missing(_sellPriceMeta);
     }
-    if (data.containsKey('barcode')) {
-      context.handle(
-        _barcodeMeta,
-        barcode.isAcceptableOrUnknown(data['barcode']!, _barcodeMeta),
-      );
-    }
     if (data.containsKey('is_active')) {
       context.handle(
         _isActiveMeta,
@@ -2135,10 +2117,6 @@ class $ProductVariantsTable extends ProductVariants
         DriftSqlType.int,
         data['${effectivePrefix}sell_price'],
       )!,
-      barcode: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}barcode'],
-      ),
       isActive: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_active'],
@@ -2174,7 +2152,6 @@ class ProductVariant extends DataClass implements Insertable<ProductVariant> {
   final int quantity;
   final int costPrice;
   final int sellPrice;
-  final String? barcode;
   final bool isActive;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -2189,7 +2166,6 @@ class ProductVariant extends DataClass implements Insertable<ProductVariant> {
     required this.quantity,
     required this.costPrice,
     required this.sellPrice,
-    this.barcode,
     required this.isActive,
     required this.createdAt,
     required this.updatedAt,
@@ -2207,9 +2183,6 @@ class ProductVariant extends DataClass implements Insertable<ProductVariant> {
     map['quantity'] = Variable<int>(quantity);
     map['cost_price'] = Variable<int>(costPrice);
     map['sell_price'] = Variable<int>(sellPrice);
-    if (!nullToAbsent || barcode != null) {
-      map['barcode'] = Variable<String>(barcode);
-    }
     map['is_active'] = Variable<bool>(isActive);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -2230,9 +2203,6 @@ class ProductVariant extends DataClass implements Insertable<ProductVariant> {
       quantity: Value(quantity),
       costPrice: Value(costPrice),
       sellPrice: Value(sellPrice),
-      barcode: barcode == null && nullToAbsent
-          ? const Value.absent()
-          : Value(barcode),
       isActive: Value(isActive),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -2257,7 +2227,6 @@ class ProductVariant extends DataClass implements Insertable<ProductVariant> {
       quantity: serializer.fromJson<int>(json['quantity']),
       costPrice: serializer.fromJson<int>(json['costPrice']),
       sellPrice: serializer.fromJson<int>(json['sellPrice']),
-      barcode: serializer.fromJson<String?>(json['barcode']),
       isActive: serializer.fromJson<bool>(json['isActive']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -2277,7 +2246,6 @@ class ProductVariant extends DataClass implements Insertable<ProductVariant> {
       'quantity': serializer.toJson<int>(quantity),
       'costPrice': serializer.toJson<int>(costPrice),
       'sellPrice': serializer.toJson<int>(sellPrice),
-      'barcode': serializer.toJson<String?>(barcode),
       'isActive': serializer.toJson<bool>(isActive),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -2295,7 +2263,6 @@ class ProductVariant extends DataClass implements Insertable<ProductVariant> {
     int? quantity,
     int? costPrice,
     int? sellPrice,
-    Value<String?> barcode = const Value.absent(),
     bool? isActive,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -2310,7 +2277,6 @@ class ProductVariant extends DataClass implements Insertable<ProductVariant> {
     quantity: quantity ?? this.quantity,
     costPrice: costPrice ?? this.costPrice,
     sellPrice: sellPrice ?? this.sellPrice,
-    barcode: barcode.present ? barcode.value : this.barcode,
     isActive: isActive ?? this.isActive,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -2327,7 +2293,6 @@ class ProductVariant extends DataClass implements Insertable<ProductVariant> {
       quantity: data.quantity.present ? data.quantity.value : this.quantity,
       costPrice: data.costPrice.present ? data.costPrice.value : this.costPrice,
       sellPrice: data.sellPrice.present ? data.sellPrice.value : this.sellPrice,
-      barcode: data.barcode.present ? data.barcode.value : this.barcode,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -2347,7 +2312,6 @@ class ProductVariant extends DataClass implements Insertable<ProductVariant> {
           ..write('quantity: $quantity, ')
           ..write('costPrice: $costPrice, ')
           ..write('sellPrice: $sellPrice, ')
-          ..write('barcode: $barcode, ')
           ..write('isActive: $isActive, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -2367,7 +2331,6 @@ class ProductVariant extends DataClass implements Insertable<ProductVariant> {
     quantity,
     costPrice,
     sellPrice,
-    barcode,
     isActive,
     createdAt,
     updatedAt,
@@ -2386,7 +2349,6 @@ class ProductVariant extends DataClass implements Insertable<ProductVariant> {
           other.quantity == this.quantity &&
           other.costPrice == this.costPrice &&
           other.sellPrice == this.sellPrice &&
-          other.barcode == this.barcode &&
           other.isActive == this.isActive &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
@@ -2403,7 +2365,6 @@ class ProductVariantsCompanion extends UpdateCompanion<ProductVariant> {
   final Value<int> quantity;
   final Value<int> costPrice;
   final Value<int> sellPrice;
-  final Value<String?> barcode;
   final Value<bool> isActive;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -2419,7 +2380,6 @@ class ProductVariantsCompanion extends UpdateCompanion<ProductVariant> {
     this.quantity = const Value.absent(),
     this.costPrice = const Value.absent(),
     this.sellPrice = const Value.absent(),
-    this.barcode = const Value.absent(),
     this.isActive = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -2436,7 +2396,6 @@ class ProductVariantsCompanion extends UpdateCompanion<ProductVariant> {
     this.quantity = const Value.absent(),
     required int costPrice,
     required int sellPrice,
-    this.barcode = const Value.absent(),
     this.isActive = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
@@ -2462,7 +2421,6 @@ class ProductVariantsCompanion extends UpdateCompanion<ProductVariant> {
     Expression<int>? quantity,
     Expression<int>? costPrice,
     Expression<int>? sellPrice,
-    Expression<String>? barcode,
     Expression<bool>? isActive,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -2479,7 +2437,6 @@ class ProductVariantsCompanion extends UpdateCompanion<ProductVariant> {
       if (quantity != null) 'quantity': quantity,
       if (costPrice != null) 'cost_price': costPrice,
       if (sellPrice != null) 'sell_price': sellPrice,
-      if (barcode != null) 'barcode': barcode,
       if (isActive != null) 'is_active': isActive,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -2498,7 +2455,6 @@ class ProductVariantsCompanion extends UpdateCompanion<ProductVariant> {
     Value<int>? quantity,
     Value<int>? costPrice,
     Value<int>? sellPrice,
-    Value<String?>? barcode,
     Value<bool>? isActive,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -2515,7 +2471,6 @@ class ProductVariantsCompanion extends UpdateCompanion<ProductVariant> {
       quantity: quantity ?? this.quantity,
       costPrice: costPrice ?? this.costPrice,
       sellPrice: sellPrice ?? this.sellPrice,
-      barcode: barcode ?? this.barcode,
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -2554,9 +2509,6 @@ class ProductVariantsCompanion extends UpdateCompanion<ProductVariant> {
     if (sellPrice.present) {
       map['sell_price'] = Variable<int>(sellPrice.value);
     }
-    if (barcode.present) {
-      map['barcode'] = Variable<String>(barcode.value);
-    }
     if (isActive.present) {
       map['is_active'] = Variable<bool>(isActive.value);
     }
@@ -2587,7 +2539,6 @@ class ProductVariantsCompanion extends UpdateCompanion<ProductVariant> {
           ..write('quantity: $quantity, ')
           ..write('costPrice: $costPrice, ')
           ..write('sellPrice: $sellPrice, ')
-          ..write('barcode: $barcode, ')
           ..write('isActive: $isActive, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -12737,7 +12688,6 @@ typedef $$ProductVariantsTableCreateCompanionBuilder =
       Value<int> quantity,
       required int costPrice,
       required int sellPrice,
-      Value<String?> barcode,
       Value<bool> isActive,
       required DateTime createdAt,
       required DateTime updatedAt,
@@ -12755,7 +12705,6 @@ typedef $$ProductVariantsTableUpdateCompanionBuilder =
       Value<int> quantity,
       Value<int> costPrice,
       Value<int> sellPrice,
-      Value<String?> barcode,
       Value<bool> isActive,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -12838,11 +12787,6 @@ class $$ProductVariantsTableFilterComposer
 
   ColumnFilters<int> get sellPrice => $composableBuilder(
     column: $table.sellPrice,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get barcode => $composableBuilder(
-    column: $table.barcode,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -12939,11 +12883,6 @@ class $$ProductVariantsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get barcode => $composableBuilder(
-    column: $table.barcode,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<bool> get isActive => $composableBuilder(
     column: $table.isActive,
     builder: (column) => ColumnOrderings(column),
@@ -13021,9 +12960,6 @@ class $$ProductVariantsTableAnnotationComposer
   GeneratedColumn<int> get sellPrice =>
       $composableBuilder(column: $table.sellPrice, builder: (column) => column);
 
-  GeneratedColumn<String> get barcode =>
-      $composableBuilder(column: $table.barcode, builder: (column) => column);
-
   GeneratedColumn<bool> get isActive =>
       $composableBuilder(column: $table.isActive, builder: (column) => column);
 
@@ -13099,7 +13035,6 @@ class $$ProductVariantsTableTableManager
                 Value<int> quantity = const Value.absent(),
                 Value<int> costPrice = const Value.absent(),
                 Value<int> sellPrice = const Value.absent(),
-                Value<String?> barcode = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -13115,7 +13050,6 @@ class $$ProductVariantsTableTableManager
                 quantity: quantity,
                 costPrice: costPrice,
                 sellPrice: sellPrice,
-                barcode: barcode,
                 isActive: isActive,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -13133,7 +13067,6 @@ class $$ProductVariantsTableTableManager
                 Value<int> quantity = const Value.absent(),
                 required int costPrice,
                 required int sellPrice,
-                Value<String?> barcode = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
@@ -13149,7 +13082,6 @@ class $$ProductVariantsTableTableManager
                 quantity: quantity,
                 costPrice: costPrice,
                 sellPrice: sellPrice,
-                barcode: barcode,
                 isActive: isActive,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

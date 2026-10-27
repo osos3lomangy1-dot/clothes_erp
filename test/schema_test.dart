@@ -133,13 +133,13 @@ void main() {
     ));
     await db.into(db.productVariants).insert(ProductVariantsCompanion.insert(
       id: varId1, branchId: branch, productId: prodId, sku: 'SKU1',
-      color: 'Red', size: 'M', costPrice: 100, sellPrice: 200, sku: const Value('SKU1'),
+      color: 'Red', size: 'M', costPrice: 100, sellPrice: 200,
       createdAt: now, updatedAt: now,
     ));
     expectLater(
       db.into(db.productVariants).insert(ProductVariantsCompanion.insert(
-        id: varId2, branchId: branch, productId: prodId, sku: 'SKU2',
-        color: 'Blue', size: 'L', costPrice: 100, sellPrice: 200, sku: const Value('SKU1'),
+        id: varId2, branchId: branch, productId: prodId, sku: 'SKU1',
+        color: 'Blue', size: 'L', costPrice: 100, sellPrice: 200,
         createdAt: now, updatedAt: now,
       )),
       throwsA(anything),
@@ -148,7 +148,7 @@ void main() {
         .write(ProductVariantsCompanion(deletedAt: Value(now)));
     await db.into(db.productVariants).insert(ProductVariantsCompanion.insert(
       id: varId2, branchId: branch, productId: prodId, sku: 'SKU2',
-      color: 'Blue', size: 'L', costPrice: 100, sellPrice: 200, sku: const Value('SKU1'),
+      color: 'Blue', size: 'L', costPrice: 100, sellPrice: 200,
       createdAt: now, updatedAt: now,
     ));
   });
@@ -372,6 +372,9 @@ void main() {
     );
   });
 }
+
+
+
 
 
 

@@ -50,7 +50,6 @@ class VariantLocalDataSource {
     final now = DateTime.now();
     final id = _uuid.v4();
     final branchId = await _branchId();
-    final now = DateTime.now();
     await _tx.write(
       writeFn: () async {
         await _db.into(_db.productVariants).insert(ProductVariantsCompanion.insert(
@@ -129,6 +128,7 @@ class VariantLocalDataSource {
     if (beforeAuditWrite != null) await beforeAuditWrite!();
   }
 }
+
 
 
 
