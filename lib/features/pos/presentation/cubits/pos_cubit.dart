@@ -122,9 +122,18 @@ class PosCubit extends Cubit<PosState> {
     emit(state.copyWith(paymentMethod: method));
   }
 
+  Future<void> loadVariants() async {
+    emit(state.copyWith(status: PosStatus.loading));
+    final result = await _variantRepository.getAllVariants();
+    result.fold(
+      (failure) => emit(state.copyWith(status: PosStatus.error, errorMessage: failure.message)),
+      (variants) => emit(state.copyWith(status: PosStatus.initial, searchResults: variants)),
+    );
+  }
+
   Future<void> searchVariants(String query) async {
     if (query.trim().isEmpty) {
-      emit(state.copyWith(searchResults: []));
+      await loadVariants();
       return;
     }
     emit(state.copyWith(status: PosStatus.loading));
@@ -186,3 +195,4 @@ class PosCubit extends Cubit<PosState> {
     ));
   }
 }
+

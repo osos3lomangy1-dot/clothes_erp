@@ -8,4 +8,7 @@ abstract class VariantRepository {
   Future<Either<Failure, void>> updateVariant(VariantEntity variant);
   Future<Either<Failure, void>> deleteVariant(String id);
   Future<Either<Failure, List<VariantEntity>>> searchVariants(String query);
+  Future<Either<Failure, List<VariantEntity>>> getAllVariants();
 }
+
+

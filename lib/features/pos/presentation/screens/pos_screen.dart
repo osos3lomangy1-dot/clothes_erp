@@ -10,7 +10,7 @@ class PosScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => getIt<PosCubit>(),
+      create: (context) => getIt<PosCubit>()..loadVariants(),
       child: const _PosView(),
     );
   }
@@ -99,6 +99,9 @@ class _SearchPanelState extends State<_SearchPanel> {
             builder: (context, state) {
               if (state.status == PosStatus.loading) {
                 return const Center(child: CircularProgressIndicator());
+              }
+              if (state.searchResults.isEmpty) {
+                return const Center(child: Text('No products found. Add products in the Products screen first.'));
               }
               return ListView.builder(
                 itemCount: state.searchResults.length,

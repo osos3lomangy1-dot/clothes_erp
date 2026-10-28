@@ -76,10 +76,36 @@ class VariantRepositoryImpl implements VariantRepository {
   }
 
   @override
+  @override
   Future<Either<Failure, List<VariantEntity>>> searchVariants(String query) async {
     return const Right([]);
   }
+
+  @override
+  Future<Either<Failure, List<VariantEntity>>> getAllVariants() async {
+    try {
+      final rows = await _localDataSource.getAllVariants();
+      final entities = rows.map((r) => VariantEntity(
+        id: r.id,
+        productId: r.productId,
+        productCode: r.sku,
+        color: r.color,
+        size: r.size,
+        quantity: r.quantity,
+        costPrice: r.costPrice,
+        salePrice: r.sellPrice,
+        minStock: 5,
+        createdAt: r.createdAt,
+      )).toList();
+      return Right(entities);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
 }
+
+
+
 
 
 

@@ -20,6 +20,10 @@ class VariantLocalDataSource {
 
   Future<String> _branchId() => _branchProvider.getBranchId();
 
+  Future<List<ProductVariant>> getAllVariants() async {
+    return (_db.select(_db.productVariants)..where((t) => t.deletedAt.isNull())).get();
+  }
+
   Future<List<ProductVariant>> getVariants(String productId) async {
     return (_db.select(_db.productVariants)..where((t) => t.productId.equals(productId) & t.deletedAt.isNull())).get();
   }
@@ -143,6 +147,7 @@ class VariantLocalDataSource {
     if (beforeAuditWrite != null) await beforeAuditWrite!();
   }
 }
+
 
 
 
