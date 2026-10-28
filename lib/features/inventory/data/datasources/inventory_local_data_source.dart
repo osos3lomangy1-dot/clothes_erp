@@ -39,7 +39,6 @@ class InventoryLocalDataSource {
     if (variant == null) throw Exception('Variant not found');
     final newQty = variant.quantity + qtyDelta;
     if (newQty < 0) throw Exception('Insufficient stock');
-    _tx.beforeAuditWrite = beforeAuditWrite;
     await _tx.write(
       writeFn: () async {
         await (_db.update(_db.productVariants)..where((t) => t.id.equals(variantId))).write(
@@ -95,5 +94,6 @@ class InventoryLocalDataSource {
     return {'total': total, 'low': low, 'out': out};
   }
 }
+
 
 
