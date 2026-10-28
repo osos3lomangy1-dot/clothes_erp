@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' hide Category;
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 import 'app_database.dart';
@@ -7,7 +6,6 @@ class TxWriter {
   final AppDatabase db;
   final _uuid = const Uuid();
 
-  @visibleForTesting
   Future<void> Function()? beforeAuditWrite;
 
   TxWriter(this.db);
@@ -49,3 +47,5 @@ class TxWriter {
     });
   }
 }
+
+
