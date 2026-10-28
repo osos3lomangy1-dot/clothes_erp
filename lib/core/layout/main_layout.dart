@@ -28,39 +28,40 @@ class _MainLayoutState extends State<MainLayout> {
     return Scaffold(
       body: Row(
         children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: _isCollapsed ? 72 : 220,
-            color: const Color(0xFF673AB7),
-            child: Column(
-              children: [
-                IconButton(
-                  icon: Icon(_isCollapsed ? Icons.chevron_right : Icons.chevron_left, color: Colors.white),
-                  onPressed: () => setState(() => _isCollapsed = !_isCollapsed),
-                ),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        _navItem(Icons.dashboard, 'Dashboard', const _DashboardContent()),
-                        _navItem(Icons.point_of_sale, 'POS', null, isPos: true),
-                        _navItem(Icons.inventory_2, 'Products', const ProductListScreen()),
-                        _navItem(Icons.category, 'Categories', const CategoryListScreen()),
-                        _navItem(Icons.warehouse, 'Inventory', const InventoryScreen()),
-                        _navItem(Icons.history, 'Inv. Logs', const InventoryLogsScreen()),
-                        _navItem(Icons.people, 'Customers', const CustomerScreen()),
-                        _navItem(Icons.assignment_return, 'Returns', const ReturnScreen()),
-                        _navItem(Icons.bar_chart, 'Reports', const ReportsScreen()),
-                        _navItem(Icons.badge, 'Employees', const EmployeeListScreen()),
-                      ],
+          SizedBox(
+            width: _isCollapsed ? 80 : 250,
+            child: Container(
+              color: const Color(0xFF673AB7),
+              child: Column(
+                children: [
+                  IconButton(
+                    icon: Icon(_isCollapsed ? Icons.chevron_right : Icons.chevron_left, color: Colors.white),
+                    onPressed: () => setState(() => _isCollapsed = !_isCollapsed),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          _navItem(Icons.dashboard, 'Dashboard', const _DashboardContent()),
+                          _navItem(Icons.point_of_sale, 'POS', null, isPos: true),
+                          _navItem(Icons.inventory_2, 'Products', const ProductListScreen()),
+                          _navItem(Icons.category, 'Categories', const CategoryListScreen()),
+                          _navItem(Icons.warehouse, 'Inventory', const InventoryScreen()),
+                          _navItem(Icons.history, 'Inv. Logs', const InventoryLogsScreen()),
+                          _navItem(Icons.people, 'Customers', const CustomerScreen()),
+                          _navItem(Icons.assignment_return, 'Returns', const ReturnScreen()),
+                          _navItem(Icons.bar_chart, 'Reports', const ReportsScreen()),
+                          _navItem(Icons.badge, 'Employees', const EmployeeListScreen()),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-          Expanded(child: _currentScreen),
+          Expanded(child: Container(color: Colors.white, child: widget.child)),
         ],
       ),
     );
@@ -88,4 +89,3 @@ class _DashboardContent extends StatelessWidget {
     return const Center(child: Text('Dashboard'));
   }
 }
-
