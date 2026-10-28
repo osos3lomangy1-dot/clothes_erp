@@ -60,7 +60,7 @@ void main() {
 
   test('atomicity: addCategory rollback on failure', () async {
     ds.beforeAuditWrite = () async => throw Exception('boom');
-    expect(() => ds.addCategory('Test'), throwsA(anything));
+    await expectLater(ds.addCategory('Test'), throwsA(anything));
     final cats = await db.select(db.categories).get();
     final syncs = await db.select(db.syncQueue).get();
     final audits = await db.select(db.auditLogs).get();
@@ -73,7 +73,7 @@ void main() {
     await ds.addCategory('Test');
     ds.beforeAuditWrite = () async => throw Exception('boom');
     final cats = await ds.getCategories();
-    expect(() => ds.updateCategory(cats.first.id, 'Updated'), throwsA(anything));
+    await expectLater(ds.updateCategory(cats.first.id, 'Updated'), throwsA(anything));
     final syncs = await db.select(db.syncQueue).get();
     // Only the original insert sync should exist
     expect(syncs.length, 1);
@@ -83,8 +83,9 @@ void main() {
     await ds.addCategory('Test');
     ds.beforeAuditWrite = () async => throw Exception('boom');
     final cats = await ds.getCategories();
-    expect(() => ds.deleteCategory(cats.first.id), throwsA(anything));
+    await expectLater(ds.deleteCategory(cats.first.id), throwsA(anything));
     final after = await ds.getCategories();
     expect(after.length, 1); // not deleted
   });
 }
+
