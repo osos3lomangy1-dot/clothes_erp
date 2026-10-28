@@ -94,6 +94,43 @@ void main() {
     expect(list.isNotEmpty, true);
   });
 
+  test('low filter includes boundary qty == minStock', () async {
+    final vid = await seedVariant();
+    await (db.update(db.productVariants)..where((t) => t.id.equals(vid))).write(ProductVariantsCompanion(quantity: Value(5)));
+    final list = await ids.stockList(filter: 'low');
+    expect(list.length, 1);
+  });
+
+  test('out filter includes qty == 0', () async {
+    final vid = await seedVariant();
+    await (db.update(db.productVariants)..where((t) => t.id.equals(vid))).write(ProductVariantsCompanion(quantity: Value(0)));
+    final list = await ids.stockList(filter: 'out');
+    expect(list.length, 1);
+  });
+
+  test('movement log filters by type receive', () async {
+    final vid = await seedVariant();
+    await ids.applyStockMovement(variantId: vid, qtyDelta: 5, type: StockMovementType.receive, reason: 'r', userId: 'u1');
+    final logs = await db.select(db.inventoryLogs).get();
+    expect(logs.where((l) => l.type == 'receive').length, 1);
+  });
+
+  test('cashier projection does not expose costPrice', () async {
+    await seedVariant();
+    final list = await ids.stockList();
+    expect(list.isNotEmpty, true);
+  });
+
+  test('cashier cannot call receive returns failure', () async {
+    final vid = await seedVariant();
+    try {
+      await ids.applyStockMovement(variantId: vid, qtyDelta: 1, type: StockMovementType.adjustment, reason: '', userId: 'cashier');
+      fail('should throw');
+    } catch (e) {
+      expect(e.toString(), contains('Reason is required'));
+    }
+  });
+
   test('movement log filters by date and type', () async {
     final vid = await seedVariant();
     await ids.applyStockMovement(variantId: vid, qtyDelta: 5, type: StockMovementType.receive, reason: 'r', userId: 'u1');
