@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/injection.dart';
 import '../cubits/pos_cubit.dart';
@@ -26,7 +25,7 @@ class _PosView extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Point of Sale'),
         actions: const [
-          _ShortcutsHint(),
+          Text('F2 Search  ·  F4 Qty  ·  F12 Checkout', style: TextStyle(fontSize: 10, color: Colors.white70)),
         ],
       ),
       body: BlocListener<PosCubit, PosState>(
@@ -44,7 +43,6 @@ class _PosView extends StatelessWidget {
         },
         child: Column(
           children: [
-            // Top Action Bar
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               color: const Color(0xFF673AB7),
@@ -54,37 +52,28 @@ class _PosView extends StatelessWidget {
                   const SizedBox(width: 4),
                   const Text('Admin', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   const Spacer(),
-                  _ShortcutButton(Icons.search, 'F2 Search', () {}),
-                  _ShortcutButton(Icons.person_add, 'Add Customer', () {}),
-                  _ShortcutButton(Icons.pause, 'Hold Sale', () {}),
-                  _ShortcutButton(Icons.clear, 'Clear Cart', () => context.read<PosCubit>().clearCart()),
+                  _ShortcutButton(Icons.search, 'F2 Search', () {}, primary: false),
+                  _ShortcutButton(Icons.person_add, 'Add Customer', () {}, primary: false),
+                  _ShortcutButton(Icons.pause, 'Hold Sale', () {}, primary: false),
+                  _ShortcutButton(Icons.clear, 'Clear Cart', () => context.read<PosCubit>().clearCart(), primary: false),
                 ],
               ),
             ),
             Expanded(
               child: Row(
                 children: [
-                  // Left: Search & Product List
-                  Expanded(
-                    flex: 3,
-                    child: _SearchPanel(),
-                  ),
+                  Expanded(flex: 3, child: _SearchPanel()),
                   const VerticalDivider(width: 1),
-                  // Right: Cart
-                  Expanded(
-                    flex: 4,
-                    child: _CartPanel(),
-                  ),
+                  Expanded(flex: 4, child: _CartPanel()),
                 ],
               ),
             ),
-            // Bottom Footer
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               color: const Color(0xFF673AB7),
               child: Row(
                 children: [
-                  const Text('Subtotal:', style: TextStyle(color: Colors.white70)),
+                  const Text('Grand Total:', style: TextStyle(color: Colors.white70)),
                   const SizedBox(width: 8),
                   BlocBuilder<PosCubit, PosState>(
                     builder: (context, state) => Text(
@@ -93,11 +82,21 @@ class _PosView extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  _ShortcutButton(Icons.keyboard, 'F12 Checkout', () {
-                    context.read<PosCubit>().checkout('cashier_id_placeholder', 'Cashier');
-                  }, primary: true),
-                  _ShortcutButton(Icons.print, 'Print Receipt', () {}),
-                  _ShortcutButton(Icons.cancel, 'Cancel Sale', () => context.read<PosCubit>().clearCart()),
+                  _ShortcutButton(Icons.print, 'Print Receipt', () {}, primary: false),
+                  _ShortcutButton(Icons.cancel, 'Cancel Sale', () => context.read<PosCubit>().clearCart(), primary: false),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 200,
+                    height: 52,
+                    child: ElevatedButton(
+                      onPressed: () => context.read<PosCubit>().checkout('cashier_id_placeholder', 'Cashier'),
+                      child: const Text('Checkout'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF673AB7),
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -130,18 +129,6 @@ class _ShortcutButton extends StatelessWidget {
   }
 }
 
-class _ShortcutsHint extends StatelessWidget {
-  const _ShortcutsHint();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Tooltip(
-      message: 'Shortcuts: F2 Search · F4 Qty · F12 Checkout',
-      child: Text('F2 Search · F4 Qty · F12 Checkout', style: TextStyle(fontSize: 10, color: Colors.white70)),
-    );
-  }
-}
-
 class _SearchPanel extends StatefulWidget {
   @override
   State<_SearchPanel> createState() => _SearchPanelState();
@@ -149,61 +136,49 @@ class _SearchPanel extends StatefulWidget {
 
 class _SearchPanelState extends State<_SearchPanel> {
   final _searchController = TextEditingController();
-  final _focusNode = FocusNode();
 
   @override
   void dispose() {
     _searchController.dispose();
-    _focusNode.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return RawKeyboardListener(
-      focusNode: _focusNode,
-      autofocus: true,
-      onKey: (event) {
-        if (event.isKeyPressed(LogicalKeyboardKey.keyF)) {
-          context.read<PosCubit>().searchProducts(_searchController.text);
-        }
-      },
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: TextField(
-              controller: _searchController,
-              focusNode: _focusNode,
-              decoration: const InputDecoration(
-                labelText: 'Search by product code or SKU',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.search),
-              ),
-              onChanged: (val) => context.read<PosCubit>().searchProducts(val),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: TextField(
+            controller: _searchController,
+            decoration: const InputDecoration(
+              labelText: 'Search by product code',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.search),
             ),
+            onChanged: (val) => context.read<PosCubit>().searchProducts(val),
           ),
-          Expanded(
-            child: BlocBuilder<PosCubit, PosState>(
-              builder: (context, state) {
-                if (state.status == PosStatus.loading) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (state.searchResults.isEmpty) {
-                  return const Center(child: Text('No products found. Add products in the Products screen first.'));
-                }
-                return ListView.builder(
-                  itemCount: state.searchResults.length,
-                  itemBuilder: (context, index) {
-                    final variant = state.searchResults[index];
-                    return _VariantTile(variant: variant);
-                  },
-                );
-              },
-            ),
+        ),
+        Expanded(
+          child: BlocBuilder<PosCubit, PosState>(
+            builder: (context, state) {
+              if (state.status == PosStatus.loading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (state.searchResults.isEmpty) {
+                return const Center(child: Text('No products found. Add products in the Products screen first.'));
+              }
+              return ListView.builder(
+                itemCount: state.searchResults.length,
+                itemBuilder: (context, index) {
+                  final variant = state.searchResults[index];
+                  return _VariantTile(variant: variant);
+                },
+              );
+            },
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -245,31 +220,32 @@ class _CartPanel extends StatelessWidget {
                 child: state.cart.isEmpty
                     ? const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.shopping_cart, size: 64, color: Colors.grey), SizedBox(height: 8), Text('Cart is empty')]))
                     : SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
                         child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
                           child: DataTable(
                             columns: const [
-                              DataColumn(label: Text('#')),
-                              DataColumn(label: Text('SKU')),
-                              DataColumn(label: Text('Item Name')),
-                              DataColumn(label: Text('Qty')),
-                              DataColumn(label: Text('Unit Price')),
-                              DataColumn(label: Text('Discount')),
-                              DataColumn(label: Text('Total')),
-                              DataColumn(label: Text('Action')),
+                              DataColumn(label: Text('#', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
+                              DataColumn(label: Text('SKU', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
+                              DataColumn(label: Text('Item Name', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
+                              DataColumn(label: Text('Qty', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
+                              DataColumn(label: Text('Unit Price', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
+                              DataColumn(label: Text('Discount', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
+                              DataColumn(label: Text('Total', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
+                              DataColumn(label: Text('Action', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
                             ],
                             rows: state.cart.asMap().entries.map((entry) {
                               final i = entry.key;
                               final item = entry.value;
                               return DataRow(cells: [
-                                DataCell(Text('${i + 1}')),
-                                DataCell(Text(item.variantId.substring(0, 6))),
-                                DataCell(Text(item.productName)),
+                                DataCell(Text('${i + 1}', style: const TextStyle(fontSize: 11))),
+                                DataCell(Text(item.variantId.substring(0, 6), style: const TextStyle(fontSize: 11))),
+                                DataCell(Text(item.productName, style: const TextStyle(fontSize: 11))),
                                 DataCell(SizedBox(
                                   width: 70,
                                   child: TextField(
-                                    controller: TextEditingController(text: '${item.quantity}'),
+                                    controller: TextEditingController(text: item.quantity.toString()),
                                     keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(isDense: true, border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 4)),
                                     onChanged: (val) {
                                       final n = int.tryParse(val);
                                       if (n != null) context.read<PosCubit>().updateQuantity(item.variantId, n);
@@ -279,27 +255,29 @@ class _CartPanel extends StatelessWidget {
                                 DataCell(SizedBox(
                                   width: 90,
                                   child: TextField(
-                                    controller: TextEditingController(text: '${item.price}'),
+                                    controller: TextEditingController(text: item.price.toString()),
                                     keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(isDense: true, border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 4)),
                                     onChanged: (val) {
-                                      final n = int.tryParse(val);
-                                      if (n != null) context.read<PosCubit>().updateUnitPrice(item.variantId, n);
+                                      final n = int.tryParse(val) ?? item.price;
+                                      context.read<PosCubit>().updateUnitPrice(item.variantId, n);
                                     },
                                   ),
                                 )),
                                 DataCell(SizedBox(
                                   width: 90,
                                   child: TextField(
-                                    controller: TextEditingController(text: '${item.discount}'),
+                                    controller: TextEditingController(text: item.discount.toString()),
                                     keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(isDense: true, border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 4)),
                                     onChanged: (val) {
-                                      final n = int.tryParse(val);
-                                      if (n != null) context.read<PosCubit>().applyItemDiscount(item.variantId, n);
+                                      final n = int.tryParse(val) ?? item.discount;
+                                      context.read<PosCubit>().applyItemDiscount(item.variantId, n);
                                     },
                                   ),
                                 )),
-                                DataCell(Text((item.total).toStringAsFixed(2))),
-                                DataCell(IconButton(icon: const Icon(Icons.delete), onPressed: () => context.read<PosCubit>().removeFromCart(item.variantId))),
+                                DataCell(Text(item.total.toStringAsFixed(2), style: const TextStyle(fontSize: 11))),
+                                DataCell(IconButton(icon: const Icon(Icons.delete, size: 16), onPressed: () => context.read<PosCubit>().removeFromCart(item.variantId))),
                               ]);
                             }).toList(),
                           ),
@@ -322,14 +300,8 @@ class _CartPanel extends StatelessWidget {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: state.status == PosStatus.checkoutLoading
-                      ? null
-                      : () {
-                          context.read<PosCubit>().checkout('cashier_id_placeholder', 'Cashier');
-                        },
-                  child: state.status == PosStatus.checkoutLoading
-                      ? const CircularProgressIndicator()
-                      : Text('Checkout (${state.total.toStringAsFixed(2)})'),
+                  onPressed: () => context.read<PosCubit>().checkout('cashier_id_placeholder', 'Cashier'),
+                  child: const Text('Checkout'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF673AB7),
                     foregroundColor: Colors.white,
