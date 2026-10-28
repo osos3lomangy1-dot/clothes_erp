@@ -7,6 +7,7 @@ class SaleItemEntity extends Equatable {
   final String color;
   final int price;
   final int quantity;
+  final int discount;
 
   const SaleItemEntity({
     required this.variantId,
@@ -15,6 +16,7 @@ class SaleItemEntity extends Equatable {
     required this.color,
     required this.price,
     required this.quantity,
+    this.discount = 0,
   });
 
   SaleItemEntity copyWith({
@@ -24,6 +26,7 @@ class SaleItemEntity extends Equatable {
     String? color,
     int? price,
     int? quantity,
+    int? discount,
   }) {
     return SaleItemEntity(
       variantId: variantId ?? this.variantId,
@@ -32,11 +35,12 @@ class SaleItemEntity extends Equatable {
       color: color ?? this.color,
       price: price ?? this.price,
       quantity: quantity ?? this.quantity,
+      discount: discount ?? this.discount,
     );
   }
 
-  int get total => price * quantity;
+  int get total => (price * quantity) - discount;
 
   @override
-  List<Object?> get props => [variantId, productName, size, color, price, quantity];
+  List<Object?> get props => [variantId, productName, size, color, price, quantity, discount];
 }

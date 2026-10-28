@@ -148,8 +148,7 @@ class PosCubit extends Cubit<PosState> {
       return;
     }
     final q = query.toLowerCase();
-    final filtered = _allVariants.where((v) =>
-        v.productCode.toLowerCase().contains(q)).toList();
+    final filtered = _allVariants.where((v) => v.productCode.toLowerCase().contains(q)).toList();
     emit(state.copyWith(searchResults: filtered));
   }
 
@@ -166,6 +165,35 @@ class PosCubit extends Cubit<PosState> {
     );
   }
 
+  void applyItemDiscount(String variantId, int discount) {
+    final existingIndex = state.cart.indexWhere((item) => item.variantId == variantId);
+    if (existingIndex < 0) return;
+    final existing = state.cart[existingIndex];
+    final updated = existing.copyWith(discount: discount);
+    final newCart = List<SaleItemEntity>.from(state.cart);
+    newCart[existingIndex] = updated;
+    _updateCart(newCart);
+  }
+
+  void updateUnitPrice(String variantId, int newPrice) {
+    final existingIndex = state.cart.indexWhere((item) => item.variantId == variantId);
+    if (existingIndex < 0) return;
+    final existing = state.cart[existingIndex];
+    final updated = existing.copyWith(price: newPrice);
+    final newCart = List<SaleItemEntity>.from(state.cart);
+    newCart[existingIndex] = updated;
+    _updateCart(newCart);
+  }
+
+  void _updateCart(List<SaleItemEntity> newCart) {
+    final subtotal = newCart.fold(0.0, (sum, item) => sum + item.total);
+    emit(state.copyWith(
+      cart: newCart,
+      subtotal: subtotal,
+      total: subtotal - state.discount,
+    ));
+  }
+
   Future<void> checkout(String cashierId, String cashierName) async {
     if (state.cart.isEmpty) {
       emit(state.copyWith(status: PosStatus.error, errorMessage: 'Cart is empty'));
@@ -174,16 +202,15 @@ class PosCubit extends Cubit<PosState> {
 
     emit(state.copyWith(status: PosStatus.checkoutLoading));
 
-    final subtotal = state.cart.fold(0.0, (sum, item) => sum + item.total);
     final sale = SaleEntity(
       id: '',
       date: DateTime.now(),
       cashierId: cashierId,
       cashierName: cashierName,
       items: state.cart,
-      subtotal: subtotal,
+      subtotal: state.subtotal,
       discount: state.discount,
-      total: subtotal - state.discount,
+      total: state.subtotal - state.discount,
       paymentMethod: state.paymentMethod,
     );
 
@@ -207,15 +234,4 @@ class PosCubit extends Cubit<PosState> {
   void updateNotes(String notes) {
     emit(state.copyWith(notes: notes));
   }
-
-  void _updateCart(List<SaleItemEntity> newCart) {
-    final subtotal = newCart.fold(0.0, (sum, item) => sum + item.total);
-    emit(state.copyWith(
-      cart: newCart,
-      subtotal: subtotal,
-      total: subtotal - state.discount,
-    ));
-  }
 }
-
-

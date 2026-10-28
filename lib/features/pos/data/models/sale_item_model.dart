@@ -8,6 +8,7 @@ class SaleItemModel extends SaleItemEntity {
     required super.color,
     required super.price,
     required super.quantity,
+    super.discount,
   });
 
   @override
@@ -18,6 +19,7 @@ class SaleItemModel extends SaleItemEntity {
     String? color,
     int? price,
     int? quantity,
+    int? discount,
   }) {
     return SaleItemModel(
       variantId: variantId ?? this.variantId,
@@ -26,6 +28,7 @@ class SaleItemModel extends SaleItemEntity {
       color: color ?? this.color,
       price: price ?? this.price,
       quantity: quantity ?? this.quantity,
+      discount: discount ?? this.discount,
     );
   }
 
@@ -37,6 +40,7 @@ class SaleItemModel extends SaleItemEntity {
       color: json['color'] ?? '',
       price: (json['price'] as num?)?.toInt() ?? 0,
       quantity: json['quantity'] ?? 0,
+      discount: (json['discount'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -48,6 +52,7 @@ class SaleItemModel extends SaleItemEntity {
       'color': color,
       'price': price,
       'quantity': quantity,
+      'discount': discount,
     };
   }
 
@@ -59,6 +64,7 @@ class SaleItemModel extends SaleItemEntity {
       color: entity.color,
       price: entity.price,
       quantity: entity.quantity,
+      discount: entity.discount,
     );
   }
 }
