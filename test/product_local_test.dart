@@ -66,7 +66,7 @@ void main() {
 
   test('ATOMICITY with injected failure for create', () async {
     tx.beforeAuditWrite = () async => throw Exception('boom');
-    expect(() => pds.createProduct(name: 'P1', categoryId: 'c1'), throwsA(anything));
+    await expectLater(pds.createProduct(name: 'P1', categoryId: 'c1'), throwsA(anything));
     final products = await db.select(db.products).get();
     final syncs = await db.select(db.syncQueue).get();
     final audits = await db.select(db.auditLogs).get();
@@ -88,7 +88,7 @@ void main() {
     await pds.createProduct(name: 'P1', categoryId: 'c1');
     final prod = (await pds.getProducts()).first;
     tx.beforeAuditWrite = () async => throw Exception('boom');
-    expect(() => pds.updateProduct(prod.id, name: 'P2'), throwsA(anything));
+    await expectLater(pds.updateProduct(prod.id, name: 'P2'), throwsA(anything));
     final products = await db.select(db.products).get();
     expect(products.first.name, 'P1');
   });
@@ -97,7 +97,7 @@ void main() {
     await pds.createProduct(name: 'P1', categoryId: 'c1');
     final prod = (await pds.getProducts()).first;
     tx.beforeAuditWrite = () async => throw Exception('boom');
-    expect(() => pds.softDeleteProduct(prod.id), throwsA(anything));
+    await expectLater(pds.softDeleteProduct(prod.id), throwsA(anything));
     final products = await db.select(db.products).get();
     expect(products.first.deletedAt, isNull);
   });
@@ -126,9 +126,10 @@ void main() {
       productName: 'P1', color: 'Red', size: 'M', qty: 1,
       priceSnapshot: 200, costSnapshot: 100, lineTotal: 200, createdAt: DateTime.now(),
     ));
-    expect(() => pds.softDeleteProduct(prod.id), throwsA(anything));
+    await expectLater(pds.softDeleteProduct(prod.id), throwsA(anything));
   });
 }
+
 
 
 
