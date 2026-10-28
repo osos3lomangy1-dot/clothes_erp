@@ -59,13 +59,29 @@ class VariantLocalDataSource {
           sku: sku,
           color: color,
           size: size,
-          quantity: Value(quantity),
+          quantity: const Value(0),
           costPrice: costPrice,
           sellPrice: sellPrice,
-          
           createdAt: now,
           updatedAt: now,
         ));
+        if (quantity > 0) {
+          await (_db.update(_db.productVariants)..where((t) => t.id.equals(id))).write(
+            ProductVariantsCompanion(quantity: Value(quantity), updatedAt: Value(now)),
+          );
+          await _db.into(_db.inventoryLogs).insert(InventoryLogsCompanion.insert(
+            id: _uuid.v4(),
+            branchId: branchId,
+            variantId: id,
+            type: 'receive',
+            qtyDelta: quantity,
+            reason: Value('opening stock'),
+            refType: '',
+            refId: const Value.absent(),
+            userId: 'system',
+            createdAt: now,
+          ));
+        }
       },
       branchId: branchId,
       entity: 'variant',
@@ -127,6 +143,7 @@ class VariantLocalDataSource {
     if (beforeAuditWrite != null) await beforeAuditWrite!();
   }
 }
+
 
 
 

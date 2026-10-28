@@ -102,6 +102,47 @@ void main() {
     expect(products.first.deletedAt, isNull);
   });
 
+  test('updateVariant cannot change quantity', () async {
+    await pds.createProduct(name: 'P1', categoryId: 'c1');
+    final prod = (await pds.getProducts()).first;
+    await vds.createVariant(productId: prod.id, sku: 'SKU1', color: 'Red', size: 'M', costPrice: 100, sellPrice: 200, quantity: 5);
+    final v = (await vds.getVariants(prod.id)).first;
+    await vds.updateVariant(v.id, sellPrice: 250);
+    final v2 = (await vds.getVariants(prod.id)).first;
+    expect(v2.quantity, 5);
+  });
+
+  test('createVariant with qty 10 logs opening stock', () async {
+    await pds.createProduct(name: 'P1', categoryId: 'c1');
+    final prod = (await pds.getProducts()).first;
+    await vds.createVariant(productId: prod.id, sku: 'SKU1', color: 'Red', size: 'M', costPrice: 100, sellPrice: 200, quantity: 10);
+    final v = (await vds.getVariants(prod.id)).first;
+    expect(v.quantity, 10);
+    final logs = await db.select(db.inventoryLogs).get();
+    expect(logs.length, 1);
+    expect(logs.first.type, 'receive');
+    expect(logs.first.reason, 'opening stock');
+  });
+
+  test('ATOMICITY createVariant with initial qty', () async {
+    await pds.createProduct(name: 'P1', categoryId: 'c1');
+    final prod = (await pds.getProducts()).first;
+    final beforeVariants = (await db.select(db.productVariants).get()).length;
+    final beforeLogs = (await db.select(db.inventoryLogs).get()).length;
+    final beforeSyncs = (await db.select(db.syncQueue).get()).length;
+    final beforeAudits = (await db.select(db.auditLogs).get()).length;
+    tx.beforeAuditWrite = () async => throw Exception('boom');
+    await expectLater(vds.createVariant(productId: prod.id, sku: 'SKU2', color: 'Blue', size: 'L', costPrice: 100, sellPrice: 200, quantity: 5), throwsA(isA<Exception>().having((e) => e.toString(), 'msg', contains('boom'))));
+    final afterVariants = (await db.select(db.productVariants).get()).length;
+    final afterLogs = (await db.select(db.inventoryLogs).get()).length;
+    final afterSyncs = (await db.select(db.syncQueue).get()).length;
+    final afterAudits = (await db.select(db.auditLogs).get()).length;
+    expect(afterVariants, beforeVariants);
+    expect(afterLogs, beforeLogs);
+    expect(afterSyncs, beforeSyncs);
+    expect(afterAudits, beforeAudits);
+  });
+
   test('cashier projection does not expose costPrice', () async {
     await pds.createProduct(name: 'P1', categoryId: 'c1');
     final prod = (await pds.getProducts()).first;
