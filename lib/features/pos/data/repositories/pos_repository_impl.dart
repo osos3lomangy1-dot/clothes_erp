@@ -1,26 +1,30 @@
 import 'package:dartz/dartz.dart';
 import 'package:injectable/injectable.dart';
-import '../../../../core/errors/exceptions.dart';
 import '../../../../core/errors/failures.dart';
 import '../../domain/entities/sale_entity.dart';
 import '../../domain/repositories/pos_repository.dart';
-import '../datasources/pos_remote_data_source.dart';
-import '../models/sale_model.dart';
+import '../datasources/pos_local_data_source.dart';
 
 @LazySingleton(as: PosRepository)
 class PosRepositoryImpl implements PosRepository {
-  final PosRemoteDataSource _remoteDataSource;
+  final PosLocalDataSource _localDataSource;
 
-  PosRepositoryImpl(this._remoteDataSource);
+  PosRepositoryImpl(this._localDataSource);
 
   @override
   Future<Either<Failure, SaleEntity>> createSale(SaleEntity sale) async {
     try {
-      final model = SaleModel.fromEntity(sale);
-      final result = await _remoteDataSource.createSale(model);
-      return Right(result);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
+      final items = sale.items.map((i) => {
+        'variantId': i.variantId,
+        'name': i.productName,
+        'color': i.color,
+        'size': i.size,
+        'qty': i.quantity,
+        'price': i.price,
+        'cost': 0,
+      }).toList();
+      await _localDataSource.checkout(items: items, total: sale.total.toInt(), cashierId: sale.cashierId);
+      return Right(sale);
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

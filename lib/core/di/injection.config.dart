@@ -105,8 +105,6 @@ import 'package:clothes_erp/features/inventory/presentation/cubits/inventory_log
     as _i94;
 import 'package:clothes_erp/features/pos/data/datasources/pos_local_data_source.dart'
     as _i926;
-import 'package:clothes_erp/features/pos/data/datasources/pos_remote_data_source.dart'
-    as _i967;
 import 'package:clothes_erp/features/pos/data/repositories/pos_repository_impl.dart'
     as _i762;
 import 'package:clothes_erp/features/pos/domain/repositories/pos_repository.dart'
@@ -185,18 +183,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i254.BranchProvider>(
       () => _i254.BranchProvider(gh<_i110.AppDatabase>()),
     );
-    gh.lazySingleton<_i967.PosRemoteDataSource>(
-      () => _i967.PosRemoteDataSourceImpl(gh<_i974.FirebaseFirestore>()),
-    );
     gh.lazySingleton<_i788.DashboardRemoteDataSource>(
       () => _i788.DashboardRemoteDataSourceImpl(gh<_i974.FirebaseFirestore>()),
     );
     gh.lazySingleton<_i682.DashboardRepository>(
       () =>
           _i729.DashboardRepositoryImpl(gh<_i788.DashboardRemoteDataSource>()),
-    );
-    gh.lazySingleton<_i862.PosRepository>(
-      () => _i762.PosRepositoryImpl(gh<_i967.PosRemoteDataSource>()),
     );
     gh.lazySingleton<_i303.InventoryRemoteDataSource>(
       () => _i303.InventoryRemoteDataSourceImpl(gh<_i974.FirebaseFirestore>()),
@@ -238,9 +230,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i94.InventoryLogCubit>(
       () => _i94.InventoryLogCubit(gh<_i861.InventoryLogRepository>()),
-    );
-    gh.lazySingleton<_i747.CreateSaleUseCase>(
-      () => _i747.CreateSaleUseCase(gh<_i862.PosRepository>()),
     );
     gh.lazySingleton<_i1019.InventoryLocalDataSource>(
       () => _i1019.InventoryLocalDataSource(
@@ -319,12 +308,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i1019.InventoryLocalDataSource>(),
       ),
     );
-    gh.factory<_i403.PosCubit>(
-      () => _i403.PosCubit(
-        gh<_i747.CreateSaleUseCase>(),
-        gh<_i77.VariantRepository>(),
-      ),
-    );
     gh.lazySingleton<_i87.AddProductUseCase>(
       () => _i87.AddProductUseCase(gh<_i758.ProductRepository>()),
     );
@@ -376,6 +359,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i361.EmployeeFormCubit>(
       () => _i361.EmployeeFormCubit(gh<_i980.AddEmployeeUseCase>()),
     );
+    gh.lazySingleton<_i862.PosRepository>(
+      () => _i762.PosRepositoryImpl(gh<_i926.PosLocalDataSource>()),
+    );
     gh.factory<_i137.ProductCubit>(
       () => _i137.ProductCubit(
         gh<_i423.GetProductsUseCase>(),
@@ -411,6 +397,15 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i82.LoginFormCubit>(
       () => _i82.LoginFormCubit(gh<_i217.AuthCubit>()),
+    );
+    gh.lazySingleton<_i747.CreateSaleUseCase>(
+      () => _i747.CreateSaleUseCase(gh<_i862.PosRepository>()),
+    );
+    gh.factory<_i403.PosCubit>(
+      () => _i403.PosCubit(
+        gh<_i747.CreateSaleUseCase>(),
+        gh<_i77.VariantRepository>(),
+      ),
     );
     return this;
   }
