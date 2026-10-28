@@ -2,6 +2,9 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 import 'app_database.dart';
 
+import 'package:injectable/injectable.dart';
+
+@injectable
 class TxWriter {
   final AppDatabase db;
   final _uuid = const Uuid();

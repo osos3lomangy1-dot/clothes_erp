@@ -83,6 +83,8 @@ import 'package:clothes_erp/features/employees/presentation/cubits/employee_cubi
     as _i164;
 import 'package:clothes_erp/features/employees/presentation/cubits/employee_form_cubit.dart'
     as _i361;
+import 'package:clothes_erp/features/inventory/data/datasources/inventory_local_data_source.dart'
+    as _i1019;
 import 'package:clothes_erp/features/inventory/data/datasources/inventory_remote_data_source.dart'
     as _i303;
 import 'package:clothes_erp/features/inventory/data/repositories/inventory_log_repository_impl.dart'
@@ -101,6 +103,8 @@ import 'package:clothes_erp/features/inventory/presentation/cubits/inventory_cub
     as _i779;
 import 'package:clothes_erp/features/inventory/presentation/cubits/inventory_log_cubit.dart'
     as _i94;
+import 'package:clothes_erp/features/pos/data/datasources/pos_local_data_source.dart'
+    as _i926;
 import 'package:clothes_erp/features/pos/data/datasources/pos_remote_data_source.dart'
     as _i967;
 import 'package:clothes_erp/features/pos/data/repositories/pos_repository_impl.dart'
@@ -194,20 +198,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i862.PosRepository>(
       () => _i762.PosRepositoryImpl(gh<_i967.PosRemoteDataSource>()),
     );
-    gh.lazySingleton<_i577.VariantLocalDataSource>(
-      () => _i577.VariantLocalDataSource(
-        gh<_i110.AppDatabase>(),
-        gh<_i254.BranchProvider>(),
-        gh<_i874.TxWriter>(),
-      ),
-    );
-    gh.lazySingleton<_i878.ProductLocalDataSource>(
-      () => _i878.ProductLocalDataSource(
-        gh<_i110.AppDatabase>(),
-        gh<_i254.BranchProvider>(),
-        gh<_i874.TxWriter>(),
-      ),
-    );
     gh.lazySingleton<_i303.InventoryRemoteDataSource>(
       () => _i303.InventoryRemoteDataSourceImpl(gh<_i974.FirebaseFirestore>()),
     );
@@ -223,24 +213,7 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i254.BranchProvider>(),
       ),
     );
-    gh.lazySingleton<_i758.ProductRepository>(
-      () => _i492.ProductRepositoryImpl(gh<_i878.ProductLocalDataSource>()),
-    );
-    gh.lazySingleton<_i77.VariantRepository>(
-      () => _i780.VariantRepositoryImpl(gh<_i577.VariantLocalDataSource>()),
-    );
-    gh.lazySingleton<_i202.AddVariantUseCase>(
-      () => _i202.AddVariantUseCase(gh<_i77.VariantRepository>()),
-    );
-    gh.lazySingleton<_i333.DeleteVariantUseCase>(
-      () => _i333.DeleteVariantUseCase(gh<_i77.VariantRepository>()),
-    );
-    gh.lazySingleton<_i56.GetVariantsUseCase>(
-      () => _i56.GetVariantsUseCase(gh<_i77.VariantRepository>()),
-    );
-    gh.lazySingleton<_i1031.UpdateVariantUseCase>(
-      () => _i1031.UpdateVariantUseCase(gh<_i77.VariantRepository>()),
-    );
+    gh.factory<_i874.TxWriter>(() => _i874.TxWriter(gh<_i110.AppDatabase>()));
     gh.lazySingleton<_i689.AuthRepository>(
       () => _i1043.AuthRepositoryImpl(
         gh<_i1024.AuthRemoteDataSource>(),
@@ -260,24 +233,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i506.EmployeeRepository>(
       () => _i466.EmployeeRepositoryImpl(gh<_i751.EmployeeRemoteDataSource>()),
     );
-    gh.lazySingleton<_i87.AddProductUseCase>(
-      () => _i87.AddProductUseCase(gh<_i758.ProductRepository>()),
-    );
-    gh.lazySingleton<_i592.DeleteProductUseCase>(
-      () => _i592.DeleteProductUseCase(gh<_i758.ProductRepository>()),
-    );
-    gh.lazySingleton<_i423.GetProductsUseCase>(
-      () => _i423.GetProductsUseCase(gh<_i758.ProductRepository>()),
-    );
-    gh.lazySingleton<_i287.UpdateProductUseCase>(
-      () => _i287.UpdateProductUseCase(gh<_i758.ProductRepository>()),
-    );
-    gh.factory<_i624.VariantFormCubit>(
-      () => _i624.VariantFormCubit(
-        gh<_i202.AddVariantUseCase>(),
-        gh<_i1031.UpdateVariantUseCase>(),
-      ),
-    );
     gh.factory<_i774.DashboardCubit>(
       () => _i774.DashboardCubit(gh<_i1040.GetDashboardStatsUseCase>()),
     );
@@ -287,20 +242,35 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i747.CreateSaleUseCase>(
       () => _i747.CreateSaleUseCase(gh<_i862.PosRepository>()),
     );
-    gh.factory<_i348.VariantCubit>(
-      () => _i348.VariantCubit(
-        gh<_i56.GetVariantsUseCase>(),
-        gh<_i333.DeleteVariantUseCase>(),
+    gh.lazySingleton<_i1019.InventoryLocalDataSource>(
+      () => _i1019.InventoryLocalDataSource(
+        gh<_i110.AppDatabase>(),
+        gh<_i254.BranchProvider>(),
+        gh<_i874.TxWriter>(),
+      ),
+    );
+    gh.lazySingleton<_i577.VariantLocalDataSource>(
+      () => _i577.VariantLocalDataSource(
+        gh<_i110.AppDatabase>(),
+        gh<_i254.BranchProvider>(),
+        gh<_i874.TxWriter>(),
+      ),
+    );
+    gh.lazySingleton<_i878.ProductLocalDataSource>(
+      () => _i878.ProductLocalDataSource(
+        gh<_i110.AppDatabase>(),
+        gh<_i254.BranchProvider>(),
+        gh<_i874.TxWriter>(),
       ),
     );
     gh.lazySingleton<_i687.CategoryRepository>(
       () => _i932.CategoryRepositoryImpl(gh<_i178.CategoryLocalDataSource>()),
     );
-    gh.factory<_i137.ProductCubit>(
-      () => _i137.ProductCubit(
-        gh<_i423.GetProductsUseCase>(),
-        gh<_i592.DeleteProductUseCase>(),
-      ),
+    gh.lazySingleton<_i758.ProductRepository>(
+      () => _i492.ProductRepositoryImpl(gh<_i878.ProductLocalDataSource>()),
+    );
+    gh.lazySingleton<_i77.VariantRepository>(
+      () => _i780.VariantRepositoryImpl(gh<_i577.VariantLocalDataSource>()),
     );
     gh.lazySingleton<_i1011.GetAuthStatusUseCase>(
       () => _i1011.GetAuthStatusUseCase(gh<_i689.AuthRepository>()),
@@ -310,6 +280,18 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i661.LogoutUseCase>(
       () => _i661.LogoutUseCase(gh<_i689.AuthRepository>()),
+    );
+    gh.lazySingleton<_i202.AddVariantUseCase>(
+      () => _i202.AddVariantUseCase(gh<_i77.VariantRepository>()),
+    );
+    gh.lazySingleton<_i333.DeleteVariantUseCase>(
+      () => _i333.DeleteVariantUseCase(gh<_i77.VariantRepository>()),
+    );
+    gh.lazySingleton<_i56.GetVariantsUseCase>(
+      () => _i56.GetVariantsUseCase(gh<_i77.VariantRepository>()),
+    );
+    gh.lazySingleton<_i1031.UpdateVariantUseCase>(
+      () => _i1031.UpdateVariantUseCase(gh<_i77.VariantRepository>()),
     );
     gh.lazySingleton<_i926.GetAllInventoryUseCase>(
       () => _i926.GetAllInventoryUseCase(gh<_i898.InventoryRepository>()),
@@ -329,11 +311,31 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i500.UpdateEmployeeStatusUseCase>(
       () => _i500.UpdateEmployeeStatusUseCase(gh<_i506.EmployeeRepository>()),
     );
+    gh.lazySingleton<_i926.PosLocalDataSource>(
+      () => _i926.PosLocalDataSource(
+        gh<_i110.AppDatabase>(),
+        gh<_i254.BranchProvider>(),
+        gh<_i874.TxWriter>(),
+        gh<_i1019.InventoryLocalDataSource>(),
+      ),
+    );
     gh.factory<_i403.PosCubit>(
       () => _i403.PosCubit(
         gh<_i747.CreateSaleUseCase>(),
         gh<_i77.VariantRepository>(),
       ),
+    );
+    gh.lazySingleton<_i87.AddProductUseCase>(
+      () => _i87.AddProductUseCase(gh<_i758.ProductRepository>()),
+    );
+    gh.lazySingleton<_i592.DeleteProductUseCase>(
+      () => _i592.DeleteProductUseCase(gh<_i758.ProductRepository>()),
+    );
+    gh.lazySingleton<_i423.GetProductsUseCase>(
+      () => _i423.GetProductsUseCase(gh<_i758.ProductRepository>()),
+    );
+    gh.lazySingleton<_i287.UpdateProductUseCase>(
+      () => _i287.UpdateProductUseCase(gh<_i758.ProductRepository>()),
     );
     gh.lazySingleton<_i745.AddCategoryUseCase>(
       () => _i745.AddCategoryUseCase(gh<_i687.CategoryRepository>()),
@@ -353,14 +355,32 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i544.DeleteCategoryUseCase>(),
       ),
     );
+    gh.factory<_i624.VariantFormCubit>(
+      () => _i624.VariantFormCubit(
+        gh<_i202.AddVariantUseCase>(),
+        gh<_i1031.UpdateVariantUseCase>(),
+      ),
+    );
     gh.factory<_i304.CategoryFormCubit>(
       () => _i304.CategoryFormCubit(
         gh<_i745.AddCategoryUseCase>(),
         gh<_i419.UpdateCategoryUseCase>(),
       ),
     );
+    gh.factory<_i348.VariantCubit>(
+      () => _i348.VariantCubit(
+        gh<_i56.GetVariantsUseCase>(),
+        gh<_i333.DeleteVariantUseCase>(),
+      ),
+    );
     gh.factory<_i361.EmployeeFormCubit>(
       () => _i361.EmployeeFormCubit(gh<_i980.AddEmployeeUseCase>()),
+    );
+    gh.factory<_i137.ProductCubit>(
+      () => _i137.ProductCubit(
+        gh<_i423.GetProductsUseCase>(),
+        gh<_i592.DeleteProductUseCase>(),
+      ),
     );
     gh.factory<_i217.AuthCubit>(
       () => _i217.AuthCubit(
