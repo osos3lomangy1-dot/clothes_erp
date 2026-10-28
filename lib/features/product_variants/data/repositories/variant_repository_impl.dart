@@ -44,7 +44,6 @@ class VariantRepositoryImpl implements VariantRepository {
         size: variant.size,
         costPrice: variant.costPrice,
         sellPrice: variant.salePrice,
-        quantity: variant.quantity,
         
       );
       return const Right(null);
@@ -59,7 +58,6 @@ class VariantRepositoryImpl implements VariantRepository {
       await _localDataSource.updateVariant(variant.id,
         costPrice: variant.costPrice,
         sellPrice: variant.salePrice,
-        quantity: variant.quantity,
       );
       return const Right(null);
     } catch (e) {
@@ -82,4 +80,6 @@ class VariantRepositoryImpl implements VariantRepository {
     return const Right([]);
   }
 }
+
+
 

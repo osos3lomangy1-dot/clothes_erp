@@ -75,7 +75,7 @@ class VariantLocalDataSource {
     );
   }
 
-  Future<void> updateVariant(String id, {int? costPrice, int? sellPrice, int? quantity}) async {
+  Future<void> updateVariant(String id, {int? costPrice, int? sellPrice}) async {
     final now = DateTime.now();
     final branchId = await _branchId();
     // Get old values for audit
@@ -92,7 +92,6 @@ class VariantLocalDataSource {
           ProductVariantsCompanion(
             costPrice: costPrice != null ? Value(costPrice) : const Value.absent(),
             sellPrice: sellPrice != null ? Value(sellPrice) : const Value.absent(),
-            quantity: quantity != null ? Value(quantity) : const Value.absent(),
             updatedAt: Value(now),
           ),
         );
@@ -128,6 +127,13 @@ class VariantLocalDataSource {
     if (beforeAuditWrite != null) await beforeAuditWrite!();
   }
 }
+
+
+
+
+
+
+
 
 
 
