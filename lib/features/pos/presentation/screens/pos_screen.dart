@@ -91,7 +91,7 @@ class _SearchPanelState extends State<_SearchPanel> {
               border: OutlineInputBorder(),
               prefixIcon: Icon(Icons.search),
             ),
-            onChanged: (val) => context.read<PosCubit>().searchVariants(val),
+            onChanged: (val) => context.read<PosCubit>().searchProducts(val),
           ),
         ),
         Expanded(
@@ -169,11 +169,17 @@ class _CartPanel extends StatelessWidget {
                               return DataRow(cells: [
                                 DataCell(Text(item.productName)),
                                 DataCell(Text(item.price.toStringAsFixed(2))),
-                                DataCell(Row(mainAxisSize: MainAxisSize.min, children: [
-                                  IconButton(icon: const Icon(Icons.remove, size: 16), onPressed: () => context.read<PosCubit>().updateQuantity(item.variantId, item.quantity - 1)),
-                                  Text('${item.quantity}'),
-                                  IconButton(icon: const Icon(Icons.add, size: 16), onPressed: () => context.read<PosCubit>().updateQuantity(item.variantId, item.quantity + 1)),
-                                ])),
+                                DataCell(SizedBox(
+                                  width: 60,
+                                  child: TextField(
+                                    controller: TextEditingController(text: '${item.quantity}'),
+                                    keyboardType: TextInputType.number,
+                                    onChanged: (val) {
+                                      final n = int.tryParse(val);
+                                      if (n != null) context.read<PosCubit>().updateQuantity(item.variantId, n);
+                                    },
+                                  ),
+                                )),
                                 DataCell(Text((item.price * item.quantity).toStringAsFixed(2))),
                                 DataCell(IconButton(icon: const Icon(Icons.delete), onPressed: () => context.read<PosCubit>().removeFromCart(item.variantId))),
                               ]);

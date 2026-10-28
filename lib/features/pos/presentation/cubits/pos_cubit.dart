@@ -98,6 +98,12 @@ class PosCubit extends Cubit<PosState> {
       removeFromCart(variantId);
       return;
     }
+    VariantEntity? variant;
+    try { variant = _allVariants.firstWhere((v) => v.id == variantId); } catch (_) { variant = null; }
+    if (variant != null && newQty > variant.quantity) {
+      emit(state.copyWith(status: PosStatus.error, errorMessage: 'Insufficient stock'));
+      return;
+    }
     final newCart = state.cart.map((item) {
       if (item.variantId == variantId) {
         return SaleItemEntity(
@@ -122,13 +128,29 @@ class PosCubit extends Cubit<PosState> {
     emit(state.copyWith(paymentMethod: method));
   }
 
+  List<VariantEntity> _allVariants = [];
+
   Future<void> loadVariants() async {
     emit(state.copyWith(status: PosStatus.loading));
     final result = await _variantRepository.getAllVariants();
     result.fold(
       (failure) => emit(state.copyWith(status: PosStatus.error, errorMessage: failure.message)),
-      (variants) => emit(state.copyWith(status: PosStatus.initial, searchResults: variants)),
+      (variants) {
+        _allVariants = variants;
+        emit(state.copyWith(status: PosStatus.initial, searchResults: variants));
+      },
     );
+  }
+
+  void searchProducts(String query) {
+    if (query.trim().isEmpty) {
+      emit(state.copyWith(searchResults: _allVariants));
+      return;
+    }
+    final q = query.toLowerCase();
+    final filtered = _allVariants.where((v) =>
+        v.productCode.toLowerCase().contains(q)).toList();
+    emit(state.copyWith(searchResults: filtered));
   }
 
   Future<void> searchVariants(String query) async {
@@ -195,4 +217,5 @@ class PosCubit extends Cubit<PosState> {
     ));
   }
 }
+
 
