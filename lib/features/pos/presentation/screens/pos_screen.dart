@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/injection.dart';
 import '../cubits/pos_cubit.dart';
-import '../../domain/entities/sale_item_entity.dart';
 import '../../../product_variants/domain/entities/variant_entity.dart';
 
 class PosScreen extends StatelessWidget {
@@ -150,13 +149,35 @@ class _CartPanel extends StatelessWidget {
           child: Column(
             children: [
               Expanded(
-                child: ListView.builder(
-                  itemCount: state.cart.length,
-                  itemBuilder: (context, index) {
-                    final item = state.cart[index];
-                    return _CartItemTile(item: item);
-                  },
-                ),
+                child: state.cart.isEmpty
+                    ? const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.shopping_cart, size: 64, color: Colors.grey), SizedBox(height: 8), Text('Cart is empty')]))
+                    : SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: SingleChildScrollView(
+                          child: DataTable(
+                            columns: const [
+                              DataColumn(label: Text('Item')),
+                              DataColumn(label: Text('Price')),
+                              DataColumn(label: Text('Qty')),
+                              DataColumn(label: Text('Total')),
+                              DataColumn(label: Text('Action')),
+                            ],
+                            rows: state.cart.map((item) {
+                              return DataRow(cells: [
+                                DataCell(Text(item.productName)),
+                                DataCell(Text(item.price.toStringAsFixed(2))),
+                                DataCell(Row(mainAxisSize: MainAxisSize.min, children: [
+                                  IconButton(icon: const Icon(Icons.remove, size: 16), onPressed: () => context.read<PosCubit>().updateQuantity(item.variantId, item.quantity - 1)),
+                                  Text('${item.quantity}'),
+                                  IconButton(icon: const Icon(Icons.add, size: 16), onPressed: () => context.read<PosCubit>().updateQuantity(item.variantId, item.quantity + 1)),
+                                ])),
+                                DataCell(Text((item.price * item.quantity).toStringAsFixed(2))),
+                                DataCell(IconButton(icon: const Icon(Icons.delete), onPressed: () => context.read<PosCubit>().removeFromCart(item.variantId))),
+                              ]);
+                            }).toList(),
+                          ),
+                        ),
+                      ),
               ),
               const Divider(),
               Padding(
@@ -164,20 +185,14 @@ class _CartPanel extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Total:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    Text(
-                      state.total.toStringAsFixed(2),
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
+                    const Text('Subtotal:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text(state.total.toStringAsFixed(2), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),
               DropdownButtonFormField<String>(
                 initialValue: state.paymentMethod,
-                decoration: const InputDecoration(
-                  labelText: 'Payment Method',
-                  border: OutlineInputBorder(),
-                ),
+                decoration: const InputDecoration(labelText: 'Payment Method', border: OutlineInputBorder()),
                 items: const [
                   DropdownMenuItem(value: 'cash', child: Text('Cash')),
                   DropdownMenuItem(value: 'card', child: Text('Card')),
@@ -196,14 +211,11 @@ class _CartPanel extends StatelessWidget {
                   onPressed: state.status == PosStatus.checkoutLoading
                       ? null
                       : () {
-                          context.read<PosCubit>().checkout(
-                            'cashier_id_placeholder',
-                            'Cashier',
-                          );
+                          context.read<PosCubit>().checkout('cashier_id_placeholder', 'Cashier');
                         },
                   child: state.status == PosStatus.checkoutLoading
                       ? const CircularProgressIndicator()
-                      : const Text('Checkout'),
+                      : Text('Checkout (${state.total.toStringAsFixed(2)})'),
                 ),
               ),
             ],
@@ -214,36 +226,3 @@ class _CartPanel extends StatelessWidget {
   }
 }
 
-class _CartItemTile extends StatelessWidget {
-  final SaleItemEntity item;
-
-  const _CartItemTile({required this.item});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
-        title: Text(item.productName),
-        subtitle: Text('${item.color} - ${item.size} | ${item.price.toStringAsFixed(2)} x ${item.quantity}'),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.remove),
-              onPressed: () => context.read<PosCubit>().updateQuantity(item.variantId, item.quantity - 1),
-            ),
-            Text('${item.quantity}'),
-            IconButton(
-              icon: const Icon(Icons.add),
-              onPressed: () => context.read<PosCubit>().updateQuantity(item.variantId, item.quantity + 1),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete),
-              onPressed: () => context.read<PosCubit>().removeFromCart(item.variantId),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
