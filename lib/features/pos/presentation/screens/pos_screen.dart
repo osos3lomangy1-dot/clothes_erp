@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/utils/money.dart';
 import '../cubits/pos_cubit.dart';
-import '../../../product_variants/domain/entities/variant_entity.dart';
 
 class PosScreen extends StatelessWidget {
   const PosScreen({super.key});
@@ -10,132 +11,21 @@ class PosScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => getIt<PosCubit>()..loadVariants(),
-      child: const _PosView(),
+      create: (context) => getIt<PosCubit>()..init(),
+      child: const _PosScreenContent(),
     );
   }
 }
 
-class _PosView extends StatelessWidget {
-  const _PosView();
+class _PosScreenContent extends StatefulWidget {
+  const _PosScreenContent();
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Point of Sale'),
-        actions: const [
-          Text('F2 Search  ·  F4 Qty  ·  F12 Checkout', style: TextStyle(fontSize: 10, color: Colors.white70)),
-        ],
-      ),
-      body: BlocListener<PosCubit, PosState>(
-        listener: (context, state) {
-          if (state.status == PosStatus.error && state.errorMessage != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.errorMessage!)),
-            );
-          }
-          if (state.status == PosStatus.success) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Sale completed successfully!')),
-            );
-          }
-        },
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              color: const Color(0xFF673AB7),
-              child: Row(
-                children: [
-                  const Text('Cashier', style: TextStyle(color: Colors.white70)),
-                  const SizedBox(width: 4),
-                  const Text('Admin', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  const Spacer(),
-                  _ShortcutButton(Icons.search, 'F2 Search', () {}, primary: false),
-                  _ShortcutButton(Icons.person_add, 'Add Customer', () {}, primary: false),
-                  _ShortcutButton(Icons.pause, 'Hold Sale', () {}, primary: false),
-                  _ShortcutButton(Icons.clear, 'Clear Cart', () => context.read<PosCubit>().clearCart(), primary: false),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Row(
-                children: [
-                  Expanded(flex: 3, child: _SearchPanel()),
-                  const VerticalDivider(width: 1),
-                  Expanded(flex: 4, child: _CartPanel()),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              color: const Color(0xFF673AB7),
-              child: Row(
-                children: [
-                  const Text('Grand Total:', style: TextStyle(color: Colors.white70)),
-                  const SizedBox(width: 8),
-                  BlocBuilder<PosCubit, PosState>(
-                    builder: (context, state) => Text(
-                      state.total.toStringAsFixed(2),
-                      style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  const Spacer(),
-                  _ShortcutButton(Icons.print, 'Print Receipt', () {}, primary: false),
-                  _ShortcutButton(Icons.cancel, 'Cancel Sale', () => context.read<PosCubit>().clearCart(), primary: false),
-                  const SizedBox(width: 12),
-                  SizedBox(
-                    width: 200,
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed: () => context.read<PosCubit>().checkout('cashier_id_placeholder', 'Cashier'),
-                      child: const Text('Checkout'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF673AB7),
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  State<_PosScreenContent> createState() => _PosScreenContentState();
 }
 
-class _ShortcutButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onPressed;
-  final bool primary;
-  const _ShortcutButton(this.icon, this.label, this.onPressed, {this.primary = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, size: 16),
-      label: Text(label, style: const TextStyle(fontSize: 12)),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: primary ? Colors.amber : const Color(0xFF673AB7),
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      ),
-    );
-  }
-}
-
-class _SearchPanel extends StatefulWidget {
-  @override
-  State<_SearchPanel> createState() => _SearchPanelState();
-}
-
-class _SearchPanelState extends State<_SearchPanel> {
-  final _searchController = TextEditingController();
+class _PosScreenContentState extends State<_PosScreenContent> {
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void dispose() {
@@ -145,173 +35,300 @@ class _SearchPanelState extends State<_SearchPanel> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: TextField(
-            controller: _searchController,
-            decoration: const InputDecoration(
-              labelText: 'Search by product code',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.search),
+    return Scaffold(
+      backgroundColor: Colors.grey[100],
+      body: Column(
+        children: [
+          // --- Header ---
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            color: const Color(0xFF1E293B),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const CircleAvatar(
+                      backgroundColor: Colors.indigo,
+                      child: Icon(Icons.person, color: Colors.white),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Cashier: Admin', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        Text(
+                          DateFormat('hh:mm a').format(DateTime.now()),
+                          style: const TextStyle(color: Colors.grey, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
+                      onPressed: () {},
+                      icon: const Icon(Icons.pause),
+                      label: const Text('Held Sales (0)'),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade900, foregroundColor: Colors.white),
+                      onPressed: () => context.read<PosCubit>().clearCart(),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('New Sale'),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            onChanged: (val) => context.read<PosCubit>().searchProducts(val),
           ),
-        ),
-        Expanded(
-          child: BlocBuilder<PosCubit, PosState>(
-            builder: (context, state) {
-              if (state.status == PosStatus.loading) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (state.searchResults.isEmpty) {
-                return const Center(child: Text('No products found. Add products in the Products screen first.'));
-              }
-              return ListView.builder(
-                itemCount: state.searchResults.length,
-                itemBuilder: (context, index) {
-                  final variant = state.searchResults[index];
-                  return _VariantTile(variant: variant);
-                },
-              );
-            },
+
+          // --- Main Content ---
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // --- Left Panel (Products & Search) ---
+                Expanded(
+                  flex: 6,
+                  child: Container(
+                    margin: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: TextField(
+                            controller: _searchController,
+                            decoration: InputDecoration(
+                              hintText: 'Search by name or SKU...',
+                              prefixIcon: const Icon(Icons.search),
+                              filled: true,
+                              fillColor: Colors.grey[100],
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                            ),
+                            onChanged: (val) => context.read<PosCubit>().searchProducts(val),
+                          ),
+                        ),
+                        Expanded(
+                          child: BlocBuilder<PosCubit, PosState>(
+                            builder: (context, state) {
+                              if (state is PosLoading) return const Center(child: CircularProgressIndicator());
+                              if (state is PosLoaded) {
+                                if (state.filteredVariants.isEmpty) {
+                                  return const Center(child: Text('No products found.'));
+                                }
+                                return GridView.builder(
+                                  padding: const EdgeInsets.all(12),
+                                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                                    maxCrossAxisExtent: 220,
+                                    mainAxisExtent: 100,
+                                    crossAxisSpacing: 12,
+                                    mainAxisSpacing: 12,
+                                  ),
+                                  itemCount: state.filteredVariants.length,
+                                  itemBuilder: (context, index) {
+                                    final variant = state.filteredVariants[index];
+                                    final isOutOfStock = variant.quantity <= 0;
+                                    return InkWell(
+                                      onTap: isOutOfStock ? null : () {
+                                        context.read<PosCubit>().addToCart(variant);
+                                        _searchController.clear();
+                                        context.read<PosCubit>().searchProducts('');
+                                        FocusScope.of(context).unfocus();
+                                      },
+                                      child: Card(
+                                        elevation: 2,
+                                        color: isOutOfStock ? Colors.grey[200] : Colors.white,
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(8.0),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(variant.productName, style: TextStyle(fontWeight: FontWeight.bold, color: isOutOfStock ? Colors.grey : Colors.black), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                              Text('SKU: ${variant.sku}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                              Row(
+                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                children: [
+                                                  Text('\$${Money(variant.salePrice).toDisplay()}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo)),
+                                                  Text('Stock: ${variant.quantity}', style: TextStyle(color: isOutOfStock ? Colors.red : Colors.green, fontWeight: FontWeight.bold)),
+                                                ],
+                                              )
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                );
+                              }
+                              return const Center(child: Text('Initializing...'));
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // --- Right Panel (Cart & Checkout) ---
+                Expanded(
+                  flex: 4,
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 12, bottom: 12, right: 12),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                    child: BlocBuilder<PosCubit, PosState>(
+                      builder: (context, state) {
+                        if (state is! PosLoaded) return const Center(child: CircularProgressIndicator());
+
+                        return Column(
+                          children: [
+                            Expanded(
+                              child: state.cart.isEmpty
+                                  ? const Center(child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.shopping_cart_outlined, size: 64, color: Colors.grey),
+                                        SizedBox(height: 8),
+                                        Text('Cart is empty', style: TextStyle(color: Colors.grey)),
+                                      ],
+                                    ))
+                                  : SingleChildScrollView(
+                                      child: DataTable(
+                                        columns: const [
+                                          DataColumn(label: Text('Item')),
+                                          DataColumn(label: Text('Price')),
+                                          DataColumn(label: Text('Qty')),
+                                          DataColumn(label: Text('Total')),
+                                          DataColumn(label: Text('')),
+                                        ],
+                                        rows: state.cart.map((item) {
+                                          return DataRow(cells: [
+                                            DataCell(
+                                              Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Text(item.productName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                                  Text(item.variantId.substring(0, 6), style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                                                ],
+                                              ),
+                                            ),
+                                            DataCell(
+                                              SizedBox(
+                                                width: 60,
+                                                child: TextFormField(
+                                                  initialValue: Money(item.price).toDisplay(),
+                                                  keyboardType: TextInputType.number,
+                                                  decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 4)),
+                                                  onFieldSubmitted: (val) {
+                                                    final newPrice = Money.fromString(val).minorUnits;
+                                                    context.read<PosCubit>().updateUnitPrice(item.variantId, newPrice);
+                                                  },
+                                                ),
+                                              ),
+                                            ),
+                                            DataCell(
+                                              Row(
+                                                children: [
+                                                  IconButton(icon: const Icon(Icons.remove_circle_outline, size: 20), onPressed: () => context.read<PosCubit>().decreaseQty(item.variantId)),
+                                                  SizedBox(
+                                                    width: 30,
+                                                    child: Text(item.quantity.toString(), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                                  ),
+                                                  IconButton(icon: const Icon(Icons.add_circle_outline, size: 20), onPressed: () => context.read<PosCubit>().increaseQty(item.variantId)),
+                                                ],
+                                              ),
+                                            ),
+                                            DataCell(Text('\$${Money(item.total).toDisplay()}', style: const TextStyle(fontWeight: FontWeight.bold))),
+                                            DataCell(
+                                              IconButton(
+                                                icon: const Icon(Icons.delete, color: Colors.red),
+                                                onPressed: () => context.read<PosCubit>().removeFromCart(item.variantId),
+                                              ),
+                                            ),
+                                          ]);
+                                        }).toList(),
+                                      ),
+                                    ),
+                            ),
+
+                            // Footer
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[50],
+                                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+                                border: const Border(top: BorderSide(color: Colors.black12)),
+                              ),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text('Subtotal:', style: TextStyle(fontSize: 16)),
+                                      Text('\$${Money(state.subtotal).toDisplay()}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text('Grand Total:', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                                      Text('\$${Money(state.total).toDisplay()}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.indigo)),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 50,
+                                    child: ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.green.shade600,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                      ),
+                                      onPressed: state.cart.isEmpty || state.isProcessing
+                                          ? null
+                                          : () => _handleCheckout(context),
+                                      child: state.isProcessing
+                                          ? const CircularProgressIndicator(color: Colors.white)
+                                          : const Text('Checkout (F12)', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _VariantTile extends StatelessWidget {
-  final VariantEntity variant;
-
-  const _VariantTile({required this.variant});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: ListTile(
-        title: Text('${variant.productCode} - ${variant.color} - ${variant.size}'),
-        subtitle: Text('Stock: ${variant.quantity} | Price: ${variant.salePrice.toStringAsFixed(2)}'),
-        trailing: IconButton(
-          icon: const Icon(Icons.add_shopping_cart),
-          onPressed: () => context.read<PosCubit>().addToCart(variant),
-        ),
+        ],
       ),
     );
   }
-}
 
-class _CartPanel extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<PosCubit, PosState>(
-      builder: (context, state) {
-        return Container(
-          padding: const EdgeInsets.all(8.0),
-          decoration: BoxDecoration(
-            border: Border(left: BorderSide(color: Colors.grey.shade300)),
-          ),
-          child: Column(
-            children: [
-              Expanded(
-                child: state.cart.isEmpty
-                    ? const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.shopping_cart, size: 64, color: Colors.grey), SizedBox(height: 8), Text('Cart is empty')]))
-                    : SingleChildScrollView(
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: DataTable(
-                            columns: const [
-                              DataColumn(label: Text('#', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-                              DataColumn(label: Text('SKU', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-                              DataColumn(label: Text('Item Name', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-                              DataColumn(label: Text('Qty', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-                              DataColumn(label: Text('Unit Price', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-                              DataColumn(label: Text('Discount', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-                              DataColumn(label: Text('Total', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-                              DataColumn(label: Text('Action', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-                            ],
-                            rows: state.cart.asMap().entries.map((entry) {
-                              final i = entry.key;
-                              final item = entry.value;
-                              return DataRow(cells: [
-                                DataCell(Text('${i + 1}', style: const TextStyle(fontSize: 11))),
-                                DataCell(Text(item.variantId.substring(0, 6), style: const TextStyle(fontSize: 11))),
-                                DataCell(Text(item.productName, style: const TextStyle(fontSize: 11))),
-                                DataCell(SizedBox(
-                                  width: 70,
-                                  child: TextField(
-                                    controller: TextEditingController(text: item.quantity.toString()),
-                                    keyboardType: TextInputType.number,
-                                    decoration: const InputDecoration(isDense: true, border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 4)),
-                                    onChanged: (val) {
-                                      final n = int.tryParse(val);
-                                      if (n != null) context.read<PosCubit>().updateQuantity(item.variantId, n);
-                                    },
-                                  ),
-                                )),
-                                DataCell(SizedBox(
-                                  width: 90,
-                                  child: TextField(
-                                    controller: TextEditingController(text: item.price.toString()),
-                                    keyboardType: TextInputType.number,
-                                    decoration: const InputDecoration(isDense: true, border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 4)),
-                                    onChanged: (val) {
-                                      final n = int.tryParse(val) ?? item.price;
-                                      context.read<PosCubit>().updateUnitPrice(item.variantId, n);
-                                    },
-                                  ),
-                                )),
-                                DataCell(SizedBox(
-                                  width: 90,
-                                  child: TextField(
-                                    controller: TextEditingController(text: item.discount.toString()),
-                                    keyboardType: TextInputType.number,
-                                    decoration: const InputDecoration(isDense: true, border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 4)),
-                                    onChanged: (val) {
-                                      final n = int.tryParse(val) ?? item.discount;
-                                      context.read<PosCubit>().applyItemDiscount(item.variantId, n);
-                                    },
-                                  ),
-                                )),
-                                DataCell(Text(item.total.toStringAsFixed(2), style: const TextStyle(fontSize: 11))),
-                                DataCell(IconButton(icon: const Icon(Icons.delete, size: 16), onPressed: () => context.read<PosCubit>().removeFromCart(item.variantId))),
-                              ]);
-                            }).toList(),
-                          ),
-                        ),
-                      ),
-              ),
-              const Divider(),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Grand Total:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    Text(state.total.toStringAsFixed(2), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: () => context.read<PosCubit>().checkout('cashier_id_placeholder', 'Cashier'),
-                  child: const Text('Checkout'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF673AB7),
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+  void _handleCheckout(BuildContext context) async {
+    final cubit = context.read<PosCubit>();
+    final success = await cubit.checkout(paymentMethod: 'cash');
+
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sale completed successfully!'), backgroundColor: Colors.green),
+      );
+    } else if (!success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(cubit.state is PosError ? (cubit.state as PosError).message : 'Checkout failed'), backgroundColor: Colors.red),
+      );
+    }
   }
 }
+

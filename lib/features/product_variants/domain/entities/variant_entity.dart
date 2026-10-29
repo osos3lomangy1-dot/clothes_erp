@@ -12,6 +12,9 @@ class VariantEntity extends Equatable {
   final int minStock;
   final DateTime createdAt;
 
+  String get sku => productCode;
+  String get productName => productCode;
+
   const VariantEntity({
     required this.id,
     required this.productId,

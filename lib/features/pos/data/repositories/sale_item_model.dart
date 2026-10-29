@@ -9,6 +9,7 @@ class SaleItemModel extends SaleItemEntity {
     required super.price,
     required super.quantity,
     super.discount,
+    super.isReturn,
   });
 
   @override
@@ -20,6 +21,7 @@ class SaleItemModel extends SaleItemEntity {
     int? price,
     int? quantity,
     int? discount,
+    bool? isReturn,
   }) {
     return SaleItemModel(
       variantId: variantId ?? this.variantId,
@@ -29,6 +31,7 @@ class SaleItemModel extends SaleItemEntity {
       price: price ?? this.price,
       quantity: quantity ?? this.quantity,
       discount: discount ?? this.discount,
+      isReturn: isReturn ?? this.isReturn,
     );
   }
 
@@ -41,6 +44,7 @@ class SaleItemModel extends SaleItemEntity {
       price: (json['price'] as num?)?.toInt() ?? 0,
       quantity: json['quantity'] ?? 0,
       discount: (json['discount'] as num?)?.toInt() ?? 0,
+      isReturn: json['isReturn'] ?? false,
     );
   }
 
@@ -53,6 +57,7 @@ class SaleItemModel extends SaleItemEntity {
       'price': price,
       'quantity': quantity,
       'discount': discount,
+      'isReturn': isReturn,
     };
   }
 
@@ -65,6 +70,7 @@ class SaleItemModel extends SaleItemEntity {
       price: entity.price,
       quantity: entity.quantity,
       discount: entity.discount,
+      isReturn: entity.isReturn,
     );
   }
 }

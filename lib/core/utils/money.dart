@@ -3,6 +3,8 @@ class Money {
 
   const Money(this.piasters);
 
+  int get minorUnits => piasters;
+
   static Money fromString(String value) {
     final negative = value.trim().startsWith('-');
     final cleaned = value.replaceAll(RegExp(r'[^\d.]'), '');

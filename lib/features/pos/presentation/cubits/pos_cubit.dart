@@ -1,5 +1,4 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:equatable/equatable.dart';
 import 'package:injectable/injectable.dart';
 import '../../domain/entities/sale_entity.dart';
 import '../../domain/entities/sale_item_entity.dart';
@@ -7,231 +6,201 @@ import '../../domain/usecases/create_sale_usecase.dart';
 import '../../../product_variants/domain/entities/variant_entity.dart';
 import '../../../product_variants/domain/repositories/variant_repository.dart';
 
-enum PosStatus { initial, loading, success, error, checkoutLoading }
+sealed class PosState {}
 
-class PosState extends Equatable {
+class PosInitial extends PosState {}
+
+class PosLoading extends PosState {}
+
+class PosLoaded extends PosState {
+  final List<VariantEntity> filteredVariants;
   final List<SaleItemEntity> cart;
-  final List<VariantEntity> searchResults;
-  final String paymentMethod;
-  final PosStatus status;
-  final String? errorMessage;
-  final double subtotal;
-  final double discount;
-  final double total;
-  final String notes;
+  final int subtotal;
+  final int total;
+  final bool isProcessing;
 
-  const PosState({
+  PosLoaded({
+    this.filteredVariants = const [],
     this.cart = const [],
-    this.searchResults = const [],
-    this.paymentMethod = 'cash',
-    this.status = PosStatus.initial,
-    this.errorMessage,
-    this.subtotal = 0.0,
-    this.discount = 0.0,
-    this.total = 0.0,
-    this.notes = '',
+    this.subtotal = 0,
+    this.total = 0,
+    this.isProcessing = false,
   });
 
-  PosState copyWith({
+  PosLoaded copyWith({
+    List<VariantEntity>? filteredVariants,
     List<SaleItemEntity>? cart,
-    List<VariantEntity>? searchResults,
-    String? paymentMethod,
-    PosStatus? status,
-    String? errorMessage,
-    double? subtotal,
-    double? discount,
-    double? total,
-    String? notes,
+    int? subtotal,
+    int? total,
+    bool? isProcessing,
   }) {
-    return PosState(
+    return PosLoaded(
+      filteredVariants: filteredVariants ?? this.filteredVariants,
       cart: cart ?? this.cart,
-      searchResults: searchResults ?? this.searchResults,
-      paymentMethod: paymentMethod ?? this.paymentMethod,
-      status: status ?? this.status,
-      errorMessage: errorMessage,
       subtotal: subtotal ?? this.subtotal,
-      discount: discount ?? this.discount,
       total: total ?? this.total,
-      notes: notes ?? this.notes,
+      isProcessing: isProcessing ?? this.isProcessing,
     );
   }
+}
 
-  @override
-  List<Object?> get props => [cart, searchResults, paymentMethod, status, errorMessage, subtotal, discount, total, notes];
+class PosError extends PosState {
+  final String message;
+  PosError(this.message);
 }
 
 @injectable
 class PosCubit extends Cubit<PosState> {
   final CreateSaleUseCase _createSaleUseCase;
   final VariantRepository _variantRepository;
-
-  PosCubit(this._createSaleUseCase, this._variantRepository) : super(const PosState());
-
-  void addToCart(VariantEntity variant) {
-    final existingIndex = state.cart.indexWhere((item) => item.variantId == variant.id);
-    if (existingIndex >= 0) {
-      final existing = state.cart[existingIndex];
-      final updated = existing.copyWith(quantity: existing.quantity + 1);
-      final newCart = List<SaleItemEntity>.from(state.cart);
-      newCart[existingIndex] = updated;
-      _updateCart(newCart);
-    } else {
-      final newItem = SaleItemEntity(
-        variantId: variant.id,
-        productName: variant.productCode,
-        size: variant.size,
-        color: variant.color,
-        price: variant.salePrice,
-        quantity: 1,
-      );
-      _updateCart([...state.cart, newItem]);
-    }
-  }
-
-  void removeFromCart(String variantId) {
-    final newCart = state.cart.where((item) => item.variantId != variantId).toList();
-    _updateCart(newCart);
-  }
-
-  void updateQuantity(String variantId, int newQty) {
-    if (newQty <= 0) {
-      removeFromCart(variantId);
-      return;
-    }
-    VariantEntity? variant;
-    try { variant = _allVariants.firstWhere((v) => v.id == variantId); } catch (_) { variant = null; }
-    if (variant != null && newQty > variant.quantity) {
-      emit(state.copyWith(status: PosStatus.error, errorMessage: 'Insufficient stock'));
-      return;
-    }
-    final newCart = state.cart.map((item) {
-      if (item.variantId == variantId) {
-        return SaleItemEntity(
-          variantId: item.variantId,
-          productName: item.productName,
-          size: item.size,
-          color: item.color,
-          price: item.price,
-          quantity: newQty,
-        );
-      }
-      return item;
-    }).toList();
-    _updateCart(newCart);
-  }
-
-  void clearCart() {
-    emit(const PosState());
-  }
-
-  void changePaymentMethod(String method) {
-    emit(state.copyWith(paymentMethod: method));
-  }
-
   List<VariantEntity> _allVariants = [];
 
-  Future<void> loadVariants() async {
-    emit(state.copyWith(status: PosStatus.loading));
+  PosCubit(this._createSaleUseCase, this._variantRepository) : super(PosInitial());
+
+  Future<void> init() async {
+    emit(PosLoading());
     final result = await _variantRepository.getAllVariants();
     result.fold(
-      (failure) => emit(state.copyWith(status: PosStatus.error, errorMessage: failure.message)),
+      (failure) => emit(PosError(failure.message)),
       (variants) {
         _allVariants = variants;
-        emit(state.copyWith(status: PosStatus.initial, searchResults: variants));
+        emit(PosLoaded(filteredVariants: variants));
       },
     );
   }
 
   void searchProducts(String query) {
+    final state = this.state;
+    if (state is! PosLoaded) return;
     if (query.trim().isEmpty) {
-      emit(state.copyWith(searchResults: _allVariants));
+      emit(state.copyWith(filteredVariants: _allVariants));
       return;
     }
     final q = query.toLowerCase();
-    final filtered = _allVariants.where((v) => v.productCode.toLowerCase().contains(q)).toList();
-    emit(state.copyWith(searchResults: filtered));
+    final filtered = _allVariants
+        .where((v) => v.productName.toLowerCase().contains(q) || v.sku.toLowerCase().contains(q))
+        .toList();
+    emit(state.copyWith(filteredVariants: filtered));
   }
 
-  Future<void> searchVariants(String query) async {
-    if (query.trim().isEmpty) {
-      await loadVariants();
+  void addToCart(VariantEntity variant) {
+    final state = this.state;
+    if (state is! PosLoaded) return;
+    final existingIndex = state.cart.indexWhere((item) => item.variantId == variant.id);
+    List<SaleItemEntity> newCart;
+    if (existingIndex >= 0) {
+      final existing = state.cart[existingIndex];
+      final updated = existing.copyWith(quantity: existing.quantity + 1);
+      newCart = List<SaleItemEntity>.from(state.cart);
+      newCart[existingIndex] = updated;
+    } else {
+      final newItem = SaleItemEntity(
+        variantId: variant.id,
+        productName: variant.productName,
+        size: variant.size,
+        color: variant.color,
+        price: variant.salePrice,
+        quantity: 1,
+      );
+      newCart = [...state.cart, newItem];
+    }
+    _updateCart(state, newCart);
+  }
+
+  void removeFromCart(String variantId) {
+    final state = this.state;
+    if (state is! PosLoaded) return;
+    final newCart = state.cart.where((item) => item.variantId != variantId).toList();
+    _updateCart(state, newCart);
+  }
+
+  void updateQuantity(String variantId, int newQty) {
+    final state = this.state;
+    if (state is! PosLoaded) return;
+    if (newQty <= 0) {
+      removeFromCart(variantId);
       return;
     }
-    emit(state.copyWith(status: PosStatus.loading));
-    final result = await _variantRepository.searchVariants(query);
-    result.fold(
-      (failure) => emit(state.copyWith(status: PosStatus.error, errorMessage: failure.message)),
-      (variants) => emit(state.copyWith(status: PosStatus.initial, searchResults: variants)),
-    );
+    final newCart = state.cart.map((item) {
+      if (item.variantId == variantId) {
+        return item.copyWith(quantity: newQty);
+      }
+      return item;
+    }).toList();
+    _updateCart(state, newCart);
   }
 
-  void applyItemDiscount(String variantId, int discount) {
-    final existingIndex = state.cart.indexWhere((item) => item.variantId == variantId);
-    if (existingIndex < 0) return;
-    final existing = state.cart[existingIndex];
-    final updated = existing.copyWith(discount: discount);
-    final newCart = List<SaleItemEntity>.from(state.cart);
-    newCart[existingIndex] = updated;
-    _updateCart(newCart);
+  void increaseQty(String variantId) {
+    final state = this.state;
+    if (state is! PosLoaded) return;
+    SaleItemEntity? item;
+    try {
+      item = state.cart.firstWhere((i) => i.variantId == variantId);
+    } catch (_) {
+      item = null;
+    }
+    if (item != null) updateQuantity(variantId, item.quantity + 1);
+  }
+
+  void decreaseQty(String variantId) {
+    final state = this.state;
+    if (state is! PosLoaded) return;
+    SaleItemEntity? item;
+    try {
+      item = state.cart.firstWhere((i) => i.variantId == variantId);
+    } catch (_) {
+      item = null;
+    }
+    if (item != null) updateQuantity(variantId, item.quantity - 1);
   }
 
   void updateUnitPrice(String variantId, int newPrice) {
-    final existingIndex = state.cart.indexWhere((item) => item.variantId == variantId);
-    if (existingIndex < 0) return;
-    final existing = state.cart[existingIndex];
-    final updated = existing.copyWith(price: newPrice);
-    final newCart = List<SaleItemEntity>.from(state.cart);
-    newCart[existingIndex] = updated;
-    _updateCart(newCart);
+    final state = this.state;
+    if (state is! PosLoaded) return;
+    final newCart = state.cart.map((item) {
+      if (item.variantId == variantId) {
+        return item.copyWith(price: newPrice);
+      }
+      return item;
+    }).toList();
+    _updateCart(state, newCart);
   }
 
-  void _updateCart(List<SaleItemEntity> newCart) {
-    final subtotal = newCart.fold(0.0, (sum, item) => sum + item.total);
-    emit(state.copyWith(
-      cart: newCart,
-      subtotal: subtotal,
-      total: subtotal - state.discount,
-    ));
+  void clearCart() {
+    final state = this.state;
+    if (state is! PosLoaded) return;
+    emit(state.copyWith(cart: const [], subtotal: 0, total: 0));
   }
 
-  Future<void> checkout(String cashierId, String cashierName) async {
-    if (state.cart.isEmpty) {
-      emit(state.copyWith(status: PosStatus.error, errorMessage: 'Cart is empty'));
-      return;
-    }
-
-    emit(state.copyWith(status: PosStatus.checkoutLoading));
-
+  Future<bool> checkout({String paymentMethod = 'cash'}) async {
+    final state = this.state;
+    if (state is! PosLoaded) return false;
+    if (state.cart.isEmpty) return false;
+    emit(state.copyWith(isProcessing: true));
     final sale = SaleEntity(
       id: '',
       date: DateTime.now(),
-      cashierId: cashierId,
-      cashierName: cashierName,
+      cashierId: 'cashier_id_placeholder',
+      cashierName: 'Cashier',
       items: state.cart,
-      subtotal: state.subtotal,
-      discount: state.discount,
-      total: state.subtotal - state.discount,
-      paymentMethod: state.paymentMethod,
+      subtotal: state.subtotal.toDouble(),
+      discount: 0.0,
+      total: state.total.toDouble(),
+      paymentMethod: paymentMethod,
     );
-
     final result = await _createSaleUseCase(sale);
-    result.fold(
-      (failure) => emit(state.copyWith(status: PosStatus.error, errorMessage: failure.message)),
-      (createdSale) {
-        emit(state.copyWith(status: PosStatus.success, cart: [], searchResults: []));
-        clearCart();
-      },
-    );
+    final success = result.isRight();
+    if (success) {
+      emit(PosLoaded(filteredVariants: state.filteredVariants, cart: const [], subtotal: 0, total: 0, isProcessing: false));
+    } else {
+      emit(state.copyWith(isProcessing: false));
+    }
+    return success;
   }
 
-  void applyDiscount(double amount) {
-    emit(state.copyWith(
-      discount: amount,
-      total: state.subtotal - amount,
-    ));
-  }
-
-  void updateNotes(String notes) {
-    emit(state.copyWith(notes: notes));
+  void _updateCart(PosLoaded state, List<SaleItemEntity> newCart) {
+    final subtotal = newCart.fold(0, (sum, item) => sum + item.total);
+    emit(state.copyWith(cart: newCart, subtotal: subtotal, total: subtotal));
   }
 }
+

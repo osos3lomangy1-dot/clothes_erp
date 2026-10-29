@@ -8,6 +8,7 @@ class SaleItemEntity extends Equatable {
   final int price;
   final int quantity;
   final int discount;
+  final bool isReturn;
 
   const SaleItemEntity({
     required this.variantId,
@@ -17,6 +18,7 @@ class SaleItemEntity extends Equatable {
     required this.price,
     required this.quantity,
     this.discount = 0,
+    this.isReturn = false,
   });
 
   SaleItemEntity copyWith({
@@ -27,6 +29,7 @@ class SaleItemEntity extends Equatable {
     int? price,
     int? quantity,
     int? discount,
+    bool? isReturn,
   }) {
     return SaleItemEntity(
       variantId: variantId ?? this.variantId,
@@ -36,11 +39,12 @@ class SaleItemEntity extends Equatable {
       price: price ?? this.price,
       quantity: quantity ?? this.quantity,
       discount: discount ?? this.discount,
+      isReturn: isReturn ?? this.isReturn,
     );
   }
 
-  int get total => (price * quantity) - discount;
+  int get total => isReturn ? -((price * quantity) - discount) : (price * quantity) - discount;
 
   @override
-  List<Object?> get props => [variantId, productName, size, color, price, quantity, discount];
+  List<Object?> get props => [variantId, productName, size, color, price, quantity, discount, isReturn];
 }
