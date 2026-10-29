@@ -1,84 +1,31 @@
-# Clothes ERP — Architecture
+# Architecture
 
-## Clean Architecture (Feature-First)
+## Clean Architecture Layers
+- Presentation: Screens, Cubits, Widgets
+- Domain: Entities, Repositories (interfaces), Use Cases
+- Data: Data Sources (Drift), Repository Implementations, Models
 
-Every feature follows a strict 3-layer structure:
+## TxWriter Pattern (Atomic Transactions)
+Every write goes through `TxWriter.write()` which runs inside a single Drift
+transaction:
+1. writeFn() — the actual data change
+2. beforeAuditWrite hook (test injection point)
+3. Insert into sync_queue
+4. Insert into audit_logs
 
-```
-features/<feature>/
-├── data/
-│   ├── models/          # Data models (extend entities, handle JSON/Firestore)
-│   ├── datasources/     # Remote (Firestore) and local (secure storage) data sources
-│   └── repositories/    # Repository implementations (map exceptions → Failures)
-├── domain/
-│   ├── entities/        # Pure business objects (Equatable, no framework deps)
-│   ├── repositories/     # Abstract repository contracts (interfaces)
-│   └── usecases/        # Single-responsibility use cases (call repository)
-└── presentation/
-    ├── cubits/          # State management (Cubit + State)
-    ├── screens/         # UI screens
-    └── widgets/        # Feature-specific widgets
-```
+If any step throws, the whole transaction rolls back.
 
-### Layer Rules
-- **Domain** depends on nothing (pure Dart, no Flutter/Firebase imports).
-- **Data** depends on Domain (implements repository contracts).
-- **Presentation** depends on Domain (uses entities and use cases).
-- No layer skips another. Presentation never talks directly to Data.
+## Single Quantity Path Rule
+`product_variants.quantity` is ONLY ever changed via
+`InventoryLocalDataSource.applyStockMovement()`. No other code may update quantity
+directly. This guarantees every stock change writes an inventory_logs row and is
+auditable.
 
-## State Management
-
-- **Bloc/Cubit only.** No Riverpod, no GetX, no Provider.
-- Cubits are `@injectable` and registered in GetIt via `injectable`.
-- State classes use `Equatable` for efficient rebuilds.
-- `BlocListener` for side effects (navigation, SnackBars). `BlocBuilder` for UI rendering.
-
-## Error Handling Pattern
-
-```
-Data Source → throws ServerException / CacheException
-Repository  → catches ServerException → Left(ServerFailure(e.message))
-             → catches generic   → Left(ServerFailure(e.toString()))
-Use Case    → returns Either<Failure, T>
-Cubit       → result.fold((failure) => emit(Error), (data) => emit(Success))
-UI          → BlocListener reacts to Error/Success states
-```
-
-All repository methods return `Future<Either<Failure, T>>` (or `Stream` for real-time data).
-
-## Dependency Injection
-
-- `get_it` as the service locator.
-- `injectable` for code generation (`@injectable`, `@lazySingleton`, `@module`).
-- Firebase instances (`FirebaseAuth`, `FirebaseFirestore`) registered in `RegisterModule`.
-- Run `dart run build_runner build` after adding new injectable classes.
+Movement types (enum): sale, return, receive, adjustment, stocktake.
+- receive/adjustment require a reason and admin role (enforced in use case).
 
 ## Navigation Strategy
-
-### Why we bypassed `go_router` stream listeners
-
-`go_router`'s `refreshListenable` reacts to stream emissions. On **Windows** and **Web**, Firebase Auth's `authStateChanges()` stream can fire on a non-platform thread, causing silent failures where the redirect never triggers.
-
-### Solution
-
-1. **Removed** `refreshListenable: GoRouterRefreshStream(getIt<AuthCubit>().stream)` from `GoRouter`.
-2. `AuthCubit.login()` emits `AuthAuthenticated(user)` directly after a successful login.
-3. `LoginScreen`'s `BlocListener` catches `AuthAuthenticated` and calls `Navigator.of(context).pushReplacement(...)` to the appropriate dashboard.
-4. `go_router` is still used for route definitions and initial routing, but navigation after login is manual via `Navigator`.
-
-### Route Table
-
-| Path | Screen | Access |
-|------|--------|--------|
-| `/login` | LoginScreen | All (unauthenticated) |
-| `/admin` | AdminDashboardScreen | Admin only |
-| `/cashier` | CashierDashboardScreen | Cashier only |
-| `/categories` | CategoryListScreen | Admin, Manager |
-| `/products` | ProductListScreen | Admin, Manager, Cashier (read) |
-| `/variants` | VariantListScreen | Admin, Manager, Cashier (read) |
-| `/inventory` | InventoryScreen | Admin, Manager, Cashier (read) |
-| `/pos` | PosScreen | Admin, Manager, Cashier |
-
-## Firestore Offline Persistence
-
-Enabled in `FirebaseService.init()` with `persistenceEnabled: true`. No conflict resolution UI. Server is authoritative for stock and money. Offline writes are queued by the SDK and flushed on reconnect.
+`MainLayout` is a StatefulWidget with a persistent Sidebar (collapsible).
+Clicking a sidebar item swaps the `currentScreen` via setState (right side only).
+POS is pushed as a full-screen route (Navigator.push) to hide the sidebar.
+EOF
