@@ -47,6 +47,22 @@ class ProductRepositoryImpl implements ProductRepository {
   }
 
   @override
+  Future<Either<Failure, String>> addProductWithVariants(ProductEntity product, List<VariantInput> variants) async {
+    try {
+      final id = await _localDataSource.createProductWithVariants(
+        name: product.name,
+        categoryId: product.categoryId,
+        description: product.description,
+        minStock: product.minStock,
+        variants: variants,
+      );
+      return Right(id);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, void>> updateProduct(ProductEntity product) async {
     try {
       await _localDataSource.updateProduct(product.id,

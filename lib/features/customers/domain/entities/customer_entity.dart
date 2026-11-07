@@ -15,6 +15,22 @@ class CustomerEntity extends Equatable {
     required this.createdAt,
   });
 
+  CustomerEntity copyWith({
+    String? id,
+    String? name,
+    String? phone,
+    int? loyaltyPoints,
+    DateTime? createdAt,
+  }) {
+    return CustomerEntity(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      phone: phone ?? this.phone,
+      loyaltyPoints: loyaltyPoints ?? this.loyaltyPoints,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
   @override
   List<Object?> get props => [id, name, phone, loyaltyPoints, createdAt];
 }

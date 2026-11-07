@@ -18,6 +18,15 @@ class PosLocalDataSource {
 
   Future<String> _branchId() => _branchProvider.getBranchId();
 
+  Future<String> getActiveCashierId() async {
+    final user = await (_db.select(_db.users)..where((t) => t.isActive.equals(true) & t.deletedAt.isNull())).getSingleOrNull();
+    if (user != null) return user.id;
+    final meta = await (_db.select(_db.appMeta)..where((t) => t.key.equals('current_cashier_id'))).getSingleOrNull();
+    if (meta != null && meta.value.isNotEmpty) return meta.value;
+    final branchId = await _branchId();
+    return 'cashier_$branchId';
+  }
+
   Future<List<ProductVariant>> getVariantsForPos({String? search}) async {
     var q = _db.select(_db.productVariants).join([
       innerJoin(_db.products, _db.products.id.equalsExp(_db.productVariants.productId)),
@@ -34,6 +43,7 @@ class PosLocalDataSource {
     required List<Map<String, dynamic>> items,
     required int total,
     required String cashierId,
+    String? customerId,
   }) async {
     final now = DateTime.now();
     final branchId = await _branchId();
@@ -45,6 +55,7 @@ class PosLocalDataSource {
           branchId: branchId,
           shortRef: 'S${now.millisecondsSinceEpoch}',
           cashierId: cashierId,
+          customerId: Value(customerId),
           subtotal: total,
           discountType: 'none',
           total: total,

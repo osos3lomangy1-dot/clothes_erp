@@ -23,8 +23,23 @@ class PosRepositoryImpl implements PosRepository {
         'price': i.price,
         'cost': 0,
       }).toList();
-      await _localDataSource.checkout(items: items, total: sale.total.toInt(), cashierId: sale.cashierId);
+      await _localDataSource.checkout(
+        items: items,
+        total: sale.total.toInt(),
+        cashierId: sale.cashierId,
+        customerId: sale.customerId,
+      );
       return Right(sale);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, String>> getActiveCashierId() async {
+    try {
+      final cashierId = await _localDataSource.getActiveCashierId();
+      return Right(cashierId);
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

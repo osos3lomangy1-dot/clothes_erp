@@ -1,5 +1,11 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/di/injection.dart';
+import '../../../../core/utils/money.dart';
+import '../../../auth/presentation/cubits/auth_cubit.dart';
+import '../../../auth/presentation/cubits/auth_state.dart';
+import '../cubits/returns_cubit.dart';
+import '../cubits/returns_state.dart';
 
 class ReturnScreen extends StatefulWidget {
   const ReturnScreen({super.key});
@@ -9,174 +15,258 @@ class ReturnScreen extends StatefulWidget {
 }
 
 class _ReturnScreenState extends State<ReturnScreen> {
-  final _searchController = TextEditingController();
-  List<Map<String, dynamic>> _variants = [];
-  Map<String, dynamic>? _selectedVariant;
-  final _qtyController = TextEditingController(text: '1');
-  final _refundController = TextEditingController();
-  bool _loading = false;
-  String? _error;
-
-  Future<void> _searchVariants() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-      _variants = [];
-      _selectedVariant = null;
-    });
-    try {
-      final query = _searchController.text.trim().toLowerCase();
-      final snapshot = await FirebaseFirestore.instance
-          .collection('product_variants')
-          .get();
-      final results = snapshot.docs
-          .map((doc) => {'id': doc.id, ...doc.data()})
-          .where((v) =>
-              (v['productCode'] as String? ?? '').toLowerCase().contains(query) ||
-              (v['color'] as String? ?? '').toLowerCase().contains(query) ||
-              (v['size'] as String? ?? '').toLowerCase().contains(query))
-          .toList();
-      setState(() {
-        _variants = results;
-        _loading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
-    }
-  }
-
-  Future<void> _confirmReturn() async {
-    if (_selectedVariant == null) return;
-    final qty = int.tryParse(_qtyController.text) ?? 0;
-    if (qty <= 0) return;
-    setState(() => _loading = true);
-    try {
-      await FirebaseFirestore.instance.runTransaction((transaction) async {
-        final variantRef = FirebaseFirestore.instance
-            .collection('product_variants')
-            .doc(_selectedVariant!['id']);
-        final variantDoc = await transaction.get(variantRef);
-        if (!variantDoc.exists) throw Exception('Variant not found');
-        final currentQty = (variantDoc.data()?['quantity'] as num?)?.toInt() ?? 0;
-        transaction.update(variantRef, {'quantity': currentQty + qty});
-
-        final logRef = FirebaseFirestore.instance.collection('inventory_logs').doc();
-        transaction.set(logRef, {
-          'productId': _selectedVariant!['productId'],
-          'variantId': _selectedVariant!['id'],
-          'type': 'in',
-          'quantity': qty,
-          'date': Timestamp.now(),
-          'userId': 'cashier',
-          'note': 'Return',
-        });
-      });
-      setState(() {
-        _loading = false;
-        _selectedVariant = null;
-        _variants = [];
-        _searchController.clear();
-        _qtyController.text = '1';
-        _refundController.clear();
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Return processed successfully')),
-        );
-      }
-    } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
-    }
-  }
+  final _searchCtrl = TextEditingController();
+  final _reasonCtrl = TextEditingController();
 
   @override
   void dispose() {
-    _searchController.dispose();
-    _qtyController.dispose();
-    _refundController.dispose();
+    _searchCtrl.dispose();
+    _reasonCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(title: const Text('Returns')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: _searchController,
-              decoration: const InputDecoration(
-                labelText: 'Search by product name or SKU',
-                prefixIcon: Icon(Icons.search),
-              ),
-              onSubmitted: (_) => _searchVariants(),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton(onPressed: _searchVariants, child: const Text('Search')),
-            if (_loading) const CircularProgressIndicator(),
-            if (_error != null) Text(_error!, style: const TextStyle(color: Colors.red)),
-            if (_variants.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: _variants.length,
-                  itemBuilder: (context, index) {
-                    final v = _variants[index];
-                    final isSelected = _selectedVariant?['id'] == v['id'];
-                    return Card(
-                      color: isSelected ? theme.colorScheme.primaryContainer : null,
-                      child: ListTile(
-                        title: Text('${v['productCode']} - ${v['color']} / ${v['size']}'),
-                        subtitle: Text('In stock: ${v['quantity']}'),
-                        trailing: isSelected ? const Icon(Icons.check, color: Colors.green) : null,
-                        onTap: () => setState(() => _selectedVariant = v),
+    return BlocProvider(
+      create: (context) => getIt<ReturnsCubit>()..init(),
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Process Returns')),
+        body: BlocConsumer<ReturnsCubit, ReturnsState>(
+          listener: (context, state) {
+            if (state.errorMessage != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.errorMessage!), backgroundColor: Colors.red),
+              );
+            }
+            if (state.successMessage != null) {
+              _reasonCtrl.clear();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.successMessage!), backgroundColor: Colors.green),
+              );
+            }
+          },
+          builder: (context, state) {
+            return Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Search bar
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _searchCtrl,
+                          decoration: InputDecoration(
+                            labelText: 'Search sale by ID or Ref (e.g., S...)',
+                            border: const OutlineInputBorder(),
+                            prefixIcon: const Icon(Icons.search),
+                            suffixIcon: _searchCtrl.text.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear),
+                                    onPressed: () {
+                                      _searchCtrl.clear();
+                                      context.read<ReturnsCubit>().loadRecentSales();
+                                    },
+                                  )
+                                : null,
+                          ),
+                          onSubmitted: (val) => context.read<ReturnsCubit>().searchSale(val),
+                        ),
                       ),
-                    );
-                  },
-                ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: () => context.read<ReturnsCubit>().searchSale(_searchCtrl.text),
+                        child: const Text('Search'),
+                      ),
+                      if (state.selectedSale != null) ...[
+                        const SizedBox(width: 8),
+                        OutlinedButton(
+                          onPressed: () {
+                            _searchCtrl.clear();
+                            context.read<ReturnsCubit>().clearSelection();
+                          },
+                          child: const Text('Back to List'),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  if (state.isLoading)
+                    const Expanded(child: Center(child: CircularProgressIndicator()))
+                  else if (state.selectedSale != null)
+                    Expanded(child: _buildSaleReturnDetails(context, state))
+                  else
+                    Expanded(child: _buildRecentSalesList(context, state)),
+                ],
               ),
-              if (_selectedVariant != null) ...[
-                const SizedBox(height: 16),
-                Row(
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecentSalesList(BuildContext context, ReturnsState state) {
+    if (state.recentSales.isEmpty) {
+      return const Center(child: Text('No completed sales found to return.'));
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Select a recent sale to return items:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        const SizedBox(height: 8),
+        Expanded(
+          child: ListView.builder(
+            itemCount: state.recentSales.length,
+            itemBuilder: (context, index) {
+              final sale = state.recentSales[index];
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                child: ListTile(
+                  leading: const CircleAvatar(child: Icon(Icons.receipt)),
+                  title: Text('Sale: ${sale.id.length > 8 ? sale.id.substring(0, 8) : sale.id} • Total: \$${Money(sale.total.toInt()).toDisplay()}'),
+                  subtitle: Text('Date: ${sale.date.toLocal().toString().split('.')[0]} • Cashier: ${sale.cashierId}'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.read<ReturnsCubit>().selectSale(sale),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSaleReturnDetails(BuildContext context, ReturnsState state) {
+    final sale = state.selectedSale!;
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Card(
+            color: Colors.purple.shade50,
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Selected Sale: ${sale.id.length > 8 ? sale.id.substring(0, 8) : sale.id}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text('Date: ${sale.date.toLocal().toString().split('.')[0]} • Paid via: ${sale.paymentMethod.toUpperCase()}'),
+                    ],
+                  ),
+                  Text('Original Total: \$${Money(sale.total.toInt()).toDisplay()}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.purple)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text('Select quantities to return:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 8),
+          ...state.returnItems.map((item) {
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 4),
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Row(
                   children: [
                     Expanded(
-                      child: TextField(
-                        controller: _qtyController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Quantity to return'),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(item.productName.isNotEmpty ? item.productName : item.variantId, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          Text('${item.color} - ${item.size} • Unit: \$${Money(item.refundUnitPrice).toDisplay()} (Max: ${item.maxQty})', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                        ],
                       ),
                     ),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.remove),
+                          onPressed: item.qty > 0 ? () => context.read<ReturnsCubit>().updateItemQty(item.variantId, item.qty - 1) : null,
+                        ),
+                        Text('${item.qty}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        IconButton(
+                          icon: const Icon(Icons.add),
+                          onPressed: item.qty < item.maxQty ? () => context.read<ReturnsCubit>().updateItemQty(item.variantId, item.qty + 1) : null,
+                        ),
+                      ],
+                    ),
                     const SizedBox(width: 16),
-                    Expanded(
-                      child: TextField(
-                        controller: _refundController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Refund amount'),
+                    SizedBox(
+                      width: 90,
+                      child: Text(
+                        '\$${Money(item.lineTotal).toDisplay()}',
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.purple),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _confirmReturn,
-                    child: const Text('Confirm Return'),
+              ),
+            );
+          }),
+          const SizedBox(height: 16),
+          // Refund Summary & Reason
+          Card(
+            elevation: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Total Refund Amount:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text('\$${Money(state.totalRefund).toDisplay()}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.purple)),
+                    ],
                   ),
-                ),
-              ],
-            ],
-          ],
-        ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _reasonCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Return Reason (Required)',
+                      border: OutlineInputBorder(),
+                      hintText: 'e.g. Defective, wrong size, customer requested return',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      onPressed: state.isProcessing || state.totalRefund == 0
+                          ? null
+                          : () {
+                              String cashierId = 'cashier';
+                              try {
+                                final authState = context.read<AuthCubit>().state;
+                                if (authState is AuthAuthenticated) {
+                                  cashierId = authState.user.id;
+                                }
+                              } catch (_) {}
+
+                              context.read<ReturnsCubit>().processReturn(
+                                    reason: _reasonCtrl.text,
+                                    userId: cashierId,
+                                    paymentMethod: sale.paymentMethod,
+                                  );
+                            },
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.purple, foregroundColor: Colors.white),
+                      icon: state.isProcessing ? const SizedBox.shrink() : const Icon(Icons.assignment_return),
+                      label: state.isProcessing
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text('Confirm and Process Return', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

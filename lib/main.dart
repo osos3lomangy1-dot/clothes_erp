@@ -29,24 +29,33 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Clothes ERP',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      home: BlocBuilder<AuthCubit, AuthState>(
-        buildWhen: (previous, current) =>
-            previous.runtimeType != current.runtimeType ||
-            (current is AuthAuthenticated &&
-                previous is AuthAuthenticated &&
-                previous.user.role != current.user.role),
-        builder: (context, state) {
-          if (state is AuthAuthenticated) {
-            return state.user.role == 'admin'
-                ? const AdminDashboardScreen()
-                : const CashierDashboardScreen();
-          }
-          return const LoginScreen();
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: MaterialApp(
+        title: 'Clothes ERP',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light,
+        builder: (context, child) {
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: child ?? const SizedBox.shrink(),
+          );
         },
+        home: BlocBuilder<AuthCubit, AuthState>(
+          buildWhen: (previous, current) =>
+              previous.runtimeType != current.runtimeType ||
+              (current is AuthAuthenticated &&
+                  previous is AuthAuthenticated &&
+                  previous.user.role != current.user.role),
+          builder: (context, state) {
+            if (state is AuthAuthenticated) {
+              return state.user.role == 'admin'
+                  ? const AdminDashboardScreen()
+                  : const CashierDashboardScreen();
+            }
+            return const LoginScreen();
+          },
+        ),
       ),
     );
   }

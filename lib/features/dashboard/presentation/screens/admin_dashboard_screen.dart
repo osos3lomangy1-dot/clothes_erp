@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/layout/main_layout.dart';
+import '../../../../core/utils/money.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../cubits/dashboard_cubit.dart';
 import '../cubits/dashboard_state.dart';
@@ -63,13 +64,50 @@ class _AdminDashboardView extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Expanded(child: _SummaryCard(title: "Today's Sales", value: '\$${stats?.todaySales.toStringAsFixed(2) ?? '0.00'}', icon: Icons.attach_money, color: Colors.green)),
+                      Expanded(
+                        child: _SummaryCard(
+                          title: "Today's Sales",
+                          value: '\$${Money(stats?.todaySales ?? 0).toDisplay()}',
+                          icon: Icons.attach_money,
+                          color: Colors.green,
+                        ),
+                      ),
                       const SizedBox(width: 12),
-                      Expanded(child: _SummaryCard(title: 'Transactions', value: '${stats?.todayTransactions ?? 0}', icon: Icons.receipt_long, color: Colors.blue)),
+                      Expanded(
+                        child: _SummaryCard(
+                          title: 'Transactions',
+                          value: '${stats?.todayTransactions ?? 0}',
+                          icon: Icons.receipt_long,
+                          color: Colors.blue,
+                        ),
+                      ),
                       const SizedBox(width: 12),
-                      Expanded(child: _SummaryCard(title: 'Low Stock', value: '${stats?.lowStockCount ?? 0}', icon: Icons.warning, color: Colors.orange)),
+                      Expanded(
+                        child: _SummaryCard(
+                          title: 'Low Stock',
+                          value: '${stats?.lowStockCount ?? 0}',
+                          icon: Icons.warning,
+                          color: Colors.orange,
+                        ),
+                      ),
                     ],
                   ),
+                  if (stats != null && stats.lowStockVariants.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    const Text('Low Stock Alerts', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    ...stats.lowStockVariants.map((v) => Card(
+                          child: ListTile(
+                            leading: const Icon(Icons.warning_amber, color: Colors.orange),
+                            title: Text('${v.productCode} (${v.color} - ${v.size})'),
+                            subtitle: Text('SKU: ${v.sku}'),
+                            trailing: Text(
+                              '${v.quantity} / min ${v.minStock}',
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                            ),
+                          ),
+                        )),
+                  ],
                 ],
               ),
             );

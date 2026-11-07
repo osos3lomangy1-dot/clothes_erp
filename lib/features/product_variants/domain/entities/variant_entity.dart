@@ -12,8 +12,13 @@ class VariantEntity extends Equatable {
   final int minStock;
   final DateTime createdAt;
 
+  final String? _productName;
+
   String get sku => productCode;
-  String get productName => productCode;
+  String get productName {
+    final name = _productName;
+    return (name != null && name.isNotEmpty) ? name : productCode;
+  }
 
   const VariantEntity({
     required this.id,
@@ -24,9 +29,10 @@ class VariantEntity extends Equatable {
     required this.quantity,
     required this.costPrice,
     required this.salePrice,
-    required     this.minStock,
+    required this.minStock,
     required this.createdAt,
-  });
+    String? productName,
+  }) : _productName = productName;
 
   @override
   List<Object?> get props => [
@@ -40,5 +46,6 @@ class VariantEntity extends Equatable {
         salePrice,
         minStock,
         createdAt,
+        _productName,
       ];
 }

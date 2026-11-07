@@ -4,4 +4,5 @@ import '../entities/sale_entity.dart';
 
 abstract class PosRepository {
   Future<Either<Failure, SaleEntity>> createSale(SaleEntity sale);
+  Future<Either<Failure, String>> getActiveCashierId();
 }

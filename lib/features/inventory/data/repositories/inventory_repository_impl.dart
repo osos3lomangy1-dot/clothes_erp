@@ -1,24 +1,34 @@
 import 'package:dartz/dartz.dart';
 import 'package:injectable/injectable.dart';
-import '../../../../core/errors/exceptions.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../product_variants/domain/entities/variant_entity.dart';
 import '../../domain/repositories/inventory_repository.dart';
-import '../datasources/inventory_remote_data_source.dart';
+import '../datasources/inventory_local_data_source.dart';
 
 @LazySingleton(as: InventoryRepository)
 class InventoryRepositoryImpl implements InventoryRepository {
-  final InventoryRemoteDataSource _remoteDataSource;
+  final InventoryLocalDataSource _localDataSource;
 
-  InventoryRepositoryImpl(this._remoteDataSource);
+  InventoryRepositoryImpl(this._localDataSource);
 
   @override
   Future<Either<Failure, List<VariantEntity>>> getAllInventory() async {
     try {
-      final result = await _remoteDataSource.getAllInventory();
-      return Right(result);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
+      final items = await _localDataSource.getInventoryDetails();
+      final entities = items.map((item) => VariantEntity(
+        id: item.variantId,
+        productId: item.productId,
+        productCode: item.sku,
+        color: item.color,
+        size: item.size,
+        quantity: item.quantity,
+        costPrice: item.costPrice,
+        salePrice: item.sellPrice,
+        minStock: 5,
+        createdAt: DateTime.now(),
+        productName: item.productName,
+      )).toList();
+      return Right(entities);
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -27,10 +37,21 @@ class InventoryRepositoryImpl implements InventoryRepository {
   @override
   Future<Either<Failure, List<VariantEntity>>> getLowStockInventory() async {
     try {
-      final result = await _remoteDataSource.getLowStockInventory();
-      return Right(result);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
+      final items = await _localDataSource.getInventoryDetails(lowStockOnly: true);
+      final entities = items.map((item) => VariantEntity(
+        id: item.variantId,
+        productId: item.productId,
+        productCode: item.sku,
+        color: item.color,
+        size: item.size,
+        quantity: item.quantity,
+        costPrice: item.costPrice,
+        salePrice: item.sellPrice,
+        minStock: 5,
+        createdAt: DateTime.now(),
+        productName: item.productName,
+      )).toList();
+      return Right(entities);
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

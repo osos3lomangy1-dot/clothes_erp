@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../constants/app_colors.dart';
 import '../../features/products/presentation/screens/product_list_screen.dart';
 import '../../features/categories/presentation/screens/category_list_screen.dart';
 import '../../features/inventory/presentation/screens/inventory_screen.dart';
@@ -21,7 +22,21 @@ class MainLayout extends StatefulWidget {
 
 class _MainLayoutState extends State<MainLayout> {
   bool _isCollapsed = false;
-  Widget _currentScreen = const _DashboardContent();
+  late Widget _currentScreen;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentScreen = widget.child;
+  }
+
+  @override
+  void didUpdateWidget(covariant MainLayout oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.child != widget.child) {
+      _currentScreen = widget.child;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +46,7 @@ class _MainLayoutState extends State<MainLayout> {
           SizedBox(
             width: _isCollapsed ? 80 : 250,
             child: Container(
-              color: const Color(0xFF673AB7),
+              color: AppColors.primary,
               child: Column(
                 children: [
                   IconButton(
@@ -43,7 +58,7 @@ class _MainLayoutState extends State<MainLayout> {
                     child: SingleChildScrollView(
                       child: Column(
                         children: [
-                          _navItem(Icons.dashboard, 'Dashboard', const _DashboardContent()),
+                          _navItem(Icons.dashboard, 'Dashboard', widget.child),
                           _navItem(Icons.point_of_sale, 'POS', null, isPos: true),
                           _navItem(Icons.inventory_2, 'Products', const ProductListScreen()),
                           _navItem(Icons.category, 'Categories', const CategoryListScreen()),
@@ -61,7 +76,7 @@ class _MainLayoutState extends State<MainLayout> {
               ),
             ),
           ),
-          Expanded(child: Container(color: Colors.white, child: widget.child)),
+          Expanded(child: Container(color: Colors.white, child: _currentScreen)),
         ],
       ),
     );
@@ -79,13 +94,5 @@ class _MainLayoutState extends State<MainLayout> {
         }
       },
     );
-  }
-}
-
-class _DashboardContent extends StatelessWidget {
-  const _DashboardContent();
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: Text('Dashboard'));
   }
 }

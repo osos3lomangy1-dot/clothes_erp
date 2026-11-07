@@ -169,6 +169,32 @@ void main() {
     ));
     await expectLater(pds.softDeleteProduct(prod.id), throwsA(anything));
   });
+
+  test('createProductWithVariants creates product and all table variants with opening stock logs', () async {
+    final prodId = await pds.createProductWithVariants(
+      name: 'Polo Shirt',
+      categoryId: 'c1',
+      description: 'Cotton',
+      variants: [
+        const VariantInput(sku: 'POLO-S', color: 'Navy', size: 'S', costPrice: 100, sellPrice: 150, quantity: 5),
+        const VariantInput(sku: 'POLO-M', color: 'Navy', size: 'M', costPrice: 100, sellPrice: 150, quantity: 10),
+        const VariantInput(sku: 'POLO-L', color: 'Navy', size: 'L', costPrice: 100, sellPrice: 150, quantity: 8),
+      ],
+    );
+
+    final prod = await pds.getProduct(prodId);
+    expect(prod, isNotNull);
+    expect(prod!.name, 'Polo Shirt');
+
+    final variants = await vds.getVariants(prodId);
+    expect(variants.length, 3);
+    expect(variants.map((v) => v.size).toSet(), {'S', 'M', 'L'});
+    expect(variants.map((v) => v.quantity).reduce((a, b) => a + b), 23);
+
+    final logs = await db.select(db.inventoryLogs).get();
+    expect(logs.length, 3);
+    expect(logs.every((l) => l.type == 'receive'), true);
+  });
 }
 
 

@@ -138,6 +138,63 @@ void main() {
     expect(logs.length, 1);
     expect(logs.first.type, 'receive');
   });
+
+  test('receiveStock via DataSource increases stock and logs movement with correct reason and userId', () async {
+    final vid = await seedVariant();
+    await ids.applyStockMovement(
+      variantId: vid,
+      qtyDelta: 15,
+      type: StockMovementType.receive,
+      reason: 'شحنة مورد ملابس #101',
+      userId: 'admin_1',
+    );
+    final v = await (db.select(db.productVariants)..where((t) => t.id.equals(vid))).getSingle();
+    expect(v.quantity, 25);
+    final logs = await db.select(db.inventoryLogs).get();
+    final log = logs.firstWhere((l) => l.reason == 'شحنة مورد ملابس #101');
+    expect(log.qtyDelta, 15);
+    expect(log.type, 'receive');
+    expect(log.userId, 'admin_1');
+  });
+
+  test('getInventoryDetails returns joined product and variant data correctly', () async {
+    final vid = await seedVariant();
+    final details = await ids.getInventoryDetails();
+    expect(details.isNotEmpty, true);
+    final item = details.firstWhere((d) => d.variantId == vid);
+    expect(item.productName, 'Shirt');
+    expect(item.sku, 'SKU1');
+    expect(item.quantity, 10);
+  });
+
+  test('quickCreateProductAndReceive creates product, variant, and logs receive stock in one transaction', () async {
+    final detail = await ids.quickCreateProductAndReceive(
+      productName: 'Jacket',
+      categoryId: 'c1',
+      sku: 'JKT01',
+      color: 'Black',
+      size: 'L',
+      costPrice: 50000,
+      sellPrice: 85000,
+      quantity: 20,
+      reason: 'فاتورة توريد جاكيتات #99',
+      userId: 'admin',
+    );
+
+    expect(detail.productName, 'Jacket');
+    expect(detail.sku, 'JKT01');
+    expect(detail.quantity, 20);
+
+    final v = await (db.select(db.productVariants)..where((t) => t.id.equals(detail.variantId))).getSingle();
+    expect(v.quantity, 20);
+    expect(v.costPrice, 50000);
+    expect(v.sellPrice, 85000);
+
+    final logs = await db.select(db.inventoryLogs).get();
+    final log = logs.firstWhere((l) => l.reason == 'فاتورة توريد جاكيتات #99');
+    expect(log.qtyDelta, 20);
+    expect(log.type, 'receive');
+  });
 }
 
 

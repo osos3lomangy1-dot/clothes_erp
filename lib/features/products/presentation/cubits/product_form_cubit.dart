@@ -1,7 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import '../../../categories/domain/usecases/get_categories_usecase.dart';
+import '../../data/datasources/product_local_data_source.dart';
 import '../../domain/entities/product_entity.dart';
+import '../../domain/repositories/product_repository.dart';
 import '../../domain/usecases/add_product_usecase.dart';
 import '../../domain/usecases/update_product_usecase.dart';
 import 'product_form_state.dart';
@@ -11,11 +13,13 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   final AddProductUseCase _addProductUseCase;
   final UpdateProductUseCase _updateProductUseCase;
   final GetCategoriesUseCase _getCategoriesUseCase;
+  final ProductRepository _productRepository;
 
   ProductFormCubit(
     this._addProductUseCase,
     this._updateProductUseCase,
     this._getCategoriesUseCase,
+    this._productRepository,
   ) : super(const ProductFormState());
 
   Future<void> init(ProductEntity? product) async {
@@ -92,5 +96,57 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       )),
       (_) => emit(state.copyWith(status: ProductFormStatus.success)),
     );
+  }
+
+  Future<void> submitWithVariants({
+    String? id,
+    required List<VariantInput> variants,
+  }) async {
+    if (state.name.trim().isEmpty || state.categoryId == null) {
+      emit(state.copyWith(
+        status: ProductFormStatus.error,
+        errorMessage: 'اسم المنتج والتصنيف مطلوبان',
+      ));
+      return;
+    }
+
+    if (!state.isEdit && variants.isEmpty) {
+      emit(state.copyWith(
+        status: ProductFormStatus.error,
+        errorMessage: 'يرجى إضافة مقاس واحد على الأقل في جدول المقاسات',
+      ));
+      return;
+    }
+
+    emit(state.copyWith(status: ProductFormStatus.loading));
+
+    final product = ProductEntity(
+      id: id ?? '',
+      name: state.name.trim(),
+      description: state.description,
+      categoryId: state.categoryId!,
+      categoryName: state.categoryName ?? '',
+      createdAt: DateTime.now(),
+    );
+
+    if (state.isEdit) {
+      final result = await _updateProductUseCase(product);
+      result.fold(
+        (failure) => emit(state.copyWith(
+          status: ProductFormStatus.error,
+          errorMessage: failure.message,
+        )),
+        (_) => emit(state.copyWith(status: ProductFormStatus.success)),
+      );
+    } else {
+      final result = await _productRepository.addProductWithVariants(product, variants);
+      result.fold(
+        (failure) => emit(state.copyWith(
+          status: ProductFormStatus.error,
+          errorMessage: failure.message,
+        )),
+        (_) => emit(state.copyWith(status: ProductFormStatus.success)),
+      );
+    }
   }
 }

@@ -59,6 +59,73 @@ class ProductLocalDataSource {
     );
   }
 
+  Future<String> createProductWithVariants({
+    required String name,
+    required String categoryId,
+    String? description,
+    int minStock = 5,
+    required List<VariantInput> variants,
+    String userId = 'system',
+  }) async {
+    final now = DateTime.now();
+    final id = _uuid.v4();
+    final branchId = await _branchId();
+
+    await _tx.write(
+      writeFn: () async {
+        await _db.into(_db.products).insert(ProductsCompanion.insert(
+          id: id,
+          branchId: branchId,
+          name: name,
+          categoryId: categoryId,
+          description: Value(description),
+          minStock: Value(minStock),
+          createdAt: now,
+          updatedAt: now,
+        ));
+
+        for (final v in variants) {
+          final variantId = _uuid.v4();
+          await _db.into(_db.productVariants).insert(ProductVariantsCompanion.insert(
+            id: variantId,
+            branchId: branchId,
+            productId: id,
+            sku: v.sku,
+            color: v.color,
+            size: v.size,
+            costPrice: v.costPrice,
+            sellPrice: v.sellPrice,
+            quantity: Value(v.quantity),
+            createdAt: now,
+            updatedAt: now,
+          ));
+
+          if (v.quantity > 0) {
+            await _db.into(_db.inventoryLogs).insert(InventoryLogsCompanion.insert(
+              id: _uuid.v4(),
+              branchId: branchId,
+              variantId: variantId,
+              type: 'receive',
+              qtyDelta: v.quantity,
+              reason: const Value('رصيد افتتاحي / إضافة منتج جديد'),
+              refType: 'opening_stock',
+              refId: const Value.absent(),
+              userId: userId,
+              createdAt: now,
+            ));
+          }
+        }
+      },
+      branchId: branchId,
+      entity: 'product',
+      entityId: id,
+      operation: 'insert_with_variants',
+      userId: userId,
+    );
+
+    return id;
+  }
+
   Future<void> updateProduct(String id, {String? name, String? description, int? minStock, bool? isActive}) async {
     final now = DateTime.now();
     final branchId = await _branchId();
@@ -117,4 +184,22 @@ class ProductLocalDataSource {
           ..where((t) => t.deletedAt.isNull() & t.isActive.equals(true)))
         .get();
   }
+}
+
+class VariantInput {
+  final String sku;
+  final String color;
+  final String size;
+  final int costPrice;
+  final int sellPrice;
+  final int quantity;
+
+  const VariantInput({
+    required this.sku,
+    required this.color,
+    required this.size,
+    required this.costPrice,
+    required this.sellPrice,
+    required this.quantity,
+  });
 }
