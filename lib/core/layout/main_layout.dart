@@ -49,25 +49,51 @@ class _MainLayoutState extends State<MainLayout> {
               color: AppColors.primary,
               child: Column(
                 children: [
-                  IconButton(
-                    icon: Icon(_isCollapsed ? Icons.chevron_right : Icons.chevron_left, color: Colors.white),
-                    onPressed: () => setState(() => _isCollapsed = !_isCollapsed),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    child: Row(
+                      mainAxisAlignment: _isCollapsed ? MainAxisAlignment.center : MainAxisAlignment.spaceBetween,
+                      children: [
+                        if (!_isCollapsed) ...[
+                          const Row(
+                            children: [
+                              Icon(Icons.storefront_rounded, color: Colors.white, size: 24),
+                              SizedBox(width: 10),
+                              Text(
+                                'نظام الملابس',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                        IconButton(
+                          icon: Icon(_isCollapsed ? Icons.menu_rounded : Icons.menu_open_rounded, color: Colors.white),
+                          tooltip: _isCollapsed ? 'توسيع القائمة' : 'طي القائمة',
+                          onPressed: () => setState(() => _isCollapsed = !_isCollapsed),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 8),
+                  const Divider(color: Colors.white24, height: 1),
                   Expanded(
                     child: SingleChildScrollView(
                       child: Column(
                         children: [
-                          _navItem(Icons.dashboard, 'Dashboard', widget.child),
-                          _navItem(Icons.point_of_sale, 'POS', null, isPos: true),
-                          _navItem(Icons.inventory_2, 'Products', const ProductListScreen()),
-                          _navItem(Icons.category, 'Categories', const CategoryListScreen()),
-                          _navItem(Icons.warehouse, 'Inventory', const InventoryScreen()),
-                          _navItem(Icons.history, 'Inv. Logs', const InventoryLogsScreen()),
-                          _navItem(Icons.people, 'Customers', const CustomerScreen()),
-                          _navItem(Icons.assignment_return, 'Returns', const ReturnScreen()),
-                          _navItem(Icons.bar_chart, 'Reports', const ReportsScreen()),
-                          _navItem(Icons.badge, 'Employees', const EmployeeListScreen()),
+                          const SizedBox(height: 8),
+                          _navItem(Icons.dashboard_rounded, 'لوحة التحكم', widget.child),
+                          _navItem(Icons.point_of_sale_rounded, 'نقطة البيع (الكاشير)', null, isPos: true),
+                          _navItem(Icons.inventory_2_rounded, 'المنتجات والمقاسات', const ProductListScreen()),
+                          _navItem(Icons.category_rounded, 'التصنيفات', const CategoryListScreen()),
+                          _navItem(Icons.warehouse_rounded, 'إدارة المخزون', const InventoryScreen()),
+                          _navItem(Icons.history_rounded, 'حركات المخزن', const InventoryLogsScreen()),
+                          _navItem(Icons.people_alt_rounded, 'سجل العملاء', const CustomerScreen()),
+                          _navItem(Icons.assignment_return_rounded, 'إدارة المرتجعات', const ReturnScreen()),
+                          _navItem(Icons.bar_chart_rounded, 'تقارير المبيعات', const ReportsScreen()),
+                          _navItem(Icons.badge_rounded, 'فريق العمل والموظفون', const EmployeeListScreen()),
                         ],
                       ),
                     ),
@@ -85,7 +111,16 @@ class _MainLayoutState extends State<MainLayout> {
   Widget _navItem(IconData icon, String title, Widget? screen, {bool isPos = false}) {
     return ListTile(
       leading: Icon(icon, color: Colors.white),
-      title: _isCollapsed ? null : Text(title, style: const TextStyle(color: Colors.white)),
+      title: _isCollapsed
+          ? null
+          : Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
       onTap: () {
         if (isPos) {
           Navigator.push(context, MaterialPageRoute(builder: (_) => const PosScreen()));

@@ -32,7 +32,7 @@ class MyApp extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: MaterialApp(
-        title: 'Clothes ERP',
+        title: 'نظام إدارة محلات الملابس',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         builder: (context, child) {

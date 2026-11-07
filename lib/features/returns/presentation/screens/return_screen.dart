@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/money.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
@@ -30,18 +31,38 @@ class _ReturnScreenState extends State<ReturnScreen> {
     return BlocProvider(
       create: (context) => getIt<ReturnsCubit>()..init(),
       child: Scaffold(
-        appBar: AppBar(title: const Text('Process Returns')),
+        backgroundColor: AppColors.surface,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          title: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'إدارة مرتجعات المبيعات',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.onSurface),
+              ),
+              Text(
+                'البحث عن الفاتورة وإرجاع الأصناف وإعادة الرصيد للمخزن',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
         body: BlocConsumer<ReturnsCubit, ReturnsState>(
           listener: (context, state) {
             if (state.errorMessage != null) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.errorMessage!), backgroundColor: Colors.red),
+                SnackBar(content: Text(state.errorMessage!), backgroundColor: AppColors.error),
               );
             }
             if (state.successMessage != null) {
               _reasonCtrl.clear();
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.successMessage!), backgroundColor: Colors.green),
+                SnackBar(
+                  backgroundColor: Colors.green,
+                  content: Text(state.successMessage!),
+                ),
               );
             }
           },
@@ -58,12 +79,12 @@ class _ReturnScreenState extends State<ReturnScreen> {
                         child: TextField(
                           controller: _searchCtrl,
                           decoration: InputDecoration(
-                            labelText: 'Search sale by ID or Ref (e.g., S...)',
+                            labelText: 'ابحث برقم الفاتورة أو المعرف...',
                             border: const OutlineInputBorder(),
-                            prefixIcon: const Icon(Icons.search),
+                            prefixIcon: const Icon(Icons.search, color: AppColors.primary),
                             suffixIcon: _searchCtrl.text.isNotEmpty
                                 ? IconButton(
-                                    icon: const Icon(Icons.clear),
+                                    icon: const Icon(Icons.clear, size: 18),
                                     onPressed: () {
                                       _searchCtrl.clear();
                                       context.read<ReturnsCubit>().loadRecentSales();
@@ -76,8 +97,12 @@ class _ReturnScreenState extends State<ReturnScreen> {
                       ),
                       const SizedBox(width: 8),
                       ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
                         onPressed: () => context.read<ReturnsCubit>().searchSale(_searchCtrl.text),
-                        child: const Text('Search'),
+                        child: const Text('بحث', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       ),
                       if (state.selectedSale != null) ...[
                         const SizedBox(width: 8),
@@ -86,7 +111,7 @@ class _ReturnScreenState extends State<ReturnScreen> {
                             _searchCtrl.clear();
                             context.read<ReturnsCubit>().clearSelection();
                           },
-                          child: const Text('Back to List'),
+                          child: const Text('الرجوع للقائمة'),
                         ),
                       ],
                     ],
@@ -109,25 +134,58 @@ class _ReturnScreenState extends State<ReturnScreen> {
 
   Widget _buildRecentSalesList(BuildContext context, ReturnsState state) {
     if (state.recentSales.isEmpty) {
-      return const Center(child: Text('No completed sales found to return.'));
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey.shade400),
+            const SizedBox(height: 12),
+            const Text(
+              'لا توجد فواتير بيع سابقة لإجراء مرتجع عليها',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ],
+        ),
+      );
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Select a recent sale to return items:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        const SizedBox(height: 8),
+        const Text(
+          'اختر فاتورة بيع حديثة لإرجاع أصناف منها:',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.onSurface),
+        ),
+        const SizedBox(height: 10),
         Expanded(
-          child: ListView.builder(
+          child: ListView.separated(
             itemCount: state.recentSales.length,
+            separatorBuilder: (_, index) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final sale = state.recentSales[index];
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 4),
+              return Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
                 child: ListTile(
-                  leading: const CircleAvatar(child: Icon(Icons.receipt)),
-                  title: Text('Sale: ${sale.id.length > 8 ? sale.id.substring(0, 8) : sale.id} • Total: \$${Money(sale.total.toInt()).toDisplay()}'),
-                  subtitle: Text('Date: ${sale.date.toLocal().toString().split('.')[0]} • Cashier: ${sale.cashierId}'),
-                  trailing: const Icon(Icons.chevron_right),
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.receipt_rounded, color: AppColors.primary),
+                  ),
+                  title: Text(
+                    'فاتورة: ${sale.id.length > 8 ? sale.id.substring(0, 8) : sale.id} • الإجمالي: ${Money(sale.total.toInt()).toDisplay()} ج.م',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    'التاريخ: ${sale.date.toLocal().toString().split('.')[0]} • الكاشير: ${sale.cashierId}',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  ),
+                  trailing: const Icon(Icons.chevron_left_rounded, color: AppColors.primary),
                   onTap: () => context.read<ReturnsCubit>().selectSale(sale),
                 ),
               );
@@ -144,99 +202,127 @@ class _ReturnScreenState extends State<ReturnScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Card(
-            color: Colors.purple.shade50,
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Selected Sale: ${sale.id.length > 8 ? sale.id.substring(0, 8) : sale.id}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text('Date: ${sale.date.toLocal().toString().split('.')[0]} • Paid via: ${sale.paymentMethod.toUpperCase()}'),
-                    ],
-                  ),
-                  Text('Original Total: \$${Money(sale.total.toInt()).toDisplay()}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.purple)),
-                ],
-              ),
+          Container(
+            padding: const EdgeInsets.all(14.0),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainer,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
             ),
-          ),
-          const SizedBox(height: 16),
-          const Text('Select quantities to return:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          const SizedBox(height: 8),
-          ...state.returnItems.map((item) {
-            return Card(
-              margin: const EdgeInsets.symmetric(vertical: 4),
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Row(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(item.productName.isNotEmpty ? item.productName : item.variantId, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          Text('${item.color} - ${item.size} • Unit: \$${Money(item.refundUnitPrice).toDisplay()} (Max: ${item.maxQty})', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                        ],
-                      ),
+                    Text(
+                      'الفاتورة المحددة: ${sale.id.length > 8 ? sale.id.substring(0, 8) : sale.id}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.remove),
-                          onPressed: item.qty > 0 ? () => context.read<ReturnsCubit>().updateItemQty(item.variantId, item.qty - 1) : null,
-                        ),
-                        Text('${item.qty}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                        IconButton(
-                          icon: const Icon(Icons.add),
-                          onPressed: item.qty < item.maxQty ? () => context.read<ReturnsCubit>().updateItemQty(item.variantId, item.qty + 1) : null,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(width: 16),
-                    SizedBox(
-                      width: 90,
-                      child: Text(
-                        '\$${Money(item.lineTotal).toDisplay()}',
-                        textAlign: TextAlign.right,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.purple),
-                      ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'التاريخ: ${sale.date.toLocal().toString().split('.')[0]} • طريقة الدفع: ${sale.paymentMethod}',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
                     ),
                   ],
                 ),
+                Text(
+                  'الإجمالي الأصلي: ${Money(sale.total.toInt()).toDisplay()} ج.م',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'حدد كميات الأصناف المراد إرجاعها:',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.onSurface),
+          ),
+          const SizedBox(height: 8),
+          ...state.returnItems.map((item) {
+            return Container(
+              margin: const EdgeInsets.symmetric(vertical: 4),
+              padding: const EdgeInsets.all(12.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.productName.isNotEmpty ? item.productName : item.variantId,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          '${item.color} - مقاس ${item.size} • سعر القطعة: ${Money(item.refundUnitPrice).toDisplay()} ج.م (الحد الأقصى: ${item.maxQty})',
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline, color: AppColors.primary),
+                        onPressed: item.qty > 0 ? () => context.read<ReturnsCubit>().updateItemQty(item.variantId, item.qty - 1) : null,
+                      ),
+                      Text('${item.qty}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline, color: AppColors.primary),
+                        onPressed: item.qty < item.maxQty ? () => context.read<ReturnsCubit>().updateItemQty(item.variantId, item.qty + 1) : null,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 16),
+                  SizedBox(
+                    width: 100,
+                    child: Text(
+                      '${Money(item.lineTotal).toDisplay()} ج.م',
+                      textAlign: TextAlign.left,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.primary),
+                    ),
+                  ),
+                ],
               ),
             );
           }),
           const SizedBox(height: 16),
           // Refund Summary & Reason
           Card(
-            elevation: 2,
+            elevation: 1,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(18.0),
               child: Column(
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Total Refund Amount:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text('\$${Money(state.totalRefund).toDisplay()}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.purple)),
+                      const Text('إجمالي المبلغ المسترد للعميل:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text(
+                        '${Money(state.totalRefund).toDisplay()} ج.م',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 22, color: AppColors.primary),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   TextField(
                     controller: _reasonCtrl,
                     decoration: const InputDecoration(
-                      labelText: 'Return Reason (Required)',
+                      labelText: 'سبب الإرجاع (مطلوب) *',
                       border: OutlineInputBorder(),
-                      hintText: 'e.g. Defective, wrong size, customer requested return',
+                      hintText: 'مثال: عيب صناعة، مقاس غير مناسب، رغبة العميل',
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 18),
                   SizedBox(
                     width: double.infinity,
-                    height: 48,
+                    height: 50,
                     child: ElevatedButton.icon(
                       onPressed: state.isProcessing || state.totalRefund == 0
                           ? null
@@ -255,11 +341,19 @@ class _ReturnScreenState extends State<ReturnScreen> {
                                     paymentMethod: sale.paymentMethod,
                                   );
                             },
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.purple, foregroundColor: Colors.white),
-                      icon: state.isProcessing ? const SizedBox.shrink() : const Icon(Icons.assignment_return),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      icon: state.isProcessing
+                          ? const SizedBox.shrink()
+                          : const Icon(Icons.assignment_return_rounded, color: Colors.white),
                       label: state.isProcessing
                           ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text('Confirm and Process Return', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          : const Text(
+                              'تأكيد وإتمام المرتجع وإعادة البضاعة للمخزن',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
                     ),
                   ),
                 ],

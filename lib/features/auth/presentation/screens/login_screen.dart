@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../cubits/login_form_cubit.dart';
 import '../cubits/login_state.dart';
@@ -23,66 +24,152 @@ class _LoginView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
+      backgroundColor: AppColors.surface,
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.storefront, size: 80, color: theme.colorScheme.primary),
-              const SizedBox(height: 16),
-              Text('Clothes ERP', style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text('Clothing Store Management System', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey)),
-              const SizedBox(height: 48),
-              BlocBuilder<LoginFormCubit, LoginFormState>(
-                buildWhen: (p, c) => p.email != c.email,
-                builder: (context, state) {
-                  return TextField(
-                    onChanged: (val) => context.read<LoginFormCubit>().onEmailChanged(val),
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      prefixIcon: Icon(Icons.email_outlined),
-                      filled: true,
-                      fillColor: Colors.white,
-                    ),
-                  );
-                },
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
               ),
-              const SizedBox(height: 16),
-              BlocBuilder<LoginFormCubit, LoginFormState>(
-                buildWhen: (p, c) => p.password != c.password,
-                builder: (context, state) {
-                  return TextField(
-                    onChanged: (val) => context.read<LoginFormCubit>().onPasswordChanged(val),
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Password',
-                      prefixIcon: Icon(Icons.lock_outlined),
-                      filled: true,
-                      fillColor: Colors.white,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 40,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.storefront_rounded,
+                        size: 54,
+                        color: AppColors.primary,
+                      ),
                     ),
-                  );
-                },
-              ),
-              const SizedBox(height: 32),
-              BlocBuilder<LoginFormCubit, LoginFormState>(
-                builder: (context, state) {
-                  return SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed: state.isSubmitting ? null : () => context.read<LoginFormCubit>().submit(),
-                      child: state.isSubmitting
-                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Text('Login', style: TextStyle(fontSize: 16)),
+                    const SizedBox(height: 20),
+                    Text(
+                      'نظام إدارة محلات الملابس',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.onSurface,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                  );
-                },
+                    const SizedBox(height: 6),
+                    Text(
+                      'منظومة سحابية ومحلية لإدارة المبيعات والمخزون',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.grey.shade600,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 36),
+                    BlocBuilder<LoginFormCubit, LoginFormState>(
+                      buildWhen: (p, c) => p.email != c.email,
+                      builder: (context, state) {
+                        return TextField(
+                          onChanged: (val) => context
+                              .read<LoginFormCubit>()
+                              .onEmailChanged(val),
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: InputDecoration(
+                            labelText: 'البريد الإلكتروني',
+                            hintText: 'name@store.com',
+                            prefixIcon: const Icon(
+                              Icons.email_outlined,
+                              color: AppColors.primary,
+                            ),
+                            filled: true,
+                            fillColor: AppColors.surfaceContainerLow,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    BlocBuilder<LoginFormCubit, LoginFormState>(
+                      buildWhen: (p, c) => p.password != c.password,
+                      builder: (context, state) {
+                        return TextField(
+                          onChanged: (val) => context
+                              .read<LoginFormCubit>()
+                              .onPasswordChanged(val),
+                          obscureText: true,
+                          decoration: InputDecoration(
+                            labelText: 'كلمة المرور',
+                            prefixIcon: const Icon(
+                              Icons.lock_outlined,
+                              color: AppColors.primary,
+                            ),
+                            filled: true,
+                            fillColor: AppColors.surfaceContainerLow,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 28),
+                    BlocBuilder<LoginFormCubit, LoginFormState>(
+                      builder: (context, state) {
+                        return SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: state.isSubmitting
+                                ? null
+                                : () => context.read<LoginFormCubit>().submit(),
+                            child: state.isSubmitting
+                                ? const SizedBox(
+                                    height: 22,
+                                    width: 22,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2.5,
+                                    ),
+                                  )
+                                : const Text(
+                                    'تسجيل الدخول',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      '© 2026 جميع الحقوق محفوظة - نظام الملابس المتكامل',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.grey.shade500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 24),
-              Text('© 2026 Clothing Store ERP', style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey)),
-            ],
+            ),
           ),
         ),
       ),

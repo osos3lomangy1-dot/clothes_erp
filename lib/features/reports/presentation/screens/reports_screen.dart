@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/money.dart';
 import '../cubits/reports_cubit.dart';
@@ -25,13 +26,37 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
+  String _formatPaymentMethod(String method) {
+    final lower = method.toLowerCase();
+    if (lower == 'cash' || lower == 'نقدي') return 'نقدي (كاش)';
+    if (lower == 'card' || lower == 'visa' || lower == 'فيزا') return 'بطاقة / فيزا';
+    return method;
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => getIt<ReportsCubit>()
         ..loadReport(_dateRange!.start, _dateRange!.end),
       child: Scaffold(
-        appBar: AppBar(title: const Text('Sales Reports')),
+        backgroundColor: AppColors.surface,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          title: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'تقارير المبيعات والأرباح',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.onSurface),
+              ),
+              Text(
+                'تحليل الإيرادات والتكاليف وصافي الربح وطرق الدفع',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
         body: Builder(
           builder: (context) {
             return Padding(
@@ -39,35 +64,49 @@ class _ReportsScreenState extends State<ReportsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _dateRange != null
-                              ? '${_dateRange!.start.toLocal().toString().split(' ')[0]} - ${_dateRange!.end.toLocal().toString().split(' ')[0]}'
-                              : 'Select date range',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.date_range_rounded, color: AppColors.primary),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _dateRange != null
+                                ? 'الفترة: ${_dateRange!.start.toLocal().toString().split(' ')[0]} إلى ${_dateRange!.end.toLocal().toString().split(' ')[0]}'
+                                : 'اختر الفترة الزمنية للتقرير',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                          ),
                         ),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: () async {
-                          final picked = await showDateRangePicker(
-                            context: context,
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime.now(),
-                            initialDateRange: _dateRange,
-                          );
-                          if (picked != null) {
-                            setState(() => _dateRange = picked);
-                            if (context.mounted) {
-                              context.read<ReportsCubit>().loadReport(picked.start, picked.end);
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          onPressed: () async {
+                            final picked = await showDateRangePicker(
+                              context: context,
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime.now(),
+                              initialDateRange: _dateRange,
+                            );
+                            if (picked != null) {
+                              setState(() => _dateRange = picked);
+                              if (context.mounted) {
+                                context.read<ReportsCubit>().loadReport(picked.start, picked.end);
+                              }
                             }
-                          }
-                        },
-                        icon: const Icon(Icons.date_range),
-                        label: const Text('Pick Date Range'),
-                      ),
-                    ],
+                          },
+                          icon: const Icon(Icons.calendar_today_rounded, color: Colors.white, size: 16),
+                          label: const Text('تغيير الفترة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Expanded(
@@ -81,11 +120,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text(state.message, style: const TextStyle(color: Colors.red)),
+                                Text('خطأ: ${state.message}', style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 12),
                                 ElevatedButton(
+                                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
                                   onPressed: () => context.read<ReportsCubit>().loadReport(_dateRange!.start, _dateRange!.end),
-                                  child: const Text('Retry'),
+                                  child: const Text('إعادة المحاولة', style: TextStyle(color: Colors.white)),
                                 ),
                               ],
                             ),
@@ -99,69 +139,85 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                 children: [
                                   Expanded(
                                     child: _ReportCard(
-                                      title: 'Revenue',
-                                      value: '\$${Money(report.totalRevenue).toDisplay()}',
-                                      icon: Icons.attach_money,
-                                      color: Colors.green,
+                                      title: 'إجمالي المبيعات',
+                                      value: '${Money(report.totalRevenue).toDisplay()} ج.م',
+                                      icon: Icons.monetization_on_rounded,
+                                      color: Colors.green.shade700,
                                     ),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: _ReportCard(
-                                      title: 'Total Cost',
-                                      value: '\$${Money(report.totalCost).toDisplay()}',
+                                      title: 'إجمالي التكلفة',
+                                      value: '${Money(report.totalCost).toDisplay()} ج.م',
                                       icon: Icons.shopping_bag_outlined,
-                                      color: Colors.orange,
+                                      color: Colors.orange.shade800,
                                     ),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: _ReportCard(
-                                      title: 'Gross Profit',
-                                      value: '\$${Money(report.totalProfit).toDisplay()}',
-                                      icon: Icons.trending_up,
-                                      color: Colors.purple,
+                                      title: 'صافي الربح',
+                                      value: '${Money(report.totalProfit).toDisplay()} ج.م',
+                                      icon: Icons.trending_up_rounded,
+                                      color: AppColors.primary,
                                     ),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: _ReportCard(
-                                      title: 'Transactions',
+                                      title: 'عدد الفواتير',
                                       value: '${report.totalTransactions}',
-                                      icon: Icons.receipt_long,
-                                      color: Colors.blue,
+                                      icon: Icons.receipt_long_rounded,
+                                      color: Colors.blue.shade700,
                                     ),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 24),
                               const Text(
-                                'Payment Method Breakdown',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                                'تفصيل المبيعات بحسب طريقة الدفع',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.onSurface),
                               ),
                               const SizedBox(height: 8),
                               if (report.paymentMethodBreakdown.isEmpty)
-                                const Card(
-                                  child: Padding(
-                                    padding: EdgeInsets.all(16.0),
-                                    child: Text('No sales found for the selected period.'),
+                                Card(
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(20.0),
+                                    child: Center(
+                                      child: Text(
+                                        'لا توجد عمليات بيع مسجلة خلال الفترة المحددة.',
+                                        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
+                                      ),
+                                    ),
                                   ),
                                 )
                               else
                                 ...report.paymentMethodBreakdown.entries.map(
                                   (e) => Card(
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                     child: ListTile(
-                                      leading: Icon(
-                                        e.key.toLowerCase() == 'cash' ? Icons.money : Icons.credit_card,
-                                        color: Colors.deepPurple,
+                                      leading: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Icon(
+                                          e.key.toLowerCase().contains('cash') || e.key.contains('كاش')
+                                              ? Icons.money_rounded
+                                              : Icons.credit_card_rounded,
+                                          color: AppColors.primary,
+                                        ),
                                       ),
                                       title: Text(
-                                        e.key.toUpperCase(),
-                                        style: const TextStyle(fontWeight: FontWeight.bold),
+                                        _formatPaymentMethod(e.key),
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                       ),
                                       trailing: Text(
-                                        '\$${Money(e.value).toDisplay()}',
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                        '${Money(e.value).toDisplay()} ج.م',
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary),
                                       ),
                                     ),
                                   ),
@@ -199,20 +255,27 @@ class _ReportCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(18.0),
         child: Column(
           children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 26),
+            ),
+            const SizedBox(height: 10),
             Text(
               value,
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color),
             ),
             const SizedBox(height: 4),
-            Text(title, style: const TextStyle(fontSize: 13, color: Colors.grey)),
+            Text(title, style: TextStyle(fontSize: 12, color: Colors.grey.shade600), textAlign: TextAlign.center),
           ],
         ),
       ),
