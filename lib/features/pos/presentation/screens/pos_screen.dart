@@ -1959,6 +1959,118 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
     });
   }
 
+  Future<void> _showQuickAddCustomer(BuildContext context) async {
+    final search = _searchCtrl.text.trim();
+    final isPhone = RegExp(r'^[0-9+]+$').hasMatch(search);
+
+    final nameCtrl = TextEditingController(text: isPhone ? '' : search);
+    final phoneCtrl = TextEditingController(text: isPhone ? search : '');
+    final formKey = GlobalKey<FormState>();
+
+    final newCust = await showDialog<CustomerEntity>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.person_add_rounded, color: AppColors.primary),
+            const SizedBox(width: 8),
+            Text(
+              'تسجيل عميل جديد من الكاشير',
+              style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ],
+        ),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: nameCtrl,
+                style: GoogleFonts.cairo(fontSize: 13),
+                decoration: InputDecoration(
+                  labelText: 'اسم العميل *',
+                  hintText: 'مثال: محمد أحمد',
+                  prefixIcon: const Icon(Icons.person_outline),
+                  isDense: true,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                validator: (val) => val == null || val.trim().isEmpty ? 'يرجى إدخال اسم العميل' : null,
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: phoneCtrl,
+                keyboardType: TextInputType.phone,
+                style: GoogleFonts.cairo(fontSize: 13),
+                decoration: InputDecoration(
+                  labelText: 'رقم الهاتف *',
+                  hintText: 'مثال: 01012345678',
+                  prefixIcon: const Icon(Icons.phone_outlined),
+                  isDense: true,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                validator: (val) => val == null || val.trim().isEmpty ? 'يرجى إدخال رقم الهاتف' : null,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('إلغاء', style: GoogleFonts.cairo()),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () async {
+              if (formKey.currentState?.validate() != true) return;
+              final cust = CustomerEntity(
+                id: '',
+                name: nameCtrl.text.trim(),
+                phone: phoneCtrl.text.trim(),
+                loyaltyPoints: 0,
+                createdAt: DateTime.now(),
+              );
+              final res = await getIt<CustomerRepository>().addCustomer(cust);
+              res.fold(
+                (failure) {
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(content: Text('خطأ: ${failure.message}'), backgroundColor: AppColors.error),
+                    );
+                  }
+                },
+                (_) async {
+                  final listRes = await getIt<CustomerRepository>().getCustomers(search: cust.phone);
+                  CustomerEntity? createdCust;
+                  listRes.fold((_) => null, (list) {
+                    if (list.isNotEmpty) createdCust = list.first;
+                  });
+                  createdCust ??= cust;
+                  if (ctx.mounted) {
+                    Navigator.pop(ctx, createdCust);
+                  }
+                },
+              );
+            },
+            child: Text(
+              'حفظ وتعيين للفاتورة',
+              style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (newCust != null && mounted) {
+      Navigator.pop(context, newCust);
+    }
+  }
+
   @override
   void dispose() {
     _searchCtrl.dispose();
@@ -1969,13 +2081,31 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text(
-        'تعيين عميل للفاتورة',
-        style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 18),
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'تعيين عميل للفاتورة',
+            style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 17),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => _showQuickAddCustomer(context),
+            icon: const Icon(Icons.person_add_rounded, size: 16, color: Colors.white),
+            label: Text(
+              'عميل جديد',
+              style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+          ),
+        ],
       ),
       content: SizedBox(
-        width: 420,
-        height: 420,
+        width: 440,
+        height: 440,
         child: Column(
           children: [
             TextField(
@@ -2001,9 +2131,31 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
                   ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
                   : _filteredCustomers.isEmpty
                       ? Center(
-                          child: Text(
-                            'لم يتم العثور على عملاء',
-                            style: GoogleFonts.cairo(color: Colors.grey),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.person_search_rounded, size: 48, color: Colors.grey.shade400),
+                              const SizedBox(height: 10),
+                              Text(
+                                'لم يتم العثور على عملاء',
+                                style: GoogleFonts.cairo(color: Colors.grey.shade700, fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 12),
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                onPressed: () => _showQuickAddCustomer(context),
+                                icon: const Icon(Icons.add, color: Colors.white, size: 16),
+                                label: Text(
+                                  _searchCtrl.text.isNotEmpty
+                                      ? 'تسجيل "${_searchCtrl.text}" الآن'
+                                      : 'تسجيل عميل جديد',
+                                  style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                                ),
+                              ),
+                            ],
                           ),
                         )
                       : ListView.separated(

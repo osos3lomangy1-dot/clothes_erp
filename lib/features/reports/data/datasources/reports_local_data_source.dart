@@ -66,15 +66,24 @@ class ReportsLocalDataSourceImpl implements ReportsLocalDataSource {
 
     final totalProfit = totalRevenue - totalCost;
 
+    // 3. Calculate expenses in this period
+    final expensesQuery = _db.select(_db.expenses)
+      ..where((e) =>
+          e.expenseDate.isBiggerOrEqualValue(start) &
+          e.expenseDate.isSmallerOrEqualValue(end) &
+          e.deletedAt.isNull());
+    final expenseRows = await expensesQuery.get();
+    final totalExpenses = expenseRows.fold<int>(0, (sum, e) => sum + e.amount);
+
     return SalesReportEntity(
       startDate: startDate,
       endDate: endDate,
       totalRevenue: totalRevenue,
       totalCost: totalCost,
       totalProfit: totalProfit,
+      totalExpenses: totalExpenses,
       totalTransactions: salesRows.length,
       paymentMethodBreakdown: paymentBreakdown,
     );
   }
 }
-

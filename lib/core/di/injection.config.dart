@@ -85,6 +85,14 @@ import 'package:clothes_erp/features/employees/presentation/cubits/employee_cubi
     as _i164;
 import 'package:clothes_erp/features/employees/presentation/cubits/employee_form_cubit.dart'
     as _i361;
+import 'package:clothes_erp/features/expenses/data/datasources/expenses_local_data_source.dart'
+    as _i503;
+import 'package:clothes_erp/features/expenses/data/repositories/expense_repository_impl.dart'
+    as _i868;
+import 'package:clothes_erp/features/expenses/domain/repositories/expense_repository.dart'
+    as _i351;
+import 'package:clothes_erp/features/expenses/presentation/cubits/expenses_cubit.dart'
+    as _i773;
 import 'package:clothes_erp/features/inventory/data/datasources/inventory_local_data_source.dart'
     as _i1019;
 import 'package:clothes_erp/features/inventory/data/datasources/inventory_remote_data_source.dart'
@@ -105,6 +113,14 @@ import 'package:clothes_erp/features/inventory/presentation/cubits/inventory_cub
     as _i779;
 import 'package:clothes_erp/features/inventory/presentation/cubits/inventory_log_cubit.dart'
     as _i94;
+import 'package:clothes_erp/features/partners/data/datasources/partners_local_data_source.dart'
+    as _i556;
+import 'package:clothes_erp/features/partners/data/repositories/partner_repository_impl.dart'
+    as _i859;
+import 'package:clothes_erp/features/partners/domain/repositories/partner_repository.dart'
+    as _i971;
+import 'package:clothes_erp/features/partners/presentation/cubits/partners_cubit.dart'
+    as _i638;
 import 'package:clothes_erp/features/pos/data/datasources/pos_local_data_source.dart'
     as _i926;
 import 'package:clothes_erp/features/pos/data/repositories/pos_repository_impl.dart'
@@ -214,6 +230,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i1045.ReportsLocalDataSource>(
       () => _i1045.ReportsLocalDataSourceImpl(gh<_i110.AppDatabase>()),
     );
+    gh.lazySingleton<_i556.PartnersLocalDataSource>(
+      () => _i556.PartnersLocalDataSourceImpl(gh<_i110.AppDatabase>()),
+    );
     gh.lazySingleton<_i303.InventoryRemoteDataSource>(
       () => _i303.InventoryRemoteDataSourceImpl(gh<_i974.FirebaseFirestore>()),
     );
@@ -229,6 +248,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i874.TxWriter>(() => _i874.TxWriter(gh<_i110.AppDatabase>()));
     gh.lazySingleton<_i682.DashboardRepository>(
       () => _i729.DashboardRepositoryImpl(gh<_i517.DashboardLocalDataSource>()),
+    );
+    gh.lazySingleton<_i971.PartnerRepository>(
+      () => _i859.PartnerRepositoryImpl(gh<_i556.PartnersLocalDataSource>()),
     );
     gh.lazySingleton<_i689.AuthRepository>(
       () => _i1043.AuthRepositoryImpl(
@@ -253,6 +275,13 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i957.GetSalesReportUseCase>(
       () => _i957.GetSalesReportUseCase(gh<_i633.ReportsRepository>()),
+    );
+    gh.lazySingleton<_i503.ExpensesLocalDataSource>(
+      () => _i503.ExpensesLocalDataSourceImpl(
+        gh<_i110.AppDatabase>(),
+        gh<_i254.BranchProvider>(),
+        gh<_i874.TxWriter>(),
+      ),
     );
     gh.lazySingleton<_i1019.InventoryLocalDataSource>(
       () => _i1019.InventoryLocalDataSource(
@@ -289,6 +318,9 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i874.TxWriter>(),
       ),
     );
+    gh.lazySingleton<_i351.ExpenseRepository>(
+      () => _i868.ExpenseRepositoryImpl(gh<_i503.ExpensesLocalDataSource>()),
+    );
     gh.lazySingleton<_i758.ProductRepository>(
       () => _i492.ProductRepositoryImpl(gh<_i878.ProductLocalDataSource>()),
     );
@@ -306,6 +338,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i661.LogoutUseCase>(
       () => _i661.LogoutUseCase(gh<_i689.AuthRepository>()),
+    );
+    gh.factory<_i638.PartnersCubit>(
+      () => _i638.PartnersCubit(gh<_i971.PartnerRepository>()),
     );
     gh.lazySingleton<_i202.AddVariantUseCase>(
       () => _i202.AddVariantUseCase(gh<_i77.VariantRepository>()),
@@ -422,6 +457,9 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i232.GetLowStockUseCase>(),
         gh<_i1019.InventoryLocalDataSource>(),
       ),
+    );
+    gh.factory<_i773.ExpensesCubit>(
+      () => _i773.ExpensesCubit(gh<_i351.ExpenseRepository>()),
     );
     gh.factory<_i548.ProductFormCubit>(
       () => _i548.ProductFormCubit(

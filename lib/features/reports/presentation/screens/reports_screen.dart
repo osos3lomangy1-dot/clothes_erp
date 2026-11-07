@@ -145,25 +145,34 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                       color: Colors.green.shade700,
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  const SizedBox(width: 10),
                                   Expanded(
                                     child: _ReportCard(
-                                      title: 'إجمالي التكلفة',
+                                      title: 'تكلفة البضاعة',
                                       value: '${Money(report.totalCost).toDisplay()} ج.م',
                                       icon: Icons.shopping_bag_outlined,
                                       color: Colors.orange.shade800,
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  const SizedBox(width: 10),
                                   Expanded(
                                     child: _ReportCard(
-                                      title: 'صافي الربح',
-                                      value: '${Money(report.totalProfit).toDisplay()} ج.م',
-                                      icon: Icons.trending_up_rounded,
-                                      color: AppColors.primary,
+                                      title: 'المصروفات',
+                                      value: '${Money(report.totalExpenses).toDisplay()} ج.م',
+                                      icon: Icons.outbox_rounded,
+                                      color: AppColors.error,
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: _ReportCard(
+                                      title: 'صافي الربح الفعلي',
+                                      value: '${Money(report.netProfit).toDisplay()} ج.م',
+                                      icon: Icons.trending_up_rounded,
+                                      color: report.netProfit >= 0 ? AppColors.primary : AppColors.error,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
                                   Expanded(
                                     child: _ReportCard(
                                       title: 'عدد الفواتير',

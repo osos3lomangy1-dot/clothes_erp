@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../../features/products/presentation/screens/product_list_screen.dart';
-import '../../features/categories/presentation/screens/category_list_screen.dart';
 import '../../features/inventory/presentation/screens/inventory_screen.dart';
 import '../../features/inventory/presentation/screens/inventory_logs_screen.dart';
 import '../../features/customers/presentation/screens/customer_screen.dart';
 import '../../features/returns/presentation/screens/return_screen.dart';
 import '../../features/reports/presentation/screens/reports_screen.dart';
 import '../../features/employees/presentation/screens/employee_list_screen.dart';
+import '../../features/expenses/presentation/screens/expenses_screen.dart';
+import '../../features/partners/presentation/screens/partners_screen.dart';
 import '../../features/pos/presentation/screens/pos_screen.dart';
 
 class MainLayout extends StatefulWidget {
@@ -86,13 +87,14 @@ class _MainLayoutState extends State<MainLayout> {
                           const SizedBox(height: 8),
                           _navItem(Icons.dashboard_rounded, 'لوحة التحكم', widget.child),
                           _navItem(Icons.point_of_sale_rounded, 'نقطة البيع (الكاشير)', null, isPos: true),
-                          _navItem(Icons.inventory_2_rounded, 'المنتجات والمقاسات', const ProductListScreen()),
-                          _navItem(Icons.category_rounded, 'التصنيفات', const CategoryListScreen()),
+                          _navItem(Icons.inventory_2_rounded, 'المنتجات والتصنيفات', const ProductListScreen()),
                           _navItem(Icons.warehouse_rounded, 'إدارة المخزون', const InventoryScreen()),
                           _navItem(Icons.history_rounded, 'حركات المخزن', const InventoryLogsScreen()),
                           _navItem(Icons.people_alt_rounded, 'سجل العملاء', const CustomerScreen()),
+                          _navItem(Icons.payments_outlined, 'إدارة المصروفات', const ExpensesScreen()),
                           _navItem(Icons.assignment_return_rounded, 'إدارة المرتجعات', const ReturnScreen()),
                           _navItem(Icons.bar_chart_rounded, 'تقارير المبيعات', const ReportsScreen()),
+                          _navItem(Icons.handshake_rounded, 'الشركاء وتوزيع الأرباح', const PartnersScreen()),
                           _navItem(Icons.badge_rounded, 'فريق العمل والموظفون', const EmployeeListScreen()),
                         ],
                       ),
