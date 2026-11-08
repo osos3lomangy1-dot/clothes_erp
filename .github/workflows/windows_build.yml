@@ -1,0 +1,107 @@
+name: Windows Build & Release
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      build_msix:
+        description: 'Also build MSIX installer? (true/false)'
+        required: false
+        default: 'true'
+
+jobs:
+  analyze-and-test:
+    name: 🔍 Analyze & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Get Dependencies
+        run: flutter pub get
+
+      - name: Run Code Generation
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Flutter Analyze
+        run: flutter analyze
+
+      - name: Flutter Test
+        run: flutter test --reporter github
+
+  build-windows:
+    name: 🪟 Build Windows
+    runs-on: windows-latest
+    needs: analyze-and-test
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Get Dependencies
+        run: flutter pub get
+
+      - name: Run Code Generation
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Enable Windows Desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Build Windows Release
+        run: flutter build windows --release
+
+      - name: Get App Version
+        id: version
+        shell: pwsh
+        run: |
+          $version = (Select-String -Path pubspec.yaml -Pattern "^version:\s+(.+)$").Matches.Groups[1].Value.Trim()
+          echo "APP_VERSION=$version" >> $env:GITHUB_ENV
+          echo "Version: $version"
+
+      - name: Package Release (ZIP)
+        shell: pwsh
+        run: |
+          $src = "build\windows\x64\runner\Release"
+          $zip = "orchid_erp_windows_v${{ env.APP_VERSION }}.zip"
+          Compress-Archive -Path "$src\*" -DestinationPath $zip -Force
+          echo "ZIP created: $zip"
+          echo "ARTIFACT_ZIP=$zip" >> $env:GITHUB_ENV
+
+      - name: Upload Windows Release ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: orchid-erp-windows-v${{ env.APP_VERSION }}
+          path: orchid_erp_windows_v${{ env.APP_VERSION }}.zip
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Build MSIX Installer
+        if: ${{ github.event.inputs.build_msix != 'false' }}
+        run: dart run msix:create
+        continue-on-error: true
+
+      - name: Upload MSIX Installer
+        if: ${{ github.event.inputs.build_msix != 'false' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: orchid-erp-msix-v${{ env.APP_VERSION }}
+          path: build/windows/x64/runner/Release/*.msix
+          retention-days: 30
+          if-no-files-found: warn
+
