@@ -29,15 +29,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
   String _formatPaymentMethod(String method) {
     final lower = method.toLowerCase();
     if (lower == 'cash' || lower == 'نقدي') return 'نقدي (كاش)';
-    if (lower == 'card' || lower == 'visa' || lower == 'فيزا') return 'بطاقة / فيزا';
+    if (lower == 'card' || lower == 'visa' || lower == 'فيزا') {
+      return 'بطاقة / فيزا';
+    }
     return method;
   }
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => getIt<ReportsCubit>()
-        ..loadReport(_dateRange!.start, _dateRange!.end),
+      create: (context) =>
+          getIt<ReportsCubit>()..loadReport(_dateRange!.start, _dateRange!.end),
       child: Scaffold(
         backgroundColor: AppColors.surface,
         appBar: AppBar(
@@ -48,7 +50,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
             children: [
               Text(
                 'تقارير المبيعات والأرباح',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.onSurface),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: AppColors.onSurface,
+                ),
               ),
               Text(
                 'تحليل الإيرادات والتكاليف وصافي الربح وطرق الدفع',
@@ -73,20 +79,28 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.date_range_rounded, color: AppColors.primary),
+                        const Icon(
+                          Icons.date_range_rounded,
+                          color: AppColors.primary,
+                        ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             _dateRange != null
                                 ? 'الفترة: ${_dateRange!.start.toLocal().toString().split(' ')[0]} إلى ${_dateRange!.end.toLocal().toString().split(' ')[0]}'
                                 : 'اختر الفترة الزمنية للتقرير',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
                           ),
                         ),
                         ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
                           onPressed: () async {
                             final picked = await showDateRangePicker(
@@ -98,12 +112,25 @@ class _ReportsScreenState extends State<ReportsScreen> {
                             if (picked != null) {
                               setState(() => _dateRange = picked);
                               if (context.mounted) {
-                                context.read<ReportsCubit>().loadReport(picked.start, picked.end);
+                                context.read<ReportsCubit>().loadReport(
+                                  picked.start,
+                                  picked.end,
+                                );
                               }
                             }
                           },
-                          icon: const Icon(Icons.calendar_today_rounded, color: Colors.white, size: 16),
-                          label: const Text('تغيير الفترة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          icon: const Icon(
+                            Icons.calendar_today_rounded,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                          label: const Text(
+                            'تغيير الفترة',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -113,19 +140,36 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     child: BlocBuilder<ReportsCubit, ReportsState>(
                       builder: (context, state) {
                         if (state is ReportsLoading) {
-                          return const Center(child: CircularProgressIndicator());
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
                         }
                         if (state is ReportsError) {
                           return Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text('خطأ: ${state.message}', style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
+                                Text(
+                                  'خطأ: ${state.message}',
+                                  style: const TextStyle(
+                                    color: AppColors.error,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                                 const SizedBox(height: 12),
                                 ElevatedButton(
-                                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-                                  onPressed: () => context.read<ReportsCubit>().loadReport(_dateRange!.start, _dateRange!.end),
-                                  child: const Text('إعادة المحاولة', style: TextStyle(color: Colors.white)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                  ),
+                                  onPressed: () =>
+                                      context.read<ReportsCubit>().loadReport(
+                                        _dateRange!.start,
+                                        _dateRange!.end,
+                                      ),
+                                  child: const Text(
+                                    'إعادة المحاولة',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
                                 ),
                               ],
                             ),
@@ -140,7 +184,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                   Expanded(
                                     child: _ReportCard(
                                       title: 'إجمالي المبيعات',
-                                      value: '${Money(report.totalRevenue).toDisplay()} ج.م',
+                                      value:
+                                          '${Money(report.totalRevenue).toDisplay()} ج.م',
                                       icon: Icons.monetization_on_rounded,
                                       color: Colors.green.shade700,
                                     ),
@@ -149,7 +194,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                   Expanded(
                                     child: _ReportCard(
                                       title: 'تكلفة البضاعة',
-                                      value: '${Money(report.totalCost).toDisplay()} ج.م',
+                                      value:
+                                          '${Money(report.totalCost).toDisplay()} ج.م',
                                       icon: Icons.shopping_bag_outlined,
                                       color: Colors.orange.shade800,
                                     ),
@@ -158,7 +204,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                   Expanded(
                                     child: _ReportCard(
                                       title: 'المصروفات',
-                                      value: '${Money(report.totalExpenses).toDisplay()} ج.م',
+                                      value:
+                                          '${Money(report.totalExpenses).toDisplay()} ج.م',
                                       icon: Icons.outbox_rounded,
                                       color: AppColors.error,
                                     ),
@@ -167,9 +214,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                   Expanded(
                                     child: _ReportCard(
                                       title: 'صافي الربح الفعلي',
-                                      value: '${Money(report.netProfit).toDisplay()} ج.م',
+                                      value:
+                                          '${Money(report.netProfit).toDisplay()} ج.م',
                                       icon: Icons.trending_up_rounded,
-                                      color: report.netProfit >= 0 ? AppColors.primary : AppColors.error,
+                                      color: report.netProfit >= 0
+                                          ? AppColors.primary
+                                          : AppColors.error,
                                     ),
                                   ),
                                   const SizedBox(width: 10),
@@ -186,18 +236,27 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               const SizedBox(height: 24),
                               const Text(
                                 'تفصيل المبيعات بحسب طريقة الدفع',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.onSurface),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                  color: AppColors.onSurface,
+                                ),
                               ),
                               const SizedBox(height: 8),
                               if (report.paymentMethodBreakdown.isEmpty)
                                 Card(
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
                                   child: const Padding(
                                     padding: EdgeInsets.all(20.0),
                                     child: Center(
                                       child: Text(
                                         'لا توجد عمليات بيع مسجلة خلال الفترة المحددة.',
-                                        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.grey,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -205,16 +264,25 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               else
                                 ...report.paymentMethodBreakdown.entries.map(
                                   (e) => Card(
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
                                     child: ListTile(
                                       leading: Container(
                                         padding: const EdgeInsets.all(8),
                                         decoration: BoxDecoration(
-                                          color: AppColors.primary.withValues(alpha: 0.1),
-                                          borderRadius: BorderRadius.circular(8),
+                                          color: AppColors.primary.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                         ),
                                         child: Icon(
-                                          e.key.toLowerCase().contains('cash') || e.key.contains('كاش')
+                                          e.key.toLowerCase().contains(
+                                                    'cash',
+                                                  ) ||
+                                                  e.key.contains('كاش')
                                               ? Icons.money_rounded
                                               : Icons.credit_card_rounded,
                                           color: AppColors.primary,
@@ -222,11 +290,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                       ),
                                       title: Text(
                                         _formatPaymentMethod(e.key),
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
                                       ),
                                       trailing: Text(
                                         '${Money(e.value).toDisplay()} ج.م',
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                          color: AppColors.primary,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -281,10 +356,18 @@ class _ReportCard extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               value,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
             ),
             const SizedBox(height: 4),
-            Text(title, style: TextStyle(fontSize: 12, color: Colors.grey.shade600), textAlign: TextAlign.center),
+            Text(
+              title,
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),

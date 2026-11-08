@@ -3,8 +3,10 @@ import '../../../../core/errors/failures.dart';
 import '../entities/employee_entity.dart';
 
 abstract class EmployeeRepository {
-  Stream<List<EmployeeEntity>> getEmployees();
-  Future<Either<Failure, Unit>> addEmployee(EmployeeEntity employee);
+  Future<Either<Failure, List<EmployeeEntity>>> getEmployees({String? search});
+  Future<Either<Failure, EmployeeEntity?>> getEmployeeById(String id);
+  Future<Either<Failure, EmployeeEntity>> addEmployee(EmployeeEntity employee, {String? password});
+  Future<Either<Failure, EmployeeEntity>> updateEmployee(EmployeeEntity employee);
   Future<Either<Failure, Unit>> updateEmployeeStatus(String id, bool isActive);
   Future<Either<Failure, Unit>> deleteEmployee(String id);
 }

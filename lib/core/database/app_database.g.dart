@@ -108,6 +108,16 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _salaryMeta = const VerificationMeta('salary');
+  @override
+  late final GeneratedColumn<int> salary = GeneratedColumn<int>(
+    'salary',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -152,6 +162,7 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
     passwordSalt,
     pinHash,
     isActive,
+    salary,
     createdAt,
     updatedAt,
     deletedAt,
@@ -242,6 +253,12 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
         isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
       );
     }
+    if (data.containsKey('salary')) {
+      context.handle(
+        _salaryMeta,
+        salary.isAcceptableOrUnknown(data['salary']!, _salaryMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -309,6 +326,10 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
         DriftSqlType.bool,
         data['${effectivePrefix}is_active'],
       )!,
+      salary: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}salary'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -340,6 +361,7 @@ class User extends DataClass implements Insertable<User> {
   final String passwordSalt;
   final String? pinHash;
   final bool isActive;
+  final int salary;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
@@ -353,6 +375,7 @@ class User extends DataClass implements Insertable<User> {
     required this.passwordSalt,
     this.pinHash,
     required this.isActive,
+    required this.salary,
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
@@ -371,6 +394,7 @@ class User extends DataClass implements Insertable<User> {
       map['pin_hash'] = Variable<String>(pinHash);
     }
     map['is_active'] = Variable<bool>(isActive);
+    map['salary'] = Variable<int>(salary);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     if (!nullToAbsent || deletedAt != null) {
@@ -392,6 +416,7 @@ class User extends DataClass implements Insertable<User> {
           ? const Value.absent()
           : Value(pinHash),
       isActive: Value(isActive),
+      salary: Value(salary),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
@@ -415,6 +440,7 @@ class User extends DataClass implements Insertable<User> {
       passwordSalt: serializer.fromJson<String>(json['passwordSalt']),
       pinHash: serializer.fromJson<String?>(json['pinHash']),
       isActive: serializer.fromJson<bool>(json['isActive']),
+      salary: serializer.fromJson<int>(json['salary']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
@@ -433,6 +459,7 @@ class User extends DataClass implements Insertable<User> {
       'passwordSalt': serializer.toJson<String>(passwordSalt),
       'pinHash': serializer.toJson<String?>(pinHash),
       'isActive': serializer.toJson<bool>(isActive),
+      'salary': serializer.toJson<int>(salary),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
@@ -449,6 +476,7 @@ class User extends DataClass implements Insertable<User> {
     String? passwordSalt,
     Value<String?> pinHash = const Value.absent(),
     bool? isActive,
+    int? salary,
     DateTime? createdAt,
     DateTime? updatedAt,
     Value<DateTime?> deletedAt = const Value.absent(),
@@ -462,6 +490,7 @@ class User extends DataClass implements Insertable<User> {
     passwordSalt: passwordSalt ?? this.passwordSalt,
     pinHash: pinHash.present ? pinHash.value : this.pinHash,
     isActive: isActive ?? this.isActive,
+    salary: salary ?? this.salary,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -483,6 +512,7 @@ class User extends DataClass implements Insertable<User> {
           : this.passwordSalt,
       pinHash: data.pinHash.present ? data.pinHash.value : this.pinHash,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      salary: data.salary.present ? data.salary.value : this.salary,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -501,6 +531,7 @@ class User extends DataClass implements Insertable<User> {
           ..write('passwordSalt: $passwordSalt, ')
           ..write('pinHash: $pinHash, ')
           ..write('isActive: $isActive, ')
+          ..write('salary: $salary, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt')
@@ -519,6 +550,7 @@ class User extends DataClass implements Insertable<User> {
     passwordSalt,
     pinHash,
     isActive,
+    salary,
     createdAt,
     updatedAt,
     deletedAt,
@@ -536,6 +568,7 @@ class User extends DataClass implements Insertable<User> {
           other.passwordSalt == this.passwordSalt &&
           other.pinHash == this.pinHash &&
           other.isActive == this.isActive &&
+          other.salary == this.salary &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt);
@@ -551,6 +584,7 @@ class UsersCompanion extends UpdateCompanion<User> {
   final Value<String> passwordSalt;
   final Value<String?> pinHash;
   final Value<bool> isActive;
+  final Value<int> salary;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
@@ -565,6 +599,7 @@ class UsersCompanion extends UpdateCompanion<User> {
     this.passwordSalt = const Value.absent(),
     this.pinHash = const Value.absent(),
     this.isActive = const Value.absent(),
+    this.salary = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -580,6 +615,7 @@ class UsersCompanion extends UpdateCompanion<User> {
     required String passwordSalt,
     this.pinHash = const Value.absent(),
     this.isActive = const Value.absent(),
+    this.salary = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.deletedAt = const Value.absent(),
@@ -603,6 +639,7 @@ class UsersCompanion extends UpdateCompanion<User> {
     Expression<String>? passwordSalt,
     Expression<String>? pinHash,
     Expression<bool>? isActive,
+    Expression<int>? salary,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
@@ -618,6 +655,7 @@ class UsersCompanion extends UpdateCompanion<User> {
       if (passwordSalt != null) 'password_salt': passwordSalt,
       if (pinHash != null) 'pin_hash': pinHash,
       if (isActive != null) 'is_active': isActive,
+      if (salary != null) 'salary': salary,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -635,6 +673,7 @@ class UsersCompanion extends UpdateCompanion<User> {
     Value<String>? passwordSalt,
     Value<String?>? pinHash,
     Value<bool>? isActive,
+    Value<int>? salary,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<DateTime?>? deletedAt,
@@ -650,6 +689,7 @@ class UsersCompanion extends UpdateCompanion<User> {
       passwordSalt: passwordSalt ?? this.passwordSalt,
       pinHash: pinHash ?? this.pinHash,
       isActive: isActive ?? this.isActive,
+      salary: salary ?? this.salary,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -687,6 +727,9 @@ class UsersCompanion extends UpdateCompanion<User> {
     if (isActive.present) {
       map['is_active'] = Variable<bool>(isActive.value);
     }
+    if (salary.present) {
+      map['salary'] = Variable<int>(salary.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -714,6 +757,7 @@ class UsersCompanion extends UpdateCompanion<User> {
           ..write('passwordSalt: $passwordSalt, ')
           ..write('pinHash: $pinHash, ')
           ..write('isActive: $isActive, ')
+          ..write('salary: $salary, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -11502,6 +11546,7 @@ typedef $$UsersTableCreateCompanionBuilder =
       required String passwordSalt,
       Value<String?> pinHash,
       Value<bool> isActive,
+      Value<int> salary,
       required DateTime createdAt,
       required DateTime updatedAt,
       Value<DateTime?> deletedAt,
@@ -11518,6 +11563,7 @@ typedef $$UsersTableUpdateCompanionBuilder =
       Value<String> passwordSalt,
       Value<String?> pinHash,
       Value<bool> isActive,
+      Value<int> salary,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<DateTime?> deletedAt,
@@ -11574,6 +11620,11 @@ class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
 
   ColumnFilters<bool> get isActive => $composableBuilder(
     column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get salary => $composableBuilder(
+    column: $table.salary,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -11647,6 +11698,11 @@ class $$UsersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get salary => $composableBuilder(
+    column: $table.salary,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -11705,6 +11761,9 @@ class $$UsersTableAnnotationComposer
   GeneratedColumn<bool> get isActive =>
       $composableBuilder(column: $table.isActive, builder: (column) => column);
 
+  GeneratedColumn<int> get salary =>
+      $composableBuilder(column: $table.salary, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -11752,6 +11811,7 @@ class $$UsersTableTableManager
                 Value<String> passwordSalt = const Value.absent(),
                 Value<String?> pinHash = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
+                Value<int> salary = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -11766,6 +11826,7 @@ class $$UsersTableTableManager
                 passwordSalt: passwordSalt,
                 pinHash: pinHash,
                 isActive: isActive,
+                salary: salary,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -11782,6 +11843,7 @@ class $$UsersTableTableManager
                 required String passwordSalt,
                 Value<String?> pinHash = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
+                Value<int> salary = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -11796,6 +11858,7 @@ class $$UsersTableTableManager
                 passwordSalt: passwordSalt,
                 pinHash: pinHash,
                 isActive: isActive,
+                salary: salary,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,

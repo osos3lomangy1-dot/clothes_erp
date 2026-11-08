@@ -148,5 +148,51 @@ void main() {
     // Net Profit: 150 EGP (15000 piasters)
     expect(summary.netProfit, 15000);
   });
+
+  test('partner entity calculates profit share and handles withdrawals correctly', () {
+    final now = DateTime.now();
+
+    // 1. Net profit share partner (50%)
+    final pShare = PartnerEntity(
+      id: 'p1',
+      name: 'شريك نسبة',
+      percentage: 50.0,
+      capital: 10000000, // 100,000 EGP
+      createdAt: now,
+    );
+    expect(pShare.calculateProfitShare(2000000), 1000000); // 50% of 20,000 EGP = 10,000 EGP
+
+    // 2. Fixed ROI partner (20% annual ROI)
+    final pRoi = PartnerEntity(
+      id: 'p2',
+      name: 'شريك عائد ثابت',
+      percentage: 0,
+      capital: 10000000, // 100,000 EGP
+      profitMode: 'fixed_roi',
+      roiPercentage: 20.0,
+      createdAt: now,
+    );
+    // 365 days of 20% on 100,000 EGP = 20,000 EGP (2,000,000 piasters)
+    expect(pRoi.calculateProfitShare(0, days: 365), 2000000);
+
+    // 3. Withdrawals tracking
+    final w1 = PartnerWithdrawal(
+      id: 'w1',
+      amount: 400000, // 4,000 EGP profit payout
+      type: 'profit',
+      date: now,
+    );
+    final w2 = PartnerWithdrawal(
+      id: 'w2',
+      amount: 1000000, // 10,000 EGP capital return
+      type: 'capital',
+      date: now,
+    );
+
+    final pUpdated = pShare.copyWith(withdrawals: [w1, w2]);
+    expect(pUpdated.totalProfitWithdrawn, 400000);
+    expect(pUpdated.totalCapitalWithdrawn, 1000000);
+    expect(pUpdated.currentCapital, 9000000); // 100,000 - 10,000 = 90,000 EGP
+  });
 }
 

@@ -2066,7 +2066,7 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
       ),
     );
 
-    if (newCust != null && mounted) {
+    if (newCust != null && context.mounted) {
       Navigator.pop(context, newCust);
     }
   }

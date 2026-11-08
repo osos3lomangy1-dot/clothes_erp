@@ -23,6 +23,12 @@ class PartnersState extends Equatable {
 
   double get totalPercentage => partners.fold<double>(0.0, (sum, p) => sum + p.percentage);
 
+  int get totalCapital => partners.fold<int>(0, (sum, p) => sum + p.capital);
+
+  int get totalCurrentCapital => partners.fold<int>(0, (sum, p) => sum + p.currentCapital);
+
+  int get totalWithdrawn => partners.fold<int>(0, (sum, p) => sum + p.totalWithdrawn);
+
   PartnersState copyWith({
     PartnersStatus? status,
     List<PartnerEntity>? partners,
@@ -44,4 +50,3 @@ class PartnersState extends Equatable {
   @override
   List<Object?> get props => [status, partners, profitSummary, errorMessage, fromDate, toDate];
 }
-

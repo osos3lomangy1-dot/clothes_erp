@@ -1,98 +1,46 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/entities/employee_entity.dart';
+import '../../../../core/database/app_database.dart';
 
 class EmployeeModel extends EmployeeEntity {
   const EmployeeModel({
     required super.id,
-    required super.name,
-    required super.email,
+    required super.displayName,
+    required super.username,
     required super.role,
-    required super.isActive,
+    super.isActive = true,
+    super.salary = 0,
     required super.createdAt,
-    super.salary,
+    super.updatedAt,
   });
-
-  EmployeeModel copyWith({
-    String? id,
-    String? name,
-    String? email,
-    String? role,
-    bool? isActive,
-    DateTime? createdAt,
-    double? salary,
-  }) {
-    return EmployeeModel(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      email: email ?? this.email,
-      role: role ?? this.role,
-      isActive: isActive ?? this.isActive,
-      createdAt: createdAt ?? this.createdAt,
-      salary: salary ?? this.salary,
-    );
-  }
 
   factory EmployeeModel.fromEntity(EmployeeEntity entity) {
     return EmployeeModel(
       id: entity.id,
-      name: entity.name,
-      email: entity.email,
+      displayName: entity.displayName,
+      username: entity.username,
       role: entity.role,
       isActive: entity.isActive,
-      createdAt: entity.createdAt,
       salary: entity.salary,
+      createdAt: entity.createdAt,
+      updatedAt: entity.updatedAt,
+    );
+  }
+
+  factory EmployeeModel.fromDrift(User user) {
+    return EmployeeModel(
+      id: user.id,
+      displayName: user.displayName,
+      username: user.username,
+      role: user.role,
+      isActive: user.isActive,
+      salary: user.salary,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
     );
   }
 
   factory EmployeeModel.fromJson(Map<String, dynamic> json) {
-    return EmployeeModel(
-      id: json['id'] ?? '',
-      name: json['name'] ?? '',
-      email: json['email'] ?? '',
-      role: json['role'] ?? '',
-      isActive: json['isActive'] ?? true,
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : DateTime.now(),
-      salary: (json['salary'] as num?)?.toDouble() ?? 0.0,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'email': email,
-      'role': role,
-      'isActive': isActive,
-      'createdAt': createdAt.toIso8601String(),
-      'salary': salary,
-    };
-  }
-
-  factory EmployeeModel.fromFirestore(
-    Map<String, dynamic> data,
-    String documentId,
-  ) {
-    return EmployeeModel(
-      id: documentId,
-      name: data['name'] ?? '',
-      email: data['email'] ?? '',
-      role: data['role'] ?? '',
-      isActive: data['isActive'] ?? true,
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      salary: (data['salary'] as num?)?.toDouble() ?? 0.0,
-    );
-  }
-
-  Map<String, dynamic> toFirestore() {
-    return {
-      'name': name,
-      'email': email,
-      'role': role,
-      'isActive': isActive,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'salary': salary,
-    };
+    final entity = EmployeeEntity.fromJson(json);
+    return EmployeeModel.fromEntity(entity);
   }
 }

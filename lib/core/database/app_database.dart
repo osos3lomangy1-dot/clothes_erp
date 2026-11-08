@@ -13,6 +13,7 @@ class Users extends Table {
   TextColumn get passwordSalt => text()();
   TextColumn get pinHash => text().nullable()();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+  IntColumn get salary => integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
   DateTimeColumn get deletedAt => dateTime().nullable()();

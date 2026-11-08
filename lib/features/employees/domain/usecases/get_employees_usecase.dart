@@ -1,4 +1,6 @@
+import 'package:dartz/dartz.dart';
 import 'package:injectable/injectable.dart';
+import '../../../../core/errors/failures.dart';
 import '../entities/employee_entity.dart';
 import '../repositories/employee_repository.dart';
 
@@ -8,7 +10,7 @@ class GetEmployeesUseCase {
 
   GetEmployeesUseCase(this._repository);
 
-  Stream<List<EmployeeEntity>> call() {
-    return _repository.getEmployees();
+  Future<Either<Failure, List<EmployeeEntity>>> call({String? search}) {
+    return _repository.getEmployees(search: search);
   }
 }

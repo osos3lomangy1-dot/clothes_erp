@@ -140,13 +140,10 @@ class ExcelService {
 
     outputFile ??= await _getDefaultExportPath(defaultFileName);
 
-    if (outputFile != null) {
-      if (!outputFile.endsWith('.xlsx')) outputFile = '$outputFile.xlsx';
-      final file = File(outputFile);
-      await file.writeAsBytes(bytes);
-      return outputFile;
-    }
-    return null;
+    if (!outputFile.endsWith('.xlsx')) outputFile = '$outputFile.xlsx';
+    final file = File(outputFile);
+    await file.writeAsBytes(bytes);
+    return outputFile;
   }
 
   Future<String> _getDefaultExportPath(String defaultFileName) async {
@@ -193,39 +190,65 @@ class ExcelService {
       if (h.contains('منتج') ||
           h.contains('product') ||
           h.contains('name') ||
-          h.contains('اسم'))
+          h.contains('اسم')) {
         colProd = i;
-      if (h.contains('تصنيف') || h.contains('category') || h.contains('قسم'))
+      }
+      if (h.contains('تصنيف') || h.contains('category') || h.contains('قسم')) {
         colCat = i;
+      }
       if (h.contains('sku') ||
           h.contains('كود') ||
           h.contains('code') ||
-          h.contains('باركود'))
+          h.contains('باركود')) {
         colSku = i;
-      if (h.contains('مقاس') || h.contains('size')) colSize = i;
-      if (h.contains('لون') || h.contains('color')) colColor = i;
-      if (h.contains('تكلفة') || h.contains('cost')) colCost = i;
+      }
+      if (h.contains('مقاس') || h.contains('size')) {
+        colSize = i;
+      }
+      if (h.contains('لون') || h.contains('color')) {
+        colColor = i;
+      }
+      if (h.contains('تكلفة') || h.contains('cost')) {
+        colCost = i;
+      }
       if (h.contains('بيع') ||
           h.contains('sale') ||
           h.contains('sell') ||
           h.contains('سعر')) {
-        if (!h.contains('تكلفة')) colSell = i;
+        if (!h.contains('تكلفة')) {
+          colSell = i;
+        }
       }
       if (h.contains('كمية') ||
           h.contains('qty') ||
           h.contains('quantity') ||
-          h.contains('رصيد'))
+          h.contains('رصيد')) {
         colQty = i;
-      if (h.contains('طلب') || h.contains('min')) colMin = i;
+      }
+      if (h.contains('طلب') || h.contains('min')) {
+        colMin = i;
+      }
     }
 
     // Fallbacks if headers weren't named
-    if (colProd == -1) colProd = 0;
-    if (colCat == -1) colCat = 1;
-    if (colSku == -1) colSku = 2;
-    if (colSize == -1) colSize = 3;
-    if (colColor == -1) colColor = 4;
-    if (colCost == -1) colCost = 5;
+    if (colProd == -1) {
+      colProd = 0;
+    }
+    if (colCat == -1) {
+      colCat = 1;
+    }
+    if (colSku == -1) {
+      colSku = 2;
+    }
+    if (colSize == -1) {
+      colSize = 3;
+    }
+    if (colColor == -1) {
+      colColor = 4;
+    }
+    if (colCost == -1) {
+      colCost = 5;
+    }
     if (colSell == -1) colSell = 6;
     if (colQty == -1) colQty = 7;
 

@@ -14,11 +14,12 @@ class EmployeeLoading extends EmployeeState {}
 
 class EmployeeLoaded extends EmployeeState {
   final List<EmployeeEntity> employees;
+  final String searchQuery;
 
-  const EmployeeLoaded(this.employees);
+  const EmployeeLoaded(this.employees, {this.searchQuery = ''});
 
   @override
-  List<Object?> get props => [employees];
+  List<Object?> get props => [employees, searchQuery];
 }
 
 class EmployeeError extends EmployeeState {

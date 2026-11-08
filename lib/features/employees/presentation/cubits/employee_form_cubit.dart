@@ -35,9 +35,9 @@ class EmployeeFormCubit extends Cubit<EmployeeFormState> {
     emit(state.copyWith(isSubmitting: true));
 
     final employee = EmployeeEntity(
-      id: '', // Firestore will generate ID if empty
-      name: state.name,
-      email: state.email,
+      id: '',
+      displayName: state.name,
+      username: state.email,
       role: state.role,
       isActive: state.isActive,
       createdAt: DateTime.now(),
