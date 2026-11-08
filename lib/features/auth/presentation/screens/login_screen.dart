@@ -36,7 +36,10 @@ class _LoginView extends StatelessWidget {
                   SnackBar(
                     content: Row(
                       children: [
-                        const Icon(Icons.error_outline_rounded, color: Colors.white),
+                        const Icon(
+                          Icons.error_outline_rounded,
+                          color: Colors.white,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -54,7 +57,8 @@ class _LoginView extends StatelessWidget {
             },
           ),
           BlocListener<LoginFormCubit, LoginFormState>(
-            listenWhen: (p, c) => p.errorMessage != c.errorMessage && c.errorMessage != null,
+            listenWhen: (p, c) =>
+                p.errorMessage != c.errorMessage && c.errorMessage != null,
             listener: (context, state) {
               if (state.errorMessage != null) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -181,7 +185,8 @@ class _LoginView extends StatelessWidget {
                               ),
                               onPressed: state.isSubmitting
                                   ? null
-                                  : () => context.read<LoginFormCubit>().submit(),
+                                  : () =>
+                                        context.read<LoginFormCubit>().submit(),
                               child: state.isSubmitting
                                   ? const SizedBox(
                                       height: 22,
