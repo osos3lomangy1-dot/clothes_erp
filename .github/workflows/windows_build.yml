@@ -164,15 +164,15 @@ jobs:
         shell: pwsh
         run: |
           $src = "build\windows\x64\runner\Release"
-          $zip = "orchid_erp_windows_v${{ env.APP_VERSION }}.zip"
+          $zip = "Orkeed_erp_windows_v${{ env.APP_VERSION }}.zip"
           Compress-Archive -Path "$src\*" -DestinationPath $zip -Force
           Write-Host "ZIP created: $zip"
 
       - name: Upload Windows Release ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: orchid-erp-windows-v${{ env.APP_VERSION }}
-          path: orchid_erp_windows_v${{ env.APP_VERSION }}.zip
+          name: Orkeed-erp-windows-v${{ env.APP_VERSION }}
+          path: Orkeed_erp_windows_v${{ env.APP_VERSION }}.zip
           retention-days: 30
           if-no-files-found: error
 
@@ -185,7 +185,7 @@ jobs:
         if: ${{ github.event.inputs.build_msix != 'false' }}
         uses: actions/upload-artifact@v4
         with:
-          name: orchid-erp-msix-v${{ env.APP_VERSION }}
+          name: Orkeed-erp-msix-v${{ env.APP_VERSION }}
           path: build/windows/x64/runner/Release/*.msix
           retention-days: 30
           if-no-files-found: warn

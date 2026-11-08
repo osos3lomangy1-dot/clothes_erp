@@ -50,6 +50,5 @@ msix_config:
   identity_name: com.example.clothes_erp
   msix_version: 1.0.0.0
   logo_path: windows/runner/resources/app_icon.ico
-  capabilities:
-    - internetClient
+  capabilities: internetClient
 
