@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import '../services/app_update_service.dart';
 import '../../features/products/presentation/screens/product_list_screen.dart';
 import '../../features/inventory/presentation/screens/inventory_screen.dart';
 import '../../features/inventory/presentation/screens/inventory_logs_screen.dart';
@@ -96,6 +97,17 @@ class _MainLayoutState extends State<MainLayout> {
                           _navItem(Icons.bar_chart_rounded, 'تقارير المبيعات', const ReportsScreen()),
                           _navItem(Icons.handshake_rounded, 'الشركاء وتوزيع الأرباح', const PartnersScreen()),
                           _navItem(Icons.badge_rounded, 'فريق العمل والموظفون', const EmployeeListScreen()),
+                          const Divider(color: Colors.white24, height: 16),
+                          _navItem(
+                            Icons.system_update_rounded,
+                            'التحقق من التحديثات',
+                            null,
+                            onTapOverride: () => AppUpdateService.checkForUpdate(
+                              context,
+                              forceCheck: true,
+                              showNoUpdateToast: true,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -110,7 +122,7 @@ class _MainLayoutState extends State<MainLayout> {
     );
   }
 
-  Widget _navItem(IconData icon, String title, Widget? screen, {bool isPos = false}) {
+  Widget _navItem(IconData icon, String title, Widget? screen, {bool isPos = false, VoidCallback? onTapOverride}) {
     return ListTile(
       leading: Icon(icon, color: Colors.white),
       title: _isCollapsed
@@ -124,7 +136,9 @@ class _MainLayoutState extends State<MainLayout> {
               ),
             ),
       onTap: () {
-        if (isPos) {
+        if (onTapOverride != null) {
+          onTapOverride();
+        } else if (isPos) {
           Navigator.push(context, MaterialPageRoute(builder: (_) => const PosScreen()));
         } else if (screen != null) {
           setState(() => _currentScreen = screen);

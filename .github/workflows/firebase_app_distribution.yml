@@ -1,0 +1,68 @@
+name: Deploy to Firebase App Distribution
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      release_notes:
+        description: 'Release notes for testers'
+        required: false
+        default: 'تحديث تلقائي عبر GitHub Actions'
+      testers_group:
+        description: 'Firebase App Distribution tester group'
+        required: false
+        default: 'testers'
+
+jobs:
+  build-and-distribute:
+    name: Build & Distribute APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Get Dependencies
+        run: flutter pub get
+
+      - name: Run Code Generation
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Analyze Project
+        run: flutter analyze
+
+      - name: Run Unit Tests
+        run: flutter test
+
+      - name: Build Release APK
+        run: flutter build apk --release
+
+      - name: Upload APK to Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Upload to Firebase App Distribution
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ secrets.FIREBASE_APP_ID || '1:919966582585:android:1a6b68a5e70f28f16e4ae8' }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_CREDENTIAL_FILE_CONTENT }}
+          token: ${{ secrets.FIREBASE_TOKEN }}
+          groups: ${{ github.event.inputs.testers_group || 'testers' }}
+          file: build/app/outputs/flutter-apk/app-release.apk
+          releaseNotes: ${{ github.event.inputs.release_notes || github.event.head_commit.message || 'تحديث جديد عبر GitHub Actions' }}
+

@@ -1,13 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/services/app_update_service.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../pos/presentation/screens/pos_screen.dart';
 import '../../../products/presentation/screens/product_list_screen.dart';
 import '../../../inventory/presentation/screens/inventory_screen.dart';
 
-class CashierDashboardScreen extends StatelessWidget {
+class CashierDashboardScreen extends StatefulWidget {
   const CashierDashboardScreen({super.key});
+
+  @override
+  State<CashierDashboardScreen> createState() => _CashierDashboardScreenState();
+}
+
+class _CashierDashboardScreenState extends State<CashierDashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        AppUpdateService.checkForUpdate(context);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,6 +37,15 @@ class CashierDashboardScreen extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.onSurface),
         ),
         actions: [
+          IconButton(
+            tooltip: 'التحقق من التحديثات',
+            onPressed: () => AppUpdateService.checkForUpdate(
+              context,
+              forceCheck: true,
+              showNoUpdateToast: true,
+            ),
+            icon: const Icon(Icons.system_update_rounded, color: AppColors.primary),
+          ),
           IconButton(
             tooltip: 'تسجيل الخروج',
             onPressed: () => context.read<AuthCubit>().logout(),

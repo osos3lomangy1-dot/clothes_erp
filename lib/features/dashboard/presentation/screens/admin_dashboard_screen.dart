@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/layout/main_layout.dart';
+import '../../../../core/services/app_update_service.dart';
 import '../../../../core/utils/money.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../cubits/dashboard_cubit.dart';
@@ -20,8 +21,23 @@ class AdminDashboardScreen extends StatelessWidget {
   }
 }
 
-class _AdminDashboardView extends StatelessWidget {
+class _AdminDashboardView extends StatefulWidget {
   const _AdminDashboardView();
+
+  @override
+  State<_AdminDashboardView> createState() => _AdminDashboardViewState();
+}
+
+class _AdminDashboardViewState extends State<_AdminDashboardView> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        AppUpdateService.checkForUpdate(context);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +53,15 @@ class _AdminDashboardView extends StatelessWidget {
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.onSurface),
           ),
           actions: [
+            IconButton(
+              tooltip: 'التحقق من التحديثات',
+              onPressed: () => AppUpdateService.checkForUpdate(
+                context,
+                forceCheck: true,
+                showNoUpdateToast: true,
+              ),
+              icon: const Icon(Icons.system_update_rounded, color: AppColors.primary),
+            ),
             IconButton(
               tooltip: 'تسجيل الخروج',
               onPressed: () => context.read<AuthCubit>().logout(),
