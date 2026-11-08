@@ -48,6 +48,16 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # ─── Fix: pin CMake to 3.x to avoid Firebase SDK incompatibility with CMake 4.x ───
+      # CMake 4.0 removed cmake_minimum_required < 3.5 support, which breaks firebase_cpp_sdk_windows.
+      - name: Install CMake 3.31 (pin to avoid CMake 4.x breaking Firebase SDK)
+        uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: "~3.31.0"
+
+      - name: Verify CMake Version
+        run: cmake --version
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -70,9 +80,11 @@ jobs:
         id: version
         shell: pwsh
         run: |
-          $version = (Select-String -Path pubspec.yaml -Pattern "^version:\s+(.+)$").Matches.Groups[1].Value.Trim()
+          $match = Select-String -Path pubspec.yaml -Pattern "^version:\s+(.+?)(\+|$)"
+          $version = $match.Matches.Groups[1].Value.Trim()
+          if (-not $version) { $version = "1.0.0" }
           echo "APP_VERSION=$version" >> $env:GITHUB_ENV
-          echo "Version: $version"
+          Write-Host "App version: $version"
 
       - name: Package Release (ZIP)
         shell: pwsh
@@ -80,8 +92,7 @@ jobs:
           $src = "build\windows\x64\runner\Release"
           $zip = "orchid_erp_windows_v${{ env.APP_VERSION }}.zip"
           Compress-Archive -Path "$src\*" -DestinationPath $zip -Force
-          echo "ZIP created: $zip"
-          echo "ARTIFACT_ZIP=$zip" >> $env:GITHUB_ENV
+          Write-Host "ZIP created: $zip"
 
       - name: Upload Windows Release ZIP
         uses: actions/upload-artifact@v4
@@ -104,4 +115,3 @@ jobs:
           path: build/windows/x64/runner/Release/*.msix
           retention-days: 30
           if-no-files-found: warn
-
