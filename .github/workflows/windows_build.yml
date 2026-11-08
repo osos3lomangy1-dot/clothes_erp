@@ -48,15 +48,33 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # ─── Fix: pin CMake to 3.x to avoid Firebase SDK incompatibility with CMake 4.x ───
-      # CMake 4.0 removed cmake_minimum_required < 3.5 support, which breaks firebase_cpp_sdk_windows.
-      - name: Install CMake 3.31 (pin to avoid CMake 4.x breaking Firebase SDK)
-        uses: lukka/get-cmake@latest
-        with:
-          cmakeVersion: "~3.31.0"
+      # ─────────────────────────────────────────────────────────────────────────
+      # FIX: GitHub Actions windows-latest ships CMake 4.x which removed
+      # backward-compatibility with cmake_minimum_required < 3.5.
+      # The Firebase C++ SDK for Windows uses that old directive and breaks.
+      # Solution: install CMake 3.31 via Chocolatey BEFORE Flutter setup,
+      # then prepend it to PATH so the Flutter tool picks it up.
+      # ─────────────────────────────────────────────────────────────────────────
+      - name: Pin CMake 3.31 via Chocolatey (fix Firebase SDK + CMake 4.x)
+        shell: pwsh
+        run: |
+          Write-Host "Current cmake version:"
+          cmake --version
 
-      - name: Verify CMake Version
-        run: cmake --version
+          Write-Host "`nInstalling CMake 3.31.7 via choco..."
+          choco install cmake --version=3.31.7 `
+            --installargs '"ADD_CMAKE_TO_PATH=System"' `
+            -y --no-progress --force
+
+          # Prepend cmake 3.31 to PATH for ALL subsequent steps
+          $cmake31Path = "C:\Program Files\CMake\bin"
+          Add-Content -Path $env:GITHUB_PATH -Value $cmake31Path
+
+          # Update PATH in current session too
+          $env:PATH = "$cmake31Path;$env:PATH"
+
+          Write-Host "`nCMake version after install (should be 3.31.x):"
+          cmake --version
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -67,11 +85,67 @@ jobs:
       - name: Get Dependencies
         run: flutter pub get
 
+      # ─────────────────────────────────────────────────────────────────────────
+      # SAFETY NET: Patch firebase_core Windows plugin CMakeLists.txt in
+      # the pub cache to pass -DCMAKE_POLICY_VERSION_MINIMUM=3.5 to the
+      # ExternalProject_Add for firebase_cpp_sdk_windows.
+      # This covers the case where cmake 3.31 isn't picked up by flutter.
+      # ─────────────────────────────────────────────────────────────────────────
+      - name: Patch Firebase CMake (belt-and-suspenders fix)
+        shell: pwsh
+        run: |
+          $pubCache = $env:PUB_CACHE
+          if (-not $pubCache) { $pubCache = "$env:LOCALAPPDATA\Pub\Cache" }
+          Write-Host "Pub cache path: $pubCache"
+
+          # Find all CMakeLists.txt inside firebase_core (windows plugin)
+          $files = Get-ChildItem -Path $pubCache -Recurse -Filter "CMakeLists.txt" `
+            -ErrorAction SilentlyContinue |
+            Where-Object {
+              $_.FullName -match "firebase_core" -and
+              $_.FullName -match "windows" -and
+              $_.FullName -notmatch "firebase_cpp_sdk"
+            }
+
+          if (-not $files) {
+            Write-Host "No firebase_core windows CMakeLists.txt found — skipping patch."
+            exit 0
+          }
+
+          foreach ($f in $files) {
+            Write-Host "Inspecting: $($f.FullName)"
+            $raw = Get-Content -Path $f.FullName -Raw
+
+            # Only patch if ExternalProject_Add exists and not already patched
+            if ($raw -match 'ExternalProject_Add' -and
+                $raw -notmatch 'CMAKE_POLICY_VERSION_MINIMUM') {
+
+              # Add CMAKE_ARGS before the first closing paren of ExternalProject_Add
+              $patched = $raw -replace `
+                '(ExternalProject_Add\s*\(\s*firebase_cpp_sdk_windows\b)', `
+                "`$1`n    CMAKE_ARGS -DCMAKE_POLICY_VERSION_MINIMUM=3.5"
+
+              Set-Content -Path $f.FullName -Value $patched -NoNewline
+              Write-Host "  ✅ Patched!"
+            } else {
+              Write-Host "  ⏭  No ExternalProject_Add found or already patched — skipped."
+            }
+          }
+
       - name: Run Code Generation
         run: dart run build_runner build --delete-conflicting-outputs
 
       - name: Enable Windows Desktop
         run: flutter config --enable-windows-desktop
+
+      - name: Verify CMake Version (must be 3.31.x)
+        shell: pwsh
+        run: |
+          $v = cmake --version
+          Write-Host $v
+          if ($v -notmatch "3\.31") {
+            Write-Warning "cmake is NOT 3.31.x — build may fail with Firebase SDK!"
+          }
 
       - name: Build Windows Release
         run: flutter build windows --release
@@ -83,7 +157,7 @@ jobs:
           $match = Select-String -Path pubspec.yaml -Pattern "^version:\s+(.+?)(\+|$)"
           $version = $match.Matches.Groups[1].Value.Trim()
           if (-not $version) { $version = "1.0.0" }
-          echo "APP_VERSION=$version" >> $env:GITHUB_ENV
+          "APP_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           Write-Host "App version: $version"
 
       - name: Package Release (ZIP)
