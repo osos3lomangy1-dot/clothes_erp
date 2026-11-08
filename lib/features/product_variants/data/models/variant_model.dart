@@ -11,10 +11,13 @@ class VariantModel extends VariantEntity {
     required super.quantity,
     required super.costPrice,
     required super.salePrice,
+    super.wholesalePrice = 0,
     required super.minStock,
     required super.createdAt,
+    super.productName,
   });
 
+  @override
   VariantModel copyWith({
     String? id,
     String? productId,
@@ -24,8 +27,10 @@ class VariantModel extends VariantEntity {
     int? quantity,
     int? costPrice,
     int? salePrice,
+    int? wholesalePrice,
     int? minStock,
     DateTime? createdAt,
+    String? productName,
   }) {
     return VariantModel(
       id: id ?? this.id,
@@ -36,8 +41,10 @@ class VariantModel extends VariantEntity {
       quantity: quantity ?? this.quantity,
       costPrice: costPrice ?? this.costPrice,
       salePrice: salePrice ?? this.salePrice,
+      wholesalePrice: wholesalePrice ?? this.wholesalePrice,
       minStock: minStock ?? this.minStock,
       createdAt: createdAt ?? this.createdAt,
+      productName: productName,
     );
   }
 
@@ -51,8 +58,10 @@ class VariantModel extends VariantEntity {
       quantity: entity.quantity,
       costPrice: entity.costPrice,
       salePrice: entity.salePrice,
+      wholesalePrice: entity.wholesalePrice,
       minStock: entity.minStock,
       createdAt: entity.createdAt,
+      productName: entity.productName,
     );
   }
 

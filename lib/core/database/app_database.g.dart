@@ -1945,6 +1945,18 @@ class $ProductVariantsTable extends ProductVariants
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _wholesalePriceMeta = const VerificationMeta(
+    'wholesalePrice',
+  );
+  @override
+  late final GeneratedColumn<int> wholesalePrice = GeneratedColumn<int>(
+    'wholesale_price',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _isActiveMeta = const VerificationMeta(
     'isActive',
   );
@@ -2004,6 +2016,7 @@ class $ProductVariantsTable extends ProductVariants
     quantity,
     costPrice,
     sellPrice,
+    wholesalePrice,
     isActive,
     createdAt,
     updatedAt,
@@ -2088,6 +2101,15 @@ class $ProductVariantsTable extends ProductVariants
     } else if (isInserting) {
       context.missing(_sellPriceMeta);
     }
+    if (data.containsKey('wholesale_price')) {
+      context.handle(
+        _wholesalePriceMeta,
+        wholesalePrice.isAcceptableOrUnknown(
+          data['wholesale_price']!,
+          _wholesalePriceMeta,
+        ),
+      );
+    }
     if (data.containsKey('is_active')) {
       context.handle(
         _isActiveMeta,
@@ -2161,6 +2183,10 @@ class $ProductVariantsTable extends ProductVariants
         DriftSqlType.int,
         data['${effectivePrefix}sell_price'],
       )!,
+      wholesalePrice: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}wholesale_price'],
+      )!,
       isActive: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_active'],
@@ -2196,6 +2222,7 @@ class ProductVariant extends DataClass implements Insertable<ProductVariant> {
   final int quantity;
   final int costPrice;
   final int sellPrice;
+  final int wholesalePrice;
   final bool isActive;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -2210,6 +2237,7 @@ class ProductVariant extends DataClass implements Insertable<ProductVariant> {
     required this.quantity,
     required this.costPrice,
     required this.sellPrice,
+    required this.wholesalePrice,
     required this.isActive,
     required this.createdAt,
     required this.updatedAt,
@@ -2227,6 +2255,7 @@ class ProductVariant extends DataClass implements Insertable<ProductVariant> {
     map['quantity'] = Variable<int>(quantity);
     map['cost_price'] = Variable<int>(costPrice);
     map['sell_price'] = Variable<int>(sellPrice);
+    map['wholesale_price'] = Variable<int>(wholesalePrice);
     map['is_active'] = Variable<bool>(isActive);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -2247,6 +2276,7 @@ class ProductVariant extends DataClass implements Insertable<ProductVariant> {
       quantity: Value(quantity),
       costPrice: Value(costPrice),
       sellPrice: Value(sellPrice),
+      wholesalePrice: Value(wholesalePrice),
       isActive: Value(isActive),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -2271,6 +2301,7 @@ class ProductVariant extends DataClass implements Insertable<ProductVariant> {
       quantity: serializer.fromJson<int>(json['quantity']),
       costPrice: serializer.fromJson<int>(json['costPrice']),
       sellPrice: serializer.fromJson<int>(json['sellPrice']),
+      wholesalePrice: serializer.fromJson<int>(json['wholesalePrice']),
       isActive: serializer.fromJson<bool>(json['isActive']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -2290,6 +2321,7 @@ class ProductVariant extends DataClass implements Insertable<ProductVariant> {
       'quantity': serializer.toJson<int>(quantity),
       'costPrice': serializer.toJson<int>(costPrice),
       'sellPrice': serializer.toJson<int>(sellPrice),
+      'wholesalePrice': serializer.toJson<int>(wholesalePrice),
       'isActive': serializer.toJson<bool>(isActive),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -2307,6 +2339,7 @@ class ProductVariant extends DataClass implements Insertable<ProductVariant> {
     int? quantity,
     int? costPrice,
     int? sellPrice,
+    int? wholesalePrice,
     bool? isActive,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -2321,6 +2354,7 @@ class ProductVariant extends DataClass implements Insertable<ProductVariant> {
     quantity: quantity ?? this.quantity,
     costPrice: costPrice ?? this.costPrice,
     sellPrice: sellPrice ?? this.sellPrice,
+    wholesalePrice: wholesalePrice ?? this.wholesalePrice,
     isActive: isActive ?? this.isActive,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -2337,6 +2371,9 @@ class ProductVariant extends DataClass implements Insertable<ProductVariant> {
       quantity: data.quantity.present ? data.quantity.value : this.quantity,
       costPrice: data.costPrice.present ? data.costPrice.value : this.costPrice,
       sellPrice: data.sellPrice.present ? data.sellPrice.value : this.sellPrice,
+      wholesalePrice: data.wholesalePrice.present
+          ? data.wholesalePrice.value
+          : this.wholesalePrice,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -2356,6 +2393,7 @@ class ProductVariant extends DataClass implements Insertable<ProductVariant> {
           ..write('quantity: $quantity, ')
           ..write('costPrice: $costPrice, ')
           ..write('sellPrice: $sellPrice, ')
+          ..write('wholesalePrice: $wholesalePrice, ')
           ..write('isActive: $isActive, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -2375,6 +2413,7 @@ class ProductVariant extends DataClass implements Insertable<ProductVariant> {
     quantity,
     costPrice,
     sellPrice,
+    wholesalePrice,
     isActive,
     createdAt,
     updatedAt,
@@ -2393,6 +2432,7 @@ class ProductVariant extends DataClass implements Insertable<ProductVariant> {
           other.quantity == this.quantity &&
           other.costPrice == this.costPrice &&
           other.sellPrice == this.sellPrice &&
+          other.wholesalePrice == this.wholesalePrice &&
           other.isActive == this.isActive &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
@@ -2409,6 +2449,7 @@ class ProductVariantsCompanion extends UpdateCompanion<ProductVariant> {
   final Value<int> quantity;
   final Value<int> costPrice;
   final Value<int> sellPrice;
+  final Value<int> wholesalePrice;
   final Value<bool> isActive;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -2424,6 +2465,7 @@ class ProductVariantsCompanion extends UpdateCompanion<ProductVariant> {
     this.quantity = const Value.absent(),
     this.costPrice = const Value.absent(),
     this.sellPrice = const Value.absent(),
+    this.wholesalePrice = const Value.absent(),
     this.isActive = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -2440,6 +2482,7 @@ class ProductVariantsCompanion extends UpdateCompanion<ProductVariant> {
     this.quantity = const Value.absent(),
     required int costPrice,
     required int sellPrice,
+    this.wholesalePrice = const Value.absent(),
     this.isActive = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
@@ -2465,6 +2508,7 @@ class ProductVariantsCompanion extends UpdateCompanion<ProductVariant> {
     Expression<int>? quantity,
     Expression<int>? costPrice,
     Expression<int>? sellPrice,
+    Expression<int>? wholesalePrice,
     Expression<bool>? isActive,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -2481,6 +2525,7 @@ class ProductVariantsCompanion extends UpdateCompanion<ProductVariant> {
       if (quantity != null) 'quantity': quantity,
       if (costPrice != null) 'cost_price': costPrice,
       if (sellPrice != null) 'sell_price': sellPrice,
+      if (wholesalePrice != null) 'wholesale_price': wholesalePrice,
       if (isActive != null) 'is_active': isActive,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -2499,6 +2544,7 @@ class ProductVariantsCompanion extends UpdateCompanion<ProductVariant> {
     Value<int>? quantity,
     Value<int>? costPrice,
     Value<int>? sellPrice,
+    Value<int>? wholesalePrice,
     Value<bool>? isActive,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -2515,6 +2561,7 @@ class ProductVariantsCompanion extends UpdateCompanion<ProductVariant> {
       quantity: quantity ?? this.quantity,
       costPrice: costPrice ?? this.costPrice,
       sellPrice: sellPrice ?? this.sellPrice,
+      wholesalePrice: wholesalePrice ?? this.wholesalePrice,
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -2553,6 +2600,9 @@ class ProductVariantsCompanion extends UpdateCompanion<ProductVariant> {
     if (sellPrice.present) {
       map['sell_price'] = Variable<int>(sellPrice.value);
     }
+    if (wholesalePrice.present) {
+      map['wholesale_price'] = Variable<int>(wholesalePrice.value);
+    }
     if (isActive.present) {
       map['is_active'] = Variable<bool>(isActive.value);
     }
@@ -2583,6 +2633,7 @@ class ProductVariantsCompanion extends UpdateCompanion<ProductVariant> {
           ..write('quantity: $quantity, ')
           ..write('costPrice: $costPrice, ')
           ..write('sellPrice: $sellPrice, ')
+          ..write('wholesalePrice: $wholesalePrice, ')
           ..write('isActive: $isActive, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -7657,6 +7708,30 @@ class $CustomersTable extends Customers
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _discountPercentMeta = const VerificationMeta(
+    'discountPercent',
+  );
+  @override
+  late final GeneratedColumn<int> discountPercent = GeneratedColumn<int>(
+    'discount_percent',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _customerTypeMeta = const VerificationMeta(
+    'customerType',
+  );
+  @override
+  late final GeneratedColumn<String> customerType = GeneratedColumn<String>(
+    'customer_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('retail'),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -7697,6 +7772,8 @@ class $CustomersTable extends Customers
     name,
     phone,
     loyaltyPoints,
+    discountPercent,
+    customerType,
     createdAt,
     updatedAt,
     deletedAt,
@@ -7751,6 +7828,24 @@ class $CustomersTable extends Customers
         ),
       );
     }
+    if (data.containsKey('discount_percent')) {
+      context.handle(
+        _discountPercentMeta,
+        discountPercent.isAcceptableOrUnknown(
+          data['discount_percent']!,
+          _discountPercentMeta,
+        ),
+      );
+    }
+    if (data.containsKey('customer_type')) {
+      context.handle(
+        _customerTypeMeta,
+        customerType.isAcceptableOrUnknown(
+          data['customer_type']!,
+          _customerTypeMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -7802,6 +7897,14 @@ class $CustomersTable extends Customers
         DriftSqlType.int,
         data['${effectivePrefix}loyalty_points'],
       )!,
+      discountPercent: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}discount_percent'],
+      )!,
+      customerType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}customer_type'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -7829,6 +7932,8 @@ class Customer extends DataClass implements Insertable<Customer> {
   final String name;
   final String phone;
   final int loyaltyPoints;
+  final int discountPercent;
+  final String customerType;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
@@ -7838,6 +7943,8 @@ class Customer extends DataClass implements Insertable<Customer> {
     required this.name,
     required this.phone,
     required this.loyaltyPoints,
+    required this.discountPercent,
+    required this.customerType,
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
@@ -7850,6 +7957,8 @@ class Customer extends DataClass implements Insertable<Customer> {
     map['name'] = Variable<String>(name);
     map['phone'] = Variable<String>(phone);
     map['loyalty_points'] = Variable<int>(loyaltyPoints);
+    map['discount_percent'] = Variable<int>(discountPercent);
+    map['customer_type'] = Variable<String>(customerType);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     if (!nullToAbsent || deletedAt != null) {
@@ -7865,6 +7974,8 @@ class Customer extends DataClass implements Insertable<Customer> {
       name: Value(name),
       phone: Value(phone),
       loyaltyPoints: Value(loyaltyPoints),
+      discountPercent: Value(discountPercent),
+      customerType: Value(customerType),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
@@ -7884,6 +7995,8 @@ class Customer extends DataClass implements Insertable<Customer> {
       name: serializer.fromJson<String>(json['name']),
       phone: serializer.fromJson<String>(json['phone']),
       loyaltyPoints: serializer.fromJson<int>(json['loyaltyPoints']),
+      discountPercent: serializer.fromJson<int>(json['discountPercent']),
+      customerType: serializer.fromJson<String>(json['customerType']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
@@ -7898,6 +8011,8 @@ class Customer extends DataClass implements Insertable<Customer> {
       'name': serializer.toJson<String>(name),
       'phone': serializer.toJson<String>(phone),
       'loyaltyPoints': serializer.toJson<int>(loyaltyPoints),
+      'discountPercent': serializer.toJson<int>(discountPercent),
+      'customerType': serializer.toJson<String>(customerType),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
@@ -7910,6 +8025,8 @@ class Customer extends DataClass implements Insertable<Customer> {
     String? name,
     String? phone,
     int? loyaltyPoints,
+    int? discountPercent,
+    String? customerType,
     DateTime? createdAt,
     DateTime? updatedAt,
     Value<DateTime?> deletedAt = const Value.absent(),
@@ -7919,6 +8036,8 @@ class Customer extends DataClass implements Insertable<Customer> {
     name: name ?? this.name,
     phone: phone ?? this.phone,
     loyaltyPoints: loyaltyPoints ?? this.loyaltyPoints,
+    discountPercent: discountPercent ?? this.discountPercent,
+    customerType: customerType ?? this.customerType,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -7932,6 +8051,12 @@ class Customer extends DataClass implements Insertable<Customer> {
       loyaltyPoints: data.loyaltyPoints.present
           ? data.loyaltyPoints.value
           : this.loyaltyPoints,
+      discountPercent: data.discountPercent.present
+          ? data.discountPercent.value
+          : this.discountPercent,
+      customerType: data.customerType.present
+          ? data.customerType.value
+          : this.customerType,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -7946,6 +8071,8 @@ class Customer extends DataClass implements Insertable<Customer> {
           ..write('name: $name, ')
           ..write('phone: $phone, ')
           ..write('loyaltyPoints: $loyaltyPoints, ')
+          ..write('discountPercent: $discountPercent, ')
+          ..write('customerType: $customerType, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt')
@@ -7960,6 +8087,8 @@ class Customer extends DataClass implements Insertable<Customer> {
     name,
     phone,
     loyaltyPoints,
+    discountPercent,
+    customerType,
     createdAt,
     updatedAt,
     deletedAt,
@@ -7973,6 +8102,8 @@ class Customer extends DataClass implements Insertable<Customer> {
           other.name == this.name &&
           other.phone == this.phone &&
           other.loyaltyPoints == this.loyaltyPoints &&
+          other.discountPercent == this.discountPercent &&
+          other.customerType == this.customerType &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt);
@@ -7984,6 +8115,8 @@ class CustomersCompanion extends UpdateCompanion<Customer> {
   final Value<String> name;
   final Value<String> phone;
   final Value<int> loyaltyPoints;
+  final Value<int> discountPercent;
+  final Value<String> customerType;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
@@ -7994,6 +8127,8 @@ class CustomersCompanion extends UpdateCompanion<Customer> {
     this.name = const Value.absent(),
     this.phone = const Value.absent(),
     this.loyaltyPoints = const Value.absent(),
+    this.discountPercent = const Value.absent(),
+    this.customerType = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -8005,6 +8140,8 @@ class CustomersCompanion extends UpdateCompanion<Customer> {
     required String name,
     required String phone,
     this.loyaltyPoints = const Value.absent(),
+    this.discountPercent = const Value.absent(),
+    this.customerType = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.deletedAt = const Value.absent(),
@@ -8021,6 +8158,8 @@ class CustomersCompanion extends UpdateCompanion<Customer> {
     Expression<String>? name,
     Expression<String>? phone,
     Expression<int>? loyaltyPoints,
+    Expression<int>? discountPercent,
+    Expression<String>? customerType,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
@@ -8032,6 +8171,8 @@ class CustomersCompanion extends UpdateCompanion<Customer> {
       if (name != null) 'name': name,
       if (phone != null) 'phone': phone,
       if (loyaltyPoints != null) 'loyalty_points': loyaltyPoints,
+      if (discountPercent != null) 'discount_percent': discountPercent,
+      if (customerType != null) 'customer_type': customerType,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -8045,6 +8186,8 @@ class CustomersCompanion extends UpdateCompanion<Customer> {
     Value<String>? name,
     Value<String>? phone,
     Value<int>? loyaltyPoints,
+    Value<int>? discountPercent,
+    Value<String>? customerType,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<DateTime?>? deletedAt,
@@ -8056,6 +8199,8 @@ class CustomersCompanion extends UpdateCompanion<Customer> {
       name: name ?? this.name,
       phone: phone ?? this.phone,
       loyaltyPoints: loyaltyPoints ?? this.loyaltyPoints,
+      discountPercent: discountPercent ?? this.discountPercent,
+      customerType: customerType ?? this.customerType,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -8081,6 +8226,12 @@ class CustomersCompanion extends UpdateCompanion<Customer> {
     if (loyaltyPoints.present) {
       map['loyalty_points'] = Variable<int>(loyaltyPoints.value);
     }
+    if (discountPercent.present) {
+      map['discount_percent'] = Variable<int>(discountPercent.value);
+    }
+    if (customerType.present) {
+      map['customer_type'] = Variable<String>(customerType.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -8104,6 +8255,8 @@ class CustomersCompanion extends UpdateCompanion<Customer> {
           ..write('name: $name, ')
           ..write('phone: $phone, ')
           ..write('loyaltyPoints: $loyaltyPoints, ')
+          ..write('discountPercent: $discountPercent, ')
+          ..write('customerType: $customerType, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -12751,6 +12904,7 @@ typedef $$ProductVariantsTableCreateCompanionBuilder =
       Value<int> quantity,
       required int costPrice,
       required int sellPrice,
+      Value<int> wholesalePrice,
       Value<bool> isActive,
       required DateTime createdAt,
       required DateTime updatedAt,
@@ -12768,6 +12922,7 @@ typedef $$ProductVariantsTableUpdateCompanionBuilder =
       Value<int> quantity,
       Value<int> costPrice,
       Value<int> sellPrice,
+      Value<int> wholesalePrice,
       Value<bool> isActive,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -12850,6 +13005,11 @@ class $$ProductVariantsTableFilterComposer
 
   ColumnFilters<int> get sellPrice => $composableBuilder(
     column: $table.sellPrice,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get wholesalePrice => $composableBuilder(
+    column: $table.wholesalePrice,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -12946,6 +13106,11 @@ class $$ProductVariantsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get wholesalePrice => $composableBuilder(
+    column: $table.wholesalePrice,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isActive => $composableBuilder(
     column: $table.isActive,
     builder: (column) => ColumnOrderings(column),
@@ -13023,6 +13188,11 @@ class $$ProductVariantsTableAnnotationComposer
   GeneratedColumn<int> get sellPrice =>
       $composableBuilder(column: $table.sellPrice, builder: (column) => column);
 
+  GeneratedColumn<int> get wholesalePrice => $composableBuilder(
+    column: $table.wholesalePrice,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get isActive =>
       $composableBuilder(column: $table.isActive, builder: (column) => column);
 
@@ -13098,6 +13268,7 @@ class $$ProductVariantsTableTableManager
                 Value<int> quantity = const Value.absent(),
                 Value<int> costPrice = const Value.absent(),
                 Value<int> sellPrice = const Value.absent(),
+                Value<int> wholesalePrice = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -13113,6 +13284,7 @@ class $$ProductVariantsTableTableManager
                 quantity: quantity,
                 costPrice: costPrice,
                 sellPrice: sellPrice,
+                wholesalePrice: wholesalePrice,
                 isActive: isActive,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -13130,6 +13302,7 @@ class $$ProductVariantsTableTableManager
                 Value<int> quantity = const Value.absent(),
                 required int costPrice,
                 required int sellPrice,
+                Value<int> wholesalePrice = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
@@ -13145,6 +13318,7 @@ class $$ProductVariantsTableTableManager
                 quantity: quantity,
                 costPrice: costPrice,
                 sellPrice: sellPrice,
+                wholesalePrice: wholesalePrice,
                 isActive: isActive,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -16013,6 +16187,8 @@ typedef $$CustomersTableCreateCompanionBuilder =
       required String name,
       required String phone,
       Value<int> loyaltyPoints,
+      Value<int> discountPercent,
+      Value<String> customerType,
       required DateTime createdAt,
       required DateTime updatedAt,
       Value<DateTime?> deletedAt,
@@ -16025,6 +16201,8 @@ typedef $$CustomersTableUpdateCompanionBuilder =
       Value<String> name,
       Value<String> phone,
       Value<int> loyaltyPoints,
+      Value<int> discountPercent,
+      Value<String> customerType,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<DateTime?> deletedAt,
@@ -16062,6 +16240,16 @@ class $$CustomersTableFilterComposer
 
   ColumnFilters<int> get loyaltyPoints => $composableBuilder(
     column: $table.loyaltyPoints,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get discountPercent => $composableBuilder(
+    column: $table.discountPercent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customerType => $composableBuilder(
+    column: $table.customerType,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -16115,6 +16303,16 @@ class $$CustomersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get discountPercent => $composableBuilder(
+    column: $table.discountPercent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get customerType => $composableBuilder(
+    column: $table.customerType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -16154,6 +16352,16 @@ class $$CustomersTableAnnotationComposer
 
   GeneratedColumn<int> get loyaltyPoints => $composableBuilder(
     column: $table.loyaltyPoints,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get discountPercent => $composableBuilder(
+    column: $table.discountPercent,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get customerType => $composableBuilder(
+    column: $table.customerType,
     builder: (column) => column,
   );
 
@@ -16200,6 +16408,8 @@ class $$CustomersTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<String> phone = const Value.absent(),
                 Value<int> loyaltyPoints = const Value.absent(),
+                Value<int> discountPercent = const Value.absent(),
+                Value<String> customerType = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -16210,6 +16420,8 @@ class $$CustomersTableTableManager
                 name: name,
                 phone: phone,
                 loyaltyPoints: loyaltyPoints,
+                discountPercent: discountPercent,
+                customerType: customerType,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -16222,6 +16434,8 @@ class $$CustomersTableTableManager
                 required String name,
                 required String phone,
                 Value<int> loyaltyPoints = const Value.absent(),
+                Value<int> discountPercent = const Value.absent(),
+                Value<String> customerType = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -16232,6 +16446,8 @@ class $$CustomersTableTableManager
                 name: name,
                 phone: phone,
                 loyaltyPoints: loyaltyPoints,
+                discountPercent: discountPercent,
+                customerType: customerType,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,

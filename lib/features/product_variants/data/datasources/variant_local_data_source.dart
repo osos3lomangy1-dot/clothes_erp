@@ -25,15 +25,28 @@ class VariantLocalDataSource {
   }
 
   Future<List<ProductVariant>> getVariants(String productId) async {
-    return (_db.select(_db.productVariants)..where((t) => t.productId.equals(productId) & t.deletedAt.isNull())).get();
+    return (_db.select(_db.productVariants)
+          ..where((t) => t.productId.equals(productId) & t.deletedAt.isNull()))
+        .get();
+  }
+
+  Future<ProductVariant?> getVariantById(String id) async {
+    return (_db.select(_db.productVariants)
+          ..where((t) => t.id.equals(id) & t.deletedAt.isNull()))
+        .getSingleOrNull();
   }
 
   Future<String> autoGenerateSku(String productName, String color, String size) async {
-    final base = '${productName.substring(0, 1).toUpperCase()}${color.substring(0, 1).toUpperCase()}${size.substring(0, 1).toUpperCase()}';
+    final p = productName.isNotEmpty ? productName.substring(0, 1).toUpperCase() : 'P';
+    final c = color.isNotEmpty ? color.substring(0, 1).toUpperCase() : 'C';
+    final s = size.isNotEmpty ? size.substring(0, 1).toUpperCase() : 'S';
+    final base = '$p$c$s';
     String sku = base;
     int suffix = 1;
     while (true) {
-      final existing = await (_db.select(_db.productVariants)..where((t) => t.sku.equals(sku) & t.deletedAt.isNull())).get();
+      final existing = await (_db.select(_db.productVariants)
+            ..where((t) => t.sku.equals(sku) & t.deletedAt.isNull()))
+          .get();
       if (existing.isEmpty) break;
       sku = '$base$suffix';
       suffix++;
@@ -48,8 +61,8 @@ class VariantLocalDataSource {
     required String size,
     required int costPrice,
     required int sellPrice,
+    int wholesalePrice = 0,
     int quantity = 0,
-    
   }) async {
     final now = DateTime.now();
     final id = _uuid.v4();
@@ -66,6 +79,7 @@ class VariantLocalDataSource {
           quantity: const Value(0),
           costPrice: costPrice,
           sellPrice: sellPrice,
+          wholesalePrice: Value(wholesalePrice),
           createdAt: now,
           updatedAt: now,
         ));
@@ -79,7 +93,7 @@ class VariantLocalDataSource {
             variantId: id,
             type: 'receive',
             qtyDelta: quantity,
-            reason: Value('opening stock'),
+            reason: const Value('opening stock'),
             refType: '',
             refId: const Value.absent(),
             userId: 'system',
@@ -95,34 +109,78 @@ class VariantLocalDataSource {
     );
   }
 
-  Future<void> updateVariant(String id, {int? costPrice, int? sellPrice}) async {
+  Future<void> updateVariant(
+    String id, {
+    int? costPrice,
+    int? sellPrice,
+    int? wholesalePrice,
+    int? quantity,
+    String? sku,
+    String? color,
+    String? size,
+    String? reason,
+    String userId = 'system',
+  }) async {
     final now = DateTime.now();
     final branchId = await _branchId();
-    // Get old values for audit
     final existing = await (_db.select(_db.productVariants)..where((t) => t.id.equals(id))).getSingleOrNull();
-    String? oldValue;
-    String? newValue;
-    if (existing != null && (costPrice != null || sellPrice != null)) {
-      oldValue = 'cost:${existing.costPrice},sell:${existing.sellPrice}';
-      newValue = 'cost:${costPrice ?? existing.costPrice},sell:${sellPrice ?? existing.sellPrice}';
-    }
+    if (existing == null) throw Exception('المقاس غير موجود');
+
+    final qtyDelta = quantity != null ? (quantity - existing.quantity) : 0;
+    final oldValue = 'qty:${existing.quantity},cost:${existing.costPrice},sell:${existing.sellPrice},wholesale:${existing.wholesalePrice}';
+    final newValue = 'qty:${quantity ?? existing.quantity},cost:${costPrice ?? existing.costPrice},sell:${sellPrice ?? existing.sellPrice},wholesale:${wholesalePrice ?? existing.wholesalePrice}';
+
     await _tx.write(
       writeFn: () async {
         await (_db.update(_db.productVariants)..where((t) => t.id.equals(id))).write(
           ProductVariantsCompanion(
             costPrice: costPrice != null ? Value(costPrice) : const Value.absent(),
             sellPrice: sellPrice != null ? Value(sellPrice) : const Value.absent(),
+            wholesalePrice: wholesalePrice != null ? Value(wholesalePrice) : const Value.absent(),
+            quantity: quantity != null ? Value(quantity) : const Value.absent(),
+            sku: sku != null ? Value(sku) : const Value.absent(),
+            color: color != null ? Value(color) : const Value.absent(),
+            size: size != null ? Value(size) : const Value.absent(),
             updatedAt: Value(now),
           ),
         );
+
+        if (qtyDelta != 0) {
+          await _db.into(_db.inventoryLogs).insert(InventoryLogsCompanion.insert(
+            id: _uuid.v4(),
+            branchId: branchId,
+            variantId: id,
+            type: 'adjustment',
+            qtyDelta: qtyDelta,
+            reason: Value(reason ?? 'تعديل يدوي للمخزون (تسوية جردية / تصحيح خطأ إدخال)'),
+            refType: 'manual_adjustment',
+            refId: const Value.absent(),
+            userId: userId,
+            createdAt: now,
+          ));
+        }
       },
       branchId: branchId,
       entity: 'variant',
       entityId: id,
       operation: 'update',
-      userId: 'system',
+      userId: userId,
       oldValue: oldValue,
       newValue: newValue,
+    );
+  }
+
+  Future<void> adjustStockQuantity(
+    String id, {
+    required int newQuantity,
+    required String reason,
+    String userId = 'admin',
+  }) async {
+    await updateVariant(
+      id,
+      quantity: newQuantity,
+      reason: reason,
+      userId: userId,
     );
   }
 
@@ -147,16 +205,3 @@ class VariantLocalDataSource {
     if (beforeAuditWrite != null) await beforeAuditWrite!();
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -4,6 +4,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/money.dart';
 import '../../../products/domain/entities/product_entity.dart';
+import '../../data/datasources/variant_local_data_source.dart';
 import '../../domain/entities/variant_entity.dart';
 import '../cubits/variant_cubit.dart';
 import '../cubits/variant_state.dart';
@@ -13,6 +14,147 @@ class VariantListScreen extends StatelessWidget {
   final ProductEntity product;
 
   const VariantListScreen({super.key, required this.product});
+
+  void _openStockAdjustmentDialog(BuildContext context, VariantEntity variant) {
+    final qtyCtrl = TextEditingController(text: '${variant.quantity}');
+    final reasonCtrl = TextEditingController(text: 'تصحيح خطأ إدخال رصيد');
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final enteredQty = int.tryParse(qtyCtrl.text.trim()) ?? variant.quantity;
+          final diff = enteredQty - variant.quantity;
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
+              children: [
+                Icon(Icons.tune_rounded, color: AppColors.primary),
+                SizedBox(width: 8),
+                Text('تعديل رصيد المخزون', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              ],
+            ),
+            content: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'الصنف: ${product.name} (${variant.color} - ${variant.size})',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('الرصيد الحالي المسجل:'),
+                          Text(
+                            '${variant.quantity} قطعة',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: qtyCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'الرصيد الفعلي الجديد *',
+                        hintText: 'أدخل الكمية الصحيحة',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        prefixIcon: const Icon(Icons.inventory_2_outlined),
+                      ),
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) return 'يرجى إدخال الكمية';
+                        final n = int.tryParse(val.trim());
+                        if (n == null || n < 0) return 'الكمية يجب أن تكون 0 أو أكثر';
+                        return null;
+                      },
+                      onChanged: (_) => setDialogState(() {}),
+                    ),
+                    const SizedBox(height: 10),
+                    if (diff != 0)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Text(
+                          diff > 0 ? 'زيادة في المخزون: +$diff قطعة' : 'عجز / نقص في المخزون: $diff قطعة',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: diff > 0 ? Colors.green.shade700 : AppColors.error,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: reasonCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'سبب التعديل *',
+                        hintText: 'مثال: تصحيح خطأ إدخال، تسوية جردية، بضاعة تالفة...',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        prefixIcon: const Icon(Icons.edit_note_rounded),
+                      ),
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) return 'يرجى كتابة سبب التعديل';
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogCtx),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: () async {
+                  if (formKey.currentState?.validate() != true) return;
+                  final newQ = int.parse(qtyCtrl.text.trim());
+                  final reason = reasonCtrl.text.trim();
+
+                  await getIt<VariantLocalDataSource>().adjustStockQuantity(
+                    variant.id,
+                    newQuantity: newQ,
+                    reason: reason,
+                  );
+
+                  if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+                  if (context.mounted) {
+                    context.read<VariantCubit>().getVariants(product.id);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('تم تعديل رصيد الصنف بنجاح إلى $newQ قطعة'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                },
+                child: const Text('حفظ التعديل', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
 
   Future<void> _confirmDelete(BuildContext context, VariantEntity variant) async {
     final confirmed = await showDialog<bool>(
@@ -195,17 +337,37 @@ class VariantListScreen extends StatelessWidget {
                                       ),
                                       const SizedBox(width: 12),
                                       Text(
-                                        'سعر البيع: ${Money(variant.salePrice).toDisplay()} ج.م',
+                                        'قطاعي: ${Money(variant.salePrice).toDisplay()} ج.م',
                                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
                                       ),
+                                      if (variant.wholesalePrice > 0) ...[
+                                        const SizedBox(width: 10),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.purple.shade50,
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(color: Colors.purple.shade200),
+                                          ),
+                                          child: Text(
+                                            'جملة: ${Money(variant.wholesalePrice).toDisplay()} ج.م',
+                                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.purple.shade800),
+                                          ),
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ],
                               ),
                             ),
                             IconButton(
+                              icon: const Icon(Icons.tune_rounded, size: 20, color: Colors.teal),
+                              tooltip: 'تعديل رصيد المخزون (تسوية جردية / تصحيح خطأ)',
+                              onPressed: () => _openStockAdjustmentDialog(context, variant),
+                            ),
+                            IconButton(
                               icon: const Icon(Icons.edit_outlined, size: 20, color: AppColors.primary),
-                              tooltip: 'تعديل المقاس',
+                              tooltip: 'تعديل المقاس والأسعار',
                               onPressed: () async {
                                 await Navigator.of(context).push(
                                   MaterialPageRoute(builder: (context) => VariantFormScreen(product: product, variant: variant)),

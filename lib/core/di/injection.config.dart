@@ -244,18 +244,28 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i254.BranchProvider>(),
       ),
     );
+    gh.lazySingleton<_i689.AuthRepository>(
+      () => _i1043.AuthRepositoryImpl(
+        gh<_i1024.AuthRemoteDataSource>(),
+        gh<_i526.AuthLocalDataSource>(),
+        gh<_i110.AppDatabase>(),
+      ),
+    );
     gh.factory<_i874.TxWriter>(() => _i874.TxWriter(gh<_i110.AppDatabase>()));
+    gh.lazySingleton<_i1011.GetAuthStatusUseCase>(
+      () => _i1011.GetAuthStatusUseCase(gh<_i689.AuthRepository>()),
+    );
+    gh.lazySingleton<_i443.LoginUseCase>(
+      () => _i443.LoginUseCase(gh<_i689.AuthRepository>()),
+    );
+    gh.lazySingleton<_i661.LogoutUseCase>(
+      () => _i661.LogoutUseCase(gh<_i689.AuthRepository>()),
+    );
     gh.lazySingleton<_i682.DashboardRepository>(
       () => _i729.DashboardRepositoryImpl(gh<_i517.DashboardLocalDataSource>()),
     );
     gh.lazySingleton<_i971.PartnerRepository>(
       () => _i859.PartnerRepositoryImpl(gh<_i556.PartnersLocalDataSource>()),
-    );
-    gh.lazySingleton<_i689.AuthRepository>(
-      () => _i1043.AuthRepositoryImpl(
-        gh<_i1024.AuthRemoteDataSource>(),
-        gh<_i526.AuthLocalDataSource>(),
-      ),
     );
     gh.lazySingleton<_i1040.GetDashboardStatsUseCase>(
       () => _i1040.GetDashboardStatsUseCase(gh<_i682.DashboardRepository>()),
@@ -324,6 +334,13 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i351.ExpenseRepository>(
       () => _i868.ExpenseRepositoryImpl(gh<_i503.ExpensesLocalDataSource>()),
     );
+    gh.factory<_i217.AuthCubit>(
+      () => _i217.AuthCubit(
+        gh<_i443.LoginUseCase>(),
+        gh<_i661.LogoutUseCase>(),
+        gh<_i1011.GetAuthStatusUseCase>(),
+      ),
+    );
     gh.lazySingleton<_i758.ProductRepository>(
       () => _i492.ProductRepositoryImpl(gh<_i878.ProductLocalDataSource>()),
     );
@@ -332,15 +349,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i610.CustomerRepository>(
       () => _i707.CustomerRepositoryImpl(gh<_i548.CustomersLocalDataSource>()),
-    );
-    gh.lazySingleton<_i1011.GetAuthStatusUseCase>(
-      () => _i1011.GetAuthStatusUseCase(gh<_i689.AuthRepository>()),
-    );
-    gh.lazySingleton<_i443.LoginUseCase>(
-      () => _i443.LoginUseCase(gh<_i689.AuthRepository>()),
-    );
-    gh.lazySingleton<_i661.LogoutUseCase>(
-      () => _i661.LogoutUseCase(gh<_i689.AuthRepository>()),
     );
     gh.factory<_i638.PartnersCubit>(
       () => _i638.PartnersCubit(gh<_i971.PartnerRepository>()),
@@ -409,6 +417,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i419.UpdateCategoryUseCase>(
       () => _i419.UpdateCategoryUseCase(gh<_i687.CategoryRepository>()),
     );
+    gh.factory<_i82.LoginFormCubit>(
+      () => _i82.LoginFormCubit(gh<_i217.AuthCubit>()),
+    );
     gh.factory<_i147.CategoryCubit>(
       () => _i147.CategoryCubit(
         gh<_i368.GetCategoriesUseCase>(),
@@ -466,13 +477,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i592.DeleteProductUseCase>(),
       ),
     );
-    gh.factory<_i217.AuthCubit>(
-      () => _i217.AuthCubit(
-        gh<_i443.LoginUseCase>(),
-        gh<_i661.LogoutUseCase>(),
-        gh<_i1011.GetAuthStatusUseCase>(),
-      ),
-    );
     gh.lazySingleton<_i980.AddEmployeeUseCase>(
       () => _i980.AddEmployeeUseCase(gh<_i506.EmployeeRepository>()),
     );
@@ -496,9 +500,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i500.UpdateEmployeeStatusUseCase>(),
         gh<_i712.DeleteEmployeeUseCase>(),
       ),
-    );
-    gh.factory<_i82.LoginFormCubit>(
-      () => _i82.LoginFormCubit(gh<_i217.AuthCubit>()),
     );
     gh.lazySingleton<_i747.CreateSaleUseCase>(
       () => _i747.CreateSaleUseCase(gh<_i862.PosRepository>()),

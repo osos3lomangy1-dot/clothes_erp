@@ -44,7 +44,7 @@ class _CustomerViewState extends State<_CustomerView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'سجل العملاء',
+              'سجل العملاء والمزايا',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
@@ -52,7 +52,7 @@ class _CustomerViewState extends State<_CustomerView> {
               ),
             ),
             Text(
-              'إدارة بيانات العملاء ونقاط الولاء وتاريخ الشراء',
+              'إدارة بيانات العملاء ونسب الخصم وتصنيف الجملة/القطاعي ونقاط الولاء',
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ],
@@ -67,7 +67,7 @@ class _CustomerViewState extends State<_CustomerView> {
                 size: 18,
               ),
               label: const Text(
-                'إضافة عميل',
+                'إضافة عميل جديد',
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -99,46 +99,62 @@ class _CustomerViewState extends State<_CustomerView> {
         builder: (context, state) {
           return Column(
             children: [
-              // Search bar
               Container(
                 color: Colors.white,
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                child: TextField(
-                  controller: _searchCtrl,
-                  decoration: InputDecoration(
-                    hintText: 'ابحث عن العميل بالاسم أو رقم الهاتف...',
-                    prefixIcon: const Icon(
-                      Icons.search,
-                      color: AppColors.primary,
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _searchCtrl,
+                        decoration: InputDecoration(
+                          hintText: 'البحث عن عميل بالاسم أو رقم الهاتف...',
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            color: AppColors.primary,
+                          ),
+                          suffixIcon: _searchCtrl.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () {
+                                    _searchCtrl.clear();
+                                    context
+                                        .read<CustomerCubit>()
+                                        .searchCustomers('');
+                                    setState(() {});
+                                  },
+                                )
+                              : null,
+                          filled: true,
+                          fillColor: AppColors.surfaceContainerLow,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                        onChanged: (query) {
+                          context
+                              .read<CustomerCubit>()
+                              .searchCustomers(query);
+                          setState(() {});
+                        },
+                      ),
                     ),
-                    filled: true,
-                    fillColor: AppColors.surfaceContainer,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    suffixIcon: _searchCtrl.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear, size: 18),
-                            onPressed: () {
-                              _searchCtrl.clear();
-                              context.read<CustomerCubit>().searchCustomers('');
-                            },
-                          )
-                        : null,
-                  ),
-                  onChanged: (val) =>
-                      context.read<CustomerCubit>().searchCustomers(val),
+                  ],
                 ),
               ),
               const Divider(height: 1),
-              // Customer list
               Expanded(
                 child: Builder(
                   builder: (context) {
-                    if (state.status == CustomerStatus.loading &&
-                        state.customers.isEmpty) {
-                      return const Center(child: CircularProgressIndicator());
+                    if (state.status == CustomerStatus.loading) {
+                      return const Center(
+                        child: CircularProgressIndicator(),
+                      );
                     }
                     if (state.customers.isEmpty) {
                       return Center(
@@ -146,14 +162,14 @@ class _CustomerViewState extends State<_CustomerView> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             const Icon(
-                              Icons.person_off_outlined,
+                              Icons.people_outline_rounded,
                               size: 64,
                               color: Colors.grey,
                             ),
                             const SizedBox(height: 12),
                             Text(
                               _searchCtrl.text.isEmpty
-                                  ? 'لا يوجد عملاء مسجلون حتى الآن. اضغط على "إضافة عميل" للبدء.'
+                                  ? 'لا يوجد عملاء مسجلون حتى الآن. اضغط على "إضافة عميل جديد" للبدء.'
                                   : 'لا يوجد عملاء يطابقون "${_searchCtrl.text}".',
                               style: TextStyle(
                                 color: Colors.grey.shade700,
@@ -171,6 +187,9 @@ class _CustomerViewState extends State<_CustomerView> {
                           const SizedBox(height: 10),
                       itemBuilder: (context, index) {
                         final customer = state.customers[index];
+                        final isWholesale = customer.isWholesale;
+                        final isVip = customer.isVip;
+
                         return Container(
                           decoration: BoxDecoration(
                             color: Colors.white,
@@ -179,66 +198,126 @@ class _CustomerViewState extends State<_CustomerView> {
                           ),
                           child: ListTile(
                             leading: CircleAvatar(
-                              backgroundColor: AppColors.primary.withValues(
-                                alpha: 0.12,
-                              ),
-                              child: Text(
-                                customer.name.isNotEmpty
-                                    ? customer.name[0]
-                                    : 'ع',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            ),
-                            title: Text(
-                              customer.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                              backgroundColor: isWholesale
+                                  ? Colors.purple.shade50
+                                  : isVip
+                                      ? Colors.amber.shade50
+                                      : AppColors.primary.withValues(alpha: 0.12),
+                              child: Icon(
+                                isWholesale
+                                    ? Icons.storefront_rounded
+                                    : isVip
+                                        ? Icons.workspace_premium_rounded
+                                        : Icons.person_rounded,
+                                color: isWholesale
+                                    ? Colors.purple.shade700
+                                    : isVip
+                                        ? Colors.amber.shade800
+                                        : AppColors.primary,
                               ),
                             ),
-                            subtitle: Row(
+                            title: Row(
                               children: [
                                 Text(
-                                  customer.phone,
-                                  style: TextStyle(color: Colors.grey.shade700),
-                                ),
-                                const SizedBox(width: 12),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
+                                  customer.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
                                   ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.amber.shade50,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: Colors.amber.shade200,
+                                ),
+                                const SizedBox(width: 8),
+                                if (isWholesale)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.purple.shade50,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: Colors.purple.shade200),
+                                    ),
+                                    child: Text(
+                                      'تاجر جملة',
+                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.purple.shade800),
+                                    ),
+                                  )
+                                else if (isVip)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber.shade50,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: Colors.amber.shade200),
+                                    ),
+                                    child: Text(
+                                      'عميل مميز (VIP)',
+                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
                                     ),
                                   ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(
-                                        Icons.star_rounded,
-                                        size: 14,
-                                        color: Colors.amber,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        '${customer.loyaltyPoints} نقطة',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.amber.shade900,
+                                if (customer.discountPercent > 0) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.shade50,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: Colors.green.shade300),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.percent_rounded, size: 12, color: Colors.green),
+                                        Text(
+                                          'خصم ${customer.discountPercent}%',
+                                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
-                                ),
+                                ],
                               ],
+                            ),
+                            subtitle: Padding(
+                              padding: const EdgeInsets.only(top: 4.0),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    customer.phone,
+                                    style: TextStyle(color: Colors.grey.shade700),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber.shade50,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Colors.amber.shade200,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.star_rounded,
+                                          size: 14,
+                                          color: Colors.amber,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '${customer.loyaltyPoints} نقطة',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.amber.shade900,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -248,7 +327,7 @@ class _CustomerViewState extends State<_CustomerView> {
                                     Icons.edit_outlined,
                                     color: AppColors.primary,
                                   ),
-                                  tooltip: 'تعديل بيانات العميل',
+                                  tooltip: 'تعديل بيانات العميل ومزاياه',
                                   onPressed: () => _showCustomerDialog(
                                     context,
                                     customer: customer,
@@ -256,12 +335,14 @@ class _CustomerViewState extends State<_CustomerView> {
                                 ),
                                 IconButton(
                                   icon: const Icon(
-                                    Icons.delete_outline_rounded,
+                                    Icons.delete_outline,
                                     color: AppColors.error,
                                   ),
                                   tooltip: 'حذف العميل',
-                                  onPressed: () =>
-                                      _confirmDelete(context, customer),
+                                  onPressed: () => _confirmDelete(
+                                    context,
+                                    customer,
+                                  ),
                                 ),
                               ],
                             ),
@@ -276,15 +357,6 @@ class _CustomerViewState extends State<_CustomerView> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primary,
-        onPressed: () => _showCustomerDialog(context),
-        icon: const Icon(Icons.person_add_rounded, color: Colors.white),
-        label: const Text(
-          'إضافة عميل',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-      ),
     );
   }
 
@@ -294,124 +366,181 @@ class _CustomerViewState extends State<_CustomerView> {
     final pointsCtrl = TextEditingController(
       text: '${customer?.loyaltyPoints ?? 0}',
     );
+    final discountCtrl = TextEditingController(
+      text: customer != null && customer.discountPercent > 0 ? '${customer.discountPercent}' : '',
+    );
+    String selectedType = customer?.customerType ?? 'retail';
     final isEditing = customer != null;
     final cubit = context.read<CustomerCubit>();
 
     showDialog(
       context: context,
-      builder: (dialogCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          isEditing ? 'تعديل بيانات العميل' : 'إضافة عميل جديد',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameCtrl,
-              decoration: InputDecoration(
-                labelText: 'اسم العميل *',
-                hintText: 'مثال: محمد أحمد',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.person_pin_rounded, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Text(
+                isEditing ? 'تعديل بيانات العميل والمزايا' : 'إضافة عميل جديد',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ],
+          ),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'اسم العميل *',
+                      hintText: 'مثال: محمد أحمد',
+                      prefixIcon: const Icon(Icons.person_outline),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: phoneCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'رقم الهاتف *',
+                      hintText: 'مثال: 01012345678',
+                      prefixIcon: const Icon(Icons.phone_outlined),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    keyboardType: TextInputType.phone,
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedType,
+                    decoration: InputDecoration(
+                      labelText: 'نوع العميل / التصنيف',
+                      prefixIcon: const Icon(Icons.category_outlined),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'retail', child: Text('عميل عادي (قطاعي)')),
+                      DropdownMenuItem(value: 'wholesale', child: Text('تاجر جملة (Wholesale)')),
+                      DropdownMenuItem(value: 'vip', child: Text('عميل مميز (VIP)')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        setDialogState(() => selectedType = val);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: discountCtrl,
+                          decoration: InputDecoration(
+                            labelText: 'نسبة خصم دائمة للعميل (%)',
+                            hintText: 'مثال: 5 أو 10',
+                            suffixText: '%',
+                            prefixIcon: const Icon(Icons.percent_rounded),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: pointsCtrl,
+                          decoration: InputDecoration(
+                            labelText: 'رصيد نقاط الولاء',
+                            prefixIcon: const Icon(Icons.stars_rounded, color: Colors.amber),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: phoneCtrl,
-              decoration: InputDecoration(
-                labelText: 'رقم الهاتف *',
-                hintText: 'مثال: 01012345678',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              keyboardType: TextInputType.phone,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('إلغاء'),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: pointsCtrl,
-              decoration: InputDecoration(
-                labelText: 'نقاط الولاء',
-                border: OutlineInputBorder(
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              keyboardType: TextInputType.number,
+              onPressed: () async {
+                final name = nameCtrl.text.trim();
+                final phone = phoneCtrl.text.trim();
+                final points = int.tryParse(pointsCtrl.text.trim()) ?? 0;
+                final discount = int.tryParse(discountCtrl.text.trim()) ?? 0;
+
+                if (name.isEmpty || phone.isEmpty) return;
+
+                if (isEditing) {
+                  await cubit.updateCustomer(
+                    customer.copyWith(
+                      name: name,
+                      phone: phone,
+                      loyaltyPoints: points,
+                      discountPercent: discount,
+                      customerType: selectedType,
+                    ),
+                  );
+                } else {
+                  await cubit.addCustomer(
+                    CustomerEntity(
+                      id: '',
+                      name: name,
+                      phone: phone,
+                      loyaltyPoints: points,
+                      discountPercent: discount,
+                      customerType: selectedType,
+                      createdAt: DateTime.now(),
+                    ),
+                  );
+                }
+                if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+              },
+              child: Text(
+                isEditing ? 'حفظ التعديلات' : 'إضافة العميل',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            onPressed: () async {
-              final name = nameCtrl.text.trim();
-              final phone = phoneCtrl.text.trim();
-              final points = int.tryParse(pointsCtrl.text.trim()) ?? 0;
-
-              if (name.isEmpty || phone.isEmpty) return;
-
-              if (isEditing) {
-                await cubit.updateCustomer(
-                  customer.copyWith(
-                    name: name,
-                    phone: phone,
-                    loyaltyPoints: points,
-                  ),
-                );
-              } else {
-                await cubit.addCustomer(
-                  CustomerEntity(
-                    id: '',
-                    name: name,
-                    phone: phone,
-                    loyaltyPoints: points,
-                    createdAt: DateTime.now(),
-                  ),
-                );
-              }
-              if (dialogCtx.mounted) Navigator.pop(dialogCtx);
-            },
-            child: Text(
-              isEditing ? 'حفظ التعديلات' : 'إضافة العميل',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
 
   void _confirmDelete(BuildContext context, CustomerEntity customer) {
-    final cubit = context.read<CustomerCubit>();
     showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: AppColors.error),
-            SizedBox(width: 8),
-            Text(
-              'تأكيد حذف العميل',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
+        title: const Text('تأكيد الحذف'),
         content: Text('هل أنت متأكد من حذف العميل "${customer.name}"؟'),
         actions: [
           TextButton(
@@ -419,15 +548,14 @@ class _CustomerViewState extends State<_CustomerView> {
             child: const Text('إلغاء'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            onPressed: () async {
-              await cubit.deleteCustomer(customer.id);
-              if (dialogCtx.mounted) Navigator.pop(dialogCtx);
-            },
-            child: const Text(
-              'حذف نهائي',
-              style: TextStyle(color: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
             ),
+            onPressed: () {
+              context.read<CustomerCubit>().deleteCustomer(customer.id);
+              Navigator.pop(dialogCtx);
+            },
+            child: const Text('حذف', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

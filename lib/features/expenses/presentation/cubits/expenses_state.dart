@@ -6,15 +6,28 @@ enum ExpensesStatus { initial, loading, loaded, error }
 class ExpensesState extends Equatable {
   final ExpensesStatus status;
   final List<ExpenseEntity> expenses;
+  final List<String> categories;
   final int totalAmount; // in piasters
   final String? errorMessage;
   final DateTime? fromDate;
   final DateTime? toDate;
   final String? selectedCategory;
 
+  static const List<String> defaultCategories = [
+    'إيجار المحل',
+    'كهرباء ومرافق',
+    'مرتبات ويوميات',
+    'بوفيه وضيافة',
+    'صيانة ونظافة',
+    'أكياس ومستلزمات تعبئة',
+    'نقل وشحن بضاعة',
+    'مصروفات أخرى',
+  ];
+
   const ExpensesState({
     this.status = ExpensesStatus.initial,
     this.expenses = const [],
+    this.categories = defaultCategories,
     this.totalAmount = 0,
     this.errorMessage,
     this.fromDate,
@@ -25,6 +38,7 @@ class ExpensesState extends Equatable {
   ExpensesState copyWith({
     ExpensesStatus? status,
     List<ExpenseEntity>? expenses,
+    List<String>? categories,
     int? totalAmount,
     String? errorMessage,
     DateTime? fromDate,
@@ -35,6 +49,7 @@ class ExpensesState extends Equatable {
     return ExpensesState(
       status: status ?? this.status,
       expenses: expenses ?? this.expenses,
+      categories: categories ?? this.categories,
       totalAmount: totalAmount ?? this.totalAmount,
       errorMessage: errorMessage ?? this.errorMessage,
       fromDate: fromDate ?? this.fromDate,
@@ -47,6 +62,7 @@ class ExpensesState extends Equatable {
   List<Object?> get props => [
         status,
         expenses,
+        categories,
         totalAmount,
         errorMessage,
         fromDate,
@@ -54,4 +70,3 @@ class ExpensesState extends Equatable {
         selectedCategory,
       ];
 }
-

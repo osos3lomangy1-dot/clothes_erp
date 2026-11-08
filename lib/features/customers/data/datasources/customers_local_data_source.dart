@@ -13,6 +13,8 @@ abstract class CustomersLocalDataSource {
     required String name,
     required String phone,
     int loyaltyPoints = 0,
+    int discountPercent = 0,
+    String customerType = 'retail',
     String userId = 'system',
   });
   Future<void> updateCustomer({
@@ -20,6 +22,8 @@ abstract class CustomersLocalDataSource {
     required String name,
     required String phone,
     int? loyaltyPoints,
+    int? discountPercent,
+    String? customerType,
     String userId = 'system',
   });
   Future<void> softDeleteCustomer(String id, {String userId = 'system'});
@@ -66,6 +70,8 @@ class CustomersLocalDataSourceImpl implements CustomersLocalDataSource {
     required String name,
     required String phone,
     int loyaltyPoints = 0,
+    int discountPercent = 0,
+    String customerType = 'retail',
     String userId = 'system',
   }) async {
     if (name.trim().isEmpty) throw Exception('Customer name is required');
@@ -83,6 +89,8 @@ class CustomersLocalDataSourceImpl implements CustomersLocalDataSource {
           name: name.trim(),
           phone: phone.trim(),
           loyaltyPoints: Value(loyaltyPoints),
+          discountPercent: Value(discountPercent),
+          customerType: Value(customerType),
           createdAt: now,
           updatedAt: now,
         ));
@@ -101,6 +109,8 @@ class CustomersLocalDataSourceImpl implements CustomersLocalDataSource {
     required String name,
     required String phone,
     int? loyaltyPoints,
+    int? discountPercent,
+    String? customerType,
     String userId = 'system',
   }) async {
     if (name.trim().isEmpty) throw Exception('Customer name is required');
@@ -116,6 +126,8 @@ class CustomersLocalDataSourceImpl implements CustomersLocalDataSource {
             name: Value(name.trim()),
             phone: Value(phone.trim()),
             loyaltyPoints: loyaltyPoints != null ? Value(loyaltyPoints) : const Value.absent(),
+            discountPercent: discountPercent != null ? Value(discountPercent) : const Value.absent(),
+            customerType: customerType != null ? Value(customerType) : const Value.absent(),
             updatedAt: Value(now),
           ),
         );
@@ -150,4 +162,3 @@ class CustomersLocalDataSourceImpl implements CustomersLocalDataSource {
     );
   }
 }
-

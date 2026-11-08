@@ -564,4 +564,253 @@ class ExcelService {
     final str = _cellToString(cell).replaceAll(RegExp(r'[^\d]'), '');
     return int.tryParse(str) ?? 0;
   }
+
+  String _formatPayment(String method) {
+    final lower = method.toLowerCase();
+    if (lower == 'cash' || lower == 'نقدي') return 'نقدي (كاش)';
+    if (lower == 'card' || lower == 'visa' || lower == 'فيزا') return 'بطاقة / فيزا';
+    if (lower == 'credit' || lower == 'اجل' || lower == 'آجل') return 'آجل';
+    return method;
+  }
+
+  Future<String?> _saveExcelFile(List<int> bytes, String defaultFileName, String dialogTitle) async {
+    String? outputFile;
+    try {
+      outputFile = await FilePicker.platform.saveFile(
+        dialogTitle: dialogTitle,
+        fileName: defaultFileName,
+        type: FileType.custom,
+        allowedExtensions: ['xlsx'],
+      );
+    } catch (_) {}
+
+    outputFile ??= await _getDefaultExportPath(defaultFileName);
+    if (!outputFile.endsWith('.xlsx')) outputFile = '$outputFile.xlsx';
+    final file = File(outputFile);
+    await file.writeAsBytes(bytes);
+    return outputFile;
+  }
+
+  Future<String?> exportSales({DateTime? from, DateTime? to}) async {
+    final db = getIt<AppDatabase>();
+    var query = db.select(db.sales)..where((s) => s.deletedAt.isNull());
+    if (from != null) {
+      query = query..where((s) => s.date.isBiggerOrEqualValue(from));
+    }
+    if (to != null) {
+      query = query..where((s) => s.date.isSmallerOrEqualValue(to));
+    }
+    query = query..orderBy([(s) => drift.OrderingTerm.desc(s.date)]);
+    final sales = await query.get();
+
+    final customers = await (db.select(db.customers)..where((c) => c.deletedAt.isNull())).get();
+    final custMap = {for (var c in customers) c.id: c};
+
+    final users = await (db.select(db.users)..where((u) => u.deletedAt.isNull())).get();
+    final userMap = {for (var u in users) u.id: u.displayName};
+
+    final saleIds = sales.map((s) => s.id).toSet();
+    final allItems = saleIds.isEmpty
+        ? <SaleItem>[]
+        : await (db.select(db.saleItems)..where((i) => i.saleId.isIn(saleIds))).get();
+    final itemsBySale = <String, List<SaleItem>>{};
+    for (final item in allItems) {
+      itemsBySale.putIfAbsent(item.saleId, () => []).add(item);
+    }
+
+    final excel = Excel.createExcel();
+    const sheetSales = 'فواتير المبيعات';
+    final salesSheet = excel[sheetSales];
+    excel.setDefaultSheet(sheetSales);
+
+    salesSheet.appendRow([
+      TextCellValue('رقم الفاتورة'),
+      TextCellValue('التاريخ والوقت'),
+      TextCellValue('العميل'),
+      TextCellValue('هاتف العميل'),
+      TextCellValue('عدد الأصناف'),
+      TextCellValue('إجمالي القطع'),
+      TextCellValue('المبلغ قبل الخصم (ج.م)'),
+      TextCellValue('قيمة الخصم (ج.م)'),
+      TextCellValue('الصافي النهائي (ج.م)'),
+      TextCellValue('طريقة الدفع'),
+      TextCellValue('الكاشير'),
+      TextCellValue('ملاحظات'),
+    ]);
+
+    for (final s in sales) {
+      final cust = s.customerId != null ? custMap[s.customerId] : null;
+      final custName = cust?.name ?? 'عميل نقدي';
+      final custPhone = cust?.phone ?? '-';
+      final items = itemsBySale[s.id] ?? [];
+      final piecesCount = items.fold(0, (sum, i) => sum + i.qty);
+      final cashier = userMap[s.cashierId] ?? s.cashierId;
+
+      salesSheet.appendRow([
+        TextCellValue(s.shortRef),
+        TextCellValue(s.date.toLocal().toString().split('.')[0]),
+        TextCellValue(custName),
+        TextCellValue(custPhone),
+        IntCellValue(items.length),
+        IntCellValue(piecesCount),
+        DoubleCellValue(s.subtotal / 100.0),
+        DoubleCellValue(s.discountAmount / 100.0),
+        DoubleCellValue(s.total / 100.0),
+        TextCellValue(_formatPayment(s.paymentMethod)),
+        TextCellValue(cashier),
+        TextCellValue(s.note ?? ''),
+      ]);
+    }
+
+    // Sheet 2: Items Details
+    const sheetItems = 'تفاصيل الأصناف المباعة';
+    final itemsSheet = excel[sheetItems];
+    itemsSheet.appendRow([
+      TextCellValue('رقم الفاتورة'),
+      TextCellValue('تاريخ البيع'),
+      TextCellValue('اسم المنتج'),
+      TextCellValue('اللون'),
+      TextCellValue('المقاس'),
+      TextCellValue('الكمية المباعة'),
+      TextCellValue('سعر بيع الوحدة (ج.م)'),
+      TextCellValue('إجمالي الصنف (ج.م)'),
+    ]);
+
+    final saleMap = {for (var s in sales) s.id: s};
+    for (final item in allItems) {
+      final s = saleMap[item.saleId];
+      final dt = s != null ? s.date.toLocal().toString().split('.')[0] : '';
+      itemsSheet.appendRow([
+        TextCellValue(s?.shortRef ?? item.saleId),
+        TextCellValue(dt),
+        TextCellValue(item.productName),
+        TextCellValue(item.color),
+        TextCellValue(item.size),
+        IntCellValue(item.qty),
+        DoubleCellValue(item.priceSnapshot / 100.0),
+        DoubleCellValue(item.lineTotal / 100.0),
+      ]);
+    }
+
+    final bytes = excel.encode();
+    if (bytes == null) throw Exception('فشل إنشاء ملف إكسيل المبيعات');
+
+    final nowStr = DateTime.now().toIso8601String().replaceAll(':', '-').split('.')[0];
+    final defaultFileName = 'تقرير_المبيعات_$nowStr.xlsx';
+    return _saveExcelFile(bytes, defaultFileName, 'اختر مكان حفظ تقرير المبيعات');
+  }
+
+  Future<String?> exportExpenses({DateTime? from, DateTime? to, String? category}) async {
+    final db = getIt<AppDatabase>();
+    var query = db.select(db.expenses)..where((e) => e.deletedAt.isNull());
+    if (from != null) {
+      query = query..where((e) => e.expenseDate.isBiggerOrEqualValue(from));
+    }
+    if (to != null) {
+      query = query..where((e) => e.expenseDate.isSmallerOrEqualValue(to));
+    }
+    if (category != null && category.trim().isNotEmpty) {
+      query = query..where((e) => e.category.equals(category.trim()));
+    }
+    query = query..orderBy([(e) => drift.OrderingTerm.desc(e.expenseDate)]);
+    final expenses = await query.get();
+
+    final excel = Excel.createExcel();
+    const sheetExpenses = 'سجل المصروفات';
+    final sheet = excel[sheetExpenses];
+    excel.setDefaultSheet(sheetExpenses);
+
+    sheet.appendRow([
+      TextCellValue('تاريخ المصروف'),
+      TextCellValue('بند المصروف'),
+      TextCellValue('المبلغ (ج.م)'),
+      TextCellValue('البيان / الملاحظات'),
+      TextCellValue('المسجل'),
+      TextCellValue('تاريخ الإدخال'),
+    ]);
+
+    int totalAmount = 0;
+    for (final exp in expenses) {
+      totalAmount += exp.amount;
+      sheet.appendRow([
+        TextCellValue(exp.expenseDate.toLocal().toString().split(' ')[0]),
+        TextCellValue(exp.category),
+        DoubleCellValue(exp.amount / 100.0),
+        TextCellValue(exp.note ?? ''),
+        TextCellValue(exp.userId),
+        TextCellValue(exp.createdAt.toLocal().toString().split('.')[0]),
+      ]);
+    }
+
+    sheet.appendRow([
+      TextCellValue('الإجمالي'),
+      TextCellValue('${expenses.length} مصروف'),
+      DoubleCellValue(totalAmount / 100.0),
+      TextCellValue(''),
+      TextCellValue(''),
+      TextCellValue(''),
+    ]);
+
+    final bytes = excel.encode();
+    if (bytes == null) throw Exception('فشل إنشاء ملف إكسيل المصروفات');
+
+    final nowStr = DateTime.now().toIso8601String().replaceAll(':', '-').split('.')[0];
+    final defaultFileName = 'سجل_المصروفات_$nowStr.xlsx';
+    return _saveExcelFile(bytes, defaultFileName, 'اختر مكان حفظ ملف المصروفات');
+  }
+
+  Future<String?> exportComprehensiveFinancialReport({DateTime? from, DateTime? to}) async {
+    final db = getIt<AppDatabase>();
+    var sQuery = db.select(db.sales)..where((s) => s.deletedAt.isNull());
+    var eQuery = db.select(db.expenses)..where((e) => e.deletedAt.isNull());
+
+    if (from != null) {
+      sQuery = sQuery..where((s) => s.date.isBiggerOrEqualValue(from));
+      eQuery = eQuery..where((e) => e.expenseDate.isBiggerOrEqualValue(from));
+    }
+    if (to != null) {
+      sQuery = sQuery..where((s) => s.date.isSmallerOrEqualValue(to));
+      eQuery = eQuery..where((e) => e.expenseDate.isSmallerOrEqualValue(to));
+    }
+
+    final sales = await sQuery.get();
+    final expenses = await eQuery.get();
+
+    final excel = Excel.createExcel();
+    const sheetSummary = 'الملخص المالي الشامل';
+    final summarySheet = excel[sheetSummary];
+    excel.setDefaultSheet(sheetSummary);
+
+    final totalSalesPiasters = sales.fold(0, (sum, s) => sum + s.total);
+    final totalExpensesPiasters = expenses.fold(0, (sum, e) => sum + e.amount);
+    final netProfitPiasters = totalSalesPiasters - totalExpensesPiasters;
+
+    summarySheet.appendRow([
+      TextCellValue('البيان المالي'),
+      TextCellValue('القيمة بالج.م'),
+      TextCellValue('ملاحظات'),
+    ]);
+    summarySheet.appendRow([
+      TextCellValue('إجمالي المبيعات المحققة'),
+      DoubleCellValue(totalSalesPiasters / 100.0),
+      TextCellValue('عدد الفواتير: ${sales.length}'),
+    ]);
+    summarySheet.appendRow([
+      TextCellValue('إجمالي المصروفات والنثريات'),
+      DoubleCellValue(totalExpensesPiasters / 100.0),
+      TextCellValue('عدد السندات: ${expenses.length}'),
+    ]);
+    summarySheet.appendRow([
+      TextCellValue('صافي الأرباح التشغيلية'),
+      DoubleCellValue(netProfitPiasters / 100.0),
+      TextCellValue(netProfitPiasters >= 0 ? 'فائض أرباح' : 'عجز / خسارة'),
+    ]);
+
+    final bytes = excel.encode();
+    if (bytes == null) throw Exception('فشل إنشاء الملف المالي الشامل');
+
+    final nowStr = DateTime.now().toIso8601String().replaceAll(':', '-').split('.')[0];
+    final defaultFileName = 'التقرير_المالي_الشامل_$nowStr.xlsx';
+    return _saveExcelFile(bytes, defaultFileName, 'اختر مكان حفظ التقرير المالي الشامل');
+  }
 }

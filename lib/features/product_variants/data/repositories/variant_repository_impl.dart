@@ -24,8 +24,8 @@ class VariantRepositoryImpl implements VariantRepository {
         quantity: r.quantity,
         costPrice: r.costPrice,
         salePrice: r.sellPrice,
+        wholesalePrice: r.wholesalePrice,
         minStock: 5,
-        
         createdAt: r.createdAt,
       )).toList();
       return Right(entities);
@@ -44,7 +44,8 @@ class VariantRepositoryImpl implements VariantRepository {
         size: variant.size,
         costPrice: variant.costPrice,
         sellPrice: variant.salePrice,
-        
+        wholesalePrice: variant.wholesalePrice,
+        quantity: variant.quantity,
       );
       return const Right(null);
     } catch (e) {
@@ -55,9 +56,15 @@ class VariantRepositoryImpl implements VariantRepository {
   @override
   Future<Either<Failure, void>> updateVariant(VariantEntity variant) async {
     try {
-      await _localDataSource.updateVariant(variant.id,
+      await _localDataSource.updateVariant(
+        variant.id,
         costPrice: variant.costPrice,
         sellPrice: variant.salePrice,
+        wholesalePrice: variant.wholesalePrice,
+        quantity: variant.quantity,
+        sku: variant.productCode,
+        color: variant.color,
+        size: variant.size,
       );
       return const Right(null);
     } catch (e) {
@@ -76,9 +83,26 @@ class VariantRepositoryImpl implements VariantRepository {
   }
 
   @override
-  @override
   Future<Either<Failure, List<VariantEntity>>> searchVariants(String query) async {
-    return const Right([]);
+    try {
+      final rows = await _localDataSource.getAllVariants();
+      final entities = rows.map((r) => VariantEntity(
+        id: r.id,
+        productId: r.productId,
+        productCode: r.sku,
+        color: r.color,
+        size: r.size,
+        quantity: r.quantity,
+        costPrice: r.costPrice,
+        salePrice: r.sellPrice,
+        wholesalePrice: r.wholesalePrice,
+        minStock: 5,
+        createdAt: r.createdAt,
+      )).toList();
+      return Right(entities);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
   }
 
   @override
@@ -94,6 +118,7 @@ class VariantRepositoryImpl implements VariantRepository {
         quantity: r.quantity,
         costPrice: r.costPrice,
         salePrice: r.sellPrice,
+        wholesalePrice: r.wholesalePrice,
         minStock: 5,
         createdAt: r.createdAt,
       )).toList();
@@ -103,9 +128,3 @@ class VariantRepositoryImpl implements VariantRepository {
     }
   }
 }
-
-
-
-
-
-

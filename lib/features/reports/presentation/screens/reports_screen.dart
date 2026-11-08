@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/services/excel_service.dart';
 import '../../../../core/utils/money.dart';
 import '../cubits/reports_cubit.dart';
 import '../cubits/reports_state.dart';
@@ -62,6 +63,109 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ),
             ],
           ),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+              child: PopupMenuButton<String>(
+                tooltip: 'تصدير التقارير إلى ملف إكسيل',
+                onSelected: (val) async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  final excelService = ExcelService();
+                  String? path;
+                  try {
+                    if (val == 'sales') {
+                      path = await excelService.exportSales(
+                        from: _dateRange?.start,
+                        to: _dateRange?.end,
+                      );
+                    } else if (val == 'expenses') {
+                      path = await excelService.exportExpenses(
+                        from: _dateRange?.start,
+                        to: _dateRange?.end,
+                      );
+                    } else if (val == 'all') {
+                      path = await excelService.exportComprehensiveFinancialReport(
+                        from: _dateRange?.start,
+                        to: _dateRange?.end,
+                      );
+                    }
+                    if (path != null) {
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text('تم تصدير ملف الإكسيل بنجاح:\n$path'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text('خطأ أثناء التصدير: $e'),
+                        backgroundColor: AppColors.error,
+                      ),
+                    );
+                  }
+                },
+                itemBuilder: (ctx) => [
+                  const PopupMenuItem(
+                    value: 'sales',
+                    child: Row(
+                      children: [
+                        Icon(Icons.receipt_long_rounded, color: AppColors.primary, size: 20),
+                        SizedBox(width: 8),
+                        Text('تصدير تقرير المبيعات (.xlsx)'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'expenses',
+                    child: Row(
+                      children: [
+                        Icon(Icons.outbox_rounded, color: AppColors.error, size: 20),
+                        SizedBox(width: 8),
+                        Text('تصدير تقرير المصروفات (.xlsx)'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem(
+                    value: 'all',
+                    child: Row(
+                      children: [
+                        Icon(Icons.auto_graph_rounded, color: Colors.teal, size: 20),
+                        SizedBox(width: 8),
+                        Text('تصدير تقرير مالي شامل (.xlsx)', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ],
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.green.shade300),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.table_view_rounded, color: Colors.green, size: 18),
+                      const SizedBox(width: 6),
+                      Text(
+                        'تصدير إكسيل',
+                        style: TextStyle(
+                          color: Colors.green.shade800,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(Icons.arrow_drop_down, color: Colors.green.shade800, size: 18),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
         body: Builder(
           builder: (context) {

@@ -9,6 +9,7 @@ class VariantFormState extends Equatable {
   final int quantity;
   final int costPrice;
   final int salePrice;
+  final int wholesalePrice;
   final int minStock;
   final VariantFormStatus status;
   final String? errorMessage;
@@ -21,6 +22,7 @@ class VariantFormState extends Equatable {
     this.quantity = 0,
     this.costPrice = 0,
     this.salePrice = 0,
+    this.wholesalePrice = 0,
     this.minStock = 0,
     this.status = VariantFormStatus.initial,
     this.errorMessage,
@@ -34,6 +36,7 @@ class VariantFormState extends Equatable {
     int? quantity,
     int? costPrice,
     int? salePrice,
+    int? wholesalePrice,
     int? minStock,
     VariantFormStatus? status,
     String? errorMessage,
@@ -46,6 +49,7 @@ class VariantFormState extends Equatable {
       quantity: quantity ?? this.quantity,
       costPrice: costPrice ?? this.costPrice,
       salePrice: salePrice ?? this.salePrice,
+      wholesalePrice: wholesalePrice ?? this.wholesalePrice,
       minStock: minStock ?? this.minStock,
       status: status ?? this.status,
       errorMessage: errorMessage,
@@ -61,10 +65,10 @@ class VariantFormState extends Equatable {
         quantity,
         costPrice,
         salePrice,
+        wholesalePrice,
         minStock,
         status,
         errorMessage,
         isEdit,
       ];
 }
-

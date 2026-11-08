@@ -61,6 +61,7 @@ class ProductVariants extends Table {
   IntColumn get quantity => integer().withDefault(const Constant(0))();
   IntColumn get costPrice => integer()();
   IntColumn get sellPrice => integer()();
+  IntColumn get wholesalePrice => integer().withDefault(const Constant(0))();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
@@ -246,6 +247,8 @@ class Customers extends Table {
   TextColumn get name => text()();
   TextColumn get phone => text().unique()();
   IntColumn get loyaltyPoints => integer().withDefault(const Constant(0))();
+  IntColumn get discountPercent => integer().withDefault(const Constant(0))();
+  TextColumn get customerType => text().withDefault(const Constant('retail'))();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
   DateTimeColumn get deletedAt => dateTime().nullable()();
@@ -354,7 +357,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? driftDatabase(name: 'clothes_erp'));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -364,6 +367,37 @@ class AppDatabase extends _$AppDatabase {
         'CREATE UNIQUE INDEX idx_variants_sku_unique ON product_variants(sku) WHERE deleted_at IS NULL',
       );
     },
-    onUpgrade: (Migrator m, int from, int to) async {},
+    onUpgrade: (Migrator m, int from, int to) async {
+      if (from < 2) {
+        Future<void> safeAddColumn(String tableName, String columnName, TableInfo table, GeneratedColumn col) async {
+          final result = await customSelect('PRAGMA table_info("$tableName")').get();
+          final cols = result.map((r) => (r.data['name'] as String).toLowerCase()).toSet();
+          if (!cols.contains(columnName.toLowerCase())) {
+            await m.addColumn(table, col);
+          }
+        }
+
+        await safeAddColumn('product_variants', 'wholesale_price', productVariants, productVariants.wholesalePrice);
+        await safeAddColumn('customers', 'discount_percent', customers, customers.discountPercent);
+        await safeAddColumn('customers', 'customer_type', customers, customers.customerType);
+        await safeAddColumn('users', 'salary', users, users.salary);
+      }
+    },
+    beforeOpen: (details) async {
+      Future<void> addColumnIfNotExists(String table, String column, String definition) async {
+        try {
+          final result = await customSelect('PRAGMA table_info("$table")').get();
+          final columnNames = result.map((row) => (row.data['name'] as String).toLowerCase()).toSet();
+          if (!columnNames.contains(column.toLowerCase())) {
+            await customStatement('ALTER TABLE "$table" ADD COLUMN "$column" $definition');
+          }
+        } catch (_) {}
+      }
+
+      await addColumnIfNotExists('product_variants', 'wholesale_price', 'INTEGER NOT NULL DEFAULT 0');
+      await addColumnIfNotExists('customers', 'discount_percent', 'INTEGER NOT NULL DEFAULT 0');
+      await addColumnIfNotExists('customers', 'customer_type', "TEXT NOT NULL DEFAULT 'retail'");
+      await addColumnIfNotExists('users', 'salary', 'INTEGER NOT NULL DEFAULT 0');
+    },
   );
 }

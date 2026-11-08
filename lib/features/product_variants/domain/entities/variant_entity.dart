@@ -9,6 +9,7 @@ class VariantEntity extends Equatable {
   final int quantity;
   final int costPrice;
   final int salePrice;
+  final int wholesalePrice;
   final int minStock;
   final DateTime createdAt;
 
@@ -29,10 +30,41 @@ class VariantEntity extends Equatable {
     required this.quantity,
     required this.costPrice,
     required this.salePrice,
+    this.wholesalePrice = 0,
     required this.minStock,
     required this.createdAt,
     String? productName,
   }) : _productName = productName;
+
+  VariantEntity copyWith({
+    String? id,
+    String? productId,
+    String? productCode,
+    String? color,
+    String? size,
+    int? quantity,
+    int? costPrice,
+    int? salePrice,
+    int? wholesalePrice,
+    int? minStock,
+    DateTime? createdAt,
+    String? productName,
+  }) {
+    return VariantEntity(
+      id: id ?? this.id,
+      productId: productId ?? this.productId,
+      productCode: productCode ?? this.productCode,
+      color: color ?? this.color,
+      size: size ?? this.size,
+      quantity: quantity ?? this.quantity,
+      costPrice: costPrice ?? this.costPrice,
+      salePrice: salePrice ?? this.salePrice,
+      wholesalePrice: wholesalePrice ?? this.wholesalePrice,
+      minStock: minStock ?? this.minStock,
+      createdAt: createdAt ?? this.createdAt,
+      productName: productName ?? _productName,
+    );
+  }
 
   @override
   List<Object?> get props => [
@@ -44,6 +76,7 @@ class VariantEntity extends Equatable {
         quantity,
         costPrice,
         salePrice,
+        wholesalePrice,
         minStock,
         createdAt,
         _productName,

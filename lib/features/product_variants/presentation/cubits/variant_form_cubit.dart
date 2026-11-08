@@ -24,6 +24,7 @@ class VariantFormCubit extends Cubit<VariantFormState> {
         quantity: variant.quantity,
         costPrice: variant.costPrice,
         salePrice: variant.salePrice,
+        wholesalePrice: variant.wholesalePrice,
         minStock: variant.minStock,
         isEdit: true,
       ));
@@ -36,13 +37,14 @@ class VariantFormCubit extends Cubit<VariantFormState> {
   void onQuantityChanged(int value) => emit(state.copyWith(quantity: value));
   void onCostPriceChanged(int value) => emit(state.copyWith(costPrice: value));
   void onSalePriceChanged(int value) => emit(state.copyWith(salePrice: value));
+  void onWholesalePriceChanged(int value) => emit(state.copyWith(wholesalePrice: value));
   void onMinStockChanged(int value) => emit(state.copyWith(minStock: value));
 
   Future<void> submit({required String? id, required String productId}) async {
     if (state.productCode.isEmpty || state.color.isEmpty || state.size.isEmpty) {
       emit(state.copyWith(
         status: VariantFormStatus.error,
-        errorMessage: 'Product Code, Color, and Size are required',
+        errorMessage: 'يرجى إدخال كود الصنف واللون والمقاس',
       ));
       return;
     }
@@ -58,6 +60,7 @@ class VariantFormCubit extends Cubit<VariantFormState> {
       quantity: state.quantity,
       costPrice: state.costPrice,
       salePrice: state.salePrice,
+      wholesalePrice: state.wholesalePrice,
       minStock: state.minStock,
       createdAt: DateTime.now(),
     );
@@ -75,4 +78,3 @@ class VariantFormCubit extends Cubit<VariantFormState> {
     );
   }
 }
-

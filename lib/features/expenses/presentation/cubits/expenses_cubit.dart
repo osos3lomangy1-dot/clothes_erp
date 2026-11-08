@@ -9,14 +9,20 @@ class ExpensesCubit extends Cubit<ExpensesState> {
 
   ExpensesCubit(this._repository) : super(const ExpensesState());
 
-  Future<void> loadExpenses({DateTime? from, DateTime? to, String? category}) async {
-    emit(state.copyWith(
-      status: ExpensesStatus.loading,
-      fromDate: from ?? state.fromDate,
-      toDate: to ?? state.toDate,
-      selectedCategory: category,
-      clearCategory: category == null,
-    ));
+  Future<void> loadExpenses({
+    DateTime? from,
+    DateTime? to,
+    String? category,
+  }) async {
+    emit(
+      state.copyWith(
+        status: ExpensesStatus.loading,
+        fromDate: from ?? state.fromDate,
+        toDate: to ?? state.toDate,
+        selectedCategory: category,
+        clearCategory: category == null,
+      ),
+    );
 
     final effectiveFrom = from ?? state.fromDate;
     final effectiveTo = to ?? state.toDate;
@@ -28,16 +34,43 @@ class ExpensesCubit extends Cubit<ExpensesState> {
     );
 
     result.fold(
-      (failure) => emit(state.copyWith(status: ExpensesStatus.error, errorMessage: failure.message)),
+      (failure) => emit(
+        state.copyWith(
+          status: ExpensesStatus.error,
+          errorMessage: failure.message,
+        ),
+      ),
       (expenses) {
         final total = expenses.fold<int>(0, (sum, e) => sum + e.amount);
-        emit(state.copyWith(
-          status: ExpensesStatus.loaded,
-          expenses: expenses,
-          totalAmount: total,
-        ));
+
+        // Dynamically collect all categories
+        final recordedCats = expenses
+            .map((e) => e.category.trim())
+            .where((c) => c.isNotEmpty);
+        final allCategories = <String>{
+          ...ExpensesState.defaultCategories,
+          ...state.categories,
+          ...recordedCats,
+        }.toList();
+
+        emit(
+          state.copyWith(
+            status: ExpensesStatus.loaded,
+            expenses: expenses,
+            categories: allCategories,
+            totalAmount: total,
+          ),
+        );
       },
     );
+  }
+
+  void addCustomCategory(String newCat) {
+    final trimmed = newCat.trim();
+    if (trimmed.isEmpty) return;
+    if (!state.categories.contains(trimmed)) {
+      emit(state.copyWith(categories: [...state.categories, trimmed]));
+    }
   }
 
   Future<bool> addExpense({
@@ -57,10 +90,16 @@ class ExpensesCubit extends Cubit<ExpensesState> {
 
     return result.fold(
       (failure) {
-        emit(state.copyWith(status: ExpensesStatus.error, errorMessage: failure.message));
+        emit(
+          state.copyWith(
+            status: ExpensesStatus.error,
+            errorMessage: failure.message,
+          ),
+        );
         return false;
       },
       (_) {
+        addCustomCategory(category);
         loadExpenses();
         return true;
       },
@@ -70,9 +109,13 @@ class ExpensesCubit extends Cubit<ExpensesState> {
   Future<void> deleteExpense(String id) async {
     final result = await _repository.deleteExpense(id);
     result.fold(
-      (failure) => emit(state.copyWith(status: ExpensesStatus.error, errorMessage: failure.message)),
+      (failure) => emit(
+        state.copyWith(
+          status: ExpensesStatus.error,
+          errorMessage: failure.message,
+        ),
+      ),
       (_) => loadExpenses(),
     );
   }
 }
-

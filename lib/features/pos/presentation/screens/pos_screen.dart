@@ -1081,6 +1081,7 @@ class _CartPanelState extends State<_CartPanel> {
   final _receivedCtrl = TextEditingController();
   bool _isPercentageDiscount = false;
   String _paymentMethod = 'cash'; // 'cash' or 'card'
+  bool _isWholesaleMode = false;
 
   @override
   void dispose() {
@@ -1106,6 +1107,35 @@ class _CartPanelState extends State<_CartPanel> {
     }
   }
 
+  void _toggleWholesalePrices(bool wholesale) {
+    final posCubit = context.read<PosCubit>();
+    for (final item in posCubit.state.cart) {
+      final v = posCubit.getVariantById(item.variantId);
+      if (wholesale && v != null && v.wholesalePrice > 0) {
+        posCubit.updateUnitPrice(item.variantId, v.wholesalePrice);
+      } else if (!wholesale && v != null) {
+        posCubit.updateUnitPrice(item.variantId, v.salePrice);
+      }
+    }
+  }
+
+  void _onCustomerSelected(CustomerEntity cust) {
+    final posCubit = context.read<PosCubit>();
+    posCubit.assignCustomer(cust);
+
+    if (cust.isWholesale) {
+      setState(() => _isWholesaleMode = true);
+      _toggleWholesalePrices(true);
+    }
+
+    if (cust.discountPercent > 0) {
+      _discountCtrl.text = '${cust.discountPercent}';
+      _isPercentageDiscount = true;
+      _recalculateDiscount(posCubit.state.subtotal);
+      setState(() {});
+    }
+  }
+
   Future<void> _handleCheckout(PosState state) async {
     if (state.cart.isEmpty || state.isProcessing) return;
 
@@ -1126,6 +1156,7 @@ class _CartPanelState extends State<_CartPanel> {
     if (ok && mounted) {
       _receivedCtrl.clear();
       _discountCtrl.clear();
+      setState(() => _isWholesaleMode = false);
       messenger.showSnackBar(
         SnackBar(
           content: Text(
@@ -1157,9 +1188,9 @@ class _CartPanelState extends State<_CartPanel> {
             color: AppColors.surfaceContainerLowest,
             child: Column(
               children: [
-                // Cart Header: Title + Items/Pieces count + Clear [Esc]
+                // Cart Header: Title + Items/Pieces count + Wholesale toggle + Clear [Esc]
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -1169,33 +1200,106 @@ class _CartPanelState extends State<_CartPanel> {
                             'سلة المشتريات',
                             style: GoogleFonts.cairo(
                               fontWeight: FontWeight.bold,
-                              fontSize: 17,
+                              fontSize: 16,
                               color: AppColors.onSurface,
                             ),
                           ),
                           const SizedBox(width: 8),
                           // Badge showing items & pieces
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
                               color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
                               '${state.cart.length} أصناف • $totalPieces قطع',
                               style: GoogleFonts.cairo(
                                 color: AppColors.onPrimary,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 11,
+                                fontSize: 10,
                               ),
                             ),
                           ),
                         ],
                       ),
+                      // Wholesale / Retail Toggle Button
+                      Container(
+                        height: 28,
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: _isWholesaleMode ? Colors.purple.shade50 : AppColors.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: _isWholesaleMode ? Colors.purple.shade300 : AppColors.outlineVariant,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            InkWell(
+                              onTap: () {
+                                if (!_isWholesaleMode) return;
+                                setState(() => _isWholesaleMode = false);
+                                _toggleWholesalePrices(false);
+                              },
+                              borderRadius: BorderRadius.circular(6),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: !_isWholesaleMode ? AppColors.primary : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  'قطاعي',
+                                  style: GoogleFonts.cairo(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: !_isWholesaleMode ? Colors.white : Colors.grey.shade700,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () {
+                                if (_isWholesaleMode) return;
+                                setState(() => _isWholesaleMode = true);
+                                _toggleWholesalePrices(true);
+                              },
+                              borderRadius: BorderRadius.circular(6),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: _isWholesaleMode ? Colors.purple.shade700 : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.storefront_rounded,
+                                      size: 12,
+                                      color: _isWholesaleMode ? Colors.white : Colors.purple.shade700,
+                                    ),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      'بيع جملة',
+                                      style: GoogleFonts.cairo(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: _isWholesaleMode ? Colors.white : Colors.purple.shade700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       TextButton.icon(
                         style: TextButton.styleFrom(
                           foregroundColor: AppColors.error,
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
                         ),
                         onPressed: state.cart.isEmpty
                             ? null
@@ -1204,20 +1308,20 @@ class _CartPanelState extends State<_CartPanel> {
                                 _discountCtrl.clear();
                                 context.read<PosCubit>().clearCart();
                               },
-                        icon: const Icon(Icons.delete_sweep_rounded, size: 18),
+                        icon: const Icon(Icons.delete_sweep_rounded, size: 16),
                         label: Text(
-                          'مسح [Esc]',
-                          style: GoogleFonts.cairo(fontSize: 12),
+                          'مسح',
+                          style: GoogleFonts.cairo(fontSize: 11),
                         ),
                       ),
                     ],
                   ),
                 ),
 
-                // Customer Section (Guest or Assigned Customer)
+                // Customer Section (Two buttons when guest, full perks when assigned)
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
                     color: state.customer != null ? AppColors.surfaceContainer : AppColors.surfaceContainerLow,
                     borderRadius: BorderRadius.circular(12),
@@ -1225,17 +1329,21 @@ class _CartPanelState extends State<_CartPanel> {
                       color: state.customer != null ? AppColors.primary.withValues(alpha: 0.3) : AppColors.outlineVariant,
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 16,
-                        backgroundColor: state.customer != null ? AppColors.primary : Colors.grey.shade400,
-                        child: const Icon(Icons.person_rounded, size: 18, color: Colors.white),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: state.customer != null
-                            ? Column(
+                  child: state.customer != null
+                      ? Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 16,
+                              backgroundColor: state.customer!.isWholesale ? Colors.purple.shade100 : AppColors.primary,
+                              child: Icon(
+                                state.customer!.isWholesale ? Icons.storefront_rounded : Icons.person_rounded,
+                                size: 18,
+                                color: state.customer!.isWholesale ? Colors.purple.shade900 : Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
@@ -1250,22 +1358,68 @@ class _CartPanelState extends State<_CartPanel> {
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
-                                      const SizedBox(width: 6),
+                                      if (state.customer!.isWholesale) ...[
+                                        const SizedBox(width: 4),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                          decoration: BoxDecoration(
+                                            color: Colors.purple.shade50,
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(color: Colors.purple.shade200),
+                                          ),
+                                          child: Text(
+                                            'تاجر جملة',
+                                            style: GoogleFonts.cairo(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.purple.shade800,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                      if (state.customer!.discountPercent > 0) ...[
+                                        const SizedBox(width: 4),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                          decoration: BoxDecoration(
+                                            color: Colors.green.shade50,
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(color: Colors.green.shade300),
+                                          ),
+                                          child: Text(
+                                            'خصم ${state.customer!.discountPercent}%',
+                                            style: GoogleFonts.cairo(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.green.shade800,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        state.customer!.phone,
+                                        style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey.shade600),
+                                      ),
+                                      const SizedBox(width: 8),
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                                         decoration: BoxDecoration(
                                           color: Colors.amber.shade100,
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(6),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            const Icon(Icons.stars_rounded, size: 12, color: Colors.amber),
+                                            const Icon(Icons.stars_rounded, size: 10, color: Colors.amber),
                                             const SizedBox(width: 2),
                                             Text(
                                               '${state.customer!.loyaltyPoints} نقطة',
                                               style: GoogleFonts.cairo(
-                                                fontSize: 10,
+                                                fontSize: 9,
                                                 fontWeight: FontWeight.bold,
                                                 color: Colors.brown,
                                               ),
@@ -1275,46 +1429,74 @@ class _CartPanelState extends State<_CartPanel> {
                                       ),
                                     ],
                                   ),
-                                  Text(
-                                    state.customer!.phone,
-                                    style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey.shade600),
-                                  ),
                                 ],
-                              )
-                            : Text(
-                                'عميل نقدي (Guest)',
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.swap_horiz_rounded, size: 18, color: AppColors.primary),
+                              tooltip: 'تغيير العميل',
+                              onPressed: () async {
+                                final selected = await showDialog<CustomerEntity>(
+                                  context: context,
+                                  builder: (_) => const _AssignCustomerDialog(),
+                                );
+                                if (selected != null && context.mounted) {
+                                  _onCustomerSelected(selected);
+                                }
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded, size: 18, color: Colors.grey),
+                              tooltip: 'إزالة العميل والعودة لنقدي',
+                              onPressed: () {
+                                context.read<PosCubit>().assignCustomer(null);
+                              },
+                            ),
+                          ],
+                        )
+                      : Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 14,
+                              backgroundColor: Colors.grey.shade400,
+                              child: const Icon(Icons.person_outline, size: 16, color: Colors.white),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'عميل نقدي',
                                 style: GoogleFonts.cairo(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 13,
+                                  fontSize: 12,
                                   color: AppColors.onSurface,
                                 ),
                               ),
-                      ),
-                      if (state.customer != null)
-                        IconButton(
-                          icon: const Icon(Icons.close_rounded, size: 18),
-                          tooltip: 'إزالة العميل',
-                          onPressed: () => context.read<PosCubit>().assignCustomer(null),
-                        )
-                      else
-                        TextButton.icon(
-                          icon: const Icon(Icons.person_add_alt_1_rounded, size: 15),
-                          label: Text(
-                            'تعيين عميل',
-                            style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold),
-                          ),
-                          onPressed: () async {
-                            final selected = await showDialog<CustomerEntity>(
-                              context: context,
-                              builder: (_) => const _AssignCustomerDialog(),
-                            );
-                            if (selected != null && context.mounted) {
-                              context.read<PosCubit>().assignCustomer(selected);
-                            }
-                          },
+                            ),
+                            // Single Clean Button: Assign Customer
+                            OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.primary,
+                                side: BorderSide(color: AppColors.primary.withValues(alpha: 0.6), width: 1.2),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                              icon: const Icon(Icons.person_search_rounded, size: 15),
+                              label: Text(
+                                'تعيين عميل',
+                                style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold),
+                              ),
+                              onPressed: () async {
+                                final selected = await showDialog<CustomerEntity>(
+                                  context: context,
+                                  builder: (_) => const _AssignCustomerDialog(),
+                                );
+                                if (selected != null && context.mounted) {
+                                  _onCustomerSelected(selected);
+                                }
+                              },
+                            ),
+                          ],
                         ),
-                    ],
-                  ),
                 ),
 
                 const Divider(height: 8),
@@ -1763,6 +1945,83 @@ class _CartItemTileState extends State<_CartItemTile> {
     context.read<PosCubit>().updateQuantity(widget.item.variantId, valid);
   }
 
+  void _openPriceEditDialog(BuildContext context) {
+    final item = widget.item;
+    final priceCtrl = TextEditingController(text: (item.price / 100).toStringAsFixed(2));
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.price_change_rounded, color: AppColors.primary),
+            const SizedBox(width: 8),
+            Text(
+              'تعديل سعر الصنف (سعر خاص / جملة)',
+              style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ],
+        ),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${item.productName} (${item.color} - ${item.size})',
+                style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: priceCtrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                autofocus: true,
+                style: GoogleFonts.cairo(fontSize: 14),
+                decoration: InputDecoration(
+                  labelText: 'سعر بيع الوحدة بالج.م *',
+                  suffixText: 'ج.م',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                validator: (val) {
+                  if (val == null || val.trim().isEmpty) return 'يرجى إدخال السعر';
+                  final num = double.tryParse(val.trim());
+                  if (num == null || num < 0) return 'السعر غير صالح';
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('إلغاء', style: GoogleFonts.cairo()),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              if (formKey.currentState?.validate() != true) return;
+              final pounds = double.parse(priceCtrl.text.trim());
+              final piasters = (pounds * 100).toInt();
+              context.read<PosCubit>().updateUnitPrice(item.variantId, piasters);
+              Navigator.pop(ctx);
+            },
+            child: Text(
+              'حفظ السعر',
+              style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
@@ -1808,9 +2067,32 @@ class _CartItemTileState extends State<_CartItemTile> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      '${Money(item.price).toDisplay()} ج.م للقطعة',
-                      style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey.shade600),
+                    InkWell(
+                      onTap: () => _openPriceEditDialog(context),
+                      borderRadius: BorderRadius.circular(6),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '${Money(item.price).toDisplay()} ج.م',
+                              style: GoogleFonts.cairo(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+                            const Icon(Icons.edit_outlined, size: 12, color: AppColors.primary),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -1908,7 +2190,7 @@ class _CartItemTileState extends State<_CartItemTile> {
 }
 
 // ---------------------------------------------------------------------------
-// ASSIGN CUSTOMER DIALOG
+// ALL-IN-ONE ASSIGN & ADD CUSTOMER DIALOG
 // ---------------------------------------------------------------------------
 class _AssignCustomerDialog extends StatefulWidget {
   const _AssignCustomerDialog();
@@ -1919,14 +2201,35 @@ class _AssignCustomerDialog extends StatefulWidget {
 
 class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
   final _searchCtrl = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  late TextEditingController _nameCtrl;
+  late TextEditingController _phoneCtrl;
+  late TextEditingController _discountCtrl;
+  String _customerType = 'retail';
+
   List<CustomerEntity> _allCustomers = [];
   List<CustomerEntity> _filteredCustomers = [];
   bool _isLoading = true;
+  bool _isCreatingNew = false;
+  bool _isSavingNew = false;
 
   @override
   void initState() {
     super.initState();
+    _nameCtrl = TextEditingController();
+    _phoneCtrl = TextEditingController();
+    _discountCtrl = TextEditingController();
     _loadCustomers();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    _nameCtrl.dispose();
+    _phoneCtrl.dispose();
+    _discountCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _loadCustomers() async {
@@ -1959,251 +2262,370 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
     });
   }
 
-  Future<void> _showQuickAddCustomer(BuildContext context) async {
-    final search = _searchCtrl.text.trim();
-    final isPhone = RegExp(r'^[0-9+]+$').hasMatch(search);
-
-    final nameCtrl = TextEditingController(text: isPhone ? '' : search);
-    final phoneCtrl = TextEditingController(text: isPhone ? search : '');
-    final formKey = GlobalKey<FormState>();
-
-    final newCust = await showDialog<CustomerEntity>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            const Icon(Icons.person_add_rounded, color: AppColors.primary),
-            const SizedBox(width: 8),
-            Text(
-              'تسجيل عميل جديد من الكاشير',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-          ],
-        ),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: nameCtrl,
-                style: GoogleFonts.cairo(fontSize: 13),
-                decoration: InputDecoration(
-                  labelText: 'اسم العميل *',
-                  hintText: 'مثال: محمد أحمد',
-                  prefixIcon: const Icon(Icons.person_outline),
-                  isDense: true,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                validator: (val) => val == null || val.trim().isEmpty ? 'يرجى إدخال اسم العميل' : null,
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: phoneCtrl,
-                keyboardType: TextInputType.phone,
-                style: GoogleFonts.cairo(fontSize: 13),
-                decoration: InputDecoration(
-                  labelText: 'رقم الهاتف *',
-                  hintText: 'مثال: 01012345678',
-                  prefixIcon: const Icon(Icons.phone_outlined),
-                  isDense: true,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                validator: (val) => val == null || val.trim().isEmpty ? 'يرجى إدخال رقم الهاتف' : null,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('إلغاء', style: GoogleFonts.cairo()),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            onPressed: () async {
-              if (formKey.currentState?.validate() != true) return;
-              final cust = CustomerEntity(
-                id: '',
-                name: nameCtrl.text.trim(),
-                phone: phoneCtrl.text.trim(),
-                loyaltyPoints: 0,
-                createdAt: DateTime.now(),
-              );
-              final res = await getIt<CustomerRepository>().addCustomer(cust);
-              res.fold(
-                (failure) {
-                  if (ctx.mounted) {
-                    ScaffoldMessenger.of(ctx).showSnackBar(
-                      SnackBar(content: Text('خطأ: ${failure.message}'), backgroundColor: AppColors.error),
-                    );
-                  }
-                },
-                (_) async {
-                  final listRes = await getIt<CustomerRepository>().getCustomers(search: cust.phone);
-                  CustomerEntity? createdCust;
-                  listRes.fold((_) => null, (list) {
-                    if (list.isNotEmpty) createdCust = list.first;
-                  });
-                  createdCust ??= cust;
-                  if (ctx.mounted) {
-                    Navigator.pop(ctx, createdCust);
-                  }
-                },
-              );
-            },
-            child: Text(
-              'حفظ وتعيين للفاتورة',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (newCust != null && context.mounted) {
-      Navigator.pop(context, newCust);
-    }
+  void _switchToCreateMode([String initialText = '']) {
+    final text = initialText.trim();
+    final isPhone = RegExp(r'^[0-9+]+$').hasMatch(text);
+    setState(() {
+      _nameCtrl.text = isPhone ? '' : text;
+      _phoneCtrl.text = isPhone ? text : '';
+      _customerType = 'retail';
+      _discountCtrl.text = '';
+      _isCreatingNew = true;
+    });
   }
 
-  @override
-  void dispose() {
-    _searchCtrl.dispose();
-    super.dispose();
+  Future<void> _submitNewCustomer() async {
+    if (_formKey.currentState?.validate() != true) return;
+    setState(() => _isSavingNew = true);
+
+    final discount = int.tryParse(_discountCtrl.text.trim()) ?? 0;
+    final cust = CustomerEntity(
+      id: '',
+      name: _nameCtrl.text.trim(),
+      phone: _phoneCtrl.text.trim(),
+      loyaltyPoints: 0,
+      discountPercent: discount,
+      customerType: _customerType,
+      createdAt: DateTime.now(),
+    );
+
+    final res = await getIt<CustomerRepository>().addCustomer(cust);
+    res.fold(
+      (failure) {
+        if (mounted) {
+          setState(() => _isSavingNew = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('خطأ: ${failure.message}'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      },
+      (_) async {
+        final listRes = await getIt<CustomerRepository>().getCustomers(search: cust.phone);
+        CustomerEntity? createdCust;
+        listRes.fold((_) => null, (list) {
+          if (list.isNotEmpty) createdCust = list.first;
+        });
+        createdCust ??= cust;
+        if (mounted) {
+          Navigator.pop(context, createdCust);
+        }
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      titlePadding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+      actionsPadding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
       title: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            'تعيين عميل للفاتورة',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 17),
+          Row(
+            children: [
+              Icon(
+                _isCreatingNew ? Icons.person_add_rounded : Icons.person_search_rounded,
+                color: AppColors.primary,
+                size: 22,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _isCreatingNew ? 'إضافة عميل جديد' : 'تعيين عميل للفاتورة',
+                style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ],
           ),
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          if (!_isCreatingNew)
+            TextButton.icon(
+              onPressed: () => _switchToCreateMode(_searchCtrl.text),
+              icon: const Icon(Icons.add, size: 16),
+              label: Text(
+                'عميل جديد',
+                style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12),
+              ),
+            )
+          else
+            TextButton.icon(
+              onPressed: () => setState(() => _isCreatingNew = false),
+              icon: const Icon(Icons.arrow_back_rounded, size: 16),
+              label: Text(
+                'رجوع للبحث',
+                style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12),
+              ),
             ),
-            onPressed: () => _showQuickAddCustomer(context),
-            icon: const Icon(Icons.person_add_rounded, size: 16, color: Colors.white),
-            label: Text(
-              'عميل جديد',
-              style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-          ),
         ],
       ),
       content: SizedBox(
         width: 440,
-        height: 440,
-        child: Column(
-          children: [
-            TextField(
-              controller: _searchCtrl,
-              style: GoogleFonts.cairo(fontSize: 13),
-              decoration: InputDecoration(
-                hintText: 'بحث بالاسم أو رقم الهاتف...',
-                hintStyle: GoogleFonts.cairo(fontSize: 12),
-                prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primary),
-                isDense: true,
-                filled: true,
-                fillColor: AppColors.surfaceContainerLow,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+        child: AnimatedCrossFade(
+          duration: const Duration(milliseconds: 200),
+          crossFadeState: _isCreatingNew ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          firstChild: SizedBox(
+            height: 400,
+            child: Column(
+              children: [
+                TextField(
+                  controller: _searchCtrl,
+                  style: GoogleFonts.cairo(fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: 'ابحث بالاسم أو رقم الهاتف...',
+                    hintStyle: GoogleFonts.cairo(fontSize: 12),
+                    prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primary, size: 20),
+                    suffixIcon: _searchCtrl.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear_rounded, size: 18),
+                            onPressed: () {
+                              _searchCtrl.clear();
+                              _filter('');
+                            },
+                          )
+                        : null,
+                    isDense: true,
+                    filled: true,
+                    fillColor: AppColors.surfaceContainerLow,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  onChanged: _filter,
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                      : _filteredCustomers.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.person_off_outlined, size: 44, color: Colors.grey.shade400),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'لا توجد نتائج مطابقة',
+                                    style: GoogleFonts.cairo(
+                                      color: Colors.grey.shade600,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.primary,
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    ),
+                                    onPressed: () => _switchToCreateMode(_searchCtrl.text),
+                                    icon: const Icon(Icons.add, color: Colors.white, size: 16),
+                                    label: Text(
+                                      _searchCtrl.text.trim().isNotEmpty
+                                          ? 'تسجيل "${_searchCtrl.text.trim()}" كعميل جديد'
+                                          : 'إضافة عميل جديد',
+                                      style: GoogleFonts.cairo(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView.separated(
+                              itemCount: _filteredCustomers.length,
+                              separatorBuilder: (context, index) => const Divider(height: 1),
+                              itemBuilder: (context, index) {
+                                final customer = _filteredCustomers[index];
+                                final isWholesale = customer.isWholesale;
+                                return ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                  leading: CircleAvatar(
+                                    radius: 18,
+                                    backgroundColor: isWholesale ? Colors.purple.shade50 : AppColors.surfaceContainer,
+                                    child: Icon(
+                                      isWholesale ? Icons.storefront_rounded : Icons.person_rounded,
+                                      size: 18,
+                                      color: isWholesale ? Colors.purple.shade700 : AppColors.primary,
+                                    ),
+                                  ),
+                                  title: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          customer.name,
+                                          style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      if (isWholesale)
+                                        Container(
+                                          margin: const EdgeInsets.only(right: 4),
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                          decoration: BoxDecoration(
+                                            color: Colors.purple.shade50,
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(color: Colors.purple.shade200),
+                                          ),
+                                          child: Text(
+                                            'جملة',
+                                            style: GoogleFonts.cairo(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.purple.shade800,
+                                            ),
+                                          ),
+                                        ),
+                                      if (customer.discountPercent > 0)
+                                        Container(
+                                          margin: const EdgeInsets.only(right: 4),
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                          decoration: BoxDecoration(
+                                            color: Colors.green.shade50,
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(color: Colors.green.shade200),
+                                          ),
+                                          child: Text(
+                                            '${customer.discountPercent}% خصم',
+                                            style: GoogleFonts.cairo(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.green.shade800,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  subtitle: Text(
+                                    customer.phone,
+                                    style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey.shade600),
+                                  ),
+                                  trailing: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber.shade100,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      '${customer.loyaltyPoints} نقطة',
+                                      style: GoogleFonts.cairo(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.brown.shade800,
+                                      ),
+                                    ),
+                                  ),
+                                  onTap: () => Navigator.pop(context, customer),
+                                );
+                              },
+                            ),
+                ),
+              ],
+            ),
+          ),
+          secondChild: SizedBox(
+            height: 400,
+            child: SingleChildScrollView(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 4),
+                    TextFormField(
+                      controller: _nameCtrl,
+                      style: GoogleFonts.cairo(fontSize: 13),
+                      decoration: InputDecoration(
+                        labelText: 'اسم العميل *',
+                        hintText: 'مثال: محمد أحمد',
+                        prefixIcon: const Icon(Icons.person_outline, size: 20),
+                        isDense: true,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      validator: (val) => val == null || val.trim().isEmpty ? 'يرجى إدخال اسم العميل' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _phoneCtrl,
+                      keyboardType: TextInputType.phone,
+                      style: GoogleFonts.cairo(fontSize: 13),
+                      decoration: InputDecoration(
+                        labelText: 'رقم الهاتف *',
+                        hintText: 'مثال: 01012345678',
+                        prefixIcon: const Icon(Icons.phone_outlined, size: 20),
+                        isDense: true,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      validator: (val) => val == null || val.trim().isEmpty ? 'يرجى إدخال رقم الهاتف' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: _customerType,
+                      style: GoogleFonts.cairo(fontSize: 13, color: AppColors.onSurface),
+                      decoration: InputDecoration(
+                        labelText: 'تصنيف العميل',
+                        prefixIcon: const Icon(Icons.category_outlined, size: 20),
+                        isDense: true,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      items: [
+                        DropdownMenuItem(value: 'retail', child: Text('عميل عادي (قطاعي)', style: GoogleFonts.cairo())),
+                        DropdownMenuItem(value: 'wholesale', child: Text('تاجر جملة (Wholesale)', style: GoogleFonts.cairo())),
+                        DropdownMenuItem(value: 'vip', child: Text('عميل مميز (VIP)', style: GoogleFonts.cairo())),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setState(() => _customerType = val);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _discountCtrl,
+                      keyboardType: TextInputType.number,
+                      style: GoogleFonts.cairo(fontSize: 13),
+                      decoration: InputDecoration(
+                        labelText: 'نسبة الخصم الدائم للعميل (%) [اختياري]',
+                        hintText: 'مثال: 5 أو 10',
+                        suffixText: '%',
+                        prefixIcon: const Icon(Icons.percent_rounded, size: 20),
+                        isDense: true,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              onChanged: _filter,
             ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-                  : _filteredCustomers.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.person_search_rounded, size: 48, color: Colors.grey.shade400),
-                              const SizedBox(height: 10),
-                              Text(
-                                'لم يتم العثور على عملاء',
-                                style: GoogleFonts.cairo(color: Colors.grey.shade700, fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 12),
-                              ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                ),
-                                onPressed: () => _showQuickAddCustomer(context),
-                                icon: const Icon(Icons.add, color: Colors.white, size: 16),
-                                label: Text(
-                                  _searchCtrl.text.isNotEmpty
-                                      ? 'تسجيل "${_searchCtrl.text}" الآن'
-                                      : 'تسجيل عميل جديد',
-                                  style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      : ListView.separated(
-                          itemCount: _filteredCustomers.length,
-                          separatorBuilder: (context, index) => const Divider(height: 1),
-                          itemBuilder: (context, index) {
-                            final customer = _filteredCustomers[index];
-                            return ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: AppColors.surfaceContainer,
-                                child: const Icon(Icons.person, color: AppColors.primary),
-                              ),
-                              title: Text(
-                                customer.name,
-                                style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14),
-                              ),
-                              subtitle: Text(
-                                customer.phone,
-                                style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey.shade600),
-                              ),
-                              trailing: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: Colors.amber.shade100,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  '${customer.loyaltyPoints} نقطة',
-                                  style: GoogleFonts.cairo(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.brown,
-                                  ),
-                                ),
-                              ),
-                              onTap: () => Navigator.pop(context, customer),
-                            );
-                          },
-                        ),
-            ),
-          ],
+          ),
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text('إلغاء', style: GoogleFonts.cairo()),
-        ),
+        if (!_isCreatingNew)
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('إلغاء', style: GoogleFonts.cairo(color: Colors.grey.shade700)),
+          )
+        else ...[
+          TextButton(
+            onPressed: () => setState(() => _isCreatingNew = false),
+            child: Text('رجوع', style: GoogleFonts.cairo(color: Colors.grey.shade700)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
+            onPressed: _isSavingNew ? null : _submitNewCustomer,
+            child: _isSavingNew
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : Text('حفظ وتعيين للفاتورة', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: Colors.white)),
+          ),
+        ],
       ],
     );
   }

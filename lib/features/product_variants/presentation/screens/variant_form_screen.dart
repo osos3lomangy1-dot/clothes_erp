@@ -114,7 +114,7 @@ class VariantFormScreen extends StatelessWidget {
                                 child: TextFormField(
                                   initialValue: (state.costPrice / 100).toStringAsFixed(2),
                                   decoration: InputDecoration(
-                                    labelText: 'سعر التكلفة (ج.م)',
+                                    labelText: 'سعر التكلفة (ج.م) *',
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                                   ),
                                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -129,13 +129,29 @@ class VariantFormScreen extends StatelessWidget {
                                 child: TextFormField(
                                   initialValue: (state.salePrice / 100).toStringAsFixed(2),
                                   decoration: InputDecoration(
-                                    labelText: 'سعر البيع (ج.م)',
+                                    labelText: 'سعر البيع قطاعي (ج.م) *',
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                                   ),
                                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                   onChanged: (value) {
                                     final val = double.tryParse(value) ?? 0.0;
                                     context.read<VariantFormCubit>().onSalePriceChanged((val * 100).toInt());
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: TextFormField(
+                                  initialValue: state.wholesalePrice > 0 ? (state.wholesalePrice / 100).toStringAsFixed(2) : '',
+                                  decoration: InputDecoration(
+                                    labelText: 'سعر الجملة (ج.م)',
+                                    hintText: 'اختياري',
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  onChanged: (value) {
+                                    final val = double.tryParse(value) ?? 0.0;
+                                    context.read<VariantFormCubit>().onWholesalePriceChanged((val * 100).toInt());
                                   },
                                 ),
                               ),

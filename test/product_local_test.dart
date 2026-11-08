@@ -195,6 +195,21 @@ void main() {
     expect(logs.length, 3);
     expect(logs.every((l) => l.type == 'receive'), true);
   });
+
+  test('updateVariant or adjustStockQuantity adjusts quantity and writes inventory log', () async {
+    await pds.createProduct(name: 'P_ADJ', categoryId: 'c1');
+    final prod = (await pds.getProducts()).first;
+    await vds.createVariant(productId: prod.id, sku: 'SKU_ADJ', color: 'Black', size: 'XL', costPrice: 100, sellPrice: 200, quantity: 5);
+    final v = (await vds.getVariants(prod.id)).first;
+    await vds.adjustStockQuantity(v.id, newQuantity: 12, reason: 'تصحيح خطأ إدخال');
+    final v2 = (await vds.getVariants(prod.id)).first;
+    expect(v2.quantity, 12);
+
+    final logs = await (db.select(db.inventoryLogs)..where((l) => l.type.equals('adjustment'))).get();
+    expect(logs.length, 1);
+    expect(logs.first.qtyDelta, 7);
+    expect(logs.first.reason, 'تصحيح خطأ إدخال');
+  });
 }
 
 

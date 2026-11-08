@@ -126,5 +126,31 @@ void main() {
       final emptyMatches = await dataSource.getCustomers(search: 'NonExistent');
       expect(emptyMatches, isEmpty);
     });
+
+    test('addCustomer and updateCustomer support discountPercent and customerType perks', () async {
+      await dataSource.addCustomer(
+        name: 'Tarek Wholesale',
+        phone: '01555555555',
+        loyaltyPoints: 300,
+        discountPercent: 15,
+        customerType: 'wholesale',
+      );
+
+      final cust = (await dataSource.getCustomers()).first;
+      expect(cust.discountPercent, 15);
+      expect(cust.customerType, 'wholesale');
+
+      await dataSource.updateCustomer(
+        id: cust.id,
+        name: 'Tarek VIP',
+        phone: '01555555555',
+        discountPercent: 20,
+        customerType: 'vip',
+      );
+
+      final updated = await dataSource.getCustomerById(cust.id);
+      expect(updated!.discountPercent, 20);
+      expect(updated.customerType, 'vip');
+    });
   });
 }

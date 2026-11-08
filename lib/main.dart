@@ -16,9 +16,7 @@ void main() async {
   await configureDependencies();
   runApp(
     MultiBlocProvider(
-      providers: [
-        BlocProvider(create: (context) => getIt<AuthCubit>()),
-      ],
+      providers: [BlocProvider(create: (context) => getIt<AuthCubit>())],
       child: const MyApp(),
     ),
   );
@@ -32,7 +30,7 @@ class MyApp extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: MaterialApp(
-        title: 'نظام إدارة محلات الملابس',
+        title: 'أوركييييد',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         builder: (context, child) {

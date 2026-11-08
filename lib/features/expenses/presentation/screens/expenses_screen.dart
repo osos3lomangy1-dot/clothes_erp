@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/services/excel_service.dart';
 import '../../../../core/utils/money.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
@@ -19,17 +20,6 @@ class ExpensesScreen extends StatefulWidget {
 class _ExpensesScreenState extends State<ExpensesScreen> {
   DateTimeRange? _dateRange;
 
-  static const List<String> expenseCategories = [
-    'إيجار المحل',
-    'كهرباء ومرافق',
-    'مرتبات ويوميات',
-    'بوفيه وضيافة',
-    'صيانة ونظافة',
-    'أكياس ومستلزمات تعبئة',
-    'نقل وشحن بضاعة',
-    'مصروفات أخرى',
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -40,13 +30,17 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
-  void _openAddExpenseDialog(BuildContext context) {
+  void _openAddExpenseDialog(BuildContext context, List<String> currentCategories) {
     final cubit = context.read<ExpensesCubit>();
-    String selectedCategory = expenseCategories.first;
+    String selectedCategory = currentCategories.isNotEmpty ? currentCategories.first : 'مصروفات أخرى';
+    bool isCustomCategory = false;
+    final customCategoryCtrl = TextEditingController();
     final amountCtrl = TextEditingController();
     final noteCtrl = TextEditingController();
     DateTime expenseDate = DateTime.now();
     final formKey = GlobalKey<FormState>();
+
+    const String addCustomKey = '__add_custom_category__';
 
     showDialog(
       context: context,
@@ -70,18 +64,59 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     DropdownButtonFormField<String>(
-                      initialValue: selectedCategory,
-                      items: expenseCategories
-                          .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                          .toList(),
+                      initialValue: isCustomCategory ? addCustomKey : selectedCategory,
+                      items: [
+                        ...currentCategories.map((c) => DropdownMenuItem(value: c, child: Text(c))),
+                        const DropdownMenuItem(
+                          value: addCustomKey,
+                          child: Row(
+                            children: [
+                              Icon(Icons.add_circle_outline, color: AppColors.primary, size: 18),
+                              SizedBox(width: 6),
+                              Text(
+                                '+ إضافة بند مصروف جديد...',
+                                style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       onChanged: (val) {
-                        if (val != null) setDialogState(() => selectedCategory = val);
+                        if (val == addCustomKey) {
+                          setDialogState(() {
+                            isCustomCategory = true;
+                          });
+                        } else if (val != null) {
+                          setDialogState(() {
+                            isCustomCategory = false;
+                            selectedCategory = val;
+                          });
+                        }
                       },
                       decoration: InputDecoration(
                         labelText: 'بند المصروف *',
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                     ),
+                    if (isCustomCategory) ...[
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: customCategoryCtrl,
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          labelText: 'اسم بند المصروف الجديد *',
+                          hintText: 'مثال: دعاية وتسويق، إكراميات، شحن سريع...',
+                          prefixIcon: const Icon(Icons.category_rounded, color: AppColors.primary),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        validator: (val) {
+                          if (isCustomCategory && (val == null || val.trim().isEmpty)) {
+                            return 'يرجى كتابة اسم بند المصروف الجديد';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
                     const SizedBox(height: 14),
                     TextFormField(
                       controller: amountCtrl,
@@ -154,6 +189,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 final pounds = double.tryParse(amountCtrl.text.trim()) ?? 0.0;
                 final piasters = (pounds * 100).toInt();
 
+                final finalCategory = isCustomCategory
+                    ? customCategoryCtrl.text.trim()
+                    : selectedCategory;
+
                 String userId = 'admin';
                 try {
                   final auth = context.read<AuthCubit>().state;
@@ -161,7 +200,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 } catch (_) {}
 
                 final ok = await cubit.addExpense(
-                  category: selectedCategory,
+                  category: finalCategory,
                   amount: piasters,
                   note: noteCtrl.text.trim().isNotEmpty ? noteCtrl.text.trim() : null,
                   expenseDate: expenseDate,
@@ -178,6 +217,33 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _exportExpensesToExcel(BuildContext context, ExpensesState state) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final excelService = ExcelService();
+      final path = await excelService.exportExpenses(
+        from: _dateRange?.start,
+        to: _dateRange?.end,
+        category: state.selectedCategory,
+      );
+      if (path != null) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('تم تصدير ملف إكسيل المصروفات بنجاح:\n$path'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('خطأ أثناء التصدير: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
   Future<void> _confirmDelete(BuildContext context, ExpenseEntity expense) async {
@@ -221,8 +287,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           from: _dateRange?.start,
           to: _dateRange?.end,
         ),
-      child: Builder(
-        builder: (context) {
+      child: BlocBuilder<ExpensesCubit, ExpensesState>(
+        builder: (context, state) {
           return Scaffold(
             backgroundColor: AppColors.surface,
             appBar: AppBar(
@@ -236,336 +302,330 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.onSurface),
                   ),
                   Text(
-                    'تسجيل ومتابعة مصاريف التشغيل والإيجار والمرافق والمرتبات',
+                    'تسجيل ومتابعة مصاريف التشغيل والإيجار والمرافق والبنود المرنة',
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 ],
               ),
               actions: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.green.shade800,
+                      side: BorderSide(color: Colors.green.shade400),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onPressed: () => _exportExpensesToExcel(context, state),
+                    icon: const Icon(Icons.table_view_rounded, size: 18, color: Colors.green),
+                    label: const Text('تصدير إكسيل', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
-                    onPressed: () => _openAddExpenseDialog(context),
+                    onPressed: () => _openAddExpenseDialog(context, state.categories),
                     icon: const Icon(Icons.add, color: Colors.white, size: 18),
                     label: const Text('تسجيل مصروف جديد', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
             ),
-            body: BlocBuilder<ExpensesCubit, ExpensesState>(
-              builder: (context, state) {
-                return Column(
-                  children: [
-                    // Date & Filter bar
-                    Container(
-                      color: Colors.white,
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                      child: Column(
+            body: Column(
+              children: [
+                // Date & Filter bar
+                Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  child: Column(
+                    children: [
+                      Row(
                         children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surfaceContainer,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.date_range_rounded, color: AppColors.primary, size: 20),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        _dateRange != null
-                                            ? 'الفترة: ${_dateRange!.start.toLocal().toString().split(' ')[0]} إلى ${_dateRange!.end.toLocal().toString().split(' ')[0]}'
-                                            : 'جميع الفترات',
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: AppColors.surfaceContainer,
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                              const SizedBox(width: 10),
-                              OutlinedButton.icon(
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: AppColors.primary,
-                                  side: const BorderSide(color: AppColors.primary),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                ),
-                                onPressed: () async {
-                                  final picked = await showDateRangePicker(
-                                    context: context,
-                                    firstDate: DateTime(2020),
-                                    lastDate: DateTime.now(),
-                                    initialDateRange: _dateRange,
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.date_range_rounded, color: AppColors.primary, size: 20),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _dateRange != null
+                                        ? 'الفترة: ${_dateRange!.start.toLocal().toString().split(' ')[0]} إلى ${_dateRange!.end.toLocal().toString().split(' ')[0]}'
+                                        : 'جميع الفترات',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.primary,
+                              side: const BorderSide(color: AppColors.primary),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            onPressed: () async {
+                              final picked = await showDateRangePicker(
+                                context: context,
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime.now(),
+                                initialDateRange: _dateRange,
+                              );
+                              if (picked != null) {
+                                setState(() {
+                                  _dateRange = DateTimeRange(
+                                    start: picked.start,
+                                    end: DateTime(picked.end.year, picked.end.month, picked.end.day, 23, 59, 59),
                                   );
-                                  if (picked != null) {
-                                    setState(() {
-                                      _dateRange = DateTimeRange(
-                                        start: picked.start,
-                                        end: DateTime(picked.end.year, picked.end.month, picked.end.day, 23, 59, 59),
+                                });
+                                if (context.mounted) {
+                                  context.read<ExpensesCubit>().loadExpenses(
+                                        from: _dateRange!.start,
+                                        to: _dateRange!.end,
+                                        category: state.selectedCategory,
                                       );
-                                    });
-                                    if (context.mounted) {
-                                      context.read<ExpensesCubit>().loadExpenses(
-                                            from: _dateRange!.start,
-                                            to: _dateRange!.end,
-                                            category: state.selectedCategory,
-                                          );
-                                    }
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.calendar_month_outlined, size: 18),
+                            label: const Text('تغيير الفترة'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      // Category Chips
+                      SizedBox(
+                        height: 38,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(left: 6),
+                              child: ChoiceChip(
+                                label: const Text('جميع البنود'),
+                                selected: state.selectedCategory == null,
+                                onSelected: (sel) {
+                                  if (sel) {
+                                    context.read<ExpensesCubit>().loadExpenses(
+                                          from: _dateRange?.start,
+                                          to: _dateRange?.end,
+                                          category: null,
+                                        );
                                   }
                                 },
-                                icon: const Icon(Icons.calendar_month_outlined, size: 18),
-                                label: const Text('تغيير الفترة'),
+                                selectedColor: AppColors.primary,
+                                labelStyle: TextStyle(
+                                  color: state.selectedCategory == null ? Colors.white : AppColors.onSurface,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            ...state.categories.map((cat) {
+                              final isSel = state.selectedCategory == cat;
+                              return Padding(
+                                padding: const EdgeInsets.only(left: 6),
+                                child: ChoiceChip(
+                                  label: Text(cat),
+                                  selected: isSel,
+                                  onSelected: (sel) {
+                                    context.read<ExpensesCubit>().loadExpenses(
+                                          from: _dateRange?.start,
+                                          to: _dateRange?.end,
+                                          category: sel ? cat : null,
+                                        );
+                                  },
+                                  selectedColor: AppColors.primary,
+                                  labelStyle: TextStyle(
+                                    color: isSel ? Colors.white : AppColors.onSurface,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+
+                // Summary Banner
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: AppColors.error.withValues(alpha: 0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.outbox_rounded, color: AppColors.error, size: 24),
+                              ),
+                              const SizedBox(width: 14),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('إجمالي المصروفات للفترة', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${Money(state.totalAmount).toDisplay()} ج.م',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: AppColors.error),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                          const SizedBox(height: 10),
-                          // Category Chips
-                          SizedBox(
-                            height: 38,
-                            child: ListView(
-                              scrollDirection: Axis.horizontal,
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.only(left: 6),
-                                  child: ChoiceChip(
-                                    label: const Text('جميع البنود'),
-                                    selected: state.selectedCategory == null,
-                                    onSelected: (sel) {
-                                      if (sel) {
-                                        context.read<ExpensesCubit>().loadExpenses(
-                                              from: _dateRange?.start,
-                                              to: _dateRange?.end,
-                                              category: null,
-                                            );
-                                      }
-                                    },
-                                    selectedColor: AppColors.primary,
-                                    labelStyle: TextStyle(
-                                      color: state.selectedCategory == null ? Colors.white : AppColors.onSurface,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                    ),
-                                  ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.1),
+                                  shape: BoxShape.circle,
                                 ),
-                                ...expenseCategories.map((cat) {
-                                  final isSel = state.selectedCategory == cat;
-                                  return Padding(
-                                    padding: const EdgeInsets.only(left: 6),
-                                    child: ChoiceChip(
-                                      label: Text(cat),
-                                      selected: isSel,
-                                      onSelected: (sel) {
-                                        context.read<ExpensesCubit>().loadExpenses(
-                                              from: _dateRange?.start,
-                                              to: _dateRange?.end,
-                                              category: sel ? cat : null,
-                                            );
-                                      },
-                                      selectedColor: AppColors.primary,
-                                      labelStyle: TextStyle(
-                                        color: isSel ? Colors.white : AppColors.onSurface,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  );
-                                }),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Divider(height: 1),
-
-                    // Summary Banner
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: Colors.grey.shade200),
+                                child: const Icon(Icons.receipt_long_rounded, color: AppColors.primary, size: 24),
                               ),
-                              child: Row(
+                              const SizedBox(width: 14),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.error.withValues(alpha: 0.1),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(Icons.outbox_rounded, color: AppColors.error, size: 24),
-                                  ),
-                                  const SizedBox(width: 14),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const Text('إجمالي المصروفات للفترة', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '${Money(state.totalAmount).toDisplay()} ج.م',
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: AppColors.error),
-                                      ),
-                                    ],
+                                  const Text('عدد سندات الصرف', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${state.expenses.length} مصروف',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: AppColors.primary),
                                   ),
                                 ],
                               ),
-                            ),
+                            ],
                           ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: Colors.grey.shade200),
-                              ),
-                              child: Row(
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Expenses List
+                Expanded(
+                  child: state.status == ExpensesStatus.loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : state.expenses.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary.withValues(alpha: 0.1),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(Icons.receipt_long_rounded, color: AppColors.primary, size: 24),
-                                  ),
-                                  const SizedBox(width: 14),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const Text('عدد سندات الصرف', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '${state.expenses.length} مصروف',
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: AppColors.primary),
-                                      ),
-                                    ],
+                                  Icon(Icons.money_off_csred_rounded, size: 64, color: Colors.grey.shade400),
+                                  const SizedBox(height: 12),
+                                  const Text(
+                                    'لا توجد مصروفات مسجلة خلال هذه الفترة',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                   ),
                                 ],
                               ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Expenses List
-                    Expanded(
-                      child: state.status == ExpensesStatus.loading
-                          ? const Center(child: CircularProgressIndicator())
-                          : state.expenses.isEmpty
-                              ? Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.money_off_csred_rounded, size: 64, color: Colors.grey.shade400),
-                                      const SizedBox(height: 12),
-                                      const Text(
-                                        'لا توجد مصروفات مسجلة خلال هذه الفترة',
-                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      ElevatedButton.icon(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: AppColors.primary,
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                        ),
-                                        onPressed: () => _openAddExpenseDialog(context),
-                                        icon: const Icon(Icons.add, color: Colors.white),
-                                        label: const Text('تسجيل أول مصروف الآن', style: TextStyle(color: Colors.white)),
-                                      ),
-                                    ],
+                            )
+                          : ListView.separated(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                              itemCount: state.expenses.length,
+                              separatorBuilder: (_, index) => const SizedBox(height: 10),
+                              itemBuilder: (context, index) {
+                                final exp = state.expenses[index];
+                                return Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.grey.shade200),
                                   ),
-                                )
-                              : ListView.separated(
-                                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                                  itemCount: state.expenses.length,
-                                  separatorBuilder: (_, index) => const SizedBox(height: 10),
-                                  itemBuilder: (context, index) {
-                                    final exp = state.expenses[index];
-                                    return Container(
+                                  child: ListTile(
+                                    leading: Container(
+                                      padding: const EdgeInsets.all(10),
                                       decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: Colors.grey.shade200),
+                                        color: AppColors.primary.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(10),
                                       ),
-                                      child: ListTile(
-                                        leading: Container(
-                                          padding: const EdgeInsets.all(10),
+                                      child: const Icon(Icons.payments_outlined, color: AppColors.primary),
+                                    ),
+                                    title: Row(
+                                      children: [
+                                        Text(exp.category, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                        const SizedBox(width: 10),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                           decoration: BoxDecoration(
-                                            color: AppColors.primary.withValues(alpha: 0.1),
-                                            borderRadius: BorderRadius.circular(10),
+                                            color: Colors.grey.shade100,
+                                            borderRadius: BorderRadius.circular(6),
                                           ),
-                                          child: const Icon(Icons.payments_outlined, color: AppColors.primary),
+                                          child: Text(
+                                            '${exp.expenseDate.year}-${exp.expenseDate.month.toString().padLeft(2, '0')}-${exp.expenseDate.day.toString().padLeft(2, '0')}',
+                                            style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+                                          ),
                                         ),
-                                        title: Row(
-                                          children: [
-                                            Text(exp.category, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                                            const SizedBox(width: 10),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                              decoration: BoxDecoration(
-                                                color: Colors.grey.shade100,
-                                                borderRadius: BorderRadius.circular(6),
-                                              ),
-                                              child: Text(
-                                                '${exp.expenseDate.year}-${exp.expenseDate.month.toString().padLeft(2, '0')}-${exp.expenseDate.day.toString().padLeft(2, '0')}',
-                                                style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
-                                              ),
-                                            ),
-                                          ],
+                                      ],
+                                    ),
+                                    subtitle: Text(
+                                      exp.note != null && exp.note!.isNotEmpty
+                                          ? exp.note!
+                                          : 'المسجل: ${exp.userId}',
+                                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                    ),
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          exp.formattedAmount,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                            color: AppColors.error,
+                                          ),
                                         ),
-                                        subtitle: Text(
-                                          exp.note != null && exp.note!.isNotEmpty
-                                              ? exp.note!
-                                              : 'المسجل: ${exp.userId}',
-                                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                        const SizedBox(width: 8),
+                                        IconButton(
+                                          icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 20),
+                                          tooltip: 'حذف المصروف',
+                                          onPressed: () => _confirmDelete(context, exp),
                                         ),
-                                        trailing: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              exp.formattedAmount,
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16,
-                                                color: AppColors.error,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            IconButton(
-                                              icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 20),
-                                              tooltip: 'حذف المصروف',
-                                              onPressed: () => _confirmDelete(context, exp),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                    ),
-                  ],
-                );
-              },
-            ),
-            floatingActionButton: FloatingActionButton(
-              backgroundColor: AppColors.primary,
-              onPressed: () => _openAddExpenseDialog(context),
-              child: const Icon(Icons.add, color: Colors.white),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                ),
+              ],
             ),
           );
         },
