@@ -118,19 +118,19 @@ class ReturnsCubit extends Cubit<ReturnsState> {
         paymentMethod: paymentMethod,
       );
 
-      return result.fold(
-        (failure) {
+      return await result.fold(
+        (failure) async {
           emit(state.copyWith(isProcessing: false, errorMessage: failure.message));
           return false;
         },
-        (_) {
+        (_) async {
           emit(state.copyWith(
             isProcessing: false,
             clearSelectedSale: true,
             returnItems: const [],
             successMessage: 'Return processed successfully and stock restored!',
           ));
-          loadRecentSales();
+          await loadRecentSales();
           return true;
         },
       );

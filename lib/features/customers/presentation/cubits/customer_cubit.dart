@@ -67,13 +67,13 @@ class CustomerCubit extends Cubit<CustomerState> {
   Future<bool> addCustomer(CustomerEntity customer) async {
     try {
       final result = await _repository.addCustomer(customer);
-      return result.fold(
-        (failure) {
+      return await result.fold(
+        (failure) async {
           emit(state.copyWith(status: CustomerStatus.error, errorMessage: failure.message));
           return false;
         },
-        (_) {
-          loadCustomers();
+        (_) async {
+          await loadCustomers();
           return true;
         },
       );
@@ -86,13 +86,13 @@ class CustomerCubit extends Cubit<CustomerState> {
   Future<bool> updateCustomer(CustomerEntity customer) async {
     try {
       final result = await _repository.updateCustomer(customer);
-      return result.fold(
-        (failure) {
+      return await result.fold(
+        (failure) async {
           emit(state.copyWith(status: CustomerStatus.error, errorMessage: failure.message));
           return false;
         },
-        (_) {
-          loadCustomers();
+        (_) async {
+          await loadCustomers();
           return true;
         },
       );
@@ -105,13 +105,13 @@ class CustomerCubit extends Cubit<CustomerState> {
   Future<bool> deleteCustomer(String id) async {
     try {
       final result = await _repository.deleteCustomer(id);
-      return result.fold(
-        (failure) {
+      return await result.fold(
+        (failure) async {
           emit(state.copyWith(status: CustomerStatus.error, errorMessage: failure.message));
           return false;
         },
-        (_) {
-          loadCustomers();
+        (_) async {
+          await loadCustomers();
           return true;
         },
       );
