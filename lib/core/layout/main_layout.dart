@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../constants/app_colors.dart';
+import '../di/injection.dart';
 import '../services/crash_logger_service.dart';
+import '../services/rest_sync_service.dart';
 import '../../features/auth/presentation/cubits/auth_cubit.dart';
 import '../../features/auth/presentation/cubits/auth_state.dart';
 import '../../features/products/presentation/screens/product_list_screen.dart';
@@ -28,12 +30,47 @@ class MainLayout extends StatefulWidget {
 
 class _MainLayoutState extends State<MainLayout> {
   bool _isCollapsed = false;
+  bool _isSyncing = false;
   late Widget _currentScreen;
 
   @override
   void initState() {
     super.initState();
     _currentScreen = widget.child;
+  }
+
+  Future<void> _handleSync() async {
+    if (_isSyncing) return;
+    setState(() => _isSyncing = true);
+    try {
+      final syncService = getIt<RestSyncService>();
+      final result = await syncService.syncPendingData();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result.total == 0
+                ? 'لا توجد بيانات معلقة للمزامنة السحابية'
+                : 'تمت مزامنة ${result.synced} من أصل ${result.total} عنصر بنجاح',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          backgroundColor:
+              result.isSuccess ? Colors.green.shade700 : AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('فشلت المزامنة السحابية: $e'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSyncing = false);
+    }
   }
 
   @override
@@ -116,6 +153,8 @@ class _MainLayoutState extends State<MainLayout> {
                       ),
                     ),
                   ),
+                  const Divider(color: Colors.white24, height: 1),
+                  _buildSyncSection(),
                 ],
               ),
             ),
@@ -123,6 +162,127 @@ class _MainLayoutState extends State<MainLayout> {
           Expanded(child: Container(color: Colors.white, child: _currentScreen)),
         ],
       ),
+    );
+  }
+
+  Widget _buildSyncSection() {
+    final syncService = getIt<RestSyncService>();
+    return StreamBuilder<int>(
+      stream: syncService.watchPendingCount(),
+      initialData: 0,
+      builder: (context, snapshot) {
+        final pendingCount = snapshot.data ?? 0;
+        final hasPending = pendingCount > 0;
+
+        if (_isCollapsed) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: IconButton(
+              tooltip: _isSyncing
+                  ? 'جارِ المزامنة السحابية...'
+                  : hasPending
+                      ? 'مزامنة السحابة ($pendingCount معلقة)'
+                      : 'السحابة متزامنة',
+              icon: _isSyncing
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Badge(
+                      isLabelVisible: hasPending,
+                      label: Text('$pendingCount'),
+                      backgroundColor: Colors.amber.shade700,
+                      child: Icon(
+                        hasPending
+                            ? Icons.cloud_upload_rounded
+                            : Icons.cloud_done_rounded,
+                        color: Colors.white,
+                      ),
+                    ),
+              onPressed: _isSyncing ? null : _handleSync,
+            ),
+          );
+        }
+
+        return Container(
+          margin: const EdgeInsets.all(12),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: _isSyncing ? null : _handleSync,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: hasPending
+                      ? Colors.amber.shade300.withValues(alpha: 0.6)
+                      : Colors.white24,
+                ),
+              ),
+              child: Row(
+                children: [
+                  if (_isSyncing)
+                    const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  else
+                    Icon(
+                      hasPending
+                          ? Icons.cloud_upload_rounded
+                          : Icons.cloud_done_rounded,
+                      color: hasPending
+                          ? Colors.amber.shade300
+                          : Colors.greenAccent.shade100,
+                      size: 20,
+                    ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _isSyncing
+                          ? 'جارِ المزامنة...'
+                          : hasPending
+                              ? 'مزامنة السحابة'
+                              : 'السحابة متزامنة',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  if (hasPending && !_isSyncing)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade700,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '$pendingCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 

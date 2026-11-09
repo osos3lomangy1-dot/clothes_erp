@@ -1,4 +1,5 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
 import 'package:injectable/injectable.dart';
 import '../database/app_database.dart';
 
@@ -9,4 +10,7 @@ abstract class RegisterModule {
 
   @lazySingleton
   AppDatabase get appDatabase => AppDatabase();
+
+  @lazySingleton
+  http.Client get httpClient => http.Client();
 }

@@ -13,6 +13,7 @@ import 'package:clothes_erp/core/database/app_database.dart' as _i110;
 import 'package:clothes_erp/core/database/branch_provider.dart' as _i254;
 import 'package:clothes_erp/core/database/tx_writer.dart' as _i874;
 import 'package:clothes_erp/core/di/register_module.dart' as _i868;
+import 'package:clothes_erp/core/services/rest_sync_service.dart' as _i504;
 import 'package:clothes_erp/features/auth/data/datasources/auth_local_data_source.dart'
     as _i526;
 import 'package:clothes_erp/features/auth/data/datasources/auth_remote_data_source.dart'
@@ -193,6 +194,7 @@ import 'package:clothes_erp/features/returns/presentation/cubits/returns_cubit.d
     as _i74;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart' as _i558;
 import 'package:get_it/get_it.dart' as _i174;
+import 'package:http/http.dart' as _i519;
 import 'package:injectable/injectable.dart' as _i526;
 
 extension GetItInjectableX on _i174.GetIt {
@@ -207,6 +209,7 @@ extension GetItInjectableX on _i174.GetIt {
       () => registerModule.secureStorage,
     );
     gh.lazySingleton<_i110.AppDatabase>(() => registerModule.appDatabase);
+    gh.lazySingleton<_i519.Client>(() => registerModule.httpClient);
     gh.lazySingleton<_i526.AuthLocalDataSource>(
       () => _i526.AuthLocalDataSourceImpl(gh<_i558.FlutterSecureStorage>()),
     );
@@ -248,6 +251,14 @@ extension GetItInjectableX on _i174.GetIt {
       ),
     );
     gh.factory<_i874.TxWriter>(() => _i874.TxWriter(gh<_i110.AppDatabase>()));
+    gh.lazySingleton<_i504.RestSyncService>(
+      () => _i504.RestSyncService(
+        gh<_i110.AppDatabase>(),
+        gh<_i519.Client>(),
+        projectId: gh<String>(),
+        apiKey: gh<String>(),
+      ),
+    );
     gh.lazySingleton<_i1011.GetAuthStatusUseCase>(
       () => _i1011.GetAuthStatusUseCase(gh<_i689.AuthRepository>()),
     );
