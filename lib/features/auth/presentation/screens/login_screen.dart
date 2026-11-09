@@ -19,8 +19,30 @@ class LoginScreen extends StatelessWidget {
   }
 }
 
-class _LoginView extends StatelessWidget {
+class _LoginView extends StatefulWidget {
   const _LoginView();
+
+  @override
+  State<_LoginView> createState() => _LoginViewState();
+}
+
+class _LoginViewState extends State<_LoginView> {
+  late final TextEditingController _emailController;
+  late final TextEditingController _passwordController;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController = TextEditingController();
+    _passwordController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -174,6 +196,7 @@ class _LoginView extends StatelessWidget {
                         buildWhen: (p, c) => p.email != c.email,
                         builder: (context, state) {
                           return TextField(
+                            controller: _emailController,
                             onChanged: (val) => context
                                 .read<LoginFormCubit>()
                                 .onEmailChanged(val),
@@ -198,6 +221,7 @@ class _LoginView extends StatelessWidget {
                         buildWhen: (p, c) => p.password != c.password,
                         builder: (context, state) {
                           return TextField(
+                            controller: _passwordController,
                             onChanged: (val) => context
                                 .read<LoginFormCubit>()
                                 .onPasswordChanged(val),
@@ -254,6 +278,116 @@ class _LoginView extends StatelessWidget {
                             ),
                           );
                         },
+                      ),
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(
+                                  Icons.vpn_key_outlined,
+                                  size: 16,
+                                  color: AppColors.primary,
+                                ),
+                                SizedBox(width: 6),
+                                Text(
+                                  'الحسابات الافتراضية للنظام (انقر للتعبئة السريعة):',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 8,
+                                        horizontal: 8,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    onPressed: () {
+                                      _emailController.text = 'admin';
+                                      _passwordController.text = 'admin123';
+                                      context
+                                          .read<LoginFormCubit>()
+                                          .onEmailChanged('admin');
+                                      context
+                                          .read<LoginFormCubit>()
+                                          .onPasswordChanged('admin123');
+                                    },
+                                    icon: const Icon(
+                                      Icons.admin_panel_settings_rounded,
+                                      size: 16,
+                                      color: AppColors.primary,
+                                    ),
+                                    label: const Text(
+                                      'المدير: admin',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 8,
+                                        horizontal: 8,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    onPressed: () {
+                                      _emailController.text = 'cashier';
+                                      _passwordController.text = '123456';
+                                      context
+                                          .read<LoginFormCubit>()
+                                          .onEmailChanged('cashier');
+                                      context
+                                          .read<LoginFormCubit>()
+                                          .onPasswordChanged('123456');
+                                    },
+                                    icon: const Icon(
+                                      Icons.point_of_sale_rounded,
+                                      size: 16,
+                                      color: Colors.green,
+                                    ),
+                                    label: const Text(
+                                      'كاشير: cashier',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 24),
                       Text(

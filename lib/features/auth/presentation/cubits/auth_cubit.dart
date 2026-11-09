@@ -65,12 +65,15 @@ class AuthCubit extends Cubit<AuthState> {
                       u.deletedAt.isNull()))
                 .getSingleOrNull();
 
-            final isDefaultAdmin = user.id == 'admin_default' ||
+            final isDefaultUser = user.id == 'admin_default' ||
+                user.id == 'cashier_default' ||
                 user.email == 'admin' ||
-                cleanInput.toLowerCase() == 'admin';
+                user.email == 'cashier' ||
+                cleanInput.toLowerCase() == 'admin' ||
+                cleanInput.toLowerCase() == 'cashier';
 
-            // If the user exists in Firebase Auth but NOT in the local Drift users table
-            if (localUser == null && !isDefaultAdmin) {
+            // If the user exists remotely but NOT in the local Drift users table
+            if (localUser == null && !isDefaultUser) {
               Logging.warn(
                 'User ${user.id} authenticated remotely but missing from local Drift DB',
               );

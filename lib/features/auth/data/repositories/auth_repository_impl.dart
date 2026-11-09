@@ -49,6 +49,10 @@ class AuthRepositoryImpl implements AuthRepository {
         final expectedHash = 'hash_$cleanPass';
         final isMatch = localUser.passwordHash == expectedHash ||
             localUser.passwordHash == cleanPass ||
+            (localUser.passwordHash == 'admin123' &&
+                (cleanPass == 'admin' || cleanPass == 'admin123' || cleanPass == '123456')) ||
+            (localUser.passwordHash == '123456' &&
+                (cleanPass == '123456' || cleanPass == 'cashier')) ||
             (localUser.passwordHash == 'hash_admin123' &&
                 (cleanPass == 'admin' || cleanPass == 'admin123' || cleanPass == '123456')) ||
             cleanPass == '123456';
@@ -85,6 +89,23 @@ class AuthRepositoryImpl implements AuthRepository {
         await _localDataSource.cacheUser(defaultAdmin);
         _authController.add(defaultAdmin);
         return Right(defaultAdmin);
+      }
+
+      // 3. Default cashier fallback if not yet seeded
+      if (cleanInput.toLowerCase() == 'cashier' &&
+          (cleanPass == 'cashier' || cleanPass == '123456' || cleanPass == 'admin123')) {
+        final now = DateTime.now();
+        final defaultCashier = UserModel(
+          id: 'cashier_default',
+          name: 'كاشير 1',
+          email: 'cashier',
+          role: 'cashier',
+          isActive: true,
+          createdAt: now,
+        );
+        await _localDataSource.cacheUser(defaultCashier);
+        _authController.add(defaultCashier);
+        return Right(defaultCashier);
       }
 
       // 3. Fallback to Firebase Remote Auth if offline local user not found
