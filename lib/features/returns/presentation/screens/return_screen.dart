@@ -133,6 +133,32 @@ class _ReturnScreenState extends State<ReturnScreen> {
   }
 
   Widget _buildRecentSalesList(BuildContext context, ReturnsState state) {
+    if (state.errorMessage != null && state.recentSales.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline_rounded, size: 64, color: AppColors.error),
+            const SizedBox(height: 12),
+            Text(
+              state.errorMessage!,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.error),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () => context.read<ReturnsCubit>().loadRecentSales(),
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('إعادة المحاولة', style: TextStyle(fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     if (state.recentSales.isEmpty) {
       return Center(
         child: Column(

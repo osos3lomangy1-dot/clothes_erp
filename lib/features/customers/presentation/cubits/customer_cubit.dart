@@ -49,11 +49,15 @@ class CustomerCubit extends Cubit<CustomerState> {
   Future<void> loadCustomers({String? search}) async {
     final query = search ?? state.searchQuery;
     emit(state.copyWith(status: CustomerStatus.loading, searchQuery: query, clearError: true));
-    final result = await _repository.getCustomers(search: query.isEmpty ? null : query);
-    result.fold(
-      (failure) => emit(state.copyWith(status: CustomerStatus.error, errorMessage: failure.message)),
-      (customers) => emit(state.copyWith(status: CustomerStatus.success, customers: customers)),
-    );
+    try {
+      final result = await _repository.getCustomers(search: query.isEmpty ? null : query);
+      result.fold(
+        (failure) => emit(state.copyWith(status: CustomerStatus.error, errorMessage: failure.message)),
+        (customers) => emit(state.copyWith(status: CustomerStatus.success, customers: customers)),
+      );
+    } catch (e) {
+      emit(state.copyWith(status: CustomerStatus.error, errorMessage: 'تعذر تحميل بيانات العملاء: $e'));
+    }
   }
 
   void searchCustomers(String query) {
@@ -61,44 +65,59 @@ class CustomerCubit extends Cubit<CustomerState> {
   }
 
   Future<bool> addCustomer(CustomerEntity customer) async {
-    final result = await _repository.addCustomer(customer);
-    return result.fold(
-      (failure) {
-        emit(state.copyWith(status: CustomerStatus.error, errorMessage: failure.message));
-        return false;
-      },
-      (_) {
-        loadCustomers();
-        return true;
-      },
-    );
+    try {
+      final result = await _repository.addCustomer(customer);
+      return result.fold(
+        (failure) {
+          emit(state.copyWith(status: CustomerStatus.error, errorMessage: failure.message));
+          return false;
+        },
+        (_) {
+          loadCustomers();
+          return true;
+        },
+      );
+    } catch (e) {
+      emit(state.copyWith(status: CustomerStatus.error, errorMessage: 'تعذر إضافة العميل: $e'));
+      return false;
+    }
   }
 
   Future<bool> updateCustomer(CustomerEntity customer) async {
-    final result = await _repository.updateCustomer(customer);
-    return result.fold(
-      (failure) {
-        emit(state.copyWith(status: CustomerStatus.error, errorMessage: failure.message));
-        return false;
-      },
-      (_) {
-        loadCustomers();
-        return true;
-      },
-    );
+    try {
+      final result = await _repository.updateCustomer(customer);
+      return result.fold(
+        (failure) {
+          emit(state.copyWith(status: CustomerStatus.error, errorMessage: failure.message));
+          return false;
+        },
+        (_) {
+          loadCustomers();
+          return true;
+        },
+      );
+    } catch (e) {
+      emit(state.copyWith(status: CustomerStatus.error, errorMessage: 'تعذر تحديث العميل: $e'));
+      return false;
+    }
   }
 
   Future<bool> deleteCustomer(String id) async {
-    final result = await _repository.deleteCustomer(id);
-    return result.fold(
-      (failure) {
-        emit(state.copyWith(status: CustomerStatus.error, errorMessage: failure.message));
-        return false;
-      },
-      (_) {
-        loadCustomers();
-        return true;
-      },
-    );
+    try {
+      final result = await _repository.deleteCustomer(id);
+      return result.fold(
+        (failure) {
+          emit(state.copyWith(status: CustomerStatus.error, errorMessage: failure.message));
+          return false;
+        },
+        (_) {
+          loadCustomers();
+          return true;
+        },
+      );
+    } catch (e) {
+      emit(state.copyWith(status: CustomerStatus.error, errorMessage: 'تعذر حذف العميل: $e'));
+      return false;
+    }
   }
 }

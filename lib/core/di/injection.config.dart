@@ -273,6 +273,17 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i633.ReportsRepository>(
       () => _i333.ReportsRepositoryImpl(gh<_i1045.ReportsLocalDataSource>()),
     );
+    gh.factory<_i217.AuthCubit>(
+      () => _i217.AuthCubit(
+        gh<_i443.LoginUseCase>(),
+        gh<_i661.LogoutUseCase>(),
+        gh<_i1011.GetAuthStatusUseCase>(),
+        gh<_i110.AppDatabase>(),
+      ),
+    );
+    gh.factory<_i82.LoginFormCubit>(
+      () => _i82.LoginFormCubit(gh<_i217.AuthCubit>()),
+    );
     gh.factory<_i774.DashboardCubit>(
       () => _i774.DashboardCubit(gh<_i1040.GetDashboardStatsUseCase>()),
     );
@@ -333,13 +344,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i351.ExpenseRepository>(
       () => _i868.ExpenseRepositoryImpl(gh<_i503.ExpensesLocalDataSource>()),
-    );
-    gh.factory<_i217.AuthCubit>(
-      () => _i217.AuthCubit(
-        gh<_i443.LoginUseCase>(),
-        gh<_i661.LogoutUseCase>(),
-        gh<_i1011.GetAuthStatusUseCase>(),
-      ),
     );
     gh.lazySingleton<_i758.ProductRepository>(
       () => _i492.ProductRepositoryImpl(gh<_i878.ProductLocalDataSource>()),
@@ -416,9 +420,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i419.UpdateCategoryUseCase>(
       () => _i419.UpdateCategoryUseCase(gh<_i687.CategoryRepository>()),
-    );
-    gh.factory<_i82.LoginFormCubit>(
-      () => _i82.LoginFormCubit(gh<_i217.AuthCubit>()),
     );
     gh.factory<_i147.CategoryCubit>(
       () => _i147.CategoryCubit(

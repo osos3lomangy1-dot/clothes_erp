@@ -21,11 +21,15 @@ class ReturnsCubit extends Cubit<ReturnsState> {
 
   Future<void> loadRecentSales() async {
     emit(state.copyWith(isLoading: true, clearMessages: true));
-    final result = await _getRecentSalesUseCase.getRecentSales();
-    result.fold(
-      (failure) => emit(state.copyWith(isLoading: false, errorMessage: failure.message)),
-      (sales) => emit(state.copyWith(isLoading: false, recentSales: sales)),
-    );
+    try {
+      final result = await _getRecentSalesUseCase.getRecentSales();
+      result.fold(
+        (failure) => emit(state.copyWith(isLoading: false, errorMessage: failure.message)),
+        (sales) => emit(state.copyWith(isLoading: false, recentSales: sales)),
+      );
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, errorMessage: 'تعذر تحميل فواتير البيع: $e'));
+    }
   }
 
   Future<void> searchSale(String query) async {
@@ -34,30 +38,38 @@ class ReturnsCubit extends Cubit<ReturnsState> {
       return;
     }
     emit(state.copyWith(isLoading: true, clearMessages: true));
-    final result = await _getRecentSalesUseCase.getSaleByIdOrRef(query.trim());
-    result.fold(
-      (failure) => emit(state.copyWith(isLoading: false, errorMessage: failure.message)),
-      (sale) {
-        if (sale != null) {
-          selectSale(sale);
-        } else {
-          emit(state.copyWith(isLoading: false, errorMessage: 'No sale found matching "$query"'));
-        }
-      },
-    );
+    try {
+      final result = await _getRecentSalesUseCase.getSaleByIdOrRef(query.trim());
+      result.fold(
+        (failure) => emit(state.copyWith(isLoading: false, errorMessage: failure.message)),
+        (sale) {
+          if (sale != null) {
+            selectSale(sale);
+          } else {
+            emit(state.copyWith(isLoading: false, errorMessage: 'No sale found matching "$query"'));
+          }
+        },
+      );
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, errorMessage: 'تعذر البحث عن الفاتورة: $e'));
+    }
   }
 
   Future<void> selectSale(SaleEntity sale) async {
     emit(state.copyWith(isLoading: true, selectedSale: sale, clearMessages: true));
-    final result = await _getRecentSalesUseCase.getSaleItems(sale.id);
-    result.fold(
-      (failure) => emit(state.copyWith(isLoading: false, errorMessage: failure.message)),
-      (items) => emit(state.copyWith(
-        isLoading: false,
-        selectedSale: sale,
-        returnItems: items,
-      )),
-    );
+    try {
+      final result = await _getRecentSalesUseCase.getSaleItems(sale.id);
+      result.fold(
+        (failure) => emit(state.copyWith(isLoading: false, errorMessage: failure.message)),
+        (items) => emit(state.copyWith(
+          isLoading: false,
+          selectedSale: sale,
+          returnItems: items,
+        )),
+      );
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, errorMessage: 'تعذر تحميل أصناف الفاتورة: $e'));
+    }
   }
 
   void updateItemQty(String variantId, int newQty) {
@@ -96,31 +108,36 @@ class ReturnsCubit extends Cubit<ReturnsState> {
     }
 
     emit(state.copyWith(isProcessing: true, clearMessages: true));
-    final saleId = state.selectedSale?.id ?? '';
-    final result = await _processReturnUseCase(
-      saleId: saleId,
-      items: activeItems,
-      reason: reason.trim(),
-      userId: userId,
-      paymentMethod: paymentMethod,
-    );
+    try {
+      final saleId = state.selectedSale?.id ?? '';
+      final result = await _processReturnUseCase(
+        saleId: saleId,
+        items: activeItems,
+        reason: reason.trim(),
+        userId: userId,
+        paymentMethod: paymentMethod,
+      );
 
-    return result.fold(
-      (failure) {
-        emit(state.copyWith(isProcessing: false, errorMessage: failure.message));
-        return false;
-      },
-      (_) {
-        emit(state.copyWith(
-          isProcessing: false,
-          clearSelectedSale: true,
-          returnItems: const [],
-          successMessage: 'Return processed successfully and stock restored!',
-        ));
-        loadRecentSales();
-        return true;
-      },
-    );
+      return result.fold(
+        (failure) {
+          emit(state.copyWith(isProcessing: false, errorMessage: failure.message));
+          return false;
+        },
+        (_) {
+          emit(state.copyWith(
+            isProcessing: false,
+            clearSelectedSale: true,
+            returnItems: const [],
+            successMessage: 'Return processed successfully and stock restored!',
+          ));
+          loadRecentSales();
+          return true;
+        },
+      );
+    } catch (e) {
+      emit(state.copyWith(isProcessing: false, errorMessage: 'تعذر معالجة المرتجع: $e'));
+      return false;
+    }
   }
 }
 

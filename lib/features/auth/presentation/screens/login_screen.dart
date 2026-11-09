@@ -32,6 +32,53 @@ class _LoginView extends StatelessWidget {
           BlocListener<AuthCubit, AuthState>(
             listener: (context, state) {
               if (state is AuthError) {
+                showDialog(
+                  context: context,
+                  builder: (dialogCtx) => AlertDialog(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    title: const Row(
+                      children: [
+                        Icon(
+                          Icons.error_outline_rounded,
+                          color: AppColors.error,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'تعذر تسجيل الدخول',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ],
+                    ),
+                    content: Text(
+                      state.message,
+                      style: const TextStyle(fontSize: 14, height: 1.4),
+                    ),
+                    actions: [
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onPressed: () => Navigator.pop(dialogCtx),
+                        child: const Text(
+                          'المحاولة مجدداً',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Row(

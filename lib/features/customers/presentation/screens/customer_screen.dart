@@ -156,6 +156,40 @@ class _CustomerViewState extends State<_CustomerView> {
                         child: CircularProgressIndicator(),
                       );
                     }
+                    if (state.status == CustomerStatus.error && state.customers.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.error_outline_rounded,
+                              size: 64,
+                              color: AppColors.error,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              state.errorMessage ?? 'حدث خطأ أثناء تحميل بيانات العملاء',
+                              style: const TextStyle(
+                                color: AppColors.error,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(
+                              onPressed: () => context.read<CustomerCubit>().loadCustomers(),
+                              icon: const Icon(Icons.refresh_rounded),
+                              label: const Text('إعادة المحاولة', style: TextStyle(fontWeight: FontWeight.bold)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
                     if (state.customers.isEmpty) {
                       return Center(
                         child: Column(

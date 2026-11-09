@@ -103,41 +103,45 @@ class PosCubit extends Cubit<PosState> {
 
   Future<void> init() async {
     emit(const PosLoading());
-    final variantsResult = await _variantRepository.getAllVariants();
-    final categoriesResult = await _categoryRepository.getCategories();
-    final productsResult = await _productRepository.getProducts();
+    try {
+      final variantsResult = await _variantRepository.getAllVariants();
+      final categoriesResult = await _categoryRepository.getCategories();
+      final productsResult = await _productRepository.getProducts();
 
-    final categories = categoriesResult.getOrElse(() => []);
-    final products = productsResult.getOrElse(() => []);
-    _productCategoryMap = {for (final p in products) p.id: p.categoryId};
-    _productNameMap = {for (final p in products) p.id: p.name};
-    _categoryNameMap = {for (final c in categories) c.id: c.name};
+      final categories = categoriesResult.getOrElse(() => []);
+      final products = productsResult.getOrElse(() => []);
+      _productCategoryMap = {for (final p in products) p.id: p.categoryId};
+      _productNameMap = {for (final p in products) p.id: p.name};
+      _categoryNameMap = {for (final c in categories) c.id: c.name};
 
-    variantsResult.fold(
-      (failure) => emit(PosError(failure.message)),
-      (variants) {
-        _allVariants = variants.map((v) => VariantEntity(
-          id: v.id,
-          productId: v.productId,
-          productCode: v.productCode,
-          color: v.color,
-          size: v.size,
-          quantity: v.quantity,
-          costPrice: v.costPrice,
-          salePrice: v.salePrice,
-          minStock: v.minStock,
-          createdAt: v.createdAt,
-          productName: _productNameMap[v.productId],
-        )).toList();
-        _currentSearchQuery = '';
-        _currentSelectedCategoryId = 'All';
-        emit(PosLoaded(
-          filteredVariants: _allVariants,
-          categories: categories,
-          selectedCategory: 'All',
-        ));
-      },
-    );
+      variantsResult.fold(
+        (failure) => emit(PosError(failure.message)),
+        (variants) {
+          _allVariants = variants.map((v) => VariantEntity(
+            id: v.id,
+            productId: v.productId,
+            productCode: v.productCode,
+            color: v.color,
+            size: v.size,
+            quantity: v.quantity,
+            costPrice: v.costPrice,
+            salePrice: v.salePrice,
+            minStock: v.minStock,
+            createdAt: v.createdAt,
+            productName: _productNameMap[v.productId],
+          )).toList();
+          _currentSearchQuery = '';
+          _currentSelectedCategoryId = 'All';
+          emit(PosLoaded(
+            filteredVariants: _allVariants,
+            categories: categories,
+            selectedCategory: 'All',
+          ));
+        },
+      );
+    } catch (e) {
+      emit(PosError('تعذر تحميل بيانات نقطة البيع: $e'));
+    }
   }
 
   String _normalize(String input) {
@@ -347,41 +351,46 @@ class PosCubit extends Cubit<PosState> {
     if (state.cart.isEmpty) return false;
     emit(state.copyWith(isProcessing: true));
 
-    String effectiveCashierId = cashierId ?? '';
-    if (effectiveCashierId.isEmpty) {
-      final cashierResult = await _posRepository.getActiveCashierId();
-      effectiveCashierId = cashierResult.getOrElse(() => 'cashier_local');
-    }
+    try {
+      String effectiveCashierId = cashierId ?? '';
+      if (effectiveCashierId.isEmpty) {
+        final cashierResult = await _posRepository.getActiveCashierId();
+        effectiveCashierId = cashierResult.getOrElse(() => 'cashier_local');
+      }
 
-    final sale = SaleEntity(
-      id: '',
-      date: DateTime.now(),
-      cashierId: effectiveCashierId,
-      cashierName: 'Cashier',
-      customerId: state.customer?.id,
-      items: state.cart,
-      subtotal: state.subtotal.toDouble(),
-      discount: (state.subtotal - state.total).toDouble(),
-      total: state.total.toDouble(),
-      paymentMethod: paymentMethod,
-    );
-    final result = await _createSaleUseCase(sale);
-    final success = result.isRight();
-    if (success) {
-      emit(PosLoaded(
-        filteredVariants: state.filteredVariants,
-        categories: state.categories,
-        selectedCategory: state.selectedCategory,
-        cart: const [],
-        customer: null,
-        subtotal: 0,
-        total: 0,
-        isProcessing: false,
-      ));
-    } else {
+      final sale = SaleEntity(
+        id: '',
+        date: DateTime.now(),
+        cashierId: effectiveCashierId,
+        cashierName: 'Cashier',
+        customerId: state.customer?.id,
+        items: state.cart,
+        subtotal: state.subtotal.toDouble(),
+        discount: (state.subtotal - state.total).toDouble(),
+        total: state.total.toDouble(),
+        paymentMethod: paymentMethod,
+      );
+      final result = await _createSaleUseCase(sale);
+      final success = result.isRight();
+      if (success) {
+        emit(PosLoaded(
+          filteredVariants: state.filteredVariants,
+          categories: state.categories,
+          selectedCategory: state.selectedCategory,
+          cart: const [],
+          customer: null,
+          subtotal: 0,
+          total: 0,
+          isProcessing: false,
+        ));
+      } else {
+        emit(state.copyWith(isProcessing: false));
+      }
+      return success;
+    } catch (e) {
       emit(state.copyWith(isProcessing: false));
+      return false;
     }
-    return success;
   }
 
   void _updateCart(PosState state, List<SaleItemEntity> newCart) {

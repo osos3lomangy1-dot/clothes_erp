@@ -16,24 +16,32 @@ class ProductCubit extends Cubit<ProductState> {
 
   Future<void> getProducts() async {
     emit(ProductLoading());
-    final result = await _getProductsUseCase();
-    result.fold(
-      (failure) => emit(ProductError(failure.message)),
-      (products) {
-        if (products.isEmpty) {
-          emit(ProductEmpty());
-        } else {
-          emit(ProductLoaded(products));
-        }
-      },
-    );
+    try {
+      final result = await _getProductsUseCase();
+      result.fold(
+        (failure) => emit(ProductError(failure.message)),
+        (products) {
+          if (products.isEmpty) {
+            emit(ProductEmpty());
+          } else {
+            emit(ProductLoaded(products));
+          }
+        },
+      );
+    } catch (e) {
+      emit(ProductError('تعذر تحميل بيانات المنتجات: $e'));
+    }
   }
 
   Future<void> deleteProduct(String id) async {
-    final result = await _deleteProductUseCase(id);
-    result.fold(
-      (failure) => emit(ProductError(failure.message)),
-      (_) => getProducts(),
-    );
+    try {
+      final result = await _deleteProductUseCase(id);
+      result.fold(
+        (failure) => emit(ProductError(failure.message)),
+        (_) => getProducts(),
+      );
+    } catch (e) {
+      emit(ProductError('تعذر حذف المنتج: $e'));
+    }
   }
 }

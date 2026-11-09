@@ -22,14 +22,18 @@ class InventoryCubit extends Cubit<InventoryState> {
   Future<void> loadInventory({bool lowStockOnly = false}) async {
     _isLowStockFilter = lowStockOnly;
     emit(InventoryLoading());
-    final result = lowStockOnly
-        ? await _getLowStockUseCase()
-        : await _getAllInventoryUseCase();
+    try {
+      final result = lowStockOnly
+          ? await _getLowStockUseCase()
+          : await _getAllInventoryUseCase();
 
-    result.fold(
-      (failure) => emit(InventoryError(failure.message)),
-      (items) => emit(InventoryLoaded(items, showLowStockOnly: lowStockOnly)),
-    );
+      result.fold(
+        (failure) => emit(InventoryError(failure.message)),
+        (items) => emit(InventoryLoaded(items, showLowStockOnly: lowStockOnly)),
+      );
+    } catch (e) {
+      emit(InventoryError('تعذر تحميل بيانات المخزون: $e'));
+    }
   }
 
   void toggleLowStockFilter(bool value) {
@@ -49,15 +53,20 @@ class InventoryCubit extends Cubit<InventoryState> {
       throw Exception('يجب إدخال سبب التوريد أو اسم المورد');
     }
 
-    await _inventoryLocalDataSource.applyStockMovement(
-      variantId: variantId,
-      qtyDelta: quantity,
-      type: StockMovementType.receive,
-      reason: reason.trim(),
-      userId: userId,
-    );
+    try {
+      await _inventoryLocalDataSource.applyStockMovement(
+        variantId: variantId,
+        qtyDelta: quantity,
+        type: StockMovementType.receive,
+        reason: reason.trim(),
+        userId: userId,
+      );
 
-    await loadInventory(lowStockOnly: _isLowStockFilter);
+      await loadInventory(lowStockOnly: _isLowStockFilter);
+    } catch (e) {
+      emit(InventoryError('تعذر استلام المخزون: $e'));
+      rethrow;
+    }
   }
 
   Future<List<InventoryItemDetail>> searchVariants(String query) async {
@@ -85,20 +94,25 @@ class InventoryCubit extends Cubit<InventoryState> {
     if (quantity <= 0) throw Exception('الكمية يجب أن تكون أكبر من صفر');
     if (reason.trim().isEmpty) throw Exception('اسم المورد أو رقم الفاتورة مطلوب');
 
-    final detail = await _inventoryLocalDataSource.quickCreateProductAndReceive(
-      productName: productName.trim(),
-      categoryId: categoryId,
-      sku: sku.trim(),
-      color: color.trim().isEmpty ? 'افتراضي' : color.trim(),
-      size: size.trim().isEmpty ? 'افتراضي' : size.trim(),
-      costPrice: costPrice,
-      sellPrice: sellPrice,
-      quantity: quantity,
-      reason: reason.trim(),
-      userId: userId,
-    );
+    try {
+      final detail = await _inventoryLocalDataSource.quickCreateProductAndReceive(
+        productName: productName.trim(),
+        categoryId: categoryId,
+        sku: sku.trim(),
+        color: color.trim().isEmpty ? 'افتراضي' : color.trim(),
+        size: size.trim().isEmpty ? 'افتراضي' : size.trim(),
+        costPrice: costPrice,
+        sellPrice: sellPrice,
+        quantity: quantity,
+        reason: reason.trim(),
+        userId: userId,
+      );
 
-    await loadInventory(lowStockOnly: _isLowStockFilter);
-    return detail;
+      await loadInventory(lowStockOnly: _isLowStockFilter);
+      return detail;
+    } catch (e) {
+      emit(InventoryError('تعذر إنشاء وتوريد المنتج: $e'));
+      rethrow;
+    }
   }
 }
