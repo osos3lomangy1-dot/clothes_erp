@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:injectable/injectable.dart';
+import '../../../../core/config/app_config.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/utils/logging.dart';
 import '../models/user_model.dart';
@@ -14,13 +15,25 @@ abstract class AuthRemoteDataSource {
 
 @LazySingleton(as: AuthRemoteDataSource)
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
-  final FirebaseAuth _firebaseAuth;
-  final FirebaseFirestore _firestore;
+  FirebaseAuth get _firebaseAuth => FirebaseAuth.instance;
+  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
 
-  AuthRemoteDataSourceImpl(this._firebaseAuth, this._firestore);
+  AuthRemoteDataSourceImpl();
 
   @override
   Future<UserModel> login(String email, String password) async {
+    if (!kEnableFirebase) {
+      Logging.info('🛡️ [Safe Mode] Remote login bypassed');
+      return UserModel(
+        id: 'safe-mode-admin',
+        email: email,
+        name: 'Safe Mode Admin',
+        role: 'admin',
+        isActive: true,
+        createdAt: DateTime.now(),
+      );
+    }
+
     try {
       final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
         email: email,
@@ -41,10 +54,16 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<void> logout() => _firebaseAuth.signOut();
+  Future<void> logout() async {
+    if (!kEnableFirebase) return;
+    return _firebaseAuth.signOut();
+  }
 
   @override
   Stream<UserModel?> get authStateChanges {
+    if (!kEnableFirebase) {
+      return Stream.value(null);
+    }
     return _firebaseAuth.authStateChanges().asyncMap((user) async {
       if (user == null) return null;
       try {

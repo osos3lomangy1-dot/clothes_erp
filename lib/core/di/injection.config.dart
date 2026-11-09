@@ -191,8 +191,6 @@ import 'package:clothes_erp/features/returns/domain/usecases/process_return_usec
     as _i881;
 import 'package:clothes_erp/features/returns/presentation/cubits/returns_cubit.dart'
     as _i74;
-import 'package:cloud_firestore/cloud_firestore.dart' as _i974;
-import 'package:firebase_auth/firebase_auth.dart' as _i59;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart' as _i558;
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:injectable/injectable.dart' as _i526;
@@ -212,11 +210,14 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i526.AuthLocalDataSource>(
       () => _i526.AuthLocalDataSourceImpl(gh<_i558.FlutterSecureStorage>()),
     );
-    gh.lazySingleton<_i303.InventoryRemoteDataSource>(
-      () => _i303.InventoryRemoteDataSourceImpl(gh<_i974.FirebaseFirestore>()),
-    );
     gh.lazySingleton<_i861.InventoryLogRepository>(
-      () => _i284.InventoryLogRepositoryImpl(gh<_i974.FirebaseFirestore>()),
+      () => _i284.InventoryLogRepositoryImpl(),
+    );
+    gh.lazySingleton<_i1024.AuthRemoteDataSource>(
+      () => _i1024.AuthRemoteDataSourceImpl(),
+    );
+    gh.lazySingleton<_i303.InventoryRemoteDataSource>(
+      () => _i303.InventoryRemoteDataSourceImpl(),
     );
     gh.factory<_i94.InventoryLogCubit>(
       () => _i94.InventoryLogCubit(gh<_i861.InventoryLogRepository>()),
@@ -232,12 +233,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i556.PartnersLocalDataSource>(
       () => _i556.PartnersLocalDataSourceImpl(gh<_i110.AppDatabase>()),
-    );
-    gh.lazySingleton<_i1024.AuthRemoteDataSource>(
-      () => _i1024.AuthRemoteDataSourceImpl(
-        gh<_i59.FirebaseAuth>(),
-        gh<_i974.FirebaseFirestore>(),
-      ),
     );
     gh.lazySingleton<_i178.CategoryLocalDataSource>(
       () => _i178.CategoryLocalDataSource(
