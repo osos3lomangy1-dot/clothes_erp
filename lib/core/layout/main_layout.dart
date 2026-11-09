@@ -17,6 +17,7 @@ import '../../features/employees/presentation/screens/employee_list_screen.dart'
 import '../../features/expenses/presentation/screens/expenses_screen.dart';
 import '../../features/partners/presentation/screens/partners_screen.dart';
 import '../../features/pos/presentation/screens/pos_screen.dart';
+import '../../features/purchases/presentation/screens/purchases_screen.dart';
 import '../../features/crash_logs/presentation/screens/crash_logs_screen.dart';
 
 class MainLayout extends StatefulWidget {
@@ -150,6 +151,7 @@ class _MainLayoutState extends State<MainLayout> {
                           _navItem(Icons.point_of_sale_rounded, 'نقطة البيع (الكاشير)', null, isPos: true),
                           _navItem(Icons.inventory_2_rounded, 'المنتجات والتصنيفات', const ProductListScreen()),
                           _navItem(Icons.warehouse_rounded, 'إدارة المخزون', const InventoryScreen()),
+                          _navItem(Icons.local_shipping_rounded, 'المشتريات والموردين', const PurchasesScreen()),
                           _navItem(Icons.history_rounded, 'حركات المخزن', const InventoryLogsScreen()),
                           _navItem(Icons.people_alt_rounded, 'سجل العملاء', const CustomerScreen()),
                           _navItem(Icons.payments_outlined, 'إدارة المصروفات', const ExpensesScreen()),

@@ -170,6 +170,16 @@ import 'package:clothes_erp/features/products/presentation/cubits/product_cubit.
     as _i137;
 import 'package:clothes_erp/features/products/presentation/cubits/product_form_cubit.dart'
     as _i548;
+import 'package:clothes_erp/features/purchases/data/datasources/purchases_local_data_source.dart'
+    as _i245;
+import 'package:clothes_erp/features/purchases/data/repositories/purchases_repository_impl.dart'
+    as _i138;
+import 'package:clothes_erp/features/purchases/domain/repositories/purchases_repository.dart'
+    as _i698;
+import 'package:clothes_erp/features/purchases/presentation/cubits/purchases_cubit.dart'
+    as _i378;
+import 'package:clothes_erp/features/purchases/presentation/cubits/suppliers_cubit.dart'
+    as _i573;
 import 'package:clothes_erp/features/reports/data/datasources/reports_local_data_source.dart'
     as _i1045;
 import 'package:clothes_erp/features/reports/data/repositories/reports_repository_impl.dart'
@@ -293,6 +303,12 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i774.DashboardCubit>(
       () => _i774.DashboardCubit(gh<_i1040.GetDashboardStatsUseCase>()),
+    );
+    gh.lazySingleton<_i245.PurchasesLocalDataSource>(
+      () => _i245.PurchasesLocalDataSourceImpl(
+        gh<_i110.AppDatabase>(),
+        gh<_i254.BranchProvider>(),
+      ),
     );
     gh.lazySingleton<_i957.GetSalesReportUseCase>(
       () => _i957.GetSalesReportUseCase(gh<_i633.ReportsRepository>()),
@@ -437,6 +453,9 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i1031.UpdateVariantUseCase>(),
       ),
     );
+    gh.lazySingleton<_i698.PurchasesRepository>(
+      () => _i138.PurchasesRepositoryImpl(gh<_i245.PurchasesLocalDataSource>()),
+    );
     gh.lazySingleton<_i506.EmployeeRepository>(
       () => _i466.EmployeeRepositoryImpl(gh<_i171.EmployeeLocalDataSource>()),
     );
@@ -451,6 +470,12 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i56.GetVariantsUseCase>(),
         gh<_i333.DeleteVariantUseCase>(),
       ),
+    );
+    gh.factory<_i378.PurchasesCubit>(
+      () => _i378.PurchasesCubit(gh<_i698.PurchasesRepository>()),
+    );
+    gh.factory<_i573.SuppliersCubit>(
+      () => _i573.SuppliersCubit(gh<_i698.PurchasesRepository>()),
     );
     gh.lazySingleton<_i681.ReturnsRepository>(
       () => _i198.ReturnsRepositoryImpl(gh<_i207.ReturnsLocalDataSource>()),
