@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../constants/app_colors.dart';
+import '../services/crash_logger_service.dart';
+import '../../features/auth/presentation/cubits/auth_cubit.dart';
+import '../../features/auth/presentation/cubits/auth_state.dart';
 import '../../features/products/presentation/screens/product_list_screen.dart';
 import '../../features/inventory/presentation/screens/inventory_screen.dart';
 import '../../features/inventory/presentation/screens/inventory_logs_screen.dart';
@@ -10,6 +14,7 @@ import '../../features/employees/presentation/screens/employee_list_screen.dart'
 import '../../features/expenses/presentation/screens/expenses_screen.dart';
 import '../../features/partners/presentation/screens/partners_screen.dart';
 import '../../features/pos/presentation/screens/pos_screen.dart';
+import '../../features/crash_logs/presentation/screens/crash_logs_screen.dart';
 
 class MainLayout extends StatefulWidget {
   final Widget child;
@@ -96,6 +101,17 @@ class _MainLayoutState extends State<MainLayout> {
                           _navItem(Icons.bar_chart_rounded, 'تقارير المبيعات', const ReportsScreen()),
                           _navItem(Icons.handshake_rounded, 'الشركاء وتوزيع الأرباح', const PartnersScreen()),
                           _navItem(Icons.badge_rounded, 'فريق العمل والموظفون', const EmployeeListScreen()),
+                          BlocBuilder<AuthCubit, AuthState>(
+                            builder: (context, authState) {
+                              final isAdmin = authState is! AuthAuthenticated || authState.user.role == 'admin';
+                              if (!isAdmin) return const SizedBox.shrink();
+                              return _navItem(
+                                Icons.bug_report_rounded,
+                                'سجلات الأعطال',
+                                const CrashLogsScreen(),
+                              );
+                            },
+                          ),
                         ],
                       ),
                     ),
@@ -124,6 +140,8 @@ class _MainLayoutState extends State<MainLayout> {
               ),
             ),
       onTap: () {
+        CrashLoggerService.addBreadcrumb('اختيار من القائمة: $title');
+        CrashLoggerService.setContext('شاشة: $title');
         if (onTapOverride != null) {
           onTapOverride();
         } else if (isPos) {

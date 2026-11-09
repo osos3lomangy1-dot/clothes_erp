@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/constants/app_colors.dart';
 import 'core/di/injection.dart';
 import 'core/firebase/firebase_service.dart';
+import 'core/services/crash_logger_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/logging.dart';
 import 'features/auth/presentation/cubits/auth_cubit.dart';
@@ -15,19 +16,37 @@ import 'features/dashboard/presentation/screens/cashier_dashboard_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // 0. Initialize local crash logger
+  await CrashLoggerService.init();
+
   // 1. Global Flutter framework error handling
   FlutterError.onError = (FlutterErrorDetails details) {
+    CrashLoggerService.logCrash(
+      details.exception,
+      details.stack,
+      context: 'Flutter Framework: ${details.context?.toDescription() ?? "General"}',
+    );
     Logging.error('FlutterError: ${details.exceptionAsString()}\n${details.stack}');
   };
 
   // 2. Global asynchronous unhandled error handling
   PlatformDispatcher.instance.onError = (error, stack) {
+    CrashLoggerService.logCrash(
+      error,
+      stack,
+      context: 'PlatformDispatcher Unhandled Async',
+    );
     Logging.error('PlatformDispatcher unhandled error: $error\n$stack');
     return true; // Prevent app termination
   };
 
   // 3. User-friendly custom ErrorWidget replacing the red screen
   ErrorWidget.builder = (FlutterErrorDetails details) {
+    CrashLoggerService.logCrash(
+      details.exception,
+      details.stack,
+      context: 'ErrorWidget (UI Render Failure)',
+    );
     Logging.error('ErrorWidget built for: ${details.exceptionAsString()}');
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -141,6 +160,7 @@ class MyApp extends StatelessWidget {
         title: 'أوركييييد',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
+        navigatorObservers: [CrashRouteObserver()],
         builder: (context, child) {
           return Directionality(
             textDirection: TextDirection.rtl,
