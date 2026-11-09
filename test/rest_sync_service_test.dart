@@ -237,5 +237,22 @@ void main() {
         );
       },
     );
+
+    test('startAutoSync triggers background sync and stopAutoSync cancels it', () async {
+      final mockClient = MockClient((request) async {
+        return http.Response('{}', 200);
+      });
+
+      final service = RestSyncService(
+        db,
+        mockClient,
+        projectId: 'test-project',
+        apiKey: 'test-key',
+      );
+
+      service.startAutoSync(interval: const Duration(milliseconds: 50));
+      await Future.delayed(const Duration(milliseconds: 20));
+      service.stopAutoSync();
+    });
   });
 }

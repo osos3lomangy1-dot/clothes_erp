@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
@@ -30,6 +31,10 @@ class RestSyncService {
   final String _apiKey;
 
   String? _idToken;
+  Timer? _autoSyncTimer;
+  bool _isSyncing = false;
+
+  final _syncStatusController = StreamController<bool>.broadcast();
 
   RestSyncService(
     this._db,
@@ -40,6 +45,33 @@ class RestSyncService {
         _apiKey = apiKey ?? DefaultFirebaseOptions.windows.apiKey;
 
   String? get idToken => _idToken;
+  bool get isSyncing => _isSyncing;
+  Stream<bool> get isSyncingStream => _syncStatusController.stream;
+
+  /// Starts automatic background synchronization (every [interval]).
+  /// Also triggers an immediate synchronization in the background.
+  void startAutoSync({Duration interval = const Duration(minutes: 5)}) {
+    _autoSyncTimer?.cancel();
+    Logging.info('🔄 [Auto-Sync] Started auto-sync timer (every ${interval.inMinutes} mins)');
+
+    // Trigger immediate background sync
+    unawaited(syncPendingData());
+
+    _autoSyncTimer = Timer.periodic(interval, (_) async {
+      final pendingCount = await getPendingCount();
+      if (pendingCount > 0 && !_isSyncing) {
+        Logging.info('🔄 [Auto-Sync] Auto-syncing $pendingCount pending items...');
+        await syncPendingData();
+      }
+    });
+  }
+
+  /// Stops automatic background synchronization.
+  void stopAutoSync() {
+    _autoSyncTimer?.cancel();
+    _autoSyncTimer = null;
+    Logging.info('🛑 [Auto-Sync] Stopped auto-sync timer');
+  }
 
   /// Authenticate with Firebase Auth REST API (optional, for secured Firestore rules)
   Future<bool> signInWithRest(String email, String password) async {
@@ -90,53 +122,65 @@ class RestSyncService {
 
   /// Synchronize all pending items in `sync_queue` to Firebase via REST.
   Future<SyncResult> syncPendingData() async {
-    final pendingItems = await (_db.select(_db.syncQueue)
-          ..where((q) => q.status.equals('pending'))
-          ..orderBy([(q) => OrderingTerm.asc(q.createdAt)]))
-        .get();
-
-    if (pendingItems.isEmpty) {
+    if (_isSyncing) {
       return const SyncResult(total: 0, synced: 0, failed: 0);
     }
 
-    int syncedCount = 0;
-    int failedCount = 0;
+    _isSyncing = true;
+    _syncStatusController.add(true);
 
-    for (final item in pendingItems) {
-      try {
-        final success = await _syncSingleItem(item);
-        if (success) {
-          syncedCount++;
+    try {
+      final pendingItems = await (_db.select(_db.syncQueue)
+            ..where((q) => q.status.equals('pending'))
+            ..orderBy([(q) => OrderingTerm.asc(q.createdAt)]))
+          .get();
+
+      if (pendingItems.isEmpty) {
+        return const SyncResult(total: 0, synced: 0, failed: 0);
+      }
+
+      int syncedCount = 0;
+      int failedCount = 0;
+
+      for (final item in pendingItems) {
+        try {
+          final success = await _syncSingleItem(item);
+          if (success) {
+            syncedCount++;
+            await (_db.update(_db.syncQueue)..where((q) => q.id.equals(item.id)))
+                .write(
+              SyncQueueCompanion(
+                status: const Value('synced'),
+                syncedAt: Value(DateTime.now()),
+                updatedAt: Value(DateTime.now()),
+              ),
+            );
+          } else {
+            failedCount++;
+          }
+        } catch (e) {
+          failedCount++;
+          Logging.error('Sync item ${item.id} error: $e');
           await (_db.update(_db.syncQueue)..where((q) => q.id.equals(item.id)))
               .write(
             SyncQueueCompanion(
-              status: const Value('synced'),
-              syncedAt: Value(DateTime.now()),
+              attempts: Value(item.attempts + 1),
+              lastError: Value(e.toString()),
               updatedAt: Value(DateTime.now()),
             ),
           );
-        } else {
-          failedCount++;
         }
-      } catch (e) {
-        failedCount++;
-        Logging.error('Sync item ${item.id} error: $e');
-        await (_db.update(_db.syncQueue)..where((q) => q.id.equals(item.id)))
-            .write(
-          SyncQueueCompanion(
-            attempts: Value(item.attempts + 1),
-            lastError: Value(e.toString()),
-            updatedAt: Value(DateTime.now()),
-          ),
-        );
       }
-    }
 
-    return SyncResult(
-      total: pendingItems.length,
-      synced: syncedCount,
-      failed: failedCount,
-    );
+      return SyncResult(
+        total: pendingItems.length,
+        synced: syncedCount,
+        failed: failedCount,
+      );
+    } finally {
+      _isSyncing = false;
+      _syncStatusController.add(false);
+    }
   }
 
   Future<bool> _syncSingleItem(SyncQueueData item) async {

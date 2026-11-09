@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../constants/app_colors.dart';
@@ -32,11 +33,29 @@ class _MainLayoutState extends State<MainLayout> {
   bool _isCollapsed = false;
   bool _isSyncing = false;
   late Widget _currentScreen;
+  StreamSubscription<bool>? _syncSubscription;
 
   @override
   void initState() {
     super.initState();
     _currentScreen = widget.child;
+
+    final syncService = getIt<RestSyncService>();
+    // Start background auto-sync timer (every 5 minutes + immediate initial check)
+    syncService.startAutoSync(interval: const Duration(minutes: 5));
+
+    _syncSubscription = syncService.isSyncingStream.listen((syncing) {
+      if (mounted && _isSyncing != syncing) {
+        setState(() => _isSyncing = syncing);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _syncSubscription?.cancel();
+    getIt<RestSyncService>().stopAutoSync();
+    super.dispose();
   }
 
   Future<void> _handleSync() async {
