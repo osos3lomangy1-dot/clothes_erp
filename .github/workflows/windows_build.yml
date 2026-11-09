@@ -164,6 +164,9 @@ jobs:
         shell: pwsh
         run: |
           $src = "build\windows\x64\runner\Release"
+          if (Test-Path "windows\installer\launch_app.bat") {
+            Copy-Item -Path "windows\installer\launch_app.bat" -Destination "$src\launch_app.bat" -Force
+          }
           $zip = "Orkeed_erp_windows_v${{ env.APP_VERSION }}.zip"
           Compress-Archive -Path "$src\*" -DestinationPath $zip -Force
           Write-Host "ZIP created: $zip"
@@ -175,6 +178,30 @@ jobs:
           path: Orkeed_erp_windows_v${{ env.APP_VERSION }}.zip
           retention-days: 30
           if-no-files-found: error
+
+      - name: Build Inno Setup Installer (with bundled VC++ Redist)
+        shell: pwsh
+        run: |
+          # Download official vc_redist.x64.exe to bundle inside the installer for 100% offline installs
+          Write-Host "Downloading vc_redist.x64.exe..."
+          Invoke-WebRequest -Uri "https://aka.ms/vs/17/release/vc_redist.x64.exe" -OutFile "windows\installer\vc_redist.x64.exe"
+          
+          # Compile Inno Setup Script
+          $isccPath = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $isccPath)) {
+            Write-Host "Installing Inno Setup via choco..."
+            choco install innosetup -y --no-progress
+          }
+          & "$isccPath" "windows\installer\inno_setup.iss"
+        continue-on-error: true
+
+      - name: Upload Inno Setup Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: Orkeed-erp-setup-v${{ env.APP_VERSION }}
+          path: build/installer/*.exe
+          retention-days: 30
+          if-no-files-found: warn
 
       - name: Build MSIX Installer
         if: ${{ github.event.inputs.build_msix != 'false' }}

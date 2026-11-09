@@ -69,30 +69,30 @@ void main() {
       // Running a query triggers Drift open + onUpgrade
       await upgradedDb.customSelect('SELECT 1').get();
 
-      // Verify user_version was bumped to 2
+      // Verify user_version was bumped to 3
       final versionResult = await upgradedDb.customSelect('PRAGMA user_version').getSingle();
-      expect(versionResult.data['user_version'], equals(2));
+      expect(versionResult.data['user_version'], equals(3));
 
       // -----------------------------------------------------------------------
-      // STEP 3: Call onUpgrade a SECOND time (to simulate running when columns already exist,
+      // STEP 3: Call onUpgrade a SECOND time (to simulate running when columns/tables already exist,
       // e.g. after a previous failed upgrade or repeated migration execution)
       // -----------------------------------------------------------------------
       final migrator = upgradedDb.createMigrator();
 
-      // Calling onUpgrade again MUST NOT throw a 'duplicate column' exception!
+      // Calling onUpgrade again MUST NOT throw any exception!
       await expectLater(
-        upgradedDb.migration.onUpgrade(migrator, 1, 2),
+        upgradedDb.migration.onUpgrade(migrator, 1, 3),
         completes,
       );
 
       // Call it a THIRD time to be 100% sure it is fully idempotent
       await expectLater(
-        upgradedDb.migration.onUpgrade(migrator, 1, 2),
+        upgradedDb.migration.onUpgrade(migrator, 2, 3),
         completes,
       );
 
       // -----------------------------------------------------------------------
-      // STEP 4: Assert all 4 columns exist in the database
+      // STEP 4: Assert all columns and new tables exist in the database
       // -----------------------------------------------------------------------
       final variantsRows = await upgradedDb.customSelect('PRAGMA table_info("product_variants")').get();
       final variantsColsV2 = variantsRows.map((r) => (r.data['name'] as String).toLowerCase()).toSet();
@@ -106,6 +106,16 @@ void main() {
       final usersRows = await upgradedDb.customSelect('PRAGMA table_info("users")').get();
       final usersColsV2 = usersRows.map((r) => (r.data['name'] as String).toLowerCase()).toSet();
       expect(usersColsV2.contains('salary'), isTrue);
+
+      Future<bool> tableExists(String table) async {
+        final rows = await upgradedDb.customSelect("SELECT name FROM sqlite_master WHERE type='table' AND name='$table'").get();
+        return rows.isNotEmpty;
+      }
+      expect(await tableExists('suppliers'), isTrue);
+      expect(await tableExists('purchases'), isTrue);
+      expect(await tableExists('purchase_items'), isTrue);
+      expect(await tableExists('supplier_payments'), isTrue);
+      expect(await tableExists('loyalty_transactions'), isTrue);
 
       // -----------------------------------------------------------------------
       // STEP 5: Test inserting and querying rows using all 4 new columns
@@ -211,13 +221,13 @@ void main() {
 
       // Calling onUpgrade again directly when columns already exist MUST complete cleanly
       await expectLater(
-        db.migration.onUpgrade(migrator, 1, 2),
+        db.migration.onUpgrade(migrator, 1, 3),
         completes,
       );
 
-      // Call it once more
+      // Call it once more from 2 to 3
       await expectLater(
-        db.migration.onUpgrade(migrator, 1, 2),
+        db.migration.onUpgrade(migrator, 2, 3),
         completes,
       );
 

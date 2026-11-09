@@ -15,8 +15,8 @@ void main() {
       await db.close();
     });
 
-    test('schemaVersion must be 2', () {
-      expect(db.schemaVersion, equals(2));
+    test('schemaVersion must be 3', () {
+      expect(db.schemaVersion, equals(3));
     });
 
     test('Insert and query customers table with discountPercent & customerType', () async {
@@ -206,6 +206,125 @@ void main() {
       expect(exp.amount, equals(25000));
       expect(exp.category, equals('بوفيه وضيافة مميزة'));
       expect(exp.note, equals('شاي وسكر وقهوة للمحل'));
+    });
+
+    test('Insert and query suppliers table in schema v3', () async {
+      final now = DateTime.now();
+
+      await db.into(db.suppliers).insert(
+        SuppliersCompanion.insert(
+          id: 'sup-1',
+          branchId: 'branch-main',
+          name: 'مصنع الأمل للملابس',
+          phone: const drift.Value('01123456789'),
+          companyName: const drift.Value('شركة الأمل للتريكو'),
+          balance: const drift.Value(500000), // 5000.00 EGP
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      final sup = await (db.select(db.suppliers)..where((s) => s.id.equals('sup-1'))).getSingle();
+      expect(sup.name, equals('مصنع الأمل للملابس'));
+      expect(sup.balance, equals(500000));
+      expect(sup.companyName, equals('شركة الأمل للتريكو'));
+    });
+
+    test('Insert and query purchases and purchase_items in schema v3', () async {
+      final now = DateTime.now();
+
+      await db.into(db.purchases).insert(
+        PurchasesCompanion.insert(
+          id: 'po-101',
+          branchId: 'branch-main',
+          supplierId: 'sup-1',
+          invoiceNumber: const drift.Value('INV-2026-99'),
+          purchaseDate: now,
+          totalAmount: 1000000, // 10000.00 EGP
+          paidAmount: const drift.Value(400000), // 4000.00 EGP
+          status: const drift.Value('pending'),
+          paymentStatus: const drift.Value('partial'),
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      await db.into(db.purchaseItems).insert(
+        PurchaseItemsCompanion.insert(
+          id: 'poi-1',
+          purchaseId: 'po-101',
+          variantId: 'var-1',
+          qty: 50,
+          costPrice: 20000,
+          totalCost: 1000000,
+          createdAt: now,
+        ),
+      );
+
+      final po = await (db.select(db.purchases)..where((p) => p.id.equals('po-101'))).getSingle();
+      expect(po.totalAmount, equals(1000000));
+      expect(po.paidAmount, equals(400000));
+      expect(po.paymentStatus, equals('partial'));
+
+      final items = await (db.select(db.purchaseItems)..where((i) => i.purchaseId.equals('po-101'))).get();
+      expect(items.length, equals(1));
+      expect(items.first.qty, equals(50));
+    });
+
+    test('Insert and query supplier_payments in schema v3', () async {
+      final now = DateTime.now();
+
+      await db.into(db.supplierPayments).insert(
+        SupplierPaymentsCompanion.insert(
+          id: 'pay-1',
+          branchId: 'branch-main',
+          supplierId: 'sup-1',
+          purchaseId: const drift.Value('po-101'),
+          amount: 600000, // 6000.00 EGP
+          paymentDate: now,
+          paymentMethod: const drift.Value('cash'),
+          createdBy: 'admin',
+          createdAt: now,
+        ),
+      );
+
+      final payment = await (db.select(db.supplierPayments)..where((p) => p.id.equals('pay-1'))).getSingle();
+      expect(payment.amount, equals(600000));
+      expect(payment.supplierId, equals('sup-1'));
+      expect(payment.purchaseId, equals('po-101'));
+    });
+
+    test('Insert and query loyalty_transactions in schema v3', () async {
+      final now = DateTime.now();
+
+      await db.into(db.loyaltyTransactions).insert(
+        LoyaltyTransactionsCompanion.insert(
+          id: 'loy-1',
+          branchId: 'branch-main',
+          customerId: 'cust-1',
+          saleId: const drift.Value('sale-101'),
+          pointsDelta: 25,
+          reason: 'earn_from_sale',
+          createdAt: now,
+        ),
+      );
+
+      final transaction = await (db.select(db.loyaltyTransactions)..where((l) => l.id.equals('loy-1'))).getSingle();
+      expect(transaction.pointsDelta, equals(25));
+      expect(transaction.reason, equals('earn_from_sale'));
+    });
+
+    test('Verify default loyalty settings are seeded in app_meta on upgrade to schema v3', () async {
+      final migrator = db.createMigrator();
+      await db.migration.onUpgrade(migrator, 2, 3);
+
+      final earnRate = await (db.select(db.appMeta)..where((m) => m.key.equals('loyalty_earn_rate'))).getSingleOrNull();
+      final redeemRate = await (db.select(db.appMeta)..where((m) => m.key.equals('loyalty_redeem_rate'))).getSingleOrNull();
+      final maxPercent = await (db.select(db.appMeta)..where((m) => m.key.equals('loyalty_max_redeem_percent'))).getSingleOrNull();
+
+      expect(earnRate?.value, equals('10'));
+      expect(redeemRate?.value, equals('10'));
+      expect(maxPercent?.value, equals('30'));
     });
   });
 }
