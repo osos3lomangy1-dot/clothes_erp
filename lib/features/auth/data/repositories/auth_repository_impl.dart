@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:dartz/dartz.dart';
 import 'package:drift/drift.dart';
 import 'package:injectable/injectable.dart';
+import '../../../../core/config/app_config.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/logging.dart';
@@ -87,6 +88,41 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       // 3. Fallback to Firebase Remote Auth if offline local user not found
+      if (!kEnableFirebase) {
+        Logging.info('🛡️ [Safe Mode] Auto-registering mock user "$cleanInput" in local Drift DB');
+        final now = DateTime.now();
+        final safeUserId = 'mock_${cleanInput.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}';
+        final safeDisplayName = cleanInput.contains('@') ? cleanInput.split('@').first : cleanInput;
+
+        await _db.into(_db.users).insert(
+          UsersCompanion.insert(
+            id: safeUserId,
+            branchId: 'branch-1',
+            username: cleanInput,
+            displayName: safeDisplayName,
+            role: 'admin',
+            passwordHash: cleanPass,
+            passwordSalt: 'safe_mode',
+            isActive: const Value(true),
+            createdAt: now,
+            updatedAt: now,
+          ),
+          mode: InsertMode.insertOrReplace,
+        );
+
+        final mockUser = UserModel(
+          id: safeUserId,
+          name: safeDisplayName,
+          email: cleanInput,
+          role: 'admin',
+          isActive: true,
+          createdAt: now,
+        );
+        await _localDataSource.cacheUser(mockUser);
+        _authController.add(mockUser);
+        return Right(mockUser);
+      }
+
       try {
         final userModel = await _remoteDataSource.login(cleanInput, cleanPass);
         await _localDataSource.cacheUser(userModel);

@@ -11,6 +11,10 @@ on:
         description: 'Also build MSIX installer? (true/false)'
         required: false
         default: 'true'
+      build_safe_mode:
+        description: 'Build Safe Mode (ENABLE_FIREBASE=false)? (true/false)'
+        required: false
+        default: 'true'
 
 jobs:
   analyze-and-test:
@@ -216,3 +220,33 @@ jobs:
           path: build/windows/x64/runner/Release/*.msix
           retention-days: 30
           if-no-files-found: warn
+
+      # ─────────────────────────────────────────────────────────────────────────
+      # SAFE MODE BUILD (ENABLE_FIREBASE=false)
+      # Completely bypasses Firebase initialization and SDK runtime calls.
+      # Used to diagnose native MSVCP140.dll / 0xc0000005 crashes.
+      # ─────────────────────────────────────────────────────────────────────────
+      - name: Build Windows Safe Mode Release
+        if: ${{ github.event.inputs.build_safe_mode != 'false' }}
+        run: flutter build windows --release --dart-define=ENABLE_FIREBASE=false
+
+      - name: Package Safe Mode Release (ZIP)
+        if: ${{ github.event.inputs.build_safe_mode != 'false' }}
+        shell: pwsh
+        run: |
+          $src = "build\windows\x64\runner\Release"
+          if (Test-Path "windows\installer\launch_app.bat") {
+            Copy-Item -Path "windows\installer\launch_app.bat" -Destination "$src\launch_app.bat" -Force
+          }
+          $zip = "orchid-erp-windows-safe-mode.zip"
+          Compress-Archive -Path "$src\*" -DestinationPath $zip -Force
+          Write-Host "Safe Mode ZIP created: $zip"
+
+      - name: Upload Safe Mode Release ZIP
+        if: ${{ github.event.inputs.build_safe_mode != 'false' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: orchid-erp-windows-safe-mode
+          path: orchid-erp-windows-safe-mode.zip
+          retention-days: 30
+          if-no-files-found: error

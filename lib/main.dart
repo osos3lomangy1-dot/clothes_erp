@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'core/config/app_config.dart';
 import 'core/constants/app_colors.dart';
 import 'core/di/injection.dart';
 import 'core/firebase/firebase_service.dart';
@@ -138,7 +139,11 @@ void main() async {
     );
   };
 
-  await FirebaseService.init();
+  if (kEnableFirebase) {
+    await FirebaseService.init();
+  } else {
+    Logging.info('🛡️ [Safe Mode] Running without Firebase (ENABLE_FIREBASE=false)');
+  }
   await configureDependencies();
 
   runApp(

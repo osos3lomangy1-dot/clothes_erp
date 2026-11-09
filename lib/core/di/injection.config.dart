@@ -205,8 +205,6 @@ extension GetItInjectableX on _i174.GetIt {
   }) {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
     final registerModule = _$RegisterModule();
-    gh.lazySingleton<_i59.FirebaseAuth>(() => registerModule.firebaseAuth);
-    gh.lazySingleton<_i974.FirebaseFirestore>(() => registerModule.firestore);
     gh.lazySingleton<_i558.FlutterSecureStorage>(
       () => registerModule.secureStorage,
     );
@@ -214,11 +212,14 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i526.AuthLocalDataSource>(
       () => _i526.AuthLocalDataSourceImpl(gh<_i558.FlutterSecureStorage>()),
     );
-    gh.lazySingleton<_i1024.AuthRemoteDataSource>(
-      () => _i1024.AuthRemoteDataSourceImpl(
-        gh<_i59.FirebaseAuth>(),
-        gh<_i974.FirebaseFirestore>(),
-      ),
+    gh.lazySingleton<_i303.InventoryRemoteDataSource>(
+      () => _i303.InventoryRemoteDataSourceImpl(gh<_i974.FirebaseFirestore>()),
+    );
+    gh.lazySingleton<_i861.InventoryLogRepository>(
+      () => _i284.InventoryLogRepositoryImpl(gh<_i974.FirebaseFirestore>()),
+    );
+    gh.factory<_i94.InventoryLogCubit>(
+      () => _i94.InventoryLogCubit(gh<_i861.InventoryLogRepository>()),
     );
     gh.lazySingleton<_i517.DashboardLocalDataSource>(
       () => _i517.DashboardLocalDataSourceImpl(gh<_i110.AppDatabase>()),
@@ -232,11 +233,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i556.PartnersLocalDataSource>(
       () => _i556.PartnersLocalDataSourceImpl(gh<_i110.AppDatabase>()),
     );
-    gh.lazySingleton<_i303.InventoryRemoteDataSource>(
-      () => _i303.InventoryRemoteDataSourceImpl(gh<_i974.FirebaseFirestore>()),
-    );
-    gh.lazySingleton<_i861.InventoryLogRepository>(
-      () => _i284.InventoryLogRepositoryImpl(gh<_i974.FirebaseFirestore>()),
+    gh.lazySingleton<_i1024.AuthRemoteDataSource>(
+      () => _i1024.AuthRemoteDataSourceImpl(
+        gh<_i59.FirebaseAuth>(),
+        gh<_i974.FirebaseFirestore>(),
+      ),
     );
     gh.lazySingleton<_i178.CategoryLocalDataSource>(
       () => _i178.CategoryLocalDataSource(
@@ -286,9 +287,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i774.DashboardCubit>(
       () => _i774.DashboardCubit(gh<_i1040.GetDashboardStatsUseCase>()),
-    );
-    gh.factory<_i94.InventoryLogCubit>(
-      () => _i94.InventoryLogCubit(gh<_i861.InventoryLogRepository>()),
     );
     gh.lazySingleton<_i957.GetSalesReportUseCase>(
       () => _i957.GetSalesReportUseCase(gh<_i633.ReportsRepository>()),

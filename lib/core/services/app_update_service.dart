@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import '../config/app_config.dart';
 import '../constants/app_colors.dart';
 import 'widgets/app_update_dialog.dart';
 
@@ -115,6 +116,7 @@ class AppUpdateService {
 
   /// Fetches update info from Firestore `app_config/update_info`.
   static Future<AppUpdateInfo?> fetchUpdateInfo({FirebaseFirestore? firestore}) async {
+    if (!kEnableFirebase) return null;
     try {
       final db = firestore ?? FirebaseFirestore.instance;
       final doc = await db.collection(configCollection).doc(updateDoc).get();
