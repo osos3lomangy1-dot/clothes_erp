@@ -158,18 +158,6 @@ class CategoryListScreen extends StatelessWidget {
                 return const SizedBox.shrink();
               },
             ),
-            floatingActionButton: FloatingActionButton(
-              backgroundColor: AppColors.primary,
-              onPressed: () async {
-                await Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => const CategoryFormScreen()),
-                );
-                if (context.mounted) {
-                  context.read<CategoryCubit>().getCategories();
-                }
-              },
-              child: const Icon(Icons.add, color: Colors.white),
-            ),
           );
         },
       ),

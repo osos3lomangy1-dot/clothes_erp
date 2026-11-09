@@ -395,18 +395,6 @@ class VariantListScreen extends StatelessWidget {
                 return const SizedBox.shrink();
               },
             ),
-            floatingActionButton: FloatingActionButton(
-              backgroundColor: AppColors.primary,
-              onPressed: () async {
-                await Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => VariantFormScreen(product: product)),
-                );
-                if (context.mounted) {
-                  context.read<VariantCubit>().getVariants(product.id);
-                }
-              },
-              child: const Icon(Icons.add, color: Colors.white),
-            ),
           );
         },
       ),

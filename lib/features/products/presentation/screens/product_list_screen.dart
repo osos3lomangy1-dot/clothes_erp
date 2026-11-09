@@ -382,15 +382,6 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
           );
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primary,
-        onPressed: () => _openAddProductDialog(context),
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text(
-          'إضافة منتج',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-      ),
     );
   }
 

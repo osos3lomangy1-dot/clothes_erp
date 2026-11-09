@@ -564,11 +564,6 @@ class _EmployeeListViewState extends State<EmployeeListView> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.primary,
-        onPressed: () => _openEmployeeDialog(context),
-        child: const Icon(Icons.person_add_rounded, color: Colors.white),
-      ),
     );
   }
 }

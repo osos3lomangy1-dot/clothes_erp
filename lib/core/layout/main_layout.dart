@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
-import '../services/app_update_service.dart';
 import '../../features/products/presentation/screens/product_list_screen.dart';
 import '../../features/inventory/presentation/screens/inventory_screen.dart';
 import '../../features/inventory/presentation/screens/inventory_logs_screen.dart';
@@ -97,17 +96,6 @@ class _MainLayoutState extends State<MainLayout> {
                           _navItem(Icons.bar_chart_rounded, 'تقارير المبيعات', const ReportsScreen()),
                           _navItem(Icons.handshake_rounded, 'الشركاء وتوزيع الأرباح', const PartnersScreen()),
                           _navItem(Icons.badge_rounded, 'فريق العمل والموظفون', const EmployeeListScreen()),
-                          const Divider(color: Colors.white24, height: 16),
-                          _navItem(
-                            Icons.system_update_rounded,
-                            'التحقق من التحديثات',
-                            null,
-                            onTapOverride: () => AppUpdateService.checkForUpdate(
-                              context,
-                              forceCheck: true,
-                              showNoUpdateToast: true,
-                            ),
-                          ),
                         ],
                       ),
                     ),
