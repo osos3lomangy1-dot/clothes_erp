@@ -44,10 +44,24 @@ class PosLocalDataSource {
     required int total,
     required String cashierId,
     String? customerId,
+    String? shiftId,
   }) async {
     final now = DateTime.now();
     final branchId = await _branchId();
     final saleId = _uuid.v4();
+
+    String? effectiveShiftId = shiftId;
+    if (effectiveShiftId == null) {
+      final activeShift = await (_db.select(_db.shifts)
+            ..where((s) => s.closedAt.isNull() & s.deletedAt.isNull())
+            ..orderBy([(s) => OrderingTerm.desc(s.openedAt)])
+            ..limit(1))
+          .getSingleOrNull();
+      if (activeShift != null) {
+        effectiveShiftId = activeShift.id;
+      }
+    }
+
     await _tx.write(
       writeFn: () async {
         await _db.into(_db.sales).insert(SalesCompanion.insert(
@@ -55,6 +69,7 @@ class PosLocalDataSource {
           branchId: branchId,
           shortRef: 'S${now.millisecondsSinceEpoch}',
           cashierId: cashierId,
+          shiftId: Value(effectiveShiftId),
           customerId: Value(customerId),
           subtotal: total,
           discountType: 'none',

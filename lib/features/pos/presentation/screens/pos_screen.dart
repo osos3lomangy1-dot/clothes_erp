@@ -13,6 +13,10 @@ import '../../../customers/domain/repositories/customer_repository.dart';
 import '../../../product_variants/domain/entities/variant_entity.dart';
 import '../../domain/entities/sale_item_entity.dart';
 import '../cubits/pos_cubit.dart';
+import '../../../shifts/presentation/cubits/shift_cubit.dart';
+import '../../../shifts/presentation/cubits/shift_state.dart';
+import '../../../shifts/presentation/widgets/open_shift_dialog.dart';
+import '../../../shifts/presentation/screens/shift_screen.dart';
 
 Color _getCategoryColor(String? categoryId) {
   if (categoryId == null || categoryId.isEmpty) return const Color(0xFF673AB7);
@@ -54,8 +58,11 @@ class PosScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => getIt<PosCubit>()..init(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (context) => getIt<PosCubit>()..init()),
+        BlocProvider(create: (context) => getIt<ShiftCubit>()..loadShiftData()),
+      ],
       child: const _PosView(),
     );
   }
@@ -79,83 +86,298 @@ class _PosViewState extends State<_PosView> {
 
   @override
   Widget build(BuildContext context) {
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.f2): () => _searchFocusNode.requestFocus(),
-        const SingleActivator(LogicalKeyboardKey.escape): () => context.read<PosCubit>().clearCart(),
-      },
-      child: Scaffold(
-        backgroundColor: AppColors.surface,
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: AppColors.primary,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          title: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.point_of_sale_rounded, color: Colors.white, size: 22),
-              const SizedBox(width: 8),
-              Text(
-                'نقطة البيع (POS)',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 18),
+    return BlocBuilder<ShiftCubit, ShiftState>(
+      builder: (context, shiftState) {
+        final authState = context.watch<AuthCubit>().state;
+        final isAdmin = authState is! AuthAuthenticated || authState.user.role == 'admin';
+        final cashierId = authState is AuthAuthenticated ? authState.user.id : 'admin';
+        final cashierName = authState is AuthAuthenticated ? authState.user.name : 'المدير';
+
+        if (shiftState.shiftsEnabled && !shiftState.hasActiveShift) {
+          return _buildShiftRequiredScaffold(
+            context,
+            isAdmin: isAdmin,
+            cashierId: cashierId,
+            cashierName: cashierName,
+            shiftState: shiftState,
+          );
+        }
+
+        return CallbackShortcuts(
+          bindings: {
+            const SingleActivator(LogicalKeyboardKey.f2): () => _searchFocusNode.requestFocus(),
+            const SingleActivator(LogicalKeyboardKey.escape): () => context.read<PosCubit>().clearCart(),
+          },
+          child: Scaffold(
+            backgroundColor: AppColors.surface,
+            appBar: AppBar(
+              elevation: 0,
+              backgroundColor: AppColors.primary,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                onPressed: () => Navigator.of(context).pop(),
               ),
-            ],
-          ),
-          actions: [
-            // Cashier Badge
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Center(
-                child: BlocBuilder<AuthCubit, AuthState>(
-                  builder: (context, authState) {
-                    final cashierName = authState is AuthAuthenticated
-                        ? authState.user.name
-                        : 'كاشير';
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.person_rounded, size: 16, color: Colors.white),
-                          const SizedBox(width: 6),
-                          Text(
-                            cashierName,
-                            style: GoogleFonts.cairo(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
+              title: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.point_of_sale_rounded, color: Colors.white, size: 22),
+                  const SizedBox(width: 8),
+                  Text(
+                    'نقطة البيع (POS)',
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                ],
+              ),
+              actions: [
+                if (shiftState.shiftsEnabled && shiftState.activeShift != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const ShiftScreen()),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.greenAccent),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.lock_open_rounded, color: Colors.greenAccent, size: 14),
+                            const SizedBox(width: 4),
+                            Text(
+                              'وردية مفتوحة',
+                              style: GoogleFonts.cairo(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    );
-                  },
+                    ),
+                  ),
+                // Cashier Badge
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Center(
+                    child: BlocBuilder<AuthCubit, AuthState>(
+                      builder: (context, authState) {
+                        final cashierName = authState is AuthAuthenticated
+                            ? authState.user.name
+                            : 'كاشير';
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.person_rounded, size: 16, color: Colors.white),
+                              const SizedBox(width: 6),
+                              Text(
+                                cashierName,
+                                style: GoogleFonts.cairo(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            body: Row(
+              children: [
+                // Right Panel in RTL: Products Catalog
+                Expanded(
+                  child: _ProductPanel(searchFocusNode: _searchFocusNode),
+                ),
+                const VerticalDivider(width: 1, thickness: 1, color: AppColors.outlineVariant),
+                // Left Panel in RTL: Cart (Fixed 440px)
+                const SizedBox(
+                  width: 440,
+                  child: _CartPanel(),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildShiftRequiredScaffold(
+    BuildContext context, {
+    required bool isAdmin,
+    required String cashierId,
+    required String cashierName,
+    required ShiftState shiftState,
+  }) {
+    return Scaffold(
+      backgroundColor: AppColors.surface,
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: AppColors.primary,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          'نقطة البيع (POS)',
+          style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white),
+        ),
+      ),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 550),
+            child: Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: isAdmin ? Colors.blue.shade50 : Colors.red.shade50,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        isAdmin ? Icons.storefront_rounded : Icons.lock_clock_rounded,
+                        size: 48,
+                        color: isAdmin ? AppColors.primary : Colors.red.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      isAdmin ? 'تنبيه: لا توجد وردية مفتوحة' : 'الوردية مغلقة - الرجاء فتح وردية',
+                      style: GoogleFonts.cairo(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.onSurface),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      isAdmin
+                          ? 'أهلاً بك يا مدير! يمكنك فتح وردية فورية بضغطة زر لبدء البيع السريع، أو فتح وردية جديدة وتحديد رصيد الفكة.'
+                          : 'لا يمكنك إصدار فواتير بيع في نقطة البيع قبل فتح وردية وتحديد عهدة الفكة في الدرج.',
+                      style: GoogleFonts.cairo(fontSize: 14, color: Colors.grey.shade600, height: 1.5),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 28),
+                    if (isAdmin) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green.shade700,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          onPressed: shiftState.isOperating
+                              ? null
+                              : () async {
+                                  final cubit = context.read<ShiftCubit>();
+                                  await cubit.openShift(
+                                    openingBalance: 0,
+                                    cashierId: cashierId,
+                                    cashierName: cashierName,
+                                  );
+                                },
+                          icon: shiftState.isOperating
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                )
+                              : const Icon(Icons.flash_on_rounded, color: Colors.white, size: 22),
+                          label: Text(
+                            'بدء البيع السريع فوراً (فكة 0 ج.م)',
+                            style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            side: const BorderSide(color: AppColors.primary, width: 1.5),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (_) => OpenShiftDialog(
+                                cashierName: cashierName,
+                                onOpen: (openingPiasters) async {
+                                  return await context.read<ShiftCubit>().openShift(
+                                        openingBalance: openingPiasters,
+                                        cashierId: cashierId,
+                                        cashierName: cashierName,
+                                      );
+                                },
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.lock_open_rounded, color: AppColors.primary, size: 20),
+                          label: Text(
+                            'فتح وردية وتحديد رصيد الفكة',
+                            style: GoogleFonts.cairo(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 15),
+                          ),
+                        ),
+                      ),
+                    ] else ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (_) => OpenShiftDialog(
+                                cashierName: cashierName,
+                                onOpen: (openingPiasters) async {
+                                  return await context.read<ShiftCubit>().openShift(
+                                        openingBalance: openingPiasters,
+                                        cashierId: cashierId,
+                                        cashierName: cashierName,
+                                      );
+                                },
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.lock_open_rounded, color: Colors.white, size: 20),
+                          label: Text(
+                            'فتح وردية جديدة',
+                            style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
-          ],
-        ),
-        body: Row(
-          children: [
-            // Right Panel in RTL: Products Catalog
-            Expanded(
-              child: _ProductPanel(searchFocusNode: _searchFocusNode),
-            ),
-            const VerticalDivider(width: 1, thickness: 1, color: AppColors.outlineVariant),
-            // Left Panel in RTL: Cart (Fixed 440px)
-            const SizedBox(
-              width: 440,
-              child: _CartPanel(),
-            ),
-          ],
+          ),
         ),
       ),
     );

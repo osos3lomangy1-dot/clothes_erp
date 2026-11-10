@@ -202,6 +202,14 @@ import 'package:clothes_erp/features/returns/domain/usecases/process_return_usec
     as _i881;
 import 'package:clothes_erp/features/returns/presentation/cubits/returns_cubit.dart'
     as _i74;
+import 'package:clothes_erp/features/shifts/data/datasources/shift_local_data_source.dart'
+    as _i1047;
+import 'package:clothes_erp/features/shifts/data/repositories/shift_repository_impl.dart'
+    as _i321;
+import 'package:clothes_erp/features/shifts/domain/repositories/shift_repository.dart'
+    as _i837;
+import 'package:clothes_erp/features/shifts/presentation/cubits/shift_cubit.dart'
+    as _i252;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart' as _i558;
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:http/http.dart' as _i519;
@@ -310,6 +318,13 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i254.BranchProvider>(),
       ),
     );
+    gh.lazySingleton<_i1047.ShiftLocalDataSource>(
+      () => _i1047.ShiftLocalDataSourceImpl(
+        gh<_i110.AppDatabase>(),
+        gh<_i254.BranchProvider>(),
+        gh<_i874.TxWriter>(),
+      ),
+    );
     gh.lazySingleton<_i957.GetSalesReportUseCase>(
       () => _i957.GetSalesReportUseCase(gh<_i633.ReportsRepository>()),
     );
@@ -365,6 +380,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i351.ExpenseRepository>(
       () => _i868.ExpenseRepositoryImpl(gh<_i503.ExpensesLocalDataSource>()),
     );
+    gh.lazySingleton<_i837.ShiftRepository>(
+      () => _i321.ShiftRepositoryImpl(gh<_i1047.ShiftLocalDataSource>()),
+    );
     gh.lazySingleton<_i758.ProductRepository>(
       () => _i492.ProductRepositoryImpl(gh<_i878.ProductLocalDataSource>()),
     );
@@ -397,6 +415,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i119.ReportsCubit>(
       () => _i119.ReportsCubit(gh<_i957.GetSalesReportUseCase>()),
+    );
+    gh.factory<_i252.ShiftCubit>(
+      () => _i252.ShiftCubit(gh<_i837.ShiftRepository>()),
     );
     gh.factory<_i1043.CustomerCubit>(
       () => _i1043.CustomerCubit(gh<_i610.CustomerRepository>()),

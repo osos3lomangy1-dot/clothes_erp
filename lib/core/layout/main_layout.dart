@@ -19,6 +19,7 @@ import '../../features/partners/presentation/screens/partners_screen.dart';
 import '../../features/pos/presentation/screens/pos_screen.dart';
 import '../../features/purchases/presentation/screens/purchases_screen.dart';
 import '../../features/crash_logs/presentation/screens/crash_logs_screen.dart';
+import '../../features/shifts/presentation/screens/shift_screen.dart';
 
 class MainLayout extends StatefulWidget {
   final Widget child;
@@ -149,6 +150,7 @@ class _MainLayoutState extends State<MainLayout> {
                           const SizedBox(height: 8),
                           _navItem(Icons.dashboard_rounded, 'لوحة التحكم', widget.child),
                           _navItem(Icons.point_of_sale_rounded, 'نقطة البيع (الكاشير)', null, isPos: true),
+                          _navItem(Icons.lock_clock_rounded, 'الورديات وتصفية الدرج', const ShiftScreen()),
                           _navItem(Icons.inventory_2_rounded, 'المنتجات والتصنيفات', const ProductListScreen()),
                           _navItem(Icons.warehouse_rounded, 'إدارة المخزون', const InventoryScreen()),
                           _navItem(Icons.local_shipping_rounded, 'المشتريات والموردين', const PurchasesScreen()),
