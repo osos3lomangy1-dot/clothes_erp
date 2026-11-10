@@ -6,6 +6,9 @@ import '../../../../core/services/excel_service.dart';
 import '../../../../core/utils/money.dart';
 import '../cubits/reports_cubit.dart';
 import '../cubits/reports_state.dart';
+import '../widgets/financial_comparison_bar_chart.dart';
+import '../widgets/payment_method_pie_chart.dart';
+import '../widgets/top_selling_products_widget.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -336,6 +339,21 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                     ),
                                   ),
                                 ],
+                              ),
+                              const SizedBox(height: 20),
+                              FinancialComparisonBarChart(
+                                totalRevenue: report.totalRevenue,
+                                totalCost: report.totalCost,
+                                totalExpenses: report.totalExpenses,
+                                netProfit: report.netProfit,
+                              ),
+                              const SizedBox(height: 20),
+                              PaymentMethodPieChart(
+                                breakdown: report.paymentMethodBreakdown,
+                              ),
+                              const SizedBox(height: 20),
+                              TopSellingProductsWidget(
+                                products: report.topSellingProducts,
                               ),
                               const SizedBox(height: 24),
                               const Text(

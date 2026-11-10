@@ -8,6 +8,8 @@ import '../../../../core/utils/money.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../cubits/dashboard_cubit.dart';
 import '../cubits/dashboard_state.dart';
+import '../widgets/hourly_sales_chart.dart';
+import '../widgets/weekly_sales_chart.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -128,6 +130,12 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
                       ),
                     ],
                   ),
+                  if (stats != null) ...[
+                    const SizedBox(height: 24),
+                    WeeklySalesChart(points: stats.last7DaysSales),
+                    const SizedBox(height: 20),
+                    HourlySalesChart(hourlyPoints: stats.todayHourlySales),
+                  ],
                   if (stats != null && stats.lowStockVariants.isNotEmpty) ...[
                     const SizedBox(height: 28),
                     Row(

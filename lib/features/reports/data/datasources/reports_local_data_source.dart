@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:injectable/injectable.dart';
 import '../../../../core/database/app_database.dart';
 import '../../domain/entities/sales_report_entity.dart';
+import '../../domain/entities/top_product_report_entity.dart';
 
 abstract class ReportsLocalDataSource {
   Future<SalesReportEntity> getSalesReport({
@@ -75,6 +76,70 @@ class ReportsLocalDataSourceImpl implements ReportsLocalDataSource {
     final expenseRows = await expensesQuery.get();
     final totalExpenses = expenseRows.fold<int>(0, (sum, e) => sum + e.amount);
 
+    // 4. Calculate top 5 best selling products
+    final List<TopProductReportEntity> topSellingProducts = [];
+    if (saleIds.isNotEmpty) {
+      final topQuery = _db.select(_db.saleItems).join([
+        innerJoin(_db.productVariants, _db.productVariants.id.equalsExp(_db.saleItems.variantId)),
+        innerJoin(_db.products, _db.products.id.equalsExp(_db.productVariants.productId)),
+      ])..where(_db.saleItems.saleId.isIn(saleIds));
+
+      final topRows = await topQuery.get();
+      final Map<String, ({
+        String productName,
+        String sku,
+        String color,
+        String size,
+        int qty,
+        int totalRevenue,
+      })> variantMap = {};
+
+      for (final r in topRows) {
+        final item = r.readTable(_db.saleItems);
+        final variant = r.readTable(_db.productVariants);
+        final product = r.readTable(_db.products);
+
+        final revenue = item.priceSnapshot * item.qty;
+        final existing = variantMap[variant.id];
+        if (existing == null) {
+          variantMap[variant.id] = (
+            productName: product.name,
+            sku: variant.sku,
+            color: variant.color,
+            size: variant.size,
+            qty: item.qty,
+            totalRevenue: revenue,
+          );
+        } else {
+          variantMap[variant.id] = (
+            productName: existing.productName,
+            sku: existing.sku,
+            color: existing.color,
+            size: existing.size,
+            qty: existing.qty + item.qty,
+            totalRevenue: existing.totalRevenue + revenue,
+          );
+        }
+      }
+
+      final sortedList = variantMap.entries.toList()
+        ..sort((a, b) => b.value.qty.compareTo(a.value.qty));
+
+      topSellingProducts.addAll(
+        sortedList.take(5).map(
+              (e) => TopProductReportEntity(
+                variantId: e.key,
+                productName: e.value.productName,
+                sku: e.value.sku,
+                color: e.value.color,
+                size: e.value.size,
+                quantitySold: e.value.qty,
+                totalRevenue: e.value.totalRevenue,
+              ),
+            ),
+      );
+    }
+
     return SalesReportEntity(
       startDate: startDate,
       endDate: endDate,
@@ -84,6 +149,7 @@ class ReportsLocalDataSourceImpl implements ReportsLocalDataSource {
       totalExpenses: totalExpenses,
       totalTransactions: salesRows.length,
       paymentMethodBreakdown: paymentBreakdown,
+      topSellingProducts: topSellingProducts,
     );
   }
 }

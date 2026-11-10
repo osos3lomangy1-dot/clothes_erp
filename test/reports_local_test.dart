@@ -155,5 +155,114 @@ void main() {
     expect(report.paymentMethodBreakdown['cash'], 4000);
     expect(report.paymentMethodBreakdown['card'], 2000);
   });
+
+  test('reports calculates top selling products accurately and limits to top 5', () async {
+    final now = DateTime.now();
+
+    // 1. Seed Categories & Product
+    await db.into(db.categories).insert(CategoriesCompanion.insert(
+      id: 'cat_top',
+      branchId: branchId,
+      name: 'Suits',
+      createdAt: now,
+      updatedAt: now,
+    ));
+
+    await db.into(db.products).insert(ProductsCompanion.insert(
+      id: 'prod_suit',
+      branchId: branchId,
+      name: 'Classic Suit',
+      categoryId: 'cat_top',
+      createdAt: now,
+      updatedAt: now,
+    ));
+
+    // 2. Seed 6 variants (A, B, C, D, E, F)
+    final letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+    for (final l in letters) {
+      await db.into(db.productVariants).insert(ProductVariantsCompanion.insert(
+        id: 'var_$l',
+        branchId: branchId,
+        productId: 'prod_suit',
+        sku: 'SUIT-$l',
+        color: 'Color-$l',
+        size: '50',
+        costPrice: 5000,
+        sellPrice: 10000,
+        quantity: const Value(100),
+        createdAt: now,
+        updatedAt: now,
+      ));
+    }
+
+    // 3. Seed Sale with items having different sold quantities:
+    // A: 20 pcs
+    // B: 15 pcs
+    // C: 10 pcs
+    // D: 8 pcs
+    // E: 5 pcs
+    // F: 2 pcs
+    await db.into(db.sales).insert(SalesCompanion.insert(
+      id: 'sale_top',
+      branchId: branchId,
+      shortRef: 'ST01',
+      cashierId: 'c1',
+      subtotal: 600000,
+      discountType: 'none',
+      total: 600000,
+      paymentMethod: 'cash',
+      date: now,
+      createdAt: now,
+      updatedAt: now,
+    ));
+
+    final quantities = {'A': 20, 'B': 15, 'C': 10, 'D': 8, 'E': 5, 'F': 2};
+    for (final entry in quantities.entries) {
+      await db.into(db.saleItems).insert(SaleItemsCompanion.insert(
+        id: 'si_${entry.key}',
+        branchId: branchId,
+        saleId: 'sale_top',
+        variantId: 'var_${entry.key}',
+        productName: 'Classic Suit',
+        color: 'Color-${entry.key}',
+        size: '50',
+        qty: entry.value,
+        priceSnapshot: 10000,
+        costSnapshot: 5000,
+        lineTotal: entry.value * 10000,
+        createdAt: now,
+      ));
+    }
+
+    final report = await dataSource.getSalesReport(
+      startDate: now.subtract(const Duration(days: 1)),
+      endDate: now,
+    );
+
+    // Assert only top 5 are returned (F with 2 pcs should be excluded)
+    expect(report.topSellingProducts.length, 5);
+
+    // Rank 1: var_A (20 pcs, 200,000 piasters)
+    expect(report.topSellingProducts[0].variantId, 'var_A');
+    expect(report.topSellingProducts[0].quantitySold, 20);
+    expect(report.topSellingProducts[0].totalRevenue, 200000);
+    expect(report.topSellingProducts[0].sku, 'SUIT-A');
+
+    // Rank 2: var_B (15 pcs)
+    expect(report.topSellingProducts[1].variantId, 'var_B');
+    expect(report.topSellingProducts[1].quantitySold, 15);
+
+    // Rank 3: var_C (10 pcs)
+    expect(report.topSellingProducts[2].variantId, 'var_C');
+    expect(report.topSellingProducts[2].quantitySold, 10);
+
+    // Rank 4: var_D (8 pcs)
+    expect(report.topSellingProducts[3].variantId, 'var_D');
+    expect(report.topSellingProducts[3].quantitySold, 8);
+
+    // Rank 5: var_E (5 pcs)
+    expect(report.topSellingProducts[4].variantId, 'var_E');
+    expect(report.topSellingProducts[4].quantitySold, 5);
+  });
 }
 
