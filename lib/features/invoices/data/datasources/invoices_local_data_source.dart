@@ -100,7 +100,7 @@ class InvoicesLocalDataSourceImpl implements InvoicesLocalDataSource {
         shortRef: s.shortRef,
         date: s.date,
         cashierId: s.cashierId,
-        cashierName: u?.name ?? s.cashierId,
+        cashierName: u?.displayName ?? s.cashierId,
         customerId: s.customerId,
         customerName: c?.name,
         customerPhone: c?.phone,
@@ -117,7 +117,6 @@ class InvoicesLocalDataSourceImpl implements InvoicesLocalDataSource {
 
   @override
   Future<InvoiceDetailsEntity?> getInvoiceById(String id) async {
-    final list = await getInvoices(limit: 1);
     // Find directly
     final row = await (_db.select(_db.sales).join([
       leftOuterJoin(_db.customers, _db.customers.id.equalsExp(_db.sales.customerId)),
@@ -155,7 +154,7 @@ class InvoicesLocalDataSourceImpl implements InvoicesLocalDataSource {
       shortRef: s.shortRef,
       date: s.date,
       cashierId: s.cashierId,
-      cashierName: u?.name ?? s.cashierId,
+      cashierName: u?.displayName ?? s.cashierId,
       customerId: s.customerId,
       customerName: c?.name,
       customerPhone: c?.phone,
@@ -207,7 +206,7 @@ class InvoicesLocalDataSourceImpl implements InvoicesLocalDataSource {
       shortRef: s.shortRef,
       date: s.date,
       cashierId: s.cashierId,
-      cashierName: u?.name ?? s.cashierId,
+      cashierName: u?.displayName ?? s.cashierId,
       customerId: s.customerId,
       customerName: c?.name,
       customerPhone: c?.phone,

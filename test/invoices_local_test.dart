@@ -1,92 +1,118 @@
 import 'package:clothes_erp/core/database/app_database.dart';
+import 'package:clothes_erp/core/database/branch_provider.dart';
 import 'package:clothes_erp/features/invoices/data/datasources/invoices_local_data_source.dart';
 import 'package:clothes_erp/features/invoices/data/repositories/invoices_repository_impl.dart';
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   late AppDatabase db;
+  late BranchProvider branchProvider;
   late InvoicesLocalDataSource dataSource;
   late InvoicesRepositoryImpl repository;
 
   setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
+    branchProvider = BranchProvider(db);
+    final branchId = await branchProvider.getBranchId();
+
     dataSource = InvoicesLocalDataSourceImpl(db);
     repository = InvoicesRepositoryImpl(dataSource);
 
-    // Seed test users
+    final now = DateTime.now();
+
+    // 1. Seed test user (Cashier)
     await db.into(db.users).insert(
       UsersCompanion.insert(
         id: 'user_cashier_1',
-        name: 'كاشير أحمد',
-        email: 'ahmed@shop.com',
+        branchId: branchId,
+        username: 'ahmed_cashier',
+        displayName: 'كاشير أحمد',
         role: 'cashier',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+        passwordHash: 'hash123',
+        passwordSalt: 'salt123',
+        createdAt: now,
+        updatedAt: now,
       ),
     );
 
-    // Seed test customer
+    // 2. Seed test category
+    await db.into(db.categories).insert(
+      CategoriesCompanion.insert(
+        id: 'cat_shirts',
+        branchId: branchId,
+        name: 'قمصان',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+
+    // 3. Seed test customer
     await db.into(db.customers).insert(
       CustomersCompanion.insert(
         id: 'cust_omar',
+        branchId: branchId,
         name: 'عمر التميمي',
         phone: '01012345678',
-        debtPiasters: 0,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+        createdAt: now,
+        updatedAt: now,
       ),
     );
 
-    // Seed test product & variant
+    // 4. Seed test product
     await db.into(db.products).insert(
       ProductsCompanion.insert(
         id: 'prod_shirt',
+        branchId: branchId,
         name: 'قميص كاجوال كلاسيك',
         categoryId: 'cat_shirts',
-        costPrice: 15000,
-        retailPrice: 25000,
-        wholesalePrice: 20000,
-        wholesaleMinPieces: 3,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+        createdAt: now,
+        updatedAt: now,
       ),
     );
 
+    // 5. Seed test product variant
     await db.into(db.productVariants).insert(
       ProductVariantsCompanion.insert(
         id: 'var_shirt_blue_m',
+        branchId: branchId,
         productId: 'prod_shirt',
-        barcode: '1234567890123',
+        sku: '1234567890123',
         size: 'M',
         color: 'أزرق',
-        quantity: 50,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+        quantity: const Value(50),
+        costPrice: 15000,
+        sellPrice: 25000,
+        wholesalePrice: const Value(20000),
+        createdAt: now,
+        updatedAt: now,
       ),
     );
 
-    // Seed Sale 1: completed today
-    final today = DateTime.now();
+    // 6. Seed Sale 1: completed today, Cash, customer Omar
     await db.into(db.sales).insert(
       SalesCompanion.insert(
         id: 'sale_001',
+        branchId: branchId,
         shortRef: 'A1B2C3',
-        date: today,
+        date: now,
         cashierId: 'user_cashier_1',
-        customerId: 'cust_omar',
+        customerId: const Value('cust_omar'),
         paymentMethod: 'cash',
         subtotal: 50000,
-        discountAmount: 5000,
+        discountType: 'fixed',
+        discountAmount: const Value(5000),
         total: 45000,
-        createdAt: today,
-        updatedAt: today,
+        createdAt: now,
+        updatedAt: now,
       ),
     );
 
     await db.into(db.saleItems).insert(
       SaleItemsCompanion.insert(
         id: 'item_001_1',
+        branchId: branchId,
         saleId: 'sale_001',
         variantId: 'var_shirt_blue_m',
         productName: 'قميص كاجوال كلاسيك',
@@ -94,26 +120,27 @@ void main() {
         size: 'M',
         qty: 2,
         priceSnapshot: 25000,
-        lineDiscount: 5000,
+        costSnapshot: 15000,
+        lineDiscount: const Value(5000),
         lineTotal: 45000,
-        costPriceSnapshot: 15000,
-        createdAt: today,
-        updatedAt: today,
+        createdAt: now,
       ),
     );
 
-    // Seed Sale 2: 5 days ago, card payment, anonymous customer
-    final fiveDaysAgo = today.subtract(const Duration(days: 5));
+    // 7. Seed Sale 2: 5 days ago, Card payment
+    final fiveDaysAgo = now.subtract(const Duration(days: 5));
     await db.into(db.sales).insert(
       SalesCompanion.insert(
         id: 'sale_002',
+        branchId: branchId,
         shortRef: 'X9Y8Z7',
         date: fiveDaysAgo,
         cashierId: 'user_cashier_1',
-        customerId: 'cust_omar',
+        customerId: const Value('cust_omar'),
         paymentMethod: 'card',
         subtotal: 25000,
-        discountAmount: 0,
+        discountType: 'none',
+        discountAmount: const Value(0),
         total: 25000,
         createdAt: fiveDaysAgo,
         updatedAt: fiveDaysAgo,
@@ -123,6 +150,7 @@ void main() {
     await db.into(db.saleItems).insert(
       SaleItemsCompanion.insert(
         id: 'item_002_1',
+        branchId: branchId,
         saleId: 'sale_002',
         variantId: 'var_shirt_blue_m',
         productName: 'قميص كاجوال كلاسيك',
@@ -130,11 +158,10 @@ void main() {
         size: 'M',
         qty: 1,
         priceSnapshot: 25000,
-        lineDiscount: 0,
+        costSnapshot: 15000,
+        lineDiscount: const Value(0),
         lineTotal: 25000,
-        costPriceSnapshot: 15000,
         createdAt: fiveDaysAgo,
-        updatedAt: fiveDaysAgo,
       ),
     );
   });
@@ -231,4 +258,3 @@ void main() {
     });
   });
 }
-

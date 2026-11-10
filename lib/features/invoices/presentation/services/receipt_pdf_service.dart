@@ -181,8 +181,8 @@ class ReceiptPdfService {
                           children: [
                             pw.Expanded(flex: 5, child: pw.SizedBox()),
                             pw.Expanded(flex: 2, child: pw.Text('${it.qty}', textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 8))),
-                            pw.Expanded(flex: 3, child: pw.Text('${Money(it.price).toDisplay()}', textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 8))),
-                            pw.Expanded(flex: 3, child: pw.Text('${Money(it.lineTotal).toDisplay()}', textAlign: pw.TextAlign.left, style: const pw.TextStyle(fontSize: 8))),
+                            pw.Expanded(flex: 3, child: pw.Text(Money(it.price).toDisplay(), textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 8))),
+                            pw.Expanded(flex: 3, child: pw.Text(Money(it.lineTotal).toDisplay(), textAlign: pw.TextAlign.left, style: const pw.TextStyle(fontSize: 8))),
                           ],
                         ),
                       ],

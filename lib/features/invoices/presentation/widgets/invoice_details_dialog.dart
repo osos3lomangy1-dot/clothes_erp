@@ -93,7 +93,7 @@ class InvoiceDetailsDialog extends StatelessWidget {
                   ),
                   child: ListView.separated(
                     itemCount: invoice.items.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (context, idx) {
                       final item = invoice.items[idx];
                       return ListTile(
