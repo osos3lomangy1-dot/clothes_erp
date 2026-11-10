@@ -315,7 +315,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i691.InvoicesCubit>(
       () => _i691.InvoicesCubit(gh<_i683.InvoicesRepository>()),
     );
-    gh.factory<_i217.AuthCubit>(
+    gh.lazySingleton<_i217.AuthCubit>(
       () => _i217.AuthCubit(
         gh<_i443.LoginUseCase>(),
         gh<_i661.LogoutUseCase>(),

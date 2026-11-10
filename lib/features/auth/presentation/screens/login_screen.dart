@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/di/injection.dart';
 import '../cubits/auth_cubit.dart';
 import '../cubits/auth_state.dart';
 import '../cubits/login_form_cubit.dart';
@@ -13,7 +12,7 @@ class LoginScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => getIt<LoginFormCubit>(),
+      create: (context) => LoginFormCubit(context.read<AuthCubit>()),
       child: const _LoginView(),
     );
   }
@@ -327,12 +326,10 @@ class _LoginViewState extends State<_LoginView> {
                                     onPressed: () {
                                       _emailController.text = 'admin';
                                       _passwordController.text = 'admin123';
-                                      context
-                                          .read<LoginFormCubit>()
-                                          .onEmailChanged('admin');
-                                      context
-                                          .read<LoginFormCubit>()
-                                          .onPasswordChanged('admin123');
+                                      final cubit = context.read<LoginFormCubit>();
+                                      cubit.onEmailChanged('admin');
+                                      cubit.onPasswordChanged('admin123');
+                                      cubit.submit();
                                     },
                                     icon: const Icon(
                                       Icons.admin_panel_settings_rounded,
@@ -363,12 +360,10 @@ class _LoginViewState extends State<_LoginView> {
                                     onPressed: () {
                                       _emailController.text = 'cashier';
                                       _passwordController.text = '123456';
-                                      context
-                                          .read<LoginFormCubit>()
-                                          .onEmailChanged('cashier');
-                                      context
-                                          .read<LoginFormCubit>()
-                                          .onPasswordChanged('123456');
+                                      final cubit = context.read<LoginFormCubit>();
+                                      cubit.onEmailChanged('cashier');
+                                      cubit.onPasswordChanged('123456');
+                                      cubit.submit();
                                     },
                                     icon: const Icon(
                                       Icons.point_of_sale_rounded,

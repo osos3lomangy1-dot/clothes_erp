@@ -19,12 +19,14 @@ class LoginFormCubit extends Cubit<LoginFormState> {
 
   Future<void> submit() async {
     if (state.email.isEmpty || state.password.isEmpty) {
-      emit(state.copyWith(errorMessage: 'Please fill in all fields'));
+      emit(state.copyWith(errorMessage: 'يرجى إدخال اسم المستخدم وكلمة المرور'));
       return;
     }
 
-    emit(state.copyWith(isSubmitting: true));
+    emit(state.copyWith(isSubmitting: true, errorMessage: null));
     await _authCubit.login(state.email, state.password);
-    emit(state.copyWith(isSubmitting: false));
+    if (!isClosed) {
+      emit(state.copyWith(isSubmitting: false));
+    }
   }
 }

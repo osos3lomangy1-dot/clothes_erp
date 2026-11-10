@@ -86,7 +86,35 @@ class AuthRepositoryImpl implements AuthRepository {
           isActive: true,
           createdAt: now,
         );
-        await _localDataSource.cacheUser(defaultAdmin);
+        try {
+          final existing = await (_db.select(_db.users)
+                ..where((u) => u.username.lower().equals('admin')))
+              .getSingleOrNull();
+          if (existing == null) {
+            await _db.into(_db.users).insert(
+              UsersCompanion.insert(
+                id: 'admin_default',
+                branchId: 'branch-1',
+                username: 'admin',
+                displayName: 'المدير العام',
+                role: 'admin',
+                passwordHash: 'admin123',
+                passwordSalt: 'default',
+                isActive: const Value(true),
+                createdAt: now,
+                updatedAt: now,
+              ),
+              mode: InsertMode.insertOrReplace,
+            );
+          }
+        } catch (e) {
+          Logging.warn('Could not ensure default admin in Drift DB: $e');
+        }
+        try {
+          await _localDataSource.cacheUser(defaultAdmin);
+        } catch (e) {
+          Logging.warn('Session cache fallback: $e');
+        }
         _authController.add(defaultAdmin);
         return Right(defaultAdmin);
       }
@@ -103,7 +131,35 @@ class AuthRepositoryImpl implements AuthRepository {
           isActive: true,
           createdAt: now,
         );
-        await _localDataSource.cacheUser(defaultCashier);
+        try {
+          final existing = await (_db.select(_db.users)
+                ..where((u) => u.username.lower().equals('cashier')))
+              .getSingleOrNull();
+          if (existing == null) {
+            await _db.into(_db.users).insert(
+              UsersCompanion.insert(
+                id: 'cashier_default',
+                branchId: 'branch-1',
+                username: 'cashier',
+                displayName: 'كاشير 1',
+                role: 'cashier',
+                passwordHash: '123456',
+                passwordSalt: 'default',
+                isActive: const Value(true),
+                createdAt: now,
+                updatedAt: now,
+              ),
+              mode: InsertMode.insertOrReplace,
+            );
+          }
+        } catch (e) {
+          Logging.warn('Could not ensure default cashier in Drift DB: $e');
+        }
+        try {
+          await _localDataSource.cacheUser(defaultCashier);
+        } catch (e) {
+          Logging.warn('Session cache fallback: $e');
+        }
         _authController.add(defaultCashier);
         return Right(defaultCashier);
       }
