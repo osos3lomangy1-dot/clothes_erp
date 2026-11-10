@@ -17,6 +17,9 @@ import '../../../shifts/presentation/cubits/shift_cubit.dart';
 import '../../../shifts/presentation/cubits/shift_state.dart';
 import '../../../shifts/presentation/widgets/open_shift_dialog.dart';
 import '../../../shifts/presentation/screens/shift_screen.dart';
+import '../../../invoices/domain/entities/invoice_details_entity.dart';
+import '../../../invoices/domain/repositories/invoices_repository.dart';
+import '../../../invoices/presentation/widgets/sale_success_dialog.dart';
 
 Color _getCategoryColor(String? categoryId) {
   if (categoryId == null || categoryId.isEmpty) return const Color(0xFF673AB7);
@@ -1411,16 +1414,30 @@ class _CartPanelState extends State<_CartPanel> {
       _receivedCtrl.clear();
       _discountCtrl.clear();
       setState(() => _isWholesaleMode = false);
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            'تم إتمام عملية البيع بنجاح!',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+
+      final invoicesRepo = getIt<InvoicesRepository>();
+      final res = await invoicesRepo.getInvoices(limit: 1);
+      InvoiceDetailsEntity? latestInvoice;
+      res.fold((_) {}, (list) => latestInvoice = list.isNotEmpty ? list.first : null);
+
+      if (latestInvoice != null && mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => SaleSuccessDialog(invoice: latestInvoice!),
+        );
+      } else {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              'تم إتمام عملية البيع بنجاح!',
+              style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+            ),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
           ),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+        );
+      }
     }
   }
 

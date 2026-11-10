@@ -116,6 +116,14 @@ import 'package:clothes_erp/features/inventory/presentation/cubits/inventory_cub
     as _i779;
 import 'package:clothes_erp/features/inventory/presentation/cubits/inventory_log_cubit.dart'
     as _i94;
+import 'package:clothes_erp/features/invoices/data/datasources/invoices_local_data_source.dart'
+    as _i558;
+import 'package:clothes_erp/features/invoices/data/repositories/invoices_repository_impl.dart'
+    as _i669;
+import 'package:clothes_erp/features/invoices/domain/repositories/invoices_repository.dart'
+    as _i683;
+import 'package:clothes_erp/features/invoices/presentation/cubits/invoices_cubit.dart'
+    as _i691;
 import 'package:clothes_erp/features/partners/data/datasources/partners_local_data_source.dart'
     as _i556;
 import 'package:clothes_erp/features/partners/data/repositories/partner_repository_impl.dart'
@@ -255,6 +263,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i556.PartnersLocalDataSource>(
       () => _i556.PartnersLocalDataSourceImpl(gh<_i110.AppDatabase>()),
     );
+    gh.lazySingleton<_i558.InvoicesLocalDataSource>(
+      () => _i558.InvoicesLocalDataSourceImpl(gh<_i110.AppDatabase>()),
+    );
     gh.lazySingleton<_i178.CategoryLocalDataSource>(
       () => _i178.CategoryLocalDataSource(
         gh<_i110.AppDatabase>(),
@@ -289,6 +300,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i682.DashboardRepository>(
       () => _i729.DashboardRepositoryImpl(gh<_i517.DashboardLocalDataSource>()),
     );
+    gh.lazySingleton<_i683.InvoicesRepository>(
+      () => _i669.InvoicesRepositoryImpl(gh<_i558.InvoicesLocalDataSource>()),
+    );
     gh.lazySingleton<_i971.PartnerRepository>(
       () => _i859.PartnerRepositoryImpl(gh<_i556.PartnersLocalDataSource>()),
     );
@@ -297,6 +311,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i633.ReportsRepository>(
       () => _i333.ReportsRepositoryImpl(gh<_i1045.ReportsLocalDataSource>()),
+    );
+    gh.factory<_i691.InvoicesCubit>(
+      () => _i691.InvoicesCubit(gh<_i683.InvoicesRepository>()),
     );
     gh.factory<_i217.AuthCubit>(
       () => _i217.AuthCubit(
