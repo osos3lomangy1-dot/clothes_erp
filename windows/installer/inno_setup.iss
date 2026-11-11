@@ -4,7 +4,7 @@
 
 #define MyAppName "Orkeed Clothes ERP"
 #define MyAppArabicName "نظام أوركيد لإدارة محلات الملابس"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.0.1"
 #define MyAppPublisher "Orkeed ERP"
 #define MyAppExeName "clothes_erp.exe"
 #define MyAppSourceDir "..\..\build\windows\x64\runner\Release"
