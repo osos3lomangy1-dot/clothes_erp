@@ -291,6 +291,13 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
+        leading: Navigator.canPop(context)
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_rounded, color: AppColors.onSurface),
+                tooltip: 'رجوع',
+                onPressed: () => Navigator.of(context).maybePop(),
+              )
+            : null,
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

@@ -16,7 +16,10 @@ class ReturnsCubit extends Cubit<ReturnsState> {
   ) : super(const ReturnsState());
 
   Future<void> init() async {
-    await loadRecentSales();
+    await Future.wait([
+      loadRecentSales(),
+      loadReturnsHistory(),
+    ]);
   }
 
   Future<void> loadRecentSales() async {
@@ -30,6 +33,16 @@ class ReturnsCubit extends Cubit<ReturnsState> {
     } catch (e) {
       emit(state.copyWith(isLoading: false, errorMessage: 'تعذر تحميل فواتير البيع: $e'));
     }
+  }
+
+  Future<void> loadReturnsHistory() async {
+    try {
+      final result = await _getRecentSalesUseCase.getReturnsHistory();
+      result.fold(
+        (_) {},
+        (history) => emit(state.copyWith(returnsHistory: history)),
+      );
+    } catch (_) {}
   }
 
   Future<void> searchSale(String query) async {
@@ -46,7 +59,7 @@ class ReturnsCubit extends Cubit<ReturnsState> {
           if (sale != null) {
             selectSale(sale);
           } else {
-            emit(state.copyWith(isLoading: false, errorMessage: 'No sale found matching "$query"'));
+            emit(state.copyWith(isLoading: false, errorMessage: 'لم يتم العثور على فاتورة مطابقة للبحث "$query"'));
           }
         },
       );
@@ -61,11 +74,22 @@ class ReturnsCubit extends Cubit<ReturnsState> {
       final result = await _getRecentSalesUseCase.getSaleItems(sale.id);
       result.fold(
         (failure) => emit(state.copyWith(isLoading: false, errorMessage: failure.message)),
-        (items) => emit(state.copyWith(
-          isLoading: false,
-          selectedSale: sale,
-          returnItems: items,
-        )),
+        (items) {
+          final totalReturnable = items.fold<int>(0, (sum, it) => sum + it.maxQty);
+          if (totalReturnable == 0) {
+            emit(state.copyWith(
+              isLoading: false,
+              clearSelectedSale: true,
+              errorMessage: 'الفاتورة #${sale.id.length > 8 ? sale.id.substring(0, 8) : sale.id} تم إرجاع جميع أصنافها بالكامل مسبقاً، ولا يمكن إجراء مرتجع إضافي.',
+            ));
+          } else {
+            emit(state.copyWith(
+              isLoading: false,
+              selectedSale: sale,
+              returnItems: items,
+            ));
+          }
+        },
       );
     } catch (e) {
       emit(state.copyWith(isLoading: false, errorMessage: 'تعذر تحميل أصناف الفاتورة: $e'));
@@ -99,11 +123,11 @@ class ReturnsCubit extends Cubit<ReturnsState> {
   }) async {
     final activeItems = state.returnItems.where((i) => i.qty > 0).toList();
     if (activeItems.isEmpty) {
-      emit(state.copyWith(errorMessage: 'Please select at least one item to return.'));
+      emit(state.copyWith(errorMessage: 'يرجى تحديد كمية صنف واحد على الأقل لإرجاعه.'));
       return false;
     }
     if (reason.trim().isEmpty) {
-      emit(state.copyWith(errorMessage: 'A reason is required to process a return.'));
+      emit(state.copyWith(errorMessage: 'يرجى كتابة سبب الإرجاع للمتابعة.'));
       return false;
     }
 
@@ -128,9 +152,10 @@ class ReturnsCubit extends Cubit<ReturnsState> {
             isProcessing: false,
             clearSelectedSale: true,
             returnItems: const [],
-            successMessage: 'Return processed successfully and stock restored!',
+            successMessage: 'تم تسجيل المرتجع بنجاح، وتحديث المخزون وخصم المبلغ من الدرج!',
           ));
           await loadRecentSales();
+          await loadReturnsHistory();
           return true;
         },
       );
@@ -140,4 +165,3 @@ class ReturnsCubit extends Cubit<ReturnsState> {
     }
   }
 }
-

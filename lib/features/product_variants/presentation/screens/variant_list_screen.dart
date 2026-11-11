@@ -199,6 +199,11 @@ class VariantListScreen extends StatelessWidget {
             appBar: AppBar(
               backgroundColor: Colors.white,
               elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_rounded, color: AppColors.onSurface),
+                tooltip: 'رجوع للمنتجات',
+                onPressed: () => Navigator.of(context).maybePop(),
+              ),
               title: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

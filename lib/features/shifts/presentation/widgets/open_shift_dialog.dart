@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 
 class OpenShiftDialog extends StatefulWidget {
-  final Future<bool> Function(int openingBalancePiasters) onOpen;
+  final Future<dynamic> Function(int openingBalancePiasters) onOpen;
   final String cashierName;
 
   const OpenShiftDialog({
@@ -19,6 +19,7 @@ class _OpenShiftDialogState extends State<OpenShiftDialog> {
   final _formKey = GlobalKey<FormState>();
   final _controller = TextEditingController(text: '0');
   bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -26,24 +27,58 @@ class _OpenShiftDialogState extends State<OpenShiftDialog> {
     super.dispose();
   }
 
+  String _normalizeNumbers(String input) {
+    const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    const english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+    var res = input;
+    for (int i = 0; i < 10; i++) {
+      res = res.replaceAll(arabic[i], english[i]);
+    }
+    return res;
+  }
+
   void _setPreset(int pounds) {
     setState(() {
       _controller.text = pounds.toString();
+      _errorMessage = null;
     });
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    final pounds = double.tryParse(_controller.text.trim()) ?? 0;
+    final normalized = _normalizeNumbers(_controller.text.trim());
+    final pounds = double.tryParse(normalized) ?? 0;
     final piasters = (pounds * 100).round();
 
-    setState(() => _isLoading = true);
-    final success = await widget.onOpen(piasters);
-    if (mounted) {
-      setState(() => _isLoading = false);
-      if (success) {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final res = await widget.onOpen(piasters);
+      if (!mounted) return;
+
+      if (res is String && res.isNotEmpty) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = res;
+        });
+      } else if (res == false) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'تعذر فتح الوردية. يرجى التحقق من حالة الورديات.';
+        });
+      } else {
+        setState(() => _isLoading = false);
         Navigator.of(context).pop(true);
       }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'حدث خطأ: $e';
+      });
     }
   }
 
@@ -89,6 +124,30 @@ class _OpenShiftDialogState extends State<OpenShiftDialog> {
                     ),
                   ],
                 ),
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.error_outline_rounded, color: Colors.red.shade700, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: TextStyle(color: Colors.red.shade900, fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 20),
                 const Text(
                   'أدخل رصيد العهدة الافتتاحية (الفكة الموجودة بالدرج):',
@@ -106,7 +165,8 @@ class _OpenShiftDialogState extends State<OpenShiftDialog> {
                   ),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return 'يرجى إدخال المبلغ';
-                    final val = double.tryParse(v.trim());
+                    final norm = _normalizeNumbers(v.trim());
+                    final val = double.tryParse(norm);
                     if (val == null || val < 0) return 'المبلغ لا يمكن أن يكون سالباً';
                     return null;
                   },
@@ -179,4 +239,3 @@ class _OpenShiftDialogState extends State<OpenShiftDialog> {
     );
   }
 }
-

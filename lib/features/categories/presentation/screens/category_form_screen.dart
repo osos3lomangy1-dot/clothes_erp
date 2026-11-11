@@ -18,6 +18,11 @@ class CategoryFormScreen extends StatelessWidget {
       backgroundColor: AppColors.surface,
       appBar: AppBar(
         backgroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.onSurface),
+          tooltip: 'رجوع للتصنيفات',
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
         title: Text(
           category != null ? 'تعديل التصنيف' : 'إضافة تصنيف جديد',
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),

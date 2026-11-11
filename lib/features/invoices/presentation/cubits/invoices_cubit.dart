@@ -37,6 +37,10 @@ class InvoicesCubit extends Cubit<InvoicesState> {
     loadInvoices();
   }
 
+  void filterStatus(String status) {
+    emit(state.copyWith(statusFilter: status));
+  }
+
   void filterDate({DateTime? from, DateTime? to}) {
     emit(state.copyWith(
       fromDate: from,
@@ -62,4 +66,3 @@ class InvoicesCubit extends Cubit<InvoicesState> {
     ));
   }
 }
-

@@ -65,7 +65,8 @@ class ShiftLocalDataSourceImpl implements ShiftLocalDataSource {
         .getSingleOrNull();
 
     if (row == null) return null;
-    return _toEntity(row);
+    final cashierName = await _resolveCashierName(row.cashierId);
+    return _toEntity(row, cashierName: cashierName);
   }
 
   @override
@@ -119,7 +120,8 @@ class ShiftLocalDataSourceImpl implements ShiftLocalDataSource {
       throw Exception('الوردية غير موجودة');
     }
 
-    final shiftEntity = _toEntity(shiftRow);
+    final cashierName = await _resolveCashierName(shiftRow.cashierId);
+    final shiftEntity = _toEntity(shiftRow, cashierName: cashierName);
     final openedAt = shiftRow.openedAt;
     final closedAt = shiftRow.closedAt ?? DateTime.now();
 
@@ -150,10 +152,10 @@ class ShiftLocalDataSourceImpl implements ShiftLocalDataSource {
       }
     }
 
-    // 2. Returns query
+    // 2. Returns query: all cash returns during this shift timeframe
     final returnsQuery = _db.select(_db.returns)
       ..where((r) =>
-          r.cashierId.equals(shiftRow.cashierId) &
+          (r.cashierId.equals(shiftRow.cashierId) | r.branchId.equals(shiftRow.branchId)) &
           r.date.isBiggerOrEqualValue(openedAt) &
           r.date.isSmallerOrEqualValue(closedAt) &
           r.deletedAt.isNull());
@@ -167,10 +169,10 @@ class ShiftLocalDataSourceImpl implements ShiftLocalDataSource {
       }
     }
 
-    // 3. Cash Expenses query
+    // 3. Cash Expenses query: all expenses during this shift timeframe
     final expensesQuery = _db.select(_db.expenses)
       ..where((e) =>
-          e.userId.equals(shiftRow.cashierId) &
+          (e.userId.equals(shiftRow.cashierId) | e.branchId.equals(shiftRow.branchId)) &
           e.expenseDate.isBiggerOrEqualValue(openedAt) &
           e.expenseDate.isSmallerOrEqualValue(closedAt) &
           e.deletedAt.isNull());
@@ -247,7 +249,8 @@ class ShiftLocalDataSourceImpl implements ShiftLocalDataSource {
     );
 
     final updated = await (_db.select(_db.shifts)..where((s) => s.id.equals(targetShift!.id))).getSingle();
-    return _toEntity(updated);
+    final cashierName = await _resolveCashierName(updated.cashierId);
+    return _toEntity(updated, cashierName: cashierName);
   }
 
   @override
@@ -258,7 +261,26 @@ class ShiftLocalDataSourceImpl implements ShiftLocalDataSource {
           ..limit(limit))
         .get();
 
-    return rows.map(_toEntity).toList();
+    final userIds = rows.map((r) => r.cashierId).toSet();
+    final users = await (_db.select(_db.users)..where((u) => u.id.isIn(userIds))).get();
+    final userMap = {for (final u in users) u.id: u.displayName};
+
+    return rows.map((row) {
+      String name = userMap[row.cashierId] ?? row.cashierId;
+      if (row.cashierId == 'admin_default' || row.cashierId == 'admin') name = 'المدير العام';
+      if (row.cashierId == 'cashier_default' || row.cashierId == 'cashier') name = 'كاشير 1';
+      return _toEntity(row, cashierName: name);
+    }).toList();
+  }
+
+  Future<String> _resolveCashierName(String cashierId) async {
+    if (cashierId == 'admin_default' || cashierId == 'admin') return 'المدير العام';
+    if (cashierId == 'cashier_default' || cashierId == 'cashier') return 'كاشير 1';
+    final user = await (_db.select(_db.users)..where((u) => u.id.equals(cashierId))).getSingleOrNull();
+    if (user != null && user.displayName.isNotEmpty) {
+      return user.displayName;
+    }
+    return cashierId;
   }
 
   ShiftEntity _toEntity(Shift row, {String? cashierName}) {

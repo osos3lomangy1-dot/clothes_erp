@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:sqlite3/common.dart';
 
 part 'app_database.g.dart';
 
@@ -429,6 +430,12 @@ class LoyaltyTransactions extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+void _setupSqlite(CommonDatabase rawDb) {
+  rawDb.execute('PRAGMA journal_mode = WAL;');
+  rawDb.execute('PRAGMA synchronous = NORMAL;');
+  rawDb.execute('PRAGMA busy_timeout = 5000;');
+}
+
 @DriftDatabase(tables: [
   Users, Categories, Products, ProductVariants, Sales, SaleItems,
   Returns, ReturnItems, InventoryLogs, Shifts, Expenses, Customers,
@@ -439,15 +446,31 @@ QueryExecutor _openConnection() {
   return driftDatabase(
     name: 'clothes_erp',
     native: DriftNativeOptions(
+      shareAcrossIsolates: true,
+      setup: _setupSqlite,
       databaseDirectory: () async {
         final supportDir = await getApplicationSupportDirectory();
         try {
+          if (!supportDir.existsSync()) {
+            await supportDir.create(recursive: true);
+          }
           final targetFile = File('${supportDir.path}/clothes_erp.sqlite');
-          if (!targetFile.existsSync()) {
+          if (targetFile.existsSync()) {
+            if (Platform.isWindows) {
+              try {
+                await Process.run('attrib', ['-r', targetFile.path]);
+              } catch (_) {}
+            }
+          } else {
             final docsDir = await getApplicationDocumentsDirectory();
             final legacyFile = File('${docsDir.path}/clothes_erp.sqlite');
             if (legacyFile.existsSync()) {
               await legacyFile.copy(targetFile.path);
+              if (Platform.isWindows) {
+                try {
+                  await Process.run('attrib', ['-r', targetFile.path]);
+                } catch (_) {}
+              }
             }
           }
         } catch (_) {}

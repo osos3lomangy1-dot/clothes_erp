@@ -36,7 +36,14 @@ class _InvoiceItemRow {
 }
 
 class CreatePurchaseScreen extends StatefulWidget {
-  const CreatePurchaseScreen({super.key});
+  final VoidCallback? onBack;
+  final VoidCallback? onSaved;
+
+  const CreatePurchaseScreen({
+    super.key,
+    this.onBack,
+    this.onSaved,
+  });
 
   @override
   State<CreatePurchaseScreen> createState() => _CreatePurchaseScreenState();
@@ -107,24 +114,27 @@ class _CreatePurchaseScreenState extends State<CreatePurchaseScreen> {
     showDialog(
       context: context,
       builder: (_) => SupplierFormDialog(
-        onSave:
-            ({
-              required String name,
-              String? phone,
-              String? companyName,
-              String? address,
-            }) async {
-              final cubit = context.read<SuppliersCubit>();
-              final newSupplier = await cubit.addSupplier(
-                name: name,
-                phone: phone,
-                companyName: companyName,
-                address: address,
-              );
-              if (newSupplier != null) {
-                setState(() => _selectedSupplierId = newSupplier.id);
-              }
-            },
+        onSave: ({
+          required String name,
+          String? phone,
+          String? companyName,
+          String? address,
+        }) async {
+          final cubit = context.read<SuppliersCubit>();
+          final newSupplier = await cubit.addSupplier(
+            name: name,
+            phone: phone,
+            companyName: companyName,
+            address: address,
+          );
+          if (newSupplier == null) {
+            return cubit.state.errorMessage ?? 'تعذر إضافة المورد. يرجى إعادة المحاولة.';
+          }
+          if (mounted) {
+            setState(() => _selectedSupplierId = newSupplier.id);
+          }
+          return null;
+        },
       ),
     );
   }
@@ -409,7 +419,11 @@ class _CreatePurchaseScreenState extends State<CreatePurchaseScreen> {
 
       if (created != null) {
         _showToast('تم حفظ فاتورة المشتريات وتحديث رصيد المخزن والمورد بنجاح');
-        Navigator.pop(context, true);
+        if (widget.onSaved != null) {
+          widget.onSaved!();
+        } else {
+          Navigator.pop(context, true);
+        }
       } else {
         _showToast('فشل حفظ الفاتورة', isError: true);
       }
@@ -426,6 +440,17 @@ class _CreatePurchaseScreenState extends State<CreatePurchaseScreen> {
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.primary),
+          tooltip: 'رجوع لقائمة المشتريات',
+          onPressed: () {
+            if (widget.onBack != null) {
+              widget.onBack!();
+            } else {
+              Navigator.of(context).maybePop();
+            }
+          },
+        ),
         title: const Text(
           'فاتورة مشتريات جديدة',
           style: TextStyle(fontWeight: FontWeight.bold),

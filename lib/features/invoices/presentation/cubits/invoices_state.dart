@@ -11,6 +11,7 @@ class InvoicesState extends Equatable {
   final DateTime? fromDate;
   final DateTime? toDate;
   final String? paymentMethod;
+  final String statusFilter; // 'all', 'completed', 'returned'
   final String? errorMessage;
 
   const InvoicesState({
@@ -21,11 +22,23 @@ class InvoicesState extends Equatable {
     this.fromDate,
     this.toDate,
     this.paymentMethod,
+    this.statusFilter = 'all',
     this.errorMessage,
   });
 
-  int get totalInvoicesCount => invoices.length;
-  int get totalRevenuePiasters => invoices.fold<int>(0, (sum, i) => sum + i.total);
+  List<InvoiceDetailsEntity> get filteredInvoices {
+    if (statusFilter == 'completed') {
+      return invoices.where((i) => i.status == 'completed').toList();
+    } else if (statusFilter == 'returned') {
+      return invoices.where((i) => i.status == 'returned' || i.status == 'partially_returned').toList();
+    }
+    return invoices;
+  }
+
+  int get totalInvoicesCount => filteredInvoices.length;
+  int get totalRevenuePiasters => filteredInvoices.fold<int>(0, (sum, i) => sum + i.total);
+  int get returnedInvoicesCount =>
+      invoices.where((i) => i.status == 'returned' || i.status == 'partially_returned').length;
 
   InvoicesState copyWith({
     InvoicesStatus? status,
@@ -39,6 +52,7 @@ class InvoicesState extends Equatable {
     bool clearToDate = false,
     String? paymentMethod,
     bool clearPaymentMethod = false,
+    String? statusFilter,
     String? errorMessage,
     bool clearErrorMessage = false,
   }) {
@@ -50,6 +64,7 @@ class InvoicesState extends Equatable {
       fromDate: clearFromDate ? null : (fromDate ?? this.fromDate),
       toDate: clearToDate ? null : (toDate ?? this.toDate),
       paymentMethod: clearPaymentMethod ? null : (paymentMethod ?? this.paymentMethod),
+      statusFilter: statusFilter ?? this.statusFilter,
       errorMessage: clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
     );
   }
@@ -63,7 +78,7 @@ class InvoicesState extends Equatable {
         fromDate,
         toDate,
         paymentMethod,
+        statusFilter,
         errorMessage,
       ];
 }
-

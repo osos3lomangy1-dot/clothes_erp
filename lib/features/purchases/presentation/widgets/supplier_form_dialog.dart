@@ -4,7 +4,7 @@ import '../../domain/entities/supplier_entity.dart';
 
 class SupplierFormDialog extends StatefulWidget {
   final SupplierEntity? supplier;
-  final Function({
+  final Future<dynamic> Function({
     required String name,
     String? phone,
     String? companyName,
@@ -27,6 +27,8 @@ class _SupplierFormDialogState extends State<SupplierFormDialog> {
   late final TextEditingController _phoneController;
   late final TextEditingController _companyController;
   late final TextEditingController _addressController;
+  bool _isSaving = false;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -46,15 +48,57 @@ class _SupplierFormDialogState extends State<SupplierFormDialog> {
     super.dispose();
   }
 
-  void _submit() {
-    if (_formKey.currentState!.validate()) {
-      widget.onSave(
+  String _normalizeNumbers(String input) {
+    const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    const english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+    var res = input;
+    for (int i = 0; i < 10; i++) {
+      res = res.replaceAll(arabic[i], english[i]);
+    }
+    return res;
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isSaving = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final phone = _phoneController.text.trim().isEmpty
+          ? null
+          : _normalizeNumbers(_phoneController.text.trim());
+      final res = await widget.onSave(
         name: _nameController.text.trim(),
-        phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
+        phone: phone,
         companyName: _companyController.text.trim().isEmpty ? null : _companyController.text.trim(),
         address: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
       );
-      Navigator.pop(context);
+
+      if (!mounted) return;
+
+      if (res is String && res.isNotEmpty) {
+        setState(() {
+          _isSaving = false;
+          _errorMessage = res;
+        });
+      } else if (res == false) {
+        setState(() {
+          _isSaving = false;
+          _errorMessage = 'تعذر حفظ بيانات المورد. يرجى المحاولة مجدداً.';
+        });
+      } else {
+        setState(() => _isSaving = false);
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isSaving = false;
+        _errorMessage = 'حدث خطأ: $e';
+      });
     }
   }
 
@@ -84,7 +128,32 @@ class _SupplierFormDialogState extends State<SupplierFormDialog> {
             key: _formKey,
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (_errorMessage != null) ...[
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.error_outline_rounded, color: Colors.red.shade700, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: TextStyle(color: Colors.red.shade900, fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 TextFormField(
                   controller: _nameController,
                   decoration: InputDecoration(
@@ -129,22 +198,28 @@ class _SupplierFormDialogState extends State<SupplierFormDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: _isSaving ? null : () => Navigator.pop(context),
           child: const Text('إلغاء'),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           ),
-          onPressed: _submit,
-          child: Text(
-            isEdit ? 'حفظ التعديل' : 'إضافة المورد',
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
+          onPressed: _isSaving ? null : _submit,
+          child: _isSaving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                )
+              : Text(
+                  isEdit ? 'حفظ التعديل' : 'إضافة المورد',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
         ),
       ],
     );
   }
 }
-

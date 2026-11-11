@@ -41,11 +41,16 @@ class _ShiftView extends StatelessWidget {
       builder: (_) => OpenShiftDialog(
         cashierName: cashierName,
         onOpen: (openingPiasters) async {
-          return await context.read<ShiftCubit>().openShift(
-                openingBalance: openingPiasters,
-                cashierId: cashierId,
-                cashierName: cashierName,
-              );
+          final cubit = context.read<ShiftCubit>();
+          final ok = await cubit.openShift(
+            openingBalance: openingPiasters,
+            cashierId: cashierId,
+            cashierName: cashierName,
+          );
+          if (!ok) {
+            return cubit.state.errorMessage ?? 'تعذر بدء الوردية. يرجى المحاولة مجدداً.';
+          }
+          return null;
         },
       ),
     );
@@ -65,10 +70,15 @@ class _ShiftView extends StatelessWidget {
       builder: (_) => CloseShiftDialog(
         summary: state.activeSummary!,
         onClose: (countedPiasters) async {
-          return await context.read<ShiftCubit>().closeShift(
-                countedBalance: countedPiasters,
-                userId: currentUserId,
-              );
+          final cubit = context.read<ShiftCubit>();
+          final ok = await cubit.closeShift(
+            countedBalance: countedPiasters,
+            userId: currentUserId,
+          );
+          if (!ok) {
+            return cubit.state.errorMessage ?? 'تعذر إغلاق الوردية. يرجى المحاولة مجدداً.';
+          }
+          return null;
         },
       ),
     );
@@ -77,26 +87,39 @@ class _ShiftView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('yyyy/MM/dd - hh:mm a');
+    final authState = context.watch<AuthCubit>().state;
+    final isAdmin = authState is! AuthAuthenticated || authState.user.role == 'admin';
+    final currentUserId = authState is AuthAuthenticated ? authState.user.id : 'admin';
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          title: const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'إدارة الورديات وتصفية الدرج',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.onSurface),
-              ),
-              Text(
-                'متابعة عهدة الدرج، مبيعات الشفت، وتصفية العجز والزيادة',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ],
-          ),
-          actions: [
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.onSurface),
+          tooltip: 'رجوع',
+          onPressed: () {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            }
+          },
+        ),
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'إدارة الورديات وتصفية الدرج',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.onSurface),
+            ),
+            Text(
+              'متابعة عهدة الدرج، مبيعات الشفت، وتصفية العجز والزيادة',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          if (isAdmin)
             BlocBuilder<ShiftCubit, ShiftState>(
               builder: (context, state) {
                 return Padding(
@@ -120,91 +143,108 @@ class _ShiftView extends StatelessWidget {
                 );
               },
             ),
-          ],
-        ),
-        body: BlocConsumer<ShiftCubit, ShiftState>(
-          listener: (context, state) {
-            if (state.errorMessage != null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.errorMessage!),
-                  backgroundColor: AppColors.error,
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            }
-          },
-          builder: (context, state) {
-            if (state.status == ShiftStatus.loading && state.activeShift == null) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            return RefreshIndicator(
-              onRefresh: () => context.read<ShiftCubit>().loadShiftData(),
-              child: ListView(
-                padding: const EdgeInsets.all(20),
-                children: [
-                  if (!state.shiftsEnabled)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 20),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.orange.shade200),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.info_outline_rounded, color: Colors.orange.shade800),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'نظام الورديات معطل حالياً من الإعدادات: البيع في الكاشير متاح مباشرة دون الحاجة لفتح وردية.',
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.orange.shade900),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                  // Active Shift Card
-                  if (state.hasActiveShift) ...[
-                    _buildActiveShiftCard(context, state, dateFormat),
-                  ] else ...[
-                    _buildNoActiveShiftCard(context),
-                  ],
-
-                  const SizedBox(height: 28),
-
-                  // History Section
-                  Row(
-                    children: [
-                      const Icon(Icons.history_rounded, color: AppColors.primary, size: 22),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'سجل الورديات السابقة',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.onSurface),
-                      ),
-                      const Spacer(),
-                      Text(
-                        'آخر ${state.history.length} وردية',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _buildHistoryTable(state.history, dateFormat),
-                ],
+        ],
+      ),
+      body: BlocConsumer<ShiftCubit, ShiftState>(
+        listener: (context, state) {
+          if (state.errorMessage != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.errorMessage!),
+                backgroundColor: AppColors.error,
+                behavior: SnackBarBehavior.floating,
               ),
             );
-          },
-        ),
-      );
+          }
+        },
+        builder: (context, state) {
+          if (state.status == ShiftStatus.loading && state.activeShift == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final displayedHistory = isAdmin
+              ? state.history
+              : state.history.where((s) => s.cashierId == currentUserId).toList();
+
+          return RefreshIndicator(
+            onRefresh: () => context.read<ShiftCubit>().loadShiftData(),
+            child: ListView(
+              padding: const EdgeInsets.all(20),
+              children: [
+                if (!state.shiftsEnabled && isAdmin)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 20),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.orange.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline_rounded, color: Colors.orange.shade800),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'نظام الورديات معطل حالياً من الإعدادات: البيع في الكاشير متاح مباشرة دون الحاجة لفتح وردية.',
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.orange.shade900),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                // Active Shift Card
+                if (state.hasActiveShift) ...[
+                  _buildActiveShiftCard(
+                    context,
+                    state,
+                    dateFormat,
+                    isAdmin: isAdmin,
+                    currentUserId: currentUserId,
+                  ),
+                ] else ...[
+                  _buildNoActiveShiftCard(context),
+                ],
+
+                const SizedBox(height: 28),
+
+                // History Section
+                Row(
+                  children: [
+                    const Icon(Icons.history_rounded, color: AppColors.primary, size: 22),
+                    const SizedBox(width: 8),
+                    Text(
+                      isAdmin ? 'سجل الورديات السابقة' : 'سجل وردياتي السابقة',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.onSurface),
+                    ),
+                    const Spacer(),
+                    Text(
+                      'آخر ${displayedHistory.length} وردية',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _buildHistoryTable(displayedHistory, dateFormat),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
-  Widget _buildActiveShiftCard(BuildContext context, ShiftState state, DateFormat dateFormat) {
+  Widget _buildActiveShiftCard(
+    BuildContext context,
+    ShiftState state,
+    DateFormat dateFormat, {
+    required bool isAdmin,
+    required String currentUserId,
+  }) {
     final shift = state.activeShift!;
     final summary = state.activeSummary;
+    final canClose = isAdmin || shift.cashierId == currentUserId;
 
     return Card(
       elevation: 2,
@@ -246,19 +286,40 @@ class _ShiftView extends StatelessWidget {
                     ],
                   ),
                 ),
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red.shade700,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                if (canClose)
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade700,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                    onPressed: () => _closeShiftDialog(context, state),
+                    icon: const Icon(Icons.lock_rounded, color: Colors.white, size: 18),
+                    label: const Text(
+                      'إغلاق الوردية وتصفية الدرج',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.lock_outline_rounded, size: 16, color: Colors.grey.shade600),
+                        const SizedBox(width: 6),
+                        Text(
+                          'مفتوحة بواسطة كاشير آخر',
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
                   ),
-                  onPressed: () => _closeShiftDialog(context, state),
-                  icon: const Icon(Icons.lock_rounded, color: Colors.white, size: 18),
-                  label: const Text(
-                    'إغلاق الوردية وتصفية الدرج',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
-                ),
               ],
             ),
             const SizedBox(height: 20),
@@ -420,66 +481,78 @@ class _ShiftView extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: DataTable(
-          headingRowColor: WidgetStateProperty.all(Colors.grey.shade50),
-          columns: const [
-            DataColumn(label: Text('الكاشير', style: TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(label: Text('وقت الفتح', style: TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(label: Text('وقت الإغلاق', style: TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(label: Text('الرصيد الافتتاحي', style: TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(label: Text('المتوقع', style: TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(label: Text('الفعلي (المعدود)', style: TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(label: Text('الفارق (العجز/الزيادة)', style: TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(label: Text('الحالة', style: TextStyle(fontWeight: FontWeight.bold))),
-          ],
-          rows: shifts.map((s) {
-            final diff = s.difference ?? 0;
-            Color diffColor;
-            String diffText;
-            if (s.isOpen) {
-              diffColor = Colors.grey;
-              diffText = '-';
-            } else if (diff == 0) {
-              diffColor = Colors.green.shade700;
-              diffText = 'مطابق (0 ج.م)';
-            } else if (diff > 0) {
-              diffColor = Colors.blue.shade700;
-              diffText = '+${Money(diff).toDisplay()} ج.م (زيادة)';
-            } else {
-              diffColor = AppColors.error;
-              diffText = '${Money(diff).toDisplay()} ج.م (عجز)';
-            }
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                child: DataTable(
+                  columnSpacing: 20,
+                  horizontalMargin: 16,
+                  headingRowColor: WidgetStateProperty.all(Colors.grey.shade50),
+                  columns: const [
+                    DataColumn(label: Text('الكاشير', style: TextStyle(fontWeight: FontWeight.bold))),
+                    DataColumn(label: Text('وقت الفتح', style: TextStyle(fontWeight: FontWeight.bold))),
+                    DataColumn(label: Text('وقت الإغلاق', style: TextStyle(fontWeight: FontWeight.bold))),
+                    DataColumn(label: Text('الرصيد الافتتاحي', style: TextStyle(fontWeight: FontWeight.bold))),
+                    DataColumn(label: Text('المتوقع', style: TextStyle(fontWeight: FontWeight.bold))),
+                    DataColumn(label: Text('الفعلي (المعدود)', style: TextStyle(fontWeight: FontWeight.bold))),
+                    DataColumn(label: Text('الفارق (العجز/الزيادة)', style: TextStyle(fontWeight: FontWeight.bold))),
+                    DataColumn(label: Text('الحالة', style: TextStyle(fontWeight: FontWeight.bold))),
+                  ],
+                  rows: shifts.map((s) {
+                    final diff = s.difference ?? 0;
+                    Color diffColor;
+                    String diffText;
+                    if (s.isOpen) {
+                      diffColor = Colors.grey;
+                      diffText = '-';
+                    } else if (diff == 0) {
+                      diffColor = Colors.green.shade700;
+                      diffText = 'مطابق (0 ج.م)';
+                    } else if (diff > 0) {
+                      diffColor = Colors.blue.shade700;
+                      diffText = '+${Money(diff).toDisplay()} ج.م (زيادة)';
+                    } else {
+                      diffColor = AppColors.error;
+                      diffText = '${Money(diff).toDisplay()} ج.م (عجز)';
+                    }
 
-            return DataRow(
-              cells: [
-                DataCell(Text(s.cashierName.isNotEmpty ? s.cashierName : s.cashierId, style: const TextStyle(fontWeight: FontWeight.w600))),
-                DataCell(Text(dateFormat.format(s.openedAt), style: const TextStyle(fontSize: 12))),
-                DataCell(Text(s.closedAt != null ? dateFormat.format(s.closedAt!) : 'قيد العمل', style: const TextStyle(fontSize: 12))),
-                DataCell(Text('${Money(s.openingBalance).toDisplay()} ج.م')),
-                DataCell(Text(s.expectedBalance != null ? '${Money(s.expectedBalance!).toDisplay()} ج.م' : '-')),
-                DataCell(Text(s.countedBalance != null ? '${Money(s.countedBalance!).toDisplay()} ج.م' : '-')),
-                DataCell(Text(diffText, style: TextStyle(color: diffColor, fontWeight: FontWeight.bold))),
-                DataCell(
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: s.isOpen ? Colors.green.shade50 : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: s.isOpen ? Colors.green.shade200 : Colors.grey.shade300),
-                    ),
-                    child: Text(
-                      s.isOpen ? 'مفتوحة' : 'مغلقة',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: s.isOpen ? Colors.green.shade800 : Colors.grey.shade700,
-                      ),
-                    ),
-                  ),
+                    return DataRow(
+                      cells: [
+                        DataCell(Text(s.cashierName.isNotEmpty ? s.cashierName : s.cashierId, style: const TextStyle(fontWeight: FontWeight.w600))),
+                        DataCell(Text(dateFormat.format(s.openedAt), style: const TextStyle(fontSize: 12))),
+                        DataCell(Text(s.closedAt != null ? dateFormat.format(s.closedAt!) : 'قيد العمل', style: const TextStyle(fontSize: 12))),
+                        DataCell(Text('${Money(s.openingBalance).toDisplay()} ج.م')),
+                        DataCell(Text(s.expectedBalance != null ? '${Money(s.expectedBalance!).toDisplay()} ج.م' : '-')),
+                        DataCell(Text(s.countedBalance != null ? '${Money(s.countedBalance!).toDisplay()} ج.م' : '-')),
+                        DataCell(Text(diffText, style: TextStyle(color: diffColor, fontWeight: FontWeight.bold))),
+                        DataCell(
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: s.isOpen ? Colors.green.shade50 : Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: s.isOpen ? Colors.green.shade200 : Colors.grey.shade300),
+                            ),
+                            child: Text(
+                              s.isOpen ? 'مفتوحة' : 'مغلقة',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: s.isOpen ? Colors.green.shade800 : Colors.grey.shade700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  }).toList(),
                 ),
-              ],
+              ),
             );
-          }).toList(),
+          },
         ),
       ),
     );

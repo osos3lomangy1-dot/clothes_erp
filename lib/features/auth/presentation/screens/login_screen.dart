@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -279,111 +280,119 @@ class _LoginViewState extends State<_LoginView> {
                         },
                       ),
                       const SizedBox(height: 20),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Row(
-                              children: [
-                                Icon(
-                                  Icons.vpn_key_outlined,
-                                  size: 16,
-                                  color: AppColors.primary,
-                                ),
-                                SizedBox(width: 6),
-                                Text(
-                                  'الحسابات الافتراضية للنظام (انقر للتعبئة السريعة):',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
+                      if (kDebugMode) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceContainerLow,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Row(
+                                children: [
+                                  Icon(
+                                    Icons.vpn_key_outlined,
+                                    size: 16,
+                                    color: AppColors.primary,
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: OutlinedButton.icon(
-                                    style: OutlinedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 8,
-                                        horizontal: 8,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                    onPressed: () {
-                                      _emailController.text = 'admin';
-                                      _passwordController.text = 'admin123';
-                                      final cubit = context.read<LoginFormCubit>();
-                                      cubit.onEmailChanged('admin');
-                                      cubit.onPasswordChanged('admin123');
-                                      cubit.submit();
-                                    },
-                                    icon: const Icon(
-                                      Icons.admin_panel_settings_rounded,
-                                      size: 16,
-                                      color: AppColors.primary,
-                                    ),
-                                    label: const Text(
-                                      'المدير: admin',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'الحسابات الافتراضية للنظام (انقر للتعبئة السريعة):',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: OutlinedButton.icon(
-                                    style: OutlinedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 8,
-                                        horizontal: 8,
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 8,
+                                          horizontal: 8,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
                                       ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
+                                      onPressed: () {
+                                        _emailController.text = 'admin';
+                                        _passwordController.text = 'admin123';
+                                        final cubit = context
+                                            .read<LoginFormCubit>();
+                                        cubit.onEmailChanged('admin');
+                                        cubit.onPasswordChanged('admin123');
+                                        cubit.submit();
+                                      },
+                                      icon: const Icon(
+                                        Icons.admin_panel_settings_rounded,
+                                        size: 16,
+                                        color: AppColors.primary,
                                       ),
-                                    ),
-                                    onPressed: () {
-                                      _emailController.text = 'cashier';
-                                      _passwordController.text = '123456';
-                                      final cubit = context.read<LoginFormCubit>();
-                                      cubit.onEmailChanged('cashier');
-                                      cubit.onPasswordChanged('123456');
-                                      cubit.submit();
-                                    },
-                                    icon: const Icon(
-                                      Icons.point_of_sale_rounded,
-                                      size: 16,
-                                      color: Colors.green,
-                                    ),
-                                    label: const Text(
-                                      'كاشير: cashier',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
+                                      label: const Text(
+                                        'المدير: admin',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 8,
+                                          horizontal: 8,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                      ),
+                                      onPressed: () {
+                                        _emailController.text = 'cashier';
+                                        _passwordController.text = '123456';
+                                        final cubit = context
+                                            .read<LoginFormCubit>();
+                                        cubit.onEmailChanged('cashier');
+                                        cubit.onPasswordChanged('123456');
+                                        cubit.submit();
+                                      },
+                                      icon: const Icon(
+                                        Icons.point_of_sale_rounded,
+                                        size: 16,
+                                        color: Colors.green,
+                                      ),
+                                      label: const Text(
+                                        'كاشير: cashier',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                      ],
                       const SizedBox(height: 24),
                       Text(
                         '© 2026 جميع الحقوق محفوظة - نظام الملابس المتكامل',

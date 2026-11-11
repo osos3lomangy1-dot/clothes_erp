@@ -63,24 +63,10 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
     super.dispose();
   }
 
-  void _openCreatePurchase() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => MultiBlocProvider(
-          providers: [
-            BlocProvider.value(value: context.read<PurchasesCubit>()),
-            BlocProvider.value(value: context.read<SuppliersCubit>()),
-          ],
-          child: const CreatePurchaseScreen(),
-        ),
-      ),
-    );
+  bool _isCreatingInvoice = false;
 
-    if (result == true && mounted) {
-      context.read<PurchasesCubit>().loadPurchases();
-      context.read<SuppliersCubit>().loadSuppliers();
-    }
+  void _openCreatePurchase() {
+    setState(() => _isCreatingInvoice = true);
   }
 
   void _openAddSupplierDialog() {
@@ -100,9 +86,13 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
             companyName: companyName,
             address: address,
           );
-          if (created != null && mounted) {
+          if (created == null) {
+            return cubit.state.errorMessage ?? 'تعذر إضافة المورد. يرجى إعادة المحاولة.';
+          }
+          if (mounted) {
             _showToast('تمت إضافة المورد بنجاح');
           }
+          return null;
         },
       ),
     );
@@ -127,9 +117,13 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
             companyName: companyName,
             address: address,
           );
-          if (success && mounted) {
+          if (!success) {
+            return cubit.state.errorMessage ?? 'تعذر تعديل بيانات المورد.';
+          }
+          if (mounted) {
             _showToast('تم تعديل بيانات المورد بنجاح');
           }
+          return null;
         },
       ),
     );
@@ -178,6 +172,17 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
 
   @override
   Widget build(BuildContext context) {
+    if (_isCreatingInvoice) {
+      return CreatePurchaseScreen(
+        onBack: () => setState(() => _isCreatingInvoice = false),
+        onSaved: () {
+          setState(() => _isCreatingInvoice = false);
+          context.read<PurchasesCubit>().loadPurchases();
+          context.read<SuppliersCubit>().loadSuppliers();
+        },
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.surface,
         appBar: AppBar(

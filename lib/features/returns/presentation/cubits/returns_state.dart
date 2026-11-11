@@ -1,9 +1,11 @@
 import 'package:equatable/equatable.dart';
 import '../../../pos/domain/entities/sale_entity.dart';
+import '../../domain/entities/return_entity.dart';
 import '../../domain/entities/return_item_entity.dart';
 
 class ReturnsState extends Equatable {
   final List<SaleEntity> recentSales;
+  final List<ReturnEntity> returnsHistory;
   final SaleEntity? selectedSale;
   final List<ReturnItemEntity> returnItems;
   final bool isLoading;
@@ -13,6 +15,7 @@ class ReturnsState extends Equatable {
 
   const ReturnsState({
     this.recentSales = const [],
+    this.returnsHistory = const [],
     this.selectedSale,
     this.returnItems = const [],
     this.isLoading = false,
@@ -25,6 +28,7 @@ class ReturnsState extends Equatable {
 
   ReturnsState copyWith({
     List<SaleEntity>? recentSales,
+    List<ReturnEntity>? returnsHistory,
     SaleEntity? selectedSale,
     bool clearSelectedSale = false,
     List<ReturnItemEntity>? returnItems,
@@ -36,6 +40,7 @@ class ReturnsState extends Equatable {
   }) {
     return ReturnsState(
       recentSales: recentSales ?? this.recentSales,
+      returnsHistory: returnsHistory ?? this.returnsHistory,
       selectedSale: clearSelectedSale ? null : (selectedSale ?? this.selectedSale),
       returnItems: returnItems ?? this.returnItems,
       isLoading: isLoading ?? this.isLoading,
@@ -48,6 +53,7 @@ class ReturnsState extends Equatable {
   @override
   List<Object?> get props => [
         recentSales,
+        returnsHistory,
         selectedSale,
         returnItems,
         isLoading,
@@ -56,4 +62,3 @@ class ReturnsState extends Equatable {
         successMessage,
       ];
 }
-

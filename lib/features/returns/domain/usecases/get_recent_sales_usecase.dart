@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 import 'package:injectable/injectable.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../pos/domain/entities/sale_entity.dart';
+import '../entities/return_entity.dart';
 import '../entities/return_item_entity.dart';
 import '../repositories/returns_repository.dart';
 
@@ -22,5 +23,8 @@ class GetRecentSalesUseCase {
   Future<Either<Failure, SaleEntity?>> getSaleByIdOrRef(String query) {
     return _repository.getSaleByIdOrRef(query);
   }
-}
 
+  Future<Either<Failure, List<ReturnEntity>>> getReturnsHistory({int limit = 50}) {
+    return _repository.getReturnsHistory(limit: limit);
+  }
+}

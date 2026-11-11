@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 import 'package:injectable/injectable.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../pos/domain/entities/sale_entity.dart';
+import '../../domain/entities/return_entity.dart';
 import '../../domain/entities/return_item_entity.dart';
 import '../../domain/repositories/returns_repository.dart';
 import '../datasources/returns_local_data_source.dart';
@@ -30,7 +31,7 @@ class ReturnsRepositoryImpl implements ReturnsRepository {
       );
       return const Right(null);
     } catch (e) {
-      return Left(ServerFailure(e.toString()));
+      return Left(ServerFailure(e.toString().replaceAll('Exception: ', '')));
     }
   }
 
@@ -60,19 +61,23 @@ class ReturnsRepositoryImpl implements ReturnsRepository {
   Future<Either<Failure, List<ReturnItemEntity>>> getSaleItems(String saleId) async {
     try {
       final rows = await _localDataSource.getSaleItems(saleId);
-      final entities = rows
-          .map((si) => ReturnItemEntity(
-                id: si.id,
-                saleItemId: si.id,
-                variantId: si.variantId,
-                productName: si.productName,
-                color: si.color,
-                size: si.size,
-                maxQty: si.qty,
-                qty: si.qty,
-                refundUnitPrice: si.priceSnapshot,
-              ))
-          .toList();
+      final alreadyReturnedMap = await _localDataSource.getAlreadyReturnedQuantities(saleId);
+
+      final entities = rows.map((si) {
+        final alreadyReturned = alreadyReturnedMap[si.id] ?? alreadyReturnedMap[si.variantId] ?? 0;
+        final remaining = (si.qty - alreadyReturned).clamp(0, si.qty);
+        return ReturnItemEntity(
+          id: si.id,
+          saleItemId: si.id,
+          variantId: si.variantId,
+          productName: si.productName,
+          color: si.color,
+          size: si.size,
+          maxQty: remaining,
+          qty: remaining,
+          refundUnitPrice: si.priceSnapshot,
+        );
+      }).toList();
       return Right(entities);
     } catch (e) {
       return Left(ServerFailure(e.toString()));
@@ -98,5 +103,14 @@ class ReturnsRepositoryImpl implements ReturnsRepository {
       return Left(ServerFailure(e.toString()));
     }
   }
-}
 
+  @override
+  Future<Either<Failure, List<ReturnEntity>>> getReturnsHistory({int limit = 50}) async {
+    try {
+      final list = await _localDataSource.getReturnsHistory(limit: limit);
+      return Right(list);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+}

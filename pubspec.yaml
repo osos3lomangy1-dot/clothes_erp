@@ -25,6 +25,7 @@ dependencies:
   file_picker: ^8.1.2
   drift: ^2.20.0
   drift_flutter: ^0.2.0
+  sqlite3: ^2.4.0
   path_provider: ^2.1.4
   uuid: ^4.4.0
   intl: ^0.19.0

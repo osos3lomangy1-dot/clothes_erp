@@ -96,6 +96,13 @@ class _PosViewState extends State<_PosView> {
         final cashierId = authState is AuthAuthenticated ? authState.user.id : 'admin';
         final cashierName = authState is AuthAuthenticated ? authState.user.name : 'المدير';
 
+        if (shiftState.status == ShiftStatus.loading && !shiftState.hasActiveShift) {
+          return const Scaffold(
+            backgroundColor: AppColors.surface,
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
         if (shiftState.shiftsEnabled && !shiftState.hasActiveShift) {
           return _buildShiftRequiredScaffold(
             context,
@@ -294,11 +301,19 @@ class _PosViewState extends State<_PosView> {
                               ? null
                               : () async {
                                   final cubit = context.read<ShiftCubit>();
-                                  await cubit.openShift(
+                                  final ok = await cubit.openShift(
                                     openingBalance: 0,
                                     cashierId: cashierId,
                                     cashierName: cashierName,
                                   );
+                                  if (!ok && context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(cubit.state.errorMessage ?? 'تعذر بدء الوردية السريعة'),
+                                        backgroundColor: AppColors.error,
+                                      ),
+                                    );
+                                  }
                                 },
                           icon: shiftState.isOperating
                               ? const SizedBox(
@@ -328,11 +343,16 @@ class _PosViewState extends State<_PosView> {
                               builder: (_) => OpenShiftDialog(
                                 cashierName: cashierName,
                                 onOpen: (openingPiasters) async {
-                                  return await context.read<ShiftCubit>().openShift(
-                                        openingBalance: openingPiasters,
-                                        cashierId: cashierId,
-                                        cashierName: cashierName,
-                                      );
+                                  final cubit = context.read<ShiftCubit>();
+                                  final ok = await cubit.openShift(
+                                    openingBalance: openingPiasters,
+                                    cashierId: cashierId,
+                                    cashierName: cashierName,
+                                  );
+                                  if (!ok) {
+                                    return cubit.state.errorMessage ?? 'تعذر بدء الوردية. يرجى المحاولة مرة أخرى.';
+                                  }
+                                  return null;
                                 },
                               ),
                             );
@@ -359,11 +379,16 @@ class _PosViewState extends State<_PosView> {
                               builder: (_) => OpenShiftDialog(
                                 cashierName: cashierName,
                                 onOpen: (openingPiasters) async {
-                                  return await context.read<ShiftCubit>().openShift(
-                                        openingBalance: openingPiasters,
-                                        cashierId: cashierId,
-                                        cashierName: cashierName,
-                                      );
+                                  final cubit = context.read<ShiftCubit>();
+                                  final ok = await cubit.openShift(
+                                    openingBalance: openingPiasters,
+                                    cashierId: cashierId,
+                                    cashierName: cashierName,
+                                  );
+                                  if (!ok) {
+                                    return cubit.state.errorMessage ?? 'تعذر بدء الوردية. يرجى المحاولة مرة أخرى.';
+                                  }
+                                  return null;
                                 },
                               ),
                             );

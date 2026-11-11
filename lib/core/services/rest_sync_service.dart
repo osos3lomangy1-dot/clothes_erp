@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 import 'package:injectable/injectable.dart';
+import 'package:sqlite3/sqlite3.dart';
 import '../../firebase_options.dart';
 import '../database/app_database.dart';
 import '../utils/logging.dart';
@@ -40,13 +41,9 @@ class RestSyncService {
   factory RestSyncService.create(AppDatabase db, http.Client client) =>
       RestSyncService(db, client);
 
-  RestSyncService(
-    this._db,
-    this._client, {
-    String? projectId,
-    String? apiKey,
-  })  : _projectId = projectId ?? DefaultFirebaseOptions.windows.projectId,
-        _apiKey = apiKey ?? DefaultFirebaseOptions.windows.apiKey;
+  RestSyncService(this._db, this._client, {String? projectId, String? apiKey})
+    : _projectId = projectId ?? DefaultFirebaseOptions.windows.projectId,
+      _apiKey = apiKey ?? DefaultFirebaseOptions.windows.apiKey;
 
   String? get idToken => _idToken;
   bool get isSyncing => _isSyncing;
@@ -56,7 +53,9 @@ class RestSyncService {
   /// Also triggers an immediate synchronization in the background.
   void startAutoSync({Duration interval = const Duration(minutes: 5)}) {
     _autoSyncTimer?.cancel();
-    Logging.info('🔄 [Auto-Sync] Started auto-sync timer (every ${interval.inMinutes} mins)');
+    Logging.info(
+      '🔄 [Auto-Sync] Started auto-sync timer (every ${interval.inMinutes} mins)',
+    );
 
     // Trigger immediate background sync
     unawaited(syncPendingData());
@@ -64,7 +63,9 @@ class RestSyncService {
     _autoSyncTimer = Timer.periodic(interval, (_) async {
       final pendingCount = await getPendingCount();
       if (pendingCount > 0 && !_isSyncing) {
-        Logging.info('🔄 [Auto-Sync] Auto-syncing $pendingCount pending items...');
+        Logging.info(
+          '🔄 [Auto-Sync] Auto-syncing $pendingCount pending items...',
+        );
         await syncPendingData();
       }
     });
@@ -97,7 +98,9 @@ class RestSyncService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         _idToken = data['idToken'] as String?;
-        Logging.info('🛡️ [REST Auth] Authenticated successfully with Firebase REST');
+        Logging.info(
+          '🛡️ [REST Auth] Authenticated successfully with Firebase REST',
+        );
         return true;
       } else {
         Logging.warn('⚠️ [REST Auth] Failed to authenticate: ${response.body}');
@@ -134,10 +137,11 @@ class RestSyncService {
     _syncStatusController.add(true);
 
     try {
-      final pendingItems = await (_db.select(_db.syncQueue)
-            ..where((q) => q.status.equals('pending'))
-            ..orderBy([(q) => OrderingTerm.asc(q.createdAt)]))
-          .get();
+      final pendingItems =
+          await (_db.select(_db.syncQueue)
+                ..where((q) => q.status.equals('pending'))
+                ..orderBy([(q) => OrderingTerm.asc(q.createdAt)]))
+              .get();
 
       if (pendingItems.isEmpty) {
         return const SyncResult(total: 0, synced: 0, failed: 0);
@@ -151,8 +155,8 @@ class RestSyncService {
           final success = await _syncSingleItem(item);
           if (success) {
             syncedCount++;
-            await (_db.update(_db.syncQueue)..where((q) => q.id.equals(item.id)))
-                .write(
+            await _safeUpdateSyncQueue(
+              item.id,
               SyncQueueCompanion(
                 status: const Value('synced'),
                 syncedAt: Value(DateTime.now()),
@@ -165,8 +169,8 @@ class RestSyncService {
         } catch (e) {
           failedCount++;
           Logging.error('Sync item ${item.id} error: $e');
-          await (_db.update(_db.syncQueue)..where((q) => q.id.equals(item.id)))
-              .write(
+          await _safeUpdateSyncQueue(
+            item.id,
             SyncQueueCompanion(
               attempts: Value(item.attempts + 1),
               lastError: Value(e.toString()),
@@ -195,9 +199,7 @@ class RestSyncService {
       'https://firestore.googleapis.com/v1/projects/$_projectId/databases/(default)/documents/$collection/$docId?key=$_apiKey',
     );
 
-    final headers = <String, String>{
-      'Content-Type': 'application/json',
-    };
+    final headers = <String, String>{'Content-Type': 'application/json'};
     if (_idToken != null) {
       headers['Authorization'] = 'Bearer $_idToken';
     }
@@ -228,9 +230,7 @@ class RestSyncService {
     data['branchId'] = item.branchId;
     data['updatedAt'] = DateTime.now().toUtc().toIso8601String();
 
-    final firestorePayload = {
-      'fields': encodeFirestoreFields(data),
-    };
+    final firestorePayload = {'fields': encodeFirestoreFields(data)};
 
     final response = await _client.patch(
       url,
@@ -241,24 +241,52 @@ class RestSyncService {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return true;
     } else {
-      _recordFailure(item, response);
+      await _recordFailure(item, response);
       return false;
     }
   }
 
+  Future<void> _safeUpdateSyncQueue(
+    String itemId,
+    SyncQueueCompanion companion,
+  ) async {
+    try {
+      await (_db.update(
+        _db.syncQueue,
+      )..where((q) => q.id.equals(itemId))).write(companion);
+    } catch (e) {
+      if (e is SqliteException &&
+          (e.extendedResultCode == 8 || e.resultCode == 8)) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        try {
+          await (_db.update(
+            _db.syncQueue,
+          )..where((q) => q.id.equals(itemId))).write(companion);
+        } catch (retryError) {
+          Logging.warn('Retry update syncQueue failed: $retryError');
+        }
+      } else {
+        Logging.warn('Update syncQueue failed: $e');
+      }
+    }
+  }
+
   Future<void> _recordFailure(
-      SyncQueueData item, http.Response response) async {
+    SyncQueueData item,
+    http.Response response,
+  ) async {
     Logging.warn(
       '⚠️ [REST Sync] Failed item ${item.id} (${item.entity}/${item.entityId}): '
       'HTTP ${response.statusCode} - ${response.body}',
     );
-    await (_db.update(_db.syncQueue)..where((q) => q.id.equals(item.id))).write(
-          SyncQueueCompanion(
-            attempts: Value(item.attempts + 1),
-            lastError: Value('HTTP ${response.statusCode}: ${response.body}'),
-            updatedAt: Value(DateTime.now()),
-          ),
-        );
+    await _safeUpdateSyncQueue(
+      item.id,
+      SyncQueueCompanion(
+        attempts: Value(item.attempts + 1),
+        lastError: Value('HTTP ${response.statusCode}: ${response.body}'),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
   }
 
   Future<Map<String, dynamic>> _fetchEntityFromDrift(
@@ -268,58 +296,58 @@ class RestSyncService {
     switch (entity.toLowerCase()) {
       case 'category':
       case 'categories':
-        final row = await (_db.select(_db.categories)
-              ..where((c) => c.id.equals(entityId)))
-            .getSingleOrNull();
+        final row = await (_db.select(
+          _db.categories,
+        )..where((c) => c.id.equals(entityId))).getSingleOrNull();
         if (row != null) return row.toJson();
         break;
 
       case 'product':
       case 'products':
-        final row = await (_db.select(_db.products)
-              ..where((p) => p.id.equals(entityId)))
-            .getSingleOrNull();
+        final row = await (_db.select(
+          _db.products,
+        )..where((p) => p.id.equals(entityId))).getSingleOrNull();
         if (row != null) return row.toJson();
         break;
 
       case 'variant':
       case 'product_variant':
       case 'product_variants':
-        final row = await (_db.select(_db.productVariants)
-              ..where((v) => v.id.equals(entityId)))
-            .getSingleOrNull();
+        final row = await (_db.select(
+          _db.productVariants,
+        )..where((v) => v.id.equals(entityId))).getSingleOrNull();
         if (row != null) return row.toJson();
         break;
 
       case 'customer':
       case 'customers':
-        final row = await (_db.select(_db.customers)
-              ..where((c) => c.id.equals(entityId)))
-            .getSingleOrNull();
+        final row = await (_db.select(
+          _db.customers,
+        )..where((c) => c.id.equals(entityId))).getSingleOrNull();
         if (row != null) return row.toJson();
         break;
 
       case 'sale':
       case 'sales':
-        final row = await (_db.select(_db.sales)
-              ..where((s) => s.id.equals(entityId)))
-            .getSingleOrNull();
+        final row = await (_db.select(
+          _db.sales,
+        )..where((s) => s.id.equals(entityId))).getSingleOrNull();
         if (row != null) return row.toJson();
         break;
 
       case 'expense':
       case 'expenses':
-        final row = await (_db.select(_db.expenses)
-              ..where((e) => e.id.equals(entityId)))
-            .getSingleOrNull();
+        final row = await (_db.select(
+          _db.expenses,
+        )..where((e) => e.id.equals(entityId))).getSingleOrNull();
         if (row != null) return row.toJson();
         break;
 
       case 'return':
       case 'returns':
-        final row = await (_db.select(_db.returns)
-              ..where((r) => r.id.equals(entityId)))
-            .getSingleOrNull();
+        final row = await (_db.select(
+          _db.returns,
+        )..where((r) => r.id.equals(entityId))).getSingleOrNull();
         if (row != null) return row.toJson();
         break;
     }
@@ -386,17 +414,14 @@ class RestSyncService {
               .map(_encodeValue)
               .whereType<Map<String, dynamic>>()
               .toList(),
-        }
+        },
       };
     }
     if (value is Map<String, dynamic>) {
       return {
-        'mapValue': {
-          'fields': encodeFirestoreFields(value),
-        }
+        'mapValue': {'fields': encodeFirestoreFields(value)},
       };
     }
     return {'stringValue': value.toString()};
   }
 }
-

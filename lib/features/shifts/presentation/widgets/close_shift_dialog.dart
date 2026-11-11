@@ -5,7 +5,7 @@ import '../../domain/entities/shift_summary_entity.dart';
 
 class CloseShiftDialog extends StatefulWidget {
   final ShiftSummaryEntity summary;
-  final Future<bool> Function(int countedBalancePiasters) onClose;
+  final Future<dynamic> Function(int countedBalancePiasters) onClose;
 
   const CloseShiftDialog({
     super.key,
@@ -21,6 +21,7 @@ class _CloseShiftDialogState extends State<CloseShiftDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _countedController;
   bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -35,8 +36,19 @@ class _CloseShiftDialogState extends State<CloseShiftDialog> {
     super.dispose();
   }
 
+  String _normalizeNumbers(String input) {
+    const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    const english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+    var res = input;
+    for (int i = 0; i < 10; i++) {
+      res = res.replaceAll(arabic[i], english[i]);
+    }
+    return res;
+  }
+
   double get _countedPounds {
-    return double.tryParse(_countedController.text.trim()) ?? 0.0;
+    final norm = _normalizeNumbers(_countedController.text.trim());
+    return double.tryParse(norm) ?? 0.0;
   }
 
   double get _expectedPounds {
@@ -49,13 +61,35 @@ class _CloseShiftDialogState extends State<CloseShiftDialog> {
     if (!_formKey.currentState!.validate()) return;
     final piasters = (_countedPounds * 100).round();
 
-    setState(() => _isLoading = true);
-    final success = await widget.onClose(piasters);
-    if (mounted) {
-      setState(() => _isLoading = false);
-      if (success) {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final res = await widget.onClose(piasters);
+      if (!mounted) return;
+
+      if (res is String && res.isNotEmpty) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = res;
+        });
+      } else if (res == false) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'تعذر إغلاق الوردية. يرجى إعادة المحاولة.';
+        });
+      } else {
+        setState(() => _isLoading = false);
         Navigator.of(context).pop(true);
       }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'حدث خطأ: $e';
+      });
     }
   }
 
@@ -114,6 +148,30 @@ class _CloseShiftDialogState extends State<CloseShiftDialog> {
                     ),
                   ],
                 ),
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.error_outline_rounded, color: Colors.red.shade700, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: TextStyle(color: Colors.red.shade900, fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 20),
                 Container(
                   padding: const EdgeInsets.all(14),
@@ -162,7 +220,8 @@ class _CloseShiftDialogState extends State<CloseShiftDialog> {
                   ),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return 'يرجى إدخال المبلغ المحسوب في الدرج';
-                    final val = double.tryParse(v.trim());
+                    final norm = _normalizeNumbers(v.trim());
+                    final val = double.tryParse(norm);
                     if (val == null || val < 0) return 'المبلغ لا يمكن أن يكون سالباً';
                     return null;
                   },
@@ -237,4 +296,3 @@ class _CloseShiftDialogState extends State<CloseShiftDialog> {
     );
   }
 }
-
