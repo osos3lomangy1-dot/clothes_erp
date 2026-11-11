@@ -155,9 +155,7 @@ class Returns extends Table {
   DateTimeColumn get deletedAt => dateTime().nullable()();
 
   @override
-  List<String> get customConstraints => [
-    "CHECK (reason <> '')",
-  ];
+  List<String> get customConstraints => ["CHECK (reason <> '')"];
 
   @override
   Set<Column> get primaryKey => {id};
@@ -183,7 +181,10 @@ class ReturnItems extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@TableIndex(name: 'idx_inventory_logs_variantId_createdAt', columns: {#variantId, #createdAt})
+@TableIndex(
+  name: 'idx_inventory_logs_variantId_createdAt',
+  columns: {#variantId, #createdAt},
+)
 class InventoryLogs extends Table {
   TextColumn get id => text()();
   TextColumn get branchId => text()();
@@ -215,9 +216,7 @@ class Shifts extends Table {
   DateTimeColumn get deletedAt => dateTime().nullable()();
 
   @override
-  List<String> get customConstraints => [
-    'CHECK (opening_balance >= 0)',
-  ];
+  List<String> get customConstraints => ['CHECK (opening_balance >= 0)'];
 
   @override
   Set<Column> get primaryKey => {id};
@@ -236,9 +235,7 @@ class Expenses extends Table {
   DateTimeColumn get deletedAt => dateTime().nullable()();
 
   @override
-  List<String> get customConstraints => [
-    'CHECK (amount > 0)',
-  ];
+  List<String> get customConstraints => ['CHECK (amount > 0)'];
 
   @override
   Set<Column> get primaryKey => {id};
@@ -323,7 +320,10 @@ class AuditLogs extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@TableIndex(name: 'idx_sync_queue_status_createdAt', columns: {#status, #createdAt})
+@TableIndex(
+  name: 'idx_sync_queue_status_createdAt',
+  columns: {#status, #createdAt},
+)
 class SyncQueue extends Table {
   TextColumn get id => text()();
   TextColumn get branchId => text()();
@@ -375,8 +375,11 @@ class Purchases extends Table {
   DateTimeColumn get purchaseDate => dateTime()();
   IntColumn get totalAmount => integer()();
   IntColumn get paidAmount => integer().withDefault(const Constant(0))();
-  TextColumn get status => text().withDefault(const Constant('pending'))(); // pending, received, cancelled
-  TextColumn get paymentStatus => text().withDefault(const Constant('unpaid'))(); // unpaid, partial, paid
+  TextColumn get status => text().withDefault(
+    const Constant('pending'),
+  )(); // pending, received, cancelled
+  TextColumn get paymentStatus =>
+      text().withDefault(const Constant('unpaid'))(); // unpaid, partial, paid
   TextColumn get notes => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
@@ -436,12 +439,6 @@ void _setupSqlite(CommonDatabase rawDb) {
   rawDb.execute('PRAGMA busy_timeout = 5000;');
 }
 
-@DriftDatabase(tables: [
-  Users, Categories, Products, ProductVariants, Sales, SaleItems,
-  Returns, ReturnItems, InventoryLogs, Shifts, Expenses, Customers,
-  Stocktakes, StocktakeItems, DailyStats, AuditLogs, SyncQueue, AppMeta,
-  Suppliers, Purchases, PurchaseItems, SupplierPayments, LoyaltyTransactions,
-])
 QueryExecutor _openConnection() {
   return driftDatabase(
     name: 'clothes_erp',
@@ -480,6 +477,33 @@ QueryExecutor _openConnection() {
   );
 }
 
+@DriftDatabase(
+  tables: [
+    Users,
+    Categories,
+    Products,
+    ProductVariants,
+    Sales,
+    SaleItems,
+    Returns,
+    ReturnItems,
+    InventoryLogs,
+    Shifts,
+    Expenses,
+    Customers,
+    Stocktakes,
+    StocktakeItems,
+    DailyStats,
+    AuditLogs,
+    SyncQueue,
+    AppMeta,
+    Suppliers,
+    Purchases,
+    PurchaseItems,
+    SupplierPayments,
+    LoyaltyTransactions,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
@@ -496,17 +520,41 @@ class AppDatabase extends _$AppDatabase {
     },
     onUpgrade: (Migrator m, int from, int to) async {
       if (from < 2) {
-        Future<void> safeAddColumn(String tableName, String columnName, TableInfo table, GeneratedColumn col) async {
-          final result = await customSelect('PRAGMA table_info("$tableName")').get();
-          final cols = result.map((r) => (r.data['name'] as String).toLowerCase()).toSet();
+        Future<void> safeAddColumn(
+          String tableName,
+          String columnName,
+          TableInfo table,
+          GeneratedColumn col,
+        ) async {
+          final result = await customSelect(
+            'PRAGMA table_info("$tableName")',
+          ).get();
+          final cols = result
+              .map((r) => (r.data['name'] as String).toLowerCase())
+              .toSet();
           if (!cols.contains(columnName.toLowerCase())) {
             await m.addColumn(table, col);
           }
         }
 
-        await safeAddColumn('product_variants', 'wholesale_price', productVariants, productVariants.wholesalePrice);
-        await safeAddColumn('customers', 'discount_percent', customers, customers.discountPercent);
-        await safeAddColumn('customers', 'customer_type', customers, customers.customerType);
+        await safeAddColumn(
+          'product_variants',
+          'wholesale_price',
+          productVariants,
+          productVariants.wholesalePrice,
+        );
+        await safeAddColumn(
+          'customers',
+          'discount_percent',
+          customers,
+          customers.discountPercent,
+        );
+        await safeAddColumn(
+          'customers',
+          'customer_type',
+          customers,
+          customers.customerType,
+        );
         await safeAddColumn('users', 'salary', users, users.salary);
       }
 
@@ -527,20 +575,46 @@ class AppDatabase extends _$AppDatabase {
       }
     },
     beforeOpen: (details) async {
-      Future<void> addColumnIfNotExists(String table, String column, String definition) async {
+      Future<void> addColumnIfNotExists(
+        String table,
+        String column,
+        String definition,
+      ) async {
         try {
-          final result = await customSelect('PRAGMA table_info("$table")').get();
-          final columnNames = result.map((row) => (row.data['name'] as String).toLowerCase()).toSet();
+          final result = await customSelect(
+            'PRAGMA table_info("$table")',
+          ).get();
+          final columnNames = result
+              .map((row) => (row.data['name'] as String).toLowerCase())
+              .toSet();
           if (!columnNames.contains(column.toLowerCase())) {
-            await customStatement('ALTER TABLE "$table" ADD COLUMN "$column" $definition');
+            await customStatement(
+              'ALTER TABLE "$table" ADD COLUMN "$column" $definition',
+            );
           }
         } catch (_) {}
       }
 
-      await addColumnIfNotExists('product_variants', 'wholesale_price', 'INTEGER NOT NULL DEFAULT 0');
-      await addColumnIfNotExists('customers', 'discount_percent', 'INTEGER NOT NULL DEFAULT 0');
-      await addColumnIfNotExists('customers', 'customer_type', "TEXT NOT NULL DEFAULT 'retail'");
-      await addColumnIfNotExists('users', 'salary', 'INTEGER NOT NULL DEFAULT 0');
+      await addColumnIfNotExists(
+        'product_variants',
+        'wholesale_price',
+        'INTEGER NOT NULL DEFAULT 0',
+      );
+      await addColumnIfNotExists(
+        'customers',
+        'discount_percent',
+        'INTEGER NOT NULL DEFAULT 0',
+      );
+      await addColumnIfNotExists(
+        'customers',
+        'customer_type',
+        "TEXT NOT NULL DEFAULT 'retail'",
+      );
+      await addColumnIfNotExists(
+        'users',
+        'salary',
+        'INTEGER NOT NULL DEFAULT 0',
+      );
     },
   );
 }

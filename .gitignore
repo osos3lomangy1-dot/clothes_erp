@@ -44,3 +44,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Generated files needed for CI build (DO NOT IGNORE)
+!lib/core/database/app_database.g.dart
