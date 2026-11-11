@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
-import '../../../../core/layout/main_layout.dart';
 import '../../../../core/utils/money.dart';
 import '../../domain/entities/invoice_details_entity.dart';
 import '../cubits/invoices_cubit.dart';
@@ -90,10 +89,8 @@ class _InvoicesViewState extends State<_InvoicesView> {
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('yyyy/MM/dd - hh:mm a');
 
-    return MainLayout(
-      currentRoute: '/invoices',
-      child: Scaffold(
-        backgroundColor: AppColors.surface,
+    return Scaffold(
+      backgroundColor: AppColors.surface,
         appBar: AppBar(
           backgroundColor: Colors.white,
           elevation: 0,
@@ -363,8 +360,7 @@ class _InvoicesViewState extends State<_InvoicesView> {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _filterChip(String label, String value) {

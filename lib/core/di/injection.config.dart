@@ -245,6 +245,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i1024.AuthRemoteDataSource>(
       () => _i1024.AuthRemoteDataSourceImpl(),
     );
+    gh.lazySingleton<_i504.RestSyncService>(
+      () => _i504.RestSyncService.create(
+        gh<_i110.AppDatabase>(),
+        gh<_i519.Client>(),
+      ),
+    );
     gh.lazySingleton<_i303.InventoryRemoteDataSource>(
       () => _i303.InventoryRemoteDataSourceImpl(),
     );
@@ -280,14 +286,6 @@ extension GetItInjectableX on _i174.GetIt {
       ),
     );
     gh.factory<_i874.TxWriter>(() => _i874.TxWriter(gh<_i110.AppDatabase>()));
-    gh.lazySingleton<_i504.RestSyncService>(
-      () => _i504.RestSyncService(
-        gh<_i110.AppDatabase>(),
-        gh<_i519.Client>(),
-        projectId: gh<String>(),
-        apiKey: gh<String>(),
-      ),
-    );
     gh.lazySingleton<_i1011.GetAuthStatusUseCase>(
       () => _i1011.GetAuthStatusUseCase(gh<_i689.AuthRepository>()),
     );

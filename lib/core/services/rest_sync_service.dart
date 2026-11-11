@@ -36,6 +36,10 @@ class RestSyncService {
 
   final _syncStatusController = StreamController<bool>.broadcast();
 
+  @factoryMethod
+  factory RestSyncService.create(AppDatabase db, http.Client client) =>
+      RestSyncService(db, client);
+
   RestSyncService(
     this._db,
     this._client, {

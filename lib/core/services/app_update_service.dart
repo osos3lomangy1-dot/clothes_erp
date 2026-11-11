@@ -125,6 +125,10 @@ class AppUpdateService {
       }
       return AppUpdateInfo.fromMap(doc.data()!);
     } catch (e) {
+      if (e.toString().contains('permission-denied')) {
+        // Silently skip when Firestore rules are not deployed or offline
+        return null;
+      }
       debugPrint('AppUpdateService: Error fetching update info: $e');
       return null;
     }

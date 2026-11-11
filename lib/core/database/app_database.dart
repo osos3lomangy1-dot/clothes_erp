@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
+import 'package:path_provider/path_provider.dart';
 
 part 'app_database.g.dart';
 
@@ -433,8 +435,30 @@ class LoyaltyTransactions extends Table {
   Stocktakes, StocktakeItems, DailyStats, AuditLogs, SyncQueue, AppMeta,
   Suppliers, Purchases, PurchaseItems, SupplierPayments, LoyaltyTransactions,
 ])
+QueryExecutor _openConnection() {
+  return driftDatabase(
+    name: 'clothes_erp',
+    native: DriftNativeOptions(
+      databaseDirectory: () async {
+        final supportDir = await getApplicationSupportDirectory();
+        try {
+          final targetFile = File('${supportDir.path}/clothes_erp.sqlite');
+          if (!targetFile.existsSync()) {
+            final docsDir = await getApplicationDocumentsDirectory();
+            final legacyFile = File('${docsDir.path}/clothes_erp.sqlite');
+            if (legacyFile.existsSync()) {
+              await legacyFile.copy(targetFile.path);
+            }
+          }
+        } catch (_) {}
+        return supportDir;
+      },
+    ),
+  );
+}
+
 class AppDatabase extends _$AppDatabase {
-  AppDatabase([QueryExecutor? executor]) : super(executor ?? driftDatabase(name: 'clothes_erp'));
+  AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
   int get schemaVersion => 3;
@@ -464,35 +488,19 @@ class AppDatabase extends _$AppDatabase {
       }
 
       if (from < 3) {
-        Future<void> safeCreateTable(String tableName, TableInfo table) async {
-          final result = await customSelect(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='$tableName'",
-          ).get();
-          if (result.isEmpty) {
-            await m.createTable(table);
-          }
-        }
+        await m.createTable(suppliers);
+        await m.createTable(purchases);
+        await m.createTable(purchaseItems);
+        await m.createTable(supplierPayments);
+        await m.createTable(loyaltyTransactions);
 
-        await safeCreateTable('suppliers', suppliers);
-        await safeCreateTable('purchases', purchases);
-        await safeCreateTable('purchase_items', purchaseItems);
-        await safeCreateTable('supplier_payments', supplierPayments);
-        await safeCreateTable('loyalty_transactions', loyaltyTransactions);
-
-        // Seed default loyalty configuration in app_meta if not already present
-        final now = DateTime.now();
-        Future<void> seedMeta(String key, String value) async {
-          final existing = await (select(appMeta)..where((t) => t.key.equals(key))).getSingleOrNull();
-          if (existing == null) {
-            await into(appMeta).insert(
-              AppMetaCompanion.insert(key: key, value: value, updatedAt: now),
-            );
-          }
-        }
-
-        await seedMeta('loyalty_earn_rate', '10');
-        await seedMeta('loyalty_redeem_rate', '10');
-        await seedMeta('loyalty_max_redeem_percent', '30');
+        final nowMs = DateTime.now().millisecondsSinceEpoch;
+        await customStatement(
+          'INSERT OR IGNORE INTO app_meta ("key", "value", "updated_at") VALUES '
+          "('loyalty_earn_rate', '10', $nowMs), "
+          "('loyalty_redeem_rate', '10', $nowMs), "
+          "('loyalty_max_redeem_percent', '30', $nowMs);",
+        );
       }
     },
     beforeOpen: (details) async {

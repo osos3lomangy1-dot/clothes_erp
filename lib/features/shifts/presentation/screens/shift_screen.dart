@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
-import '../../../../core/layout/main_layout.dart';
 import '../../../../core/utils/money.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
@@ -79,10 +78,8 @@ class _ShiftView extends StatelessWidget {
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('yyyy/MM/dd - hh:mm a');
 
-    return MainLayout(
-      currentRoute: '/shifts',
-      child: Scaffold(
-        backgroundColor: AppColors.surface,
+    return Scaffold(
+      backgroundColor: AppColors.surface,
         appBar: AppBar(
           backgroundColor: Colors.white,
           elevation: 0,
@@ -202,8 +199,7 @@ class _ShiftView extends StatelessWidget {
             );
           },
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildActiveShiftCard(BuildContext context, ShiftState state, DateFormat dateFormat) {

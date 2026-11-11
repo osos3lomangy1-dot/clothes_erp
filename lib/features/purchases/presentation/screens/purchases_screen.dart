@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
-import '../../../../core/layout/main_layout.dart';
 
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
@@ -179,10 +178,8 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
 
   @override
   Widget build(BuildContext context) {
-    return MainLayout(
-      currentRoute: '/purchases',
-      child: Scaffold(
-        backgroundColor: AppColors.surface,
+    return Scaffold(
+      backgroundColor: AppColors.surface,
         appBar: AppBar(
           backgroundColor: Colors.white,
           elevation: 0,
@@ -245,8 +242,7 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildTopSummaryBanner() {

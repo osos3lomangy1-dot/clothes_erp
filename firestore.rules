@@ -75,6 +75,12 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // app_config: Public read for app update checks. Write restricted to admin.
+    match /app_config/update_info {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // Deny everything else by default
     match /{document=**} {
       allow read, write: if false;
