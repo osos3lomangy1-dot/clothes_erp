@@ -35,6 +35,30 @@ class VariantRepositoryImpl implements VariantRepository {
   }
 
   @override
+  Stream<Either<Failure, List<VariantEntity>>> watchVariants(String productId) async* {
+    try {
+      await for (final rows in _localDataSource.watchVariants(productId)) {
+        final entities = rows.map((r) => VariantEntity(
+          id: r.id,
+          productId: r.productId,
+          productCode: r.sku,
+          color: r.color,
+          size: r.size,
+          quantity: r.quantity,
+          costPrice: r.costPrice,
+          salePrice: r.sellPrice,
+          wholesalePrice: r.wholesalePrice,
+          minStock: 5,
+          createdAt: r.createdAt,
+        )).toList();
+        yield Right(entities);
+      }
+    } catch (e) {
+      yield Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, void>> addVariant(VariantEntity variant) async {
     try {
       await _localDataSource.createVariant(
@@ -125,6 +149,30 @@ class VariantRepositoryImpl implements VariantRepository {
       return Right(entities);
     } catch (e) {
       return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Stream<Either<Failure, List<VariantEntity>>> watchAllVariants() async* {
+    try {
+      await for (final rows in _localDataSource.watchAllVariants()) {
+        final entities = rows.map((r) => VariantEntity(
+          id: r.id,
+          productId: r.productId,
+          productCode: r.sku,
+          color: r.color,
+          size: r.size,
+          quantity: r.quantity,
+          costPrice: r.costPrice,
+          salePrice: r.sellPrice,
+          wholesalePrice: r.wholesalePrice,
+          minStock: 5,
+          createdAt: r.createdAt,
+        )).toList();
+        yield Right(entities);
+      }
+    } catch (e) {
+      yield Left(ServerFailure(e.toString()));
     }
   }
 }

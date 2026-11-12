@@ -24,6 +24,17 @@ class VariantLocalDataSource {
     return (_db.select(_db.productVariants)..where((t) => t.deletedAt.isNull())).get();
   }
 
+  Stream<List<ProductVariant>> watchAllVariants() {
+    return (_db.select(_db.productVariants)..where((t) => t.deletedAt.isNull())).watch();
+  }
+
+  Stream<List<ProductVariant>> watchVariants(String productId) {
+    return (_db
+          .select(_db.productVariants)
+          ..where((t) => t.productId.equals(productId) & t.deletedAt.isNull()))
+        .watch();
+  }
+
   Future<List<ProductVariant>> getVariants(String productId) async {
     return (_db.select(_db.productVariants)
           ..where((t) => t.productId.equals(productId) & t.deletedAt.isNull()))

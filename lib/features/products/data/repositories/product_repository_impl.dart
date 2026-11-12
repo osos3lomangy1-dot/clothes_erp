@@ -32,6 +32,27 @@ class ProductRepositoryImpl implements ProductRepository {
   }
 
   @override
+  Stream<Either<Failure, List<ProductEntity>>> watchAllProducts() async* {
+    try {
+      await for (final rows in _localDataSource.watchAllProducts()) {
+        final entities = rows.map((r) => ProductEntity(
+          id: r.id,
+          name: r.name,
+          description: r.description ?? '',
+          categoryId: r.categoryId,
+          categoryName: '',
+          createdAt: r.createdAt,
+          minStock: r.minStock,
+          isActive: r.isActive,
+        )).toList();
+        yield Right(entities);
+      }
+    } catch (e) {
+      yield Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, void>> addProduct(ProductEntity product) async {
     try {
       await _localDataSource.createProduct(

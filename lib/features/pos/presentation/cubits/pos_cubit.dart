@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import '../../domain/entities/sale_entity.dart';
@@ -92,6 +93,7 @@ class PosCubit extends Cubit<PosState> {
   Map<String, String> _categoryNameMap = {};
   String _currentSearchQuery = '';
   String _currentSelectedCategoryId = 'All';
+  StreamSubscription? _variantsSubscription;
 
   PosCubit(
     this._createSaleUseCase,
@@ -104,7 +106,6 @@ class PosCubit extends Cubit<PosState> {
   Future<void> init() async {
     emit(const PosLoading());
     try {
-      final variantsResult = await _variantRepository.getAllVariants();
       final categoriesResult = await _categoryRepository.getCategories();
       final productsResult = await _productRepository.getProducts();
 
@@ -114,30 +115,36 @@ class PosCubit extends Cubit<PosState> {
       _productNameMap = {for (final p in products) p.id: p.name};
       _categoryNameMap = {for (final c in categories) c.id: c.name};
 
-      variantsResult.fold(
-        (failure) => emit(PosError(failure.message)),
-        (variants) {
-          _allVariants = variants.map((v) => VariantEntity(
-            id: v.id,
-            productId: v.productId,
-            productCode: v.productCode,
-            color: v.color,
-            size: v.size,
-            quantity: v.quantity,
-            costPrice: v.costPrice,
-            salePrice: v.salePrice,
-            minStock: v.minStock,
-            createdAt: v.createdAt,
-            productName: _productNameMap[v.productId],
-          )).toList();
-          _currentSearchQuery = '';
-          _currentSelectedCategoryId = 'All';
-          emit(PosLoaded(
-            filteredVariants: _allVariants,
-            categories: categories,
-            selectedCategory: 'All',
-          ));
+      _variantsSubscription?.cancel();
+      _variantsSubscription = _variantRepository.watchAllVariants().listen(
+        (result) {
+          result.fold(
+            (failure) => emit(PosError(failure.message)),
+            (variants) {
+              _allVariants = variants.map((v) => VariantEntity(
+                id: v.id,
+                productId: v.productId,
+                productCode: v.productCode,
+                color: v.color,
+                size: v.size,
+                quantity: v.quantity,
+                costPrice: v.costPrice,
+                salePrice: v.salePrice,
+                minStock: v.minStock,
+                createdAt: v.createdAt,
+                productName: _productNameMap[v.productId],
+              )).toList();
+              _currentSearchQuery = '';
+              _currentSelectedCategoryId = 'All';
+              emit(PosLoaded(
+                filteredVariants: _allVariants,
+                categories: categories,
+                selectedCategory: 'All',
+              ));
+            },
+          );
         },
+        onError: (e) => emit(PosError('تعذر تحميل بيانات نقطة البيع: $e')),
       );
     } catch (e) {
       emit(PosError('تعذر تحميل بيانات نقطة البيع: $e'));
@@ -396,5 +403,11 @@ class PosCubit extends Cubit<PosState> {
   void _updateCart(PosState state, List<SaleItemEntity> newCart) {
     final subtotal = newCart.fold(0, (sum, item) => sum + item.total);
     emit(state.copyWith(cart: newCart, subtotal: subtotal, total: subtotal));
+  }
+
+  @override
+  Future<void> close() {
+    _variantsSubscription?.cancel();
+    return super.close();
   }
 }

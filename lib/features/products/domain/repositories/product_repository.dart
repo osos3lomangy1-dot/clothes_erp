@@ -5,6 +5,7 @@ import '../entities/product_entity.dart';
 
 abstract class ProductRepository {
   Future<Either<Failure, List<ProductEntity>>> getProducts();
+  Stream<Either<Failure, List<ProductEntity>>> watchAllProducts();
   Future<Either<Failure, void>> addProduct(ProductEntity product);
   Future<Either<Failure, String>> addProductWithVariants(ProductEntity product, List<VariantInput> variants);
   Future<Either<Failure, void>> updateProduct(ProductEntity product);

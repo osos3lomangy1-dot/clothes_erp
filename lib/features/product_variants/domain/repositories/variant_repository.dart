@@ -4,6 +4,8 @@ import '../entities/variant_entity.dart';
 
 abstract class VariantRepository {
   Future<Either<Failure, List<VariantEntity>>> getVariants(String productId);
+  Stream<Either<Failure, List<VariantEntity>>> watchVariants(String productId);
+  Stream<Either<Failure, List<VariantEntity>>> watchAllVariants();
   Future<Either<Failure, void>> addVariant(VariantEntity variant);
   Future<Either<Failure, void>> updateVariant(VariantEntity variant);
   Future<Either<Failure, void>> deleteVariant(String id);

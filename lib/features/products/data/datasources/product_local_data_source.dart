@@ -25,6 +25,17 @@ class ProductLocalDataSource {
     return (_db.select(_db.products)..where((t) => t.deletedAt.isNull())).get();
   }
 
+  Stream<List<Product>> watchAllProducts() {
+    return (_db.select(_db.products)..where((t) => t.deletedAt.isNull())).watch();
+  }
+
+  Stream<List<Product>> watchActiveProducts() {
+    return (_db
+          .select(_db.products)
+          ..where((t) => t.deletedAt.isNull() & t.isActive.equals(true)))
+        .watch();
+  }
+
   Future<Product?> getProduct(String id) async {
     return (_db.select(_db.products)..where((t) => t.id.equals(id))).getSingleOrNull();
   }
