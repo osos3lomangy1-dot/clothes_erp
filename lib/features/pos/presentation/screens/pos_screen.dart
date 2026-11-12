@@ -89,6 +89,21 @@ class _PosViewState extends State<_PosView> {
 
   @override
   Widget build(BuildContext context) {
+    try {
+      return _buildContent(context);
+    } catch (e, st) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('POS Error')),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: SelectableText('PosView error:\n$e\n\n$st',
+              style: const TextStyle(color: Colors.red, fontSize: 12)),
+        ),
+      );
+    }
+  }
+
+  Widget _buildContent(BuildContext context) {
     return BlocBuilder<ShiftCubit, ShiftState>(
       builder: (context, shiftState) {
         final authState = context.watch<AuthCubit>().state;
