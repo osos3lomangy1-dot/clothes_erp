@@ -212,13 +212,35 @@ class _PosViewState extends State<_PosView> {
               children: [
                 // Right Panel in RTL: Products Catalog
                 Expanded(
-                  child: _ProductPanel(searchFocusNode: _searchFocusNode),
+                  child: Builder(
+                    builder: (ctx) {
+                      try {
+                        return _ProductPanel(searchFocusNode: _searchFocusNode);
+                      } catch (e, st) {
+                        return SingleChildScrollView(
+                          padding: const EdgeInsets.all(16),
+                          child: Text('ProductPanel error: $e\n$st', style: const TextStyle(color: Colors.red, fontSize: 12)),
+                        );
+                      }
+                    },
+                  ),
                 ),
                 const VerticalDivider(width: 1, thickness: 1, color: AppColors.outlineVariant),
                 // Left Panel in RTL: Cart (Fixed 440px)
-                const SizedBox(
+                SizedBox(
                   width: 440,
-                  child: _CartPanel(),
+                  child: Builder(
+                    builder: (ctx) {
+                      try {
+                        return const _CartPanel();
+                      } catch (e, st) {
+                        return SingleChildScrollView(
+                          padding: const EdgeInsets.all(16),
+                          child: Text('CartPanel error: $e\n$st', style: const TextStyle(color: Colors.red, fontSize: 12)),
+                        );
+                      }
+                    },
+                  ),
                 ),
               ],
             ),
@@ -434,6 +456,18 @@ class _ProductPanelState extends State<_ProductPanel> {
 
   @override
   Widget build(BuildContext context) {
+    try {
+      return _buildContent(context);
+    } catch (e, st) {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Text('ProductPanel build error:\n$e\n$st',
+            style: const TextStyle(color: Colors.red, fontSize: 11)),
+      );
+    }
+  }
+
+  Widget _buildContent(BuildContext context) {
     return Column(
       children: [
         // Search Bar: clean search input with F2 shortcut
@@ -517,33 +551,42 @@ class _ProductPanelState extends State<_ProductPanel> {
         // Category Chips: Horizontal scrollable row
         BlocBuilder<PosCubit, PosState>(
           builder: (context, state) {
-            final allSelected = state.selectedCategory == 'All';
-            return SizedBox(
-              height: 44,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                children: [
-                  _categoryChip(
-                    label: 'الكل',
-                    isSelected: allSelected,
-                    onTap: () => context.read<PosCubit>().filterByCategory('All'),
-                  ),
-                  const SizedBox(width: 8),
-                  ...state.categories.map((cat) {
-                    final isSelected = state.selectedCategory == cat.id;
-                    return Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: _categoryChip(
-                        label: cat.name,
-                        isSelected: isSelected,
-                        onTap: () => context.read<PosCubit>().filterByCategory(cat.id),
-                      ),
-                    );
-                  }),
-                ],
-              ),
-            );
+            try {
+              final allSelected = state.selectedCategory == 'All';
+              return SizedBox(
+                height: 44,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  children: [
+                    _categoryChip(
+                      label: 'الكل',
+                      isSelected: allSelected,
+                      onTap: () => context.read<PosCubit>().filterByCategory('All'),
+                    ),
+                    const SizedBox(width: 8),
+                    ...state.categories.map((cat) {
+                      final isSelected = state.selectedCategory == cat.id;
+                      return Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: _categoryChip(
+                          label: cat.name,
+                          isSelected: isSelected,
+                          onTap: () => context.read<PosCubit>().filterByCategory(cat.id),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              );
+            } catch (e, st) {
+              return Container(
+                height: 44,
+                color: Colors.red.shade50,
+                padding: const EdgeInsets.all(8),
+                child: Text('CatChip error: $e', style: const TextStyle(color: Colors.red, fontSize: 10)),
+              );
+            }
           },
         ),
 
@@ -553,72 +596,79 @@ class _ProductPanelState extends State<_ProductPanel> {
         Expanded(
           child: BlocBuilder<PosCubit, PosState>(
             builder: (context, state) {
-              if (state is PosLoading) {
-                return const Center(child: CircularProgressIndicator(color: AppColors.primary));
-              }
-              if (state is PosError) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.error_outline_rounded, size: 64, color: AppColors.error),
-                      const SizedBox(height: 12),
-                      Text(
-                        state.message,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.cairo(
-                          color: AppColors.error,
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
+              try {
+                if (state is PosLoading) {
+                  return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+                }
+                if (state is PosError) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline_rounded, size: 64, color: AppColors.error),
+                        const SizedBox(height: 12),
+                        Text(
+                          state.message,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.cairo(
+                            color: AppColors.error,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: () => context.read<PosCubit>().init(),
-                        icon: const Icon(Icons.refresh_rounded),
-                        label: Text('إعادة المحاولة', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          onPressed: () => context.read<PosCubit>().init(),
+                          icon: const Icon(Icons.refresh_rounded),
+                          label: Text('إعادة المحاولة', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                  );
+                }
+                if (state.filteredVariants.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey.shade400),
+                        const SizedBox(height: 12),
+                        Text(
+                          'لا توجد منتجات مطابقة للبحث',
+                          style: GoogleFonts.cairo(color: Colors.grey.shade600, fontSize: 15),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                final posCubit = context.read<PosCubit>();
+                return GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    mainAxisSpacing: 14,
+                    crossAxisSpacing: 14,
+                    childAspectRatio: 0.84,
                   ),
+                  itemCount: state.filteredVariants.length,
+                  itemBuilder: (context, index) {
+                    final variant = state.filteredVariants[index];
+                    final catId = posCubit.getProductCategoryId(variant.productId);
+                    return _ProductCard(variant: variant, categoryId: catId);
+                  },
+                );
+              } catch (e, st) {
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Text('Grid error: $e\n$st', style: const TextStyle(color: Colors.red, fontSize: 11)),
                 );
               }
-              if (state.filteredVariants.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey.shade400),
-                      const SizedBox(height: 12),
-                      Text(
-                        'لا توجد منتجات مطابقة للبحث',
-                        style: GoogleFonts.cairo(color: Colors.grey.shade600, fontSize: 15),
-                      ),
-                    ],
-                  ),
-                );
-              }
-              final posCubit = context.read<PosCubit>();
-              return GridView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  mainAxisSpacing: 14,
-                  crossAxisSpacing: 14,
-                  childAspectRatio: 0.84,
-                ),
-                itemCount: state.filteredVariants.length,
-                itemBuilder: (context, index) {
-                  final variant = state.filteredVariants[index];
-                  final catId = posCubit.getProductCategoryId(variant.productId);
-                  return _ProductCard(variant: variant, categoryId: catId);
-                },
-              );
             },
           ),
         ),
@@ -1468,6 +1518,18 @@ class _CartPanelState extends State<_CartPanel> {
 
   @override
   Widget build(BuildContext context) {
+    try {
+      return _buildContent(context);
+    } catch (e, st) {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Text('CartPanel build error:\n$e\n$st',
+            style: const TextStyle(color: Colors.red, fontSize: 11)),
+      );
+    }
+  }
+
+  Widget _buildContent(BuildContext context) {
     return BlocBuilder<PosCubit, PosState>(
       builder: (context, state) {
         final totalPieces = state.cart.fold<int>(0, (sum, item) => sum + item.quantity);
