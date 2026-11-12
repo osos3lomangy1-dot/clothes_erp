@@ -1063,14 +1063,29 @@ class _VariantModalState extends State<_VariantModal> {
   @override
   void initState() {
     super.initState();
-    final posCubit = context.read<PosCubit>();
-    final allProductVariants = posCubit.getVariantsForProduct(widget.initialVariant.productId);
-    _productVariants = allProductVariants.isNotEmpty
-        ? allProductVariants
-        : [widget.initialVariant];
-
     _selectedColor = widget.initialVariant.color;
     _selectedSize = widget.initialVariant.size;
+    _productVariants = [widget.initialVariant];
+  }
+
+  bool _initialized = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
+    try {
+      final posCubit = context.read<PosCubit>();
+      final allProductVariants = posCubit.getVariantsForProduct(widget.initialVariant.productId);
+      setState(() {
+        _productVariants = allProductVariants.isNotEmpty
+            ? allProductVariants
+            : [widget.initialVariant];
+      });
+    } catch (_) {
+      _productVariants = [widget.initialVariant];
+    }
   }
 
   VariantEntity get _currentVariant {
