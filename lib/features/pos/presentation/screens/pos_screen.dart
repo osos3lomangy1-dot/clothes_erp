@@ -745,6 +745,21 @@ class _ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    try {
+      return _buildContent(context);
+    } catch (e, st) {
+      return Container(
+        padding: const EdgeInsets.all(8),
+        color: Colors.red.shade50,
+        child: SingleChildScrollView(
+          child: Text('ProductCard error:\n$e\n$st',
+              style: const TextStyle(color: Colors.red, fontSize: 10)),
+        ),
+      );
+    }
+  }
+
+  Widget _buildContent(BuildContext context) {
     final isOut = variant.quantity <= 0;
     final isLow = variant.quantity > 0 && variant.quantity <= 10;
     final categoryColor = _getCategoryColor(categoryId);
@@ -2397,6 +2412,21 @@ class _CartItemTileState extends State<_CartItemTile> {
 
   @override
   Widget build(BuildContext context) {
+    try {
+      return _buildContent(context);
+    } catch (e, st) {
+      return Container(
+        padding: const EdgeInsets.all(8),
+        color: Colors.red.shade50,
+        child: SingleChildScrollView(
+          child: Text('CartItemTile error:\n$e\n$st',
+              style: const TextStyle(color: Colors.red, fontSize: 10)),
+        ),
+      );
+    }
+  }
+
+  Widget _buildContent(BuildContext context) {
     final item = widget.item;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
