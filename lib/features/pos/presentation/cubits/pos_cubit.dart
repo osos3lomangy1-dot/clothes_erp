@@ -138,15 +138,44 @@ class PosCubit extends Cubit<PosState> {
                 createdAt: v.createdAt,
                 productName: _productNameMap[v.productId],
               )).toList();
-              _currentSearchQuery = '';
-              _currentSelectedCategoryId = 'All';
-              if (!isClosed) {
-                emit(PosLoaded(
-                  filteredVariants: _allVariants,
-                  categories: categories,
-                  selectedCategory: 'All',
-                ));
+              if (isClosed) return;
+              final prev = this.state;
+              List<VariantEntity> filtered = _allVariants;
+              if (_currentSelectedCategoryId != 'All') {
+                filtered = filtered
+                    .where((v) => _productCategoryMap[v.productId] == _currentSelectedCategoryId)
+                    .toList();
               }
+              if (_currentSearchQuery.trim().isNotEmpty) {
+                final q = _normalize(_currentSearchQuery);
+                filtered = filtered.where((v) {
+                  final prodName = _normalize(getProductName(v.productId));
+                  final variantProdName = _normalize(v.productName);
+                  final sku = _normalize(v.sku);
+                  final code = _normalize(v.productCode);
+                  final color = _normalize(v.color);
+                  final size = _normalize(v.size);
+                  final catId = _productCategoryMap[v.productId];
+                  final catName = _normalize(_categoryNameMap[catId] ?? '');
+                  return prodName.contains(q) ||
+                      variantProdName.contains(q) ||
+                      sku.contains(q) ||
+                      code.contains(q) ||
+                      color.contains(q) ||
+                      size.contains(q) ||
+                      catName.contains(q);
+                }).toList();
+              }
+              emit(PosLoaded(
+                filteredVariants: filtered,
+                categories: categories,
+                selectedCategory: _currentSelectedCategoryId,
+                cart: prev.cart,
+                customer: prev.customer,
+                subtotal: prev.subtotal,
+                total: prev.total,
+                isProcessing: prev.isProcessing,
+              ));
             },
           );
         },
@@ -186,6 +215,7 @@ class PosCubit extends Cubit<PosState> {
   }
 
   void _applyFilters() {
+    if (isClosed) return;
     final state = this.state;
     List<VariantEntity> result = _allVariants;
 
@@ -217,6 +247,7 @@ class PosCubit extends Cubit<PosState> {
       }).toList();
     }
 
+    if (isClosed) return;
     emit(state.copyWith(
       filteredVariants: result,
       selectedCategory: _currentSelectedCategoryId,
