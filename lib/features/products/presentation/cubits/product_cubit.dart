@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
-import '../../domain/usecases/get_products_usecase.dart';
 import '../../domain/usecases/delete_product_usecase.dart';
 import '../../domain/repositories/product_repository.dart';
 import 'product_state.dart';
@@ -23,9 +22,13 @@ class ProductCubit extends Cubit<ProductState> {
     _productsSubscription?.cancel();
     _productsSubscription = _productRepository.watchAllProducts().listen(
       (result) {
+        if (isClosed) return;
         result.fold(
-          (failure) => emit(ProductError(failure.message)),
+          (failure) {
+            if (!isClosed) emit(ProductError(failure.message));
+          },
           (products) {
+            if (isClosed) return;
             if (products.isEmpty) {
               emit(ProductEmpty());
             } else {
@@ -34,7 +37,9 @@ class ProductCubit extends Cubit<ProductState> {
           },
         );
       },
-      onError: (e) => emit(ProductError('تعذر تحميل بيانات المنتجات: $e')),
+      onError: (e) {
+        if (!isClosed) emit(ProductError('تعذر تحميل بيانات المنتجات: $e'));
+      },
     );
   }
 

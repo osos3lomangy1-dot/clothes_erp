@@ -118,9 +118,13 @@ class PosCubit extends Cubit<PosState> {
       _variantsSubscription?.cancel();
       _variantsSubscription = _variantRepository.watchAllVariants().listen(
         (result) {
+          if (isClosed) return;
           result.fold(
-            (failure) => emit(PosError(failure.message)),
+            (failure) {
+              if (!isClosed) emit(PosError(failure.message));
+            },
             (variants) {
+              if (isClosed) return;
               _allVariants = variants.map((v) => VariantEntity(
                 id: v.id,
                 productId: v.productId,
@@ -136,15 +140,19 @@ class PosCubit extends Cubit<PosState> {
               )).toList();
               _currentSearchQuery = '';
               _currentSelectedCategoryId = 'All';
-              emit(PosLoaded(
-                filteredVariants: _allVariants,
-                categories: categories,
-                selectedCategory: 'All',
-              ));
+              if (!isClosed) {
+                emit(PosLoaded(
+                  filteredVariants: _allVariants,
+                  categories: categories,
+                  selectedCategory: 'All',
+                ));
+              }
             },
           );
         },
-        onError: (e) => emit(PosError('تعذر تحميل بيانات نقطة البيع: $e')),
+        onError: (e) {
+          if (!isClosed) emit(PosError('تعذر تحميل بيانات نقطة البيع: $e'));
+        },
       );
     } catch (e) {
       emit(PosError('تعذر تحميل بيانات نقطة البيع: $e'));

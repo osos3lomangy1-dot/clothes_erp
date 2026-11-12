@@ -285,7 +285,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i348.VariantCubit>(
       () => _i348.VariantCubit(
         gh<_i77.VariantRepository>(),
-        gh<_i56.GetVariantsUseCase>(),
         gh<_i333.DeleteVariantUseCase>(),
       ),
     );
