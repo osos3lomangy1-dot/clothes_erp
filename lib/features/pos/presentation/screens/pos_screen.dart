@@ -1036,9 +1036,13 @@ class _ProductCard extends StatelessWidget {
   }
 
   void _showVariantModal(BuildContext context, VariantEntity variant) {
+    final posCubit = context.read<PosCubit>();
     showDialog(
       context: context,
-      builder: (_) => _VariantModal(initialVariant: variant),
+      builder: (_) => BlocProvider.value(
+        value: posCubit,
+        child: _VariantModal(initialVariant: variant),
+      ),
     );
   }
 }
