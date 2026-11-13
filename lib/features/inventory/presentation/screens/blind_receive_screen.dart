@@ -326,22 +326,29 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
 
   @override
   Widget build(BuildContext context) {
+    final authState = context.watch<AuthCubit>().state;
+    final isCashier =
+        authState is AuthAuthenticated && authState.user.role == 'cashier';
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
-          tooltip: 'رجوع',
-          onPressed: () {
-            if (widget.onBack != null) {
-              widget.onBack!();
-            } else if (Navigator.canPop(context)) {
-              Navigator.pop(context);
-            }
-          },
-        ),
+        automaticallyImplyLeading: false,
+        leading: isCashier
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
+                tooltip: 'رجوع',
+                onPressed: () {
+                  if (widget.onBack != null) {
+                    widget.onBack!();
+                  } else if (Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  }
+                },
+              )
+            : null,
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
