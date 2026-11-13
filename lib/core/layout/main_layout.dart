@@ -155,14 +155,38 @@ class _MainLayoutState extends State<MainLayout> {
                           _navItem(Icons.receipt_long_rounded, 'سجل فواتير المبيعات', const InvoicesScreen()),
                           _navItem(Icons.inventory_2_rounded, 'المنتجات والتصنيفات', const ProductListScreen()),
                           _navItem(Icons.warehouse_rounded, 'إدارة المخزون', const InventoryScreen()),
-                          _navItem(Icons.local_shipping_rounded, 'المشتريات والموردين', const PurchasesScreen()),
+                          BlocBuilder<AuthCubit, AuthState>(
+                            builder: (context, authState) {
+                              final isAdmin = authState is! AuthAuthenticated || authState.user.role == 'admin';
+                              if (!isAdmin) return const SizedBox.shrink();
+                              return _navItem(Icons.local_shipping_rounded, 'المشتريات والموردين', const PurchasesScreen());
+                            },
+                          ),
                           _navItem(Icons.history_rounded, 'حركات المخزن', const InventoryLogsScreen()),
                           _navItem(Icons.people_alt_rounded, 'سجل العملاء', const CustomerScreen()),
                           _navItem(Icons.payments_outlined, 'إدارة المصروفات', const ExpensesScreen()),
                           _navItem(Icons.assignment_return_rounded, 'إدارة المرتجعات', const ReturnScreen()),
-                          _navItem(Icons.bar_chart_rounded, 'تقارير المبيعات', const ReportsScreen()),
-                          _navItem(Icons.handshake_rounded, 'الشركاء وتوزيع الأرباح', const PartnersScreen()),
-                          _navItem(Icons.badge_rounded, 'فريق العمل والموظفون', const EmployeeListScreen()),
+                          BlocBuilder<AuthCubit, AuthState>(
+                            builder: (context, authState) {
+                              final isAdmin = authState is! AuthAuthenticated || authState.user.role == 'admin';
+                              if (!isAdmin) return const SizedBox.shrink();
+                              return _navItem(Icons.bar_chart_rounded, 'تقارير المبيعات', const ReportsScreen());
+                            },
+                          ),
+                          BlocBuilder<AuthCubit, AuthState>(
+                            builder: (context, authState) {
+                              final isAdmin = authState is! AuthAuthenticated || authState.user.role == 'admin';
+                              if (!isAdmin) return const SizedBox.shrink();
+                              return _navItem(Icons.handshake_rounded, 'الشركاء وتوزيع الأرباح', const PartnersScreen());
+                            },
+                          ),
+                          BlocBuilder<AuthCubit, AuthState>(
+                            builder: (context, authState) {
+                              final isAdmin = authState is! AuthAuthenticated || authState.user.role == 'admin';
+                              if (!isAdmin) return const SizedBox.shrink();
+                              return _navItem(Icons.badge_rounded, 'فريق العمل والموظفون', const EmployeeListScreen());
+                            },
+                          ),
                           BlocBuilder<AuthCubit, AuthState>(
                             builder: (context, authState) {
                               final isAdmin = authState is! AuthAuthenticated || authState.user.role == 'admin';

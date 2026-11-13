@@ -401,6 +401,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i758.ProductRepository>(
       () => _i492.ProductRepositoryImpl(gh<_i878.ProductLocalDataSource>()),
     );
+    gh.lazySingleton<_i698.PurchasesRepository>(
+      () => _i138.PurchasesRepositoryImpl(
+        gh<_i245.PurchasesLocalDataSource>(),
+        gh<_i526.AuthLocalDataSource>(),
+      ),
+    );
     gh.lazySingleton<_i77.VariantRepository>(
       () => _i780.VariantRepositoryImpl(gh<_i577.VariantLocalDataSource>()),
     );
@@ -488,9 +494,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i202.AddVariantUseCase>(),
         gh<_i1031.UpdateVariantUseCase>(),
       ),
-    );
-    gh.lazySingleton<_i698.PurchasesRepository>(
-      () => _i138.PurchasesRepositoryImpl(gh<_i245.PurchasesLocalDataSource>()),
     );
     gh.factory<_i348.VariantCubit>(
       () => _i348.VariantCubit(

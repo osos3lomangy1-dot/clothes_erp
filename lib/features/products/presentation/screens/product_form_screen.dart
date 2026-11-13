@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/navigation/app_navigator.dart';
+import '../../../auth/presentation/cubits/auth_cubit.dart';
+import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../data/datasources/product_local_data_source.dart';
 import '../../domain/entities/product_entity.dart';
 import '../cubits/product_form_cubit.dart';
@@ -476,207 +478,234 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                 const SizedBox(height: 12),
 
                                 // Batch Pricing Helper Bar
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surfaceContainer.withValues(alpha: 0.5),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.tune, size: 18, color: AppColors.primary),
-                                      const SizedBox(width: 8),
-                                      const Text('تطبيق موحد:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                                      const SizedBox(width: 12),
-                                      SizedBox(
-                                        width: 100,
-                                        child: TextField(
-                                          controller: _batchCostCtrl,
-                                          keyboardType: TextInputType.number,
-                                          decoration: const InputDecoration(
-                                            isDense: true,
-                                            labelText: 'التكلفة (ج.م)',
-                                            border: OutlineInputBorder(),
-                                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                Builder(
+                                  builder: (context) {
+                                    final authState = context.watch<AuthCubit>().state;
+                                    final isCashier = authState is AuthAuthenticated && authState.user.role.toLowerCase() == 'cashier';
+
+                                    return Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.surfaceContainer.withValues(alpha: 0.5),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.tune, size: 18, color: AppColors.primary),
+                                          const SizedBox(width: 8),
+                                          const Text('تطبيق موحد:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                          const SizedBox(width: 12),
+                                          if (!isCashier) ...[
+                                            SizedBox(
+                                              width: 100,
+                                              child: TextField(
+                                                controller: _batchCostCtrl,
+                                                keyboardType: TextInputType.number,
+                                                decoration: const InputDecoration(
+                                                  isDense: true,
+                                                  labelText: 'التكلفة (ج.م)',
+                                                  border: OutlineInputBorder(),
+                                                  contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                          ],
+                                          SizedBox(
+                                            width: 100,
+                                            child: TextField(
+                                              controller: _batchSellCtrl,
+                                              keyboardType: TextInputType.number,
+                                              decoration: const InputDecoration(
+                                                isDense: true,
+                                                labelText: 'البيع (ج.م)',
+                                                border: OutlineInputBorder(),
+                                                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      SizedBox(
-                                        width: 100,
-                                        child: TextField(
-                                          controller: _batchSellCtrl,
-                                          keyboardType: TextInputType.number,
-                                          decoration: const InputDecoration(
-                                            isDense: true,
-                                            labelText: 'البيع (ج.م)',
-                                            border: OutlineInputBorder(),
-                                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                          const SizedBox(width: 8),
+                                          SizedBox(
+                                            width: 80,
+                                            child: TextField(
+                                              controller: _batchQtyCtrl,
+                                              keyboardType: TextInputType.number,
+                                              decoration: const InputDecoration(
+                                                isDense: true,
+                                                labelText: 'الكمية',
+                                                border: OutlineInputBorder(),
+                                                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      SizedBox(
-                                        width: 80,
-                                        child: TextField(
-                                          controller: _batchQtyCtrl,
-                                          keyboardType: TextInputType.number,
-                                          decoration: const InputDecoration(
-                                            isDense: true,
-                                            labelText: 'الكمية',
-                                            border: OutlineInputBorder(),
-                                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                          const SizedBox(width: 10),
+                                          TextButton.icon(
+                                            icon: const Icon(Icons.done_all, size: 16),
+                                            label: const Text('تطبيق على كل المقاسات', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                            onPressed: _applyBatchValues,
                                           ),
-                                        ),
+                                        ],
                                       ),
-                                      const SizedBox(width: 10),
-                                      TextButton.icon(
-                                        icon: const Icon(Icons.done_all, size: 16),
-                                        label: const Text('تطبيق على كل المقاسات', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                                        onPressed: _applyBatchValues,
-                                      ),
-                                    ],
-                                  ),
+                                    );
+                                  },
                                 ),
 
                                 const SizedBox(height: 14),
 
                                 // Table Header
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey.shade100,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: const Row(
-                                    children: [
-                                      SizedBox(width: 28, child: Text('#', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
-                                      Expanded(flex: 2, child: Text('المقاس (Size)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
-                                      SizedBox(width: 8),
-                                      Expanded(flex: 2, child: Text('اللون (Color)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
-                                      SizedBox(width: 8),
-                                      Expanded(flex: 3, child: Text('كود الصنف / SKU', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
-                                      SizedBox(width: 8),
-                                      Expanded(flex: 2, child: Text('التكلفة (ج.م)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
-                                      SizedBox(width: 8),
-                                      Expanded(flex: 2, child: Text('سعر البيع (ج.م)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
-                                      SizedBox(width: 8),
-                                      Expanded(flex: 2, child: Text('الكمية', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
-                                      SizedBox(width: 40),
-                                    ],
-                                  ),
+                                Builder(
+                                  builder: (context) {
+                                    final authState = context.watch<AuthCubit>().state;
+                                    final isCashier = authState is AuthAuthenticated && authState.user.role.toLowerCase() == 'cashier';
+
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade100,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const SizedBox(width: 28, child: Text('#', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                                          const Expanded(flex: 2, child: Text('المقاس (Size)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                                          const SizedBox(width: 8),
+                                          const Expanded(flex: 2, child: Text('اللون (Color)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                                          const SizedBox(width: 8),
+                                          const Expanded(flex: 3, child: Text('كود الصنف / SKU', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                                          if (!isCashier) ...[
+                                            const SizedBox(width: 8),
+                                            const Expanded(flex: 2, child: Text('التكلفة (ج.م)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                                          ],
+                                          const SizedBox(width: 8),
+                                          const Expanded(flex: 2, child: Text('سعر البيع (ج.م)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                                          const SizedBox(width: 8),
+                                          const Expanded(flex: 2, child: Text('الكمية', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                                          const SizedBox(width: 40),
+                                        ],
+                                      ),
+                                    );
+                                  },
                                 ),
                                 const SizedBox(height: 6),
 
                                 // Table Rows
-                                ListView.separated(
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  itemCount: _rows.length,
-                                  separatorBuilder: (_, index) => const SizedBox(height: 8),
-                                  itemBuilder: (context, idx) {
-                                    final r = _rows[idx];
-                                    return Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(color: Colors.grey.shade200),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          SizedBox(
-                                            width: 28,
-                                            child: Text('${idx + 1}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                                Builder(
+                                  builder: (context) {
+                                    final authState = context.watch<AuthCubit>().state;
+                                    final isCashier = authState is AuthAuthenticated && authState.user.role.toLowerCase() == 'cashier';
+
+                                    return ListView.separated(
+                                      shrinkWrap: true,
+                                      physics: const NeverScrollableScrollPhysics(),
+                                      itemCount: _rows.length,
+                                      separatorBuilder: (_, index) => const SizedBox(height: 8),
+                                      itemBuilder: (context, idx) {
+                                        final r = _rows[idx];
+                                        return Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(color: Colors.grey.shade200),
                                           ),
-                                          Expanded(
-                                            flex: 2,
-                                            child: TextFormField(
-                                              controller: r.sizeCtrl,
-                                              decoration: const InputDecoration(
-                                                isDense: true,
-                                                hintText: 'M / 32',
-                                                border: OutlineInputBorder(),
-                                                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                          child: Row(
+                                            children: [
+                                              SizedBox(
+                                                width: 28,
+                                                child: Text('${idx + 1}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
                                               ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            flex: 2,
-                                            child: TextFormField(
-                                              controller: r.colorCtrl,
-                                              decoration: const InputDecoration(
-                                                isDense: true,
-                                                hintText: 'أسود',
-                                                border: OutlineInputBorder(),
-                                                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                              Expanded(
+                                                flex: 2,
+                                                child: TextFormField(
+                                                  controller: r.sizeCtrl,
+                                                  decoration: const InputDecoration(
+                                                    isDense: true,
+                                                    hintText: 'M / 32',
+                                                    border: OutlineInputBorder(),
+                                                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                                  ),
+                                                ),
                                               ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            flex: 3,
-                                            child: TextFormField(
-                                              controller: r.skuCtrl,
-                                              decoration: const InputDecoration(
-                                                isDense: true,
-                                                hintText: 'الكود / SKU',
-                                                border: OutlineInputBorder(),
-                                                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                flex: 2,
+                                                child: TextFormField(
+                                                  controller: r.colorCtrl,
+                                                  decoration: const InputDecoration(
+                                                    isDense: true,
+                                                    hintText: 'أسود',
+                                                    border: OutlineInputBorder(),
+                                                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                                  ),
+                                                ),
                                               ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            flex: 2,
-                                            child: TextFormField(
-                                              controller: r.costCtrl,
-                                              keyboardType: TextInputType.number,
-                                              decoration: const InputDecoration(
-                                                isDense: true,
-                                                hintText: 'التكلفة',
-                                                border: OutlineInputBorder(),
-                                                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                flex: 3,
+                                                child: TextFormField(
+                                                  controller: r.skuCtrl,
+                                                  decoration: const InputDecoration(
+                                                    isDense: true,
+                                                    hintText: 'الكود / SKU',
+                                                    border: OutlineInputBorder(),
+                                                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                                  ),
+                                                ),
                                               ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            flex: 2,
-                                            child: TextFormField(
-                                              controller: r.sellCtrl,
-                                              keyboardType: TextInputType.number,
-                                              decoration: const InputDecoration(
-                                                isDense: true,
-                                                hintText: 'البيع',
-                                                border: OutlineInputBorder(),
-                                                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                              if (!isCashier) ...[
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  flex: 2,
+                                                  child: TextFormField(
+                                                    controller: r.costCtrl,
+                                                    keyboardType: TextInputType.number,
+                                                    decoration: const InputDecoration(
+                                                      isDense: true,
+                                                      hintText: 'التكلفة',
+                                                      border: OutlineInputBorder(),
+                                                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                flex: 2,
+                                                child: TextFormField(
+                                                  controller: r.sellCtrl,
+                                                  keyboardType: TextInputType.number,
+                                                  decoration: const InputDecoration(
+                                                    isDense: true,
+                                                    hintText: 'البيع',
+                                                    border: OutlineInputBorder(),
+                                                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                                  ),
+                                                ),
                                               ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            flex: 2,
-                                            child: TextFormField(
-                                              controller: r.qtyCtrl,
-                                              keyboardType: TextInputType.number,
-                                              decoration: const InputDecoration(
-                                                isDense: true,
-                                                hintText: 'الكمية',
-                                                border: OutlineInputBorder(),
-                                                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                flex: 2,
+                                                child: TextFormField(
+                                                  controller: r.qtyCtrl,
+                                                  keyboardType: TextInputType.number,
+                                                  decoration: const InputDecoration(
+                                                    isDense: true,
+                                                    hintText: 'الكمية',
+                                                    border: OutlineInputBorder(),
+                                                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                                  ),
+                                                ),
                                               ),
-                                            ),
+                                              const SizedBox(width: 8),
+                                              IconButton(
+                                                icon: const Icon(Icons.remove_circle_outline, color: Colors.red, size: 20),
+                                                tooltip: 'حذف هذا السطر',
+                                                onPressed: _rows.length > 1 ? () => _removeRow(idx) : null,
+                                              ),
+                                            ],
                                           ),
-                                          const SizedBox(width: 8),
-                                          IconButton(
-                                            icon: const Icon(Icons.remove_circle_outline, color: Colors.red, size: 20),
-                                            tooltip: 'حذف هذا السطر',
-                                            onPressed: _rows.length > 1 ? () => _removeRow(idx) : null,
-                                          ),
-                                        ],
-                                      ),
+                                        );
+                                      },
                                     );
                                   },
                                 ),

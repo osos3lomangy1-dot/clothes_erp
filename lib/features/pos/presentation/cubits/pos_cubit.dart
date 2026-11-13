@@ -139,7 +139,7 @@ class PosCubit extends Cubit<PosState> {
                 productName: _productNameMap[v.productId],
               )).toList();
               if (isClosed) return;
-              final prev = this.state;
+              final prev = state;
               List<VariantEntity> filtered = _allVariants;
               if (_currentSelectedCategoryId != 'All') {
                 filtered = filtered

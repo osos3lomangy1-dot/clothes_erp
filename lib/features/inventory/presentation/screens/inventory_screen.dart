@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/money.dart';
+import '../../../auth/presentation/cubits/auth_cubit.dart';
+import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../../product_variants/domain/entities/variant_entity.dart';
 import '../../../products/presentation/screens/product_form_screen.dart';
 import '../../data/datasources/inventory_local_data_source.dart';
@@ -1263,32 +1265,41 @@ class _QuickAddProductDialogState extends State<_QuickAddProductDialog> {
                         const SizedBox(height: 12),
 
                         // Cost & Sell Prices
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: _costCtrl,
-                                keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(
-                                  labelText: 'سعر التكلفة (ج.م) *',
-                                  prefixIcon: Icon(Icons.attach_money),
-                                  border: OutlineInputBorder(),
+                        Builder(
+                          builder: (context) {
+                            final authState = context.watch<AuthCubit>().state;
+                            final isCashier = authState is AuthAuthenticated && authState.user.role.toLowerCase() == 'cashier';
+
+                            return Row(
+                              children: [
+                                if (!isCashier) ...[
+                                  Expanded(
+                                    child: TextFormField(
+                                      controller: _costCtrl,
+                                      keyboardType: TextInputType.number,
+                                      decoration: const InputDecoration(
+                                        labelText: 'سعر التكلفة (ج.م) *',
+                                        prefixIcon: Icon(Icons.attach_money),
+                                        border: OutlineInputBorder(),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                ],
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _sellCtrl,
+                                    keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(
+                                      labelText: 'سعر البيع (ج.م) *',
+                                      prefixIcon: Icon(Icons.sell_outlined),
+                                      border: OutlineInputBorder(),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: TextFormField(
-                                controller: _sellCtrl,
-                                keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(
-                                  labelText: 'سعر البيع (ج.م) *',
-                                  prefixIcon: Icon(Icons.sell_outlined),
-                                  border: OutlineInputBorder(),
-                                ),
-                              ),
-                            ),
-                          ],
+                              ],
+                            );
+                          },
                         ),
                         const SizedBox(height: 12),
 

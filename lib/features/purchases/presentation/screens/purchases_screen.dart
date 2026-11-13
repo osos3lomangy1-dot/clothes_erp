@@ -172,6 +172,59 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
 
   @override
   Widget build(BuildContext context) {
+    final authState = context.watch<AuthCubit>().state;
+    final isCashier = authState is AuthAuthenticated && authState.user.role.toLowerCase() == 'cashier';
+
+    if (isCashier) {
+      return Scaffold(
+        backgroundColor: AppColors.surface,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: Navigator.canPop(context)
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
+                  onPressed: () => Navigator.pop(context),
+                )
+              : null,
+          title: const Text(
+            'غير مصرح بالدخول',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.onSurface),
+          ),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.lock_outline_rounded, size: 72, color: Colors.grey.shade400),
+              const SizedBox(height: 16),
+              const Text(
+                'عذراً، هذه الشاشة مخصصة للإدارة فقط',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.onSurface),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'لا يمتلك حساب الكاشير صلاحية الوصول إلى بيانات الموردين والمشتريات والمديونيات.',
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+              ),
+              const SizedBox(height: 24),
+              if (Navigator.canPop(context))
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  label: const Text('رجوع', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  onPressed: () => Navigator.pop(context),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (_isCreatingInvoice) {
       return CreatePurchaseScreen(
         onBack: () => setState(() => _isCreatingInvoice = false),

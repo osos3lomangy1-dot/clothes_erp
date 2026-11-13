@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
 import 'package:injectable/injectable.dart';
 import '../../../../core/errors/failures.dart';
+import '../../../auth/data/datasources/auth_local_data_source.dart';
 import '../../domain/entities/purchase_entity.dart';
 import '../../domain/entities/supplier_entity.dart';
 import '../../domain/entities/supplier_payment_entity.dart';
@@ -10,11 +11,28 @@ import '../datasources/purchases_local_data_source.dart';
 @LazySingleton(as: PurchasesRepository)
 class PurchasesRepositoryImpl implements PurchasesRepository {
   final PurchasesLocalDataSource _localDataSource;
+  final AuthLocalDataSource _authLocalDataSource;
 
-  PurchasesRepositoryImpl(this._localDataSource);
+  PurchasesRepositoryImpl(this._localDataSource, this._authLocalDataSource);
+
+  static const String _unauthorizedMsg =
+      'ليس لديك صلاحية للوصول لبيانات المشتريات والموردين (خاص بالإدارة فقط)';
+
+  Future<bool> _isAuthorizedAdmin() async {
+    final user = await _authLocalDataSource.getCachedUser();
+    // Default to true only if no user is cached (e.g. dev/test mode without auth),
+    // but if user has role 'cashier', strictly block.
+    if (user != null && user.role.toLowerCase() == 'cashier') {
+      return false;
+    }
+    return true;
+  }
 
   @override
   Future<Either<Failure, List<SupplierEntity>>> getSuppliers() async {
+    if (!await _isAuthorizedAdmin()) {
+      return const Left(AuthFailure(_unauthorizedMsg));
+    }
     try {
       final list = await _localDataSource.getSuppliers();
       return Right(list);
@@ -30,6 +48,9 @@ class PurchasesRepositoryImpl implements PurchasesRepository {
     String? companyName,
     String? address,
   }) async {
+    if (!await _isAuthorizedAdmin()) {
+      return const Left(AuthFailure(_unauthorizedMsg));
+    }
     try {
       final supplier = await _localDataSource.addSupplier(
         name: name,
@@ -51,6 +72,9 @@ class PurchasesRepositoryImpl implements PurchasesRepository {
     String? companyName,
     String? address,
   }) async {
+    if (!await _isAuthorizedAdmin()) {
+      return const Left(AuthFailure(_unauthorizedMsg));
+    }
     try {
       final supplier = await _localDataSource.updateSupplier(
         id: id,
@@ -67,6 +91,9 @@ class PurchasesRepositoryImpl implements PurchasesRepository {
 
   @override
   Future<Either<Failure, void>> deleteSupplier(String id) async {
+    if (!await _isAuthorizedAdmin()) {
+      return const Left(AuthFailure(_unauthorizedMsg));
+    }
     try {
       await _localDataSource.deleteSupplier(id);
       return const Right(null);
@@ -80,6 +107,9 @@ class PurchasesRepositoryImpl implements PurchasesRepository {
     String? supplierId,
     String? paymentStatus,
   }) async {
+    if (!await _isAuthorizedAdmin()) {
+      return const Left(AuthFailure(_unauthorizedMsg));
+    }
     try {
       final list = await _localDataSource.getPurchases(
         supplierId: supplierId,
@@ -101,6 +131,9 @@ class PurchasesRepositoryImpl implements PurchasesRepository {
     required List<PurchaseItemDraft> items,
     required String userId,
   }) async {
+    if (!await _isAuthorizedAdmin()) {
+      return const Left(AuthFailure(_unauthorizedMsg));
+    }
     try {
       final purchase = await _localDataSource.createPurchaseInvoice(
         supplierId: supplierId,
@@ -128,6 +161,9 @@ class PurchasesRepositoryImpl implements PurchasesRepository {
     String? notes,
     required String userId,
   }) async {
+    if (!await _isAuthorizedAdmin()) {
+      return const Left(AuthFailure(_unauthorizedMsg));
+    }
     try {
       final payment = await _localDataSource.addSupplierPayment(
         supplierId: supplierId,
@@ -150,6 +186,9 @@ class PurchasesRepositoryImpl implements PurchasesRepository {
     String? supplierId,
     String? purchaseId,
   }) async {
+    if (!await _isAuthorizedAdmin()) {
+      return const Left(AuthFailure(_unauthorizedMsg));
+    }
     try {
       final list = await _localDataSource.getSupplierPayments(
         supplierId: supplierId,

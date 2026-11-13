@@ -594,7 +594,7 @@ class _ProductPanelState extends State<_ProductPanel> {
                   ],
                 ),
               );
-            } catch (e, st) {
+            } catch (e) {
               return Container(
                 height: 44,
                 color: Colors.red.shade50,

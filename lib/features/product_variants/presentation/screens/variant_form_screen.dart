@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/navigation/app_navigator.dart';
+import '../../../auth/presentation/cubits/auth_cubit.dart';
+import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../../products/domain/entities/product_entity.dart';
 import '../../domain/entities/variant_entity.dart';
 import '../cubits/variant_form_cubit.dart';
@@ -113,54 +115,63 @@ class VariantFormScreen extends StatelessWidget {
                             onChanged: (value) => context.read<VariantFormCubit>().onQuantityChanged(int.tryParse(value) ?? 0),
                           ),
                           const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextFormField(
-                                  initialValue: (state.costPrice / 100).toStringAsFixed(2),
-                                  decoration: InputDecoration(
-                                    labelText: 'سعر التكلفة (ج.م) *',
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          Builder(
+                            builder: (context) {
+                              final authState = context.watch<AuthCubit>().state;
+                              final isCashier = authState is AuthAuthenticated && authState.user.role.toLowerCase() == 'cashier';
+
+                              return Row(
+                                children: [
+                                  if (!isCashier) ...[
+                                    Expanded(
+                                      child: TextFormField(
+                                        initialValue: (state.costPrice / 100).toStringAsFixed(2),
+                                        decoration: InputDecoration(
+                                          labelText: 'سعر التكلفة (ج.م) *',
+                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
+                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                        onChanged: (value) {
+                                          final val = double.tryParse(value) ?? 0.0;
+                                          context.read<VariantFormCubit>().onCostPriceChanged((val * 100).toInt());
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(width: 14),
+                                  ],
+                                  Expanded(
+                                    child: TextFormField(
+                                      initialValue: (state.salePrice / 100).toStringAsFixed(2),
+                                      decoration: InputDecoration(
+                                        labelText: 'سعر البيع قطاعي (ج.م) *',
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                      onChanged: (value) {
+                                        final val = double.tryParse(value) ?? 0.0;
+                                        context.read<VariantFormCubit>().onSalePriceChanged((val * 100).toInt());
+                                      },
+                                    ),
                                   ),
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                  onChanged: (value) {
-                                    final val = double.tryParse(value) ?? 0.0;
-                                    context.read<VariantFormCubit>().onCostPriceChanged((val * 100).toInt());
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: TextFormField(
-                                  initialValue: (state.salePrice / 100).toStringAsFixed(2),
-                                  decoration: InputDecoration(
-                                    labelText: 'سعر البيع قطاعي (ج.م) *',
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: TextFormField(
+                                      initialValue: state.wholesalePrice > 0 ? (state.wholesalePrice / 100).toStringAsFixed(2) : '',
+                                      decoration: InputDecoration(
+                                        labelText: 'سعر الجملة (ج.م)',
+                                        hintText: 'اختياري',
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                      onChanged: (value) {
+                                        final val = double.tryParse(value) ?? 0.0;
+                                        context.read<VariantFormCubit>().onWholesalePriceChanged((val * 100).toInt());
+                                      },
+                                    ),
                                   ),
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                  onChanged: (value) {
-                                    final val = double.tryParse(value) ?? 0.0;
-                                    context.read<VariantFormCubit>().onSalePriceChanged((val * 100).toInt());
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: TextFormField(
-                                  initialValue: state.wholesalePrice > 0 ? (state.wholesalePrice / 100).toStringAsFixed(2) : '',
-                                  decoration: InputDecoration(
-                                    labelText: 'سعر الجملة (ج.م)',
-                                    hintText: 'اختياري',
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                                  ),
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                  onChanged: (value) {
-                                    final val = double.tryParse(value) ?? 0.0;
-                                    context.read<VariantFormCubit>().onWholesalePriceChanged((val * 100).toInt());
-                                  },
-                                ),
-                              ),
-                            ],
+                                ],
+                              );
+                            },
                           ),
                           const SizedBox(height: 16),
                           TextFormField(
