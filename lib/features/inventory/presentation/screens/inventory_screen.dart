@@ -3,8 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/money.dart';
-import '../../../auth/presentation/cubits/auth_cubit.dart';
-import '../../../auth/presentation/cubits/auth_state.dart';
+import '../../../../core/widgets/app_feedback.dart';
 import '../../../product_variants/domain/entities/variant_entity.dart';
 import '../../../products/presentation/screens/product_form_screen.dart';
 import '../../data/datasources/inventory_local_data_source.dart';
@@ -28,7 +27,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
     super.dispose();
   }
 
-  void _openReceiveStockDialog(BuildContext context, {VariantEntity? preselectedVariant}) {
+  void _openReceiveStockDialog(
+    BuildContext context, {
+    VariantEntity? preselectedVariant,
+  }) {
     final cubit = context.read<InventoryCubit>();
     showDialog(
       context: context,
@@ -38,18 +40,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
         child: _ReceiveStockDialog(preselectedVariant: preselectedVariant),
       ),
     );
-  }
-
-  void _openAddProductDialog(BuildContext context) async {
-    final cubit = context.read<InventoryCubit>();
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const ProductFormDialog(),
-    );
-    if (context.mounted) {
-      cubit.loadInventory();
-    }
   }
 
   @override
@@ -65,7 +55,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
               elevation: 0,
               leading: Navigator.canPop(context)
                   ? IconButton(
-                      icon: const Icon(Icons.arrow_back_rounded, color: AppColors.onSurface),
+                      icon: const Icon(
+                        Icons.arrow_back_rounded,
+                        color: AppColors.onSurface,
+                      ),
                       tooltip: 'رجوع',
                       onPressed: () => Navigator.of(context).maybePop(),
                     )
@@ -75,7 +68,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 children: [
                   const Text(
                     'إدارة المخزون',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: AppColors.onSurface),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                      color: AppColors.onSurface,
+                    ),
                   ),
                   Text(
                     'متابعة كميات الأصناف وتوريد شحنات البضاعة',
@@ -91,13 +88,20 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       isLowStock = state.showLowStockOnly;
                     }
                     return Container(
-                      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                      margin: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 4,
+                      ),
                       padding: const EdgeInsets.symmetric(horizontal: 10),
                       decoration: BoxDecoration(
-                        color: isLowStock ? AppColors.error.withValues(alpha: 0.1) : Colors.grey.shade100,
+                        color: isLowStock
+                            ? AppColors.error.withValues(alpha: 0.1)
+                            : Colors.grey.shade100,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: isLowStock ? AppColors.error : Colors.grey.shade300,
+                          color: isLowStock
+                              ? AppColors.error
+                              : Colors.grey.shade300,
                         ),
                       ),
                       child: Row(
@@ -105,56 +109,35 @@ class _InventoryScreenState extends State<InventoryScreen> {
                           Icon(
                             Icons.warning_amber_rounded,
                             size: 18,
-                            color: isLowStock ? AppColors.error : Colors.grey.shade700,
+                            color: isLowStock
+                                ? AppColors.error
+                                : Colors.grey.shade700,
                           ),
                           const SizedBox(width: 6),
                           Text(
                             'الكميات المنخفضة',
                             style: TextStyle(
                               fontSize: 13,
-                              fontWeight: isLowStock ? FontWeight.bold : FontWeight.normal,
-                              color: isLowStock ? AppColors.error : Colors.grey.shade800,
+                              fontWeight: isLowStock
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              color: isLowStock
+                                  ? AppColors.error
+                                  : Colors.grey.shade800,
                             ),
                           ),
                           const SizedBox(width: 4),
                           Switch(
                             value: isLowStock,
                             activeThumbColor: AppColors.error,
-                            onChanged: (value) => context.read<InventoryCubit>().toggleLowStockFilter(value),
+                            onChanged: (value) => context
+                                .read<InventoryCubit>()
+                                .toggleLowStockFilter(value),
                           ),
                         ],
                       ),
                     );
                   },
-                ),
-                const SizedBox(width: 6),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                      side: const BorderSide(color: AppColors.primary),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                    ),
-                    icon: const Icon(Icons.add_box_outlined, size: 18),
-                    label: const Text('إضافة منتج جديد', style: TextStyle(fontWeight: FontWeight.bold)),
-                    onPressed: () => _openAddProductDialog(context),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                    ),
-                    icon: const Icon(Icons.add_shopping_cart, size: 20),
-                    label: const Text('استلام بضاعة', style: TextStyle(fontWeight: FontWeight.bold)),
-                    onPressed: () => _openReceiveStockDialog(context),
-                  ),
                 ),
               ],
             ),
@@ -168,7 +151,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     controller: _searchController,
                     decoration: InputDecoration(
                       hintText: 'ابحث عن صنف بالاسم أو الكود (SKU)...',
-                      prefixIcon: const Icon(Icons.search, color: AppColors.primary),
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        color: AppColors.primary,
+                      ),
                       suffixIcon: _searchQuery.isNotEmpty
                           ? IconButton(
                               icon: const Icon(Icons.clear),
@@ -184,9 +170,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
-                    onChanged: (val) => setState(() => _searchQuery = val.trim().toLowerCase()),
+                    onChanged: (val) =>
+                        setState(() => _searchQuery = val.trim().toLowerCase()),
                   ),
                 ),
                 const Divider(height: 1, thickness: 1),
@@ -214,39 +204,30 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
                         if (filteredItems.isEmpty) {
                           return RefreshIndicator(
-                            onRefresh: () => context.read<InventoryCubit>().loadInventory(),
+                            onRefresh: () =>
+                                context.read<InventoryCubit>().loadInventory(),
                             child: ListView(
                               children: [
                                 const SizedBox(height: 80),
                                 Center(
                                   child: Column(
                                     children: [
-                                      Icon(Icons.inventory_2_outlined, size: 72, color: Colors.grey.shade400),
+                                      Icon(
+                                        Icons.inventory_2_outlined,
+                                        size: 72,
+                                        color: Colors.grey.shade400,
+                                      ),
                                       const SizedBox(height: 16),
                                       Text(
                                         _searchQuery.isNotEmpty
                                             ? 'لا توجد أصناف مطابقة لبحثك'
                                             : (state.showLowStockOnly
-                                                ? 'رائع! لا توجد منتجات منخفضة المخزون حالياً'
-                                                : 'لا توجد أصناف مسجلة في المخزون بعد'),
-                                        style: TextStyle(color: Colors.grey.shade700, fontSize: 16),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          OutlinedButton.icon(
-                                            onPressed: () => _openAddProductDialog(context),
-                                            icon: const Icon(Icons.add_box_outlined),
-                                            label: const Text('إضافة منتج جديد'),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          ElevatedButton.icon(
-                                            onPressed: () => _openReceiveStockDialog(context),
-                                            icon: const Icon(Icons.add_shopping_cart),
-                                            label: const Text('استلام وتوريد بضاعة'),
-                                          ),
-                                        ],
+                                                  ? 'رائع! لا توجد منتجات منخفضة المخزون حالياً'
+                                                  : 'لا توجد أصناف مسجلة في المخزون بعد'),
+                                        style: TextStyle(
+                                          color: Colors.grey.shade700,
+                                          fontSize: 16,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -257,40 +238,86 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         }
 
                         // Summary Statistics Header
-                        final totalQty = filteredItems.fold<int>(0, (sum, i) => sum + i.quantity);
-                        final lowCount = filteredItems.where((i) => i.quantity > 0 && i.quantity <= i.minStock).length;
-                        final outCount = filteredItems.where((i) => i.quantity == 0).length;
+                        final totalQty = filteredItems.fold<int>(
+                          0,
+                          (sum, i) => sum + i.quantity,
+                        );
+                        final lowCount = filteredItems
+                            .where(
+                              (i) => i.quantity > 0 && i.quantity <= i.minStock,
+                            )
+                            .length;
+                        final outCount = filteredItems
+                            .where((i) => i.quantity == 0)
+                            .length;
 
                         return RefreshIndicator(
-                          onRefresh: () => context.read<InventoryCubit>().loadInventory(),
+                          onRefresh: () =>
+                              context.read<InventoryCubit>().loadInventory(),
                           child: Column(
                             children: [
                               // Quick Stats
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
                                 child: Row(
                                   children: [
-                                    _statChip('الأصناف المعروضة: ${filteredItems.length}', Colors.grey.shade800, Colors.grey.shade100),
+                                    _statChip(
+                                      'الأصناف المعروضة: ${filteredItems.length}',
+                                      Colors.grey.shade800,
+                                      Colors.grey.shade100,
+                                    ),
                                     const SizedBox(width: 8),
-                                    _statChip('إجمالي القطع: $totalQty', AppColors.primary, AppColors.surfaceContainer),
+                                    _statChip(
+                                      'إجمالي القطع: $totalQty',
+                                      AppColors.primary,
+                                      AppColors.surfaceContainer,
+                                    ),
                                     const SizedBox(width: 8),
                                     if (lowCount > 0) ...[
-                                      _statChip('منخفض: $lowCount', Colors.orange.shade900, Colors.orange.shade50),
+                                      _statChip(
+                                        'منخفض: $lowCount',
+                                        Colors.orange.shade900,
+                                        Colors.orange.shade50,
+                                      ),
                                       const SizedBox(width: 8),
                                     ],
                                     if (outCount > 0)
-                                      _statChip('نفذ: $outCount', AppColors.error, Colors.red.shade50),
+                                      _statChip(
+                                        'نفذ: $outCount',
+                                        AppColors.error,
+                                        Colors.red.shade50,
+                                      ),
                                   ],
                                 ),
                               ),
                               Expanded(
-                                child: ListView.builder(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                child: filteredItems.isEmpty
+                                    ? AppEmptyState(
+                                        icon: Icons.inventory_2_outlined,
+                                        title: _searchQuery.isNotEmpty
+                                            ? 'لا توجد أصناف مطابقة للبحث'
+                                            : 'المخزن فارغ حالياً',
+                                        subtitle: _searchQuery.isNotEmpty
+                                            ? 'جرب البحث باسم منتج آخر أو إلغاء تصفية الرصيد المنخفض'
+                                            : 'لم يتم تسجيل أي أصناف أو كميات بالمخزن بعد. يمكنك توريد بضاعة جديدة الآن.',
+                                        actionLabel: 'توريد شحنة بضاعة',
+                                        onAction: () => _openReceiveStockDialog(context),
+                                      )
+                                    : ListView.builder(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
                                   itemCount: filteredItems.length,
                                   itemBuilder: (context, index) {
                                     final item = filteredItems[index];
                                     final bool isOut = item.quantity == 0;
-                                    final bool isLow = !isOut && item.quantity <= item.minStock;
+                                    final bool isLow =
+                                        !isOut &&
+                                        item.quantity <= item.minStock;
 
                                     return Card(
                                       elevation: 0.5,
@@ -299,24 +326,43 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                         borderRadius: BorderRadius.circular(12),
                                         side: BorderSide(
                                           color: isOut
-                                              ? AppColors.error.withValues(alpha: 0.3)
-                                              : (isLow ? Colors.orange.withValues(alpha: 0.4) : Colors.grey.shade200),
+                                              ? AppColors.error.withValues(
+                                                  alpha: 0.3,
+                                                )
+                                              : (isLow
+                                                    ? Colors.orange.withValues(
+                                                        alpha: 0.4,
+                                                      )
+                                                    : Colors.grey.shade200),
                                         ),
                                       ),
                                       child: ListTile(
-                                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                              horizontal: 16,
+                                              vertical: 8,
+                                            ),
                                         leading: CircleAvatar(
                                           radius: 24,
                                           backgroundColor: isOut
                                               ? Colors.red.shade50
-                                              : (isLow ? Colors.orange.shade50 : AppColors.surfaceContainer),
+                                              : (isLow
+                                                    ? Colors.orange.shade50
+                                                    : AppColors
+                                                          .surfaceContainer),
                                           child: Icon(
                                             isOut
                                                 ? Icons.error_outline
-                                                : (isLow ? Icons.warning_amber_rounded : Icons.check_circle_outline),
+                                                : (isLow
+                                                      ? Icons
+                                                            .warning_amber_rounded
+                                                      : Icons
+                                                            .check_circle_outline),
                                             color: isOut
                                                 ? AppColors.error
-                                                : (isLow ? Colors.orange.shade800 : AppColors.primary),
+                                                : (isLow
+                                                      ? Colors.orange.shade800
+                                                      : AppColors.primary),
                                           ),
                                         ),
                                         title: Row(
@@ -324,33 +370,68 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                             Expanded(
                                               child: Text(
                                                 item.productName,
-                                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16,
+                                                ),
                                               ),
                                             ),
                                             Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 3,
+                                                  ),
                                               decoration: BoxDecoration(
                                                 color: isOut
-                                                    ? AppColors.error.withValues(alpha: 0.1)
-                                                    : (isLow ? Colors.orange.withValues(alpha: 0.1) : Colors.green.withValues(alpha: 0.1)),
-                                                borderRadius: BorderRadius.circular(6),
+                                                    ? AppColors.error
+                                                          .withValues(
+                                                            alpha: 0.1,
+                                                          )
+                                                    : (isLow
+                                                          ? Colors.orange
+                                                                .withValues(
+                                                                  alpha: 0.1,
+                                                                )
+                                                          : Colors.green
+                                                                .withValues(
+                                                                  alpha: 0.1,
+                                                                )),
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
                                               ),
                                               child: Text(
-                                                isOut ? 'نفذ المخزون' : (isLow ? 'منخفض' : 'متوفر'),
+                                                isOut
+                                                    ? 'نفذ المخزون'
+                                                    : (isLow
+                                                          ? 'منخفض'
+                                                          : 'متوفر'),
                                                 style: TextStyle(
                                                   fontSize: 12,
                                                   fontWeight: FontWeight.bold,
-                                                  color: isOut ? AppColors.error : (isLow ? Colors.orange.shade900 : Colors.green.shade800),
+                                                  color: isOut
+                                                      ? AppColors.error
+                                                      : (isLow
+                                                            ? Colors
+                                                                  .orange
+                                                                  .shade900
+                                                            : Colors
+                                                                  .green
+                                                                  .shade800),
                                                 ),
                                               ),
                                             ),
                                           ],
                                         ),
                                         subtitle: Padding(
-                                          padding: const EdgeInsets.only(top: 6),
+                                          padding: const EdgeInsets.only(
+                                            top: 6,
+                                          ),
                                           child: Row(
                                             children: [
-                                              _badge('كود: ${item.productCode}'),
+                                              _badge(
+                                                'كود: ${item.productCode}',
+                                              ),
                                               const SizedBox(width: 6),
                                               _badge('اللون: ${item.color}'),
                                               const SizedBox(width: 6),
@@ -358,7 +439,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                               const SizedBox(width: 12),
                                               Text(
                                                 'السعر: ${Money(item.salePrice).toDisplay()} ج.م',
-                                                style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+                                                style: TextStyle(
+                                                  color: Colors.grey.shade700,
+                                                  fontSize: 13,
+                                                ),
                                               ),
                                             ],
                                           ),
@@ -367,32 +451,54 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Column(
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              crossAxisAlignment: CrossAxisAlignment.end,
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.end,
                                               children: [
                                                 Text(
                                                   '${item.quantity} قطعة',
                                                   style: TextStyle(
                                                     fontWeight: FontWeight.bold,
                                                     fontSize: 18,
-                                                    color: isOut ? AppColors.error : (isLow ? Colors.orange.shade900 : AppColors.primary),
+                                                    color: isOut
+                                                        ? AppColors.error
+                                                        : (isLow
+                                                              ? Colors
+                                                                    .orange
+                                                                    .shade900
+                                                              : AppColors
+                                                                    .primary),
                                                   ),
                                                 ),
                                                 Text(
                                                   'حد الطلب: ${item.minStock}',
-                                                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: Colors.grey.shade600,
+                                                  ),
                                                 ),
                                               ],
                                             ),
                                             const SizedBox(width: 12),
                                             IconButton.filledTonal(
-                                              tooltip: 'توريد كمية إضافية لهذا الصنف',
+                                              tooltip:
+                                                  'توريد كمية إضافية لهذا الصنف',
                                               style: IconButton.styleFrom(
-                                                backgroundColor: AppColors.surfaceContainer,
-                                                foregroundColor: AppColors.primary,
+                                                backgroundColor:
+                                                    AppColors.surfaceContainer,
+                                                foregroundColor:
+                                                    AppColors.primary,
                                               ),
-                                              icon: const Icon(Icons.add_shopping_cart, size: 20),
-                                              onPressed: () => _openReceiveStockDialog(context, preselectedVariant: item),
+                                              icon: const Icon(
+                                                Icons.add_shopping_cart,
+                                                size: 20,
+                                              ),
+                                              onPressed: () =>
+                                                  _openReceiveStockDialog(
+                                                    context,
+                                                    preselectedVariant: item,
+                                                  ),
                                             ),
                                           ],
                                         ),
@@ -409,12 +515,21 @@ class _InventoryScreenState extends State<InventoryScreen> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.error_outline, size: 54, color: AppColors.error),
+                              const Icon(
+                                Icons.error_outline,
+                                size: 54,
+                                color: AppColors.error,
+                              ),
                               const SizedBox(height: 16),
-                              Text(state.message, style: const TextStyle(fontSize: 16)),
+                              Text(
+                                state.message,
+                                style: const TextStyle(fontSize: 16),
+                              ),
                               const SizedBox(height: 16),
                               ElevatedButton(
-                                onPressed: () => context.read<InventoryCubit>().loadInventory(),
+                                onPressed: () => context
+                                    .read<InventoryCubit>()
+                                    .loadInventory(),
                                 child: const Text('إعادة المحاولة'),
                               ),
                             ],
@@ -436,16 +551,32 @@ class _InventoryScreenState extends State<InventoryScreen> {
   Widget _statChip(String label, Color textColor, Color bgColor) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(16)),
-      child: Text(label, style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 12)),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: textColor,
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+        ),
+      ),
     );
   }
 
   Widget _badge(String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(4)),
-      child: Text(text, style: TextStyle(fontSize: 11, color: Colors.grey.shade800)),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(fontSize: 11, color: Colors.grey.shade800),
+      ),
     );
   }
 }
@@ -576,17 +707,19 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
 
     final reason = _reasonCtrl.text.trim();
     if (reason.isEmpty) {
-      setState(() => _errorMessage = 'يرجى إدخال اسم المورد أو رقم الفاتورة (مطلوب)');
+      setState(
+        () => _errorMessage = 'يرجى إدخال اسم المورد أو رقم الفاتورة (مطلوب)',
+      );
       return;
     }
 
     setState(() => _isSubmitting = true);
     try {
       await context.read<InventoryCubit>().receiveStock(
-            variantId: _selectedDetail!.variantId,
-            quantity: qty,
-            reason: reason,
-          );
+        variantId: _selectedDetail!.variantId,
+        quantity: qty,
+        reason: reason,
+      );
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -636,7 +769,11 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
                       color: AppColors.surfaceContainer,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.add_shopping_cart, color: AppColors.primary, size: 28),
+                    child: const Icon(
+                      Icons.add_shopping_cart,
+                      color: AppColors.primary,
+                      size: 28,
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -645,18 +782,27 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
                       children: [
                         const Text(
                           'استلام طلبية / توريد بضاعة',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.onSurface),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.onSurface,
+                          ),
                         ),
                         Text(
                           'تسجيل الشحنات الواردة وتحديث رصيد المخزون وسجل الحركات',
-                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
                         ),
                       ],
                     ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
-                    onPressed: _isSubmitting ? null : () => Navigator.pop(context),
+                    onPressed: _isSubmitting
+                        ? null
+                        : () => Navigator.pop(context),
                   ),
                 ],
               ),
@@ -676,12 +822,23 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
                           children: [
                             const Text(
                               '١. اختر أو ابحث عن الصنف المستلم:',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
                             ),
                             TextButton.icon(
-                              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.primary,
+                              ),
                               icon: const Icon(Icons.add, size: 16),
-                              label: const Text('إضافة منتج غير مسجل', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                              label: const Text(
+                                'إضافة منتج غير مسجل',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
                               onPressed: _openQuickAddProduct,
                             ),
                           ],
@@ -690,12 +847,22 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
                         TextField(
                           controller: _searchCtrl,
                           decoration: InputDecoration(
-                            hintText: 'ابحث باسم المنتج، الكود (SKU)، اللون أو المقاس...',
-                            prefixIcon: const Icon(Icons.search, color: AppColors.primary),
+                            hintText:
+                                'ابحث باسم المنتج، الكود (SKU)، اللون أو المقاس...',
+                            prefixIcon: const Icon(
+                              Icons.search,
+                              color: AppColors.primary,
+                            ),
                             filled: true,
                             fillColor: AppColors.surfaceContainer,
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
                           ),
                           onChanged: _onSearchChanged,
                         ),
@@ -712,17 +879,26 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
                             decoration: BoxDecoration(
                               color: AppColors.surfaceContainer,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                              border: Border.all(
+                                color: AppColors.primary.withValues(alpha: 0.2),
+                              ),
                             ),
                             child: Column(
                               children: [
-                                const Icon(Icons.inventory_2_outlined, size: 36, color: AppColors.primary),
+                                const Icon(
+                                  Icons.inventory_2_outlined,
+                                  size: 36,
+                                  color: AppColors.primary,
+                                ),
                                 const SizedBox(height: 8),
                                 Text(
                                   _searchCtrl.text.isNotEmpty
                                       ? 'المنتج "${_searchCtrl.text}" غير مسجل في السيستم'
                                       : 'لا توجد منتجات مسجلة حتى الآن',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
                                   textAlign: TextAlign.center,
                                 ),
                                 const SizedBox(height: 12),
@@ -730,7 +906,10 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     OutlinedButton.icon(
-                                      icon: const Icon(Icons.table_chart_outlined, size: 16),
+                                      icon: const Icon(
+                                        Icons.table_chart_outlined,
+                                        size: 16,
+                                      ),
                                       label: const Text('إضافة بجدول المقاسات'),
                                       onPressed: _openFullProductTableDialog,
                                     ),
@@ -739,7 +918,11 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: AppColors.primary,
                                         foregroundColor: Colors.white,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
                                       ),
                                       icon: const Icon(Icons.add, size: 18),
                                       label: const Text('إضافة سريعة'),
@@ -760,25 +943,37 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
                             child: ListView.separated(
                               shrinkWrap: true,
                               itemCount: _searchResults.length,
-                              separatorBuilder: (_, index) => const Divider(height: 1),
+                              separatorBuilder: (_, index) =>
+                                  const Divider(height: 1),
                               itemBuilder: (context, idx) {
                                 final item = _searchResults[idx];
                                 return ListTile(
                                   dense: true,
                                   title: Text(
                                     item.productName,
-                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                  subtitle: Text('كود: ${item.sku} | ${item.color} - ${item.size}'),
+                                  subtitle: Text(
+                                    'كود: ${item.sku} | ${item.color} - ${item.size}',
+                                  ),
                                   trailing: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: AppColors.surfaceContainer,
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text(
                                       'الرصيد: ${item.quantity}',
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primary),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                        color: AppColors.primary,
+                                      ),
                                     ),
                                   ),
                                   onTap: () {
@@ -798,7 +993,9 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
                           decoration: BoxDecoration(
                             color: AppColors.surfaceContainer,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                            border: Border.all(
+                              color: AppColors.primary.withValues(alpha: 0.3),
+                            ),
                           ),
                           child: Row(
                             children: [
@@ -814,17 +1011,27 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
                                   children: [
                                     Text(
                                       _selectedDetail!.productName,
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                      ),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
                                       'كود: ${_selectedDetail!.sku} | اللون: ${_selectedDetail!.color} | المقاس: ${_selectedDetail!.size}',
-                                      style: TextStyle(fontSize: 12, color: Colors.grey.shade800),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade800,
+                                      ),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
                                       'الرصيد الحالي بالمحل: ${_selectedDetail!.quantity} قطعة',
-                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primary,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -833,7 +1040,8 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
                                 TextButton.icon(
                                   icon: const Icon(Icons.swap_horiz, size: 18),
                                   label: const Text('تغيير الصنف'),
-                                  onPressed: () => setState(() => _selectedDetail = null),
+                                  onPressed: () =>
+                                      setState(() => _selectedDetail = null),
                                 ),
                             ],
                           ),
@@ -845,13 +1053,18 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
                       // 2. Incoming Quantity Field
                       const Text(
                         '٢. الكمية الواردة (عدد القطع المستلمة):',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Row(
                         children: [
                           IconButton.filledTonal(
-                            style: IconButton.styleFrom(backgroundColor: AppColors.surfaceContainer),
+                            style: IconButton.styleFrom(
+                              backgroundColor: AppColors.surfaceContainer,
+                            ),
                             icon: const Icon(Icons.remove),
                             onPressed: () => _stepQuantity(-1),
                           ),
@@ -861,20 +1074,33 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
                               controller: _qtyCtrl,
                               keyboardType: TextInputType.number,
                               textAlign: TextAlign.center,
-                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primary),
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
                               decoration: InputDecoration(
                                 hintText: 'الكمية',
-                                prefixIcon: const Icon(Icons.add_box_outlined, color: AppColors.primary),
+                                prefixIcon: const Icon(
+                                  Icons.add_box_outlined,
+                                  color: AppColors.primary,
+                                ),
                                 filled: true,
                                 fillColor: Colors.grey.shade50,
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                               ),
                             ),
                           ),
                           const SizedBox(width: 8),
                           IconButton.filledTonal(
-                            style: IconButton.styleFrom(backgroundColor: AppColors.surfaceContainer),
+                            style: IconButton.styleFrom(
+                              backgroundColor: AppColors.surfaceContainer,
+                            ),
                             icon: const Icon(Icons.add),
                             onPressed: () => _stepQuantity(1),
                           ),
@@ -886,18 +1112,30 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
                       // 3. Reason / Supplier Field
                       const Text(
                         '٣. اسم المورد / رقم الفاتورة (سبب التوريد):',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       TextField(
                         controller: _reasonCtrl,
                         decoration: InputDecoration(
-                          hintText: 'مثال: شركة النصر للملابس - فاتورة توريد #4512',
-                          prefixIcon: const Icon(Icons.receipt_long_outlined, color: AppColors.primary),
+                          hintText:
+                              'مثال: شركة النصر للملابس - فاتورة توريد #4512',
+                          prefixIcon: const Icon(
+                            Icons.receipt_long_outlined,
+                            color: AppColors.primary,
+                          ),
                           filled: true,
                           fillColor: Colors.grey.shade50,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -922,12 +1160,20 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.error_outline, color: AppColors.error, size: 20),
+                              const Icon(
+                                Icons.error_outline,
+                                color: AppColors.error,
+                                size: 20,
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   _errorMessage!,
-                                  style: const TextStyle(color: AppColors.error, fontSize: 13, fontWeight: FontWeight.bold),
+                                  style: const TextStyle(
+                                    color: AppColors.error,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ],
@@ -948,10 +1194,17 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   OutlinedButton(
-                    onPressed: _isSubmitting ? null : () => Navigator.pop(context),
+                    onPressed: _isSubmitting
+                        ? null
+                        : () => Navigator.pop(context),
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                     child: const Text('إلغاء'),
                   ),
@@ -960,19 +1213,32 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                     icon: _isSubmitting
                         ? const SizedBox(
                             width: 18,
                             height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           )
                         : const Icon(Icons.done_all, size: 20),
                     label: Text(
-                      _isSubmitting ? 'جاري التوريد...' : 'تأكيد استلام وتوريد البضاعة',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      _isSubmitting
+                          ? 'جاري التوريد...'
+                          : 'تأكيد استلام وتوريد البضاعة',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                     ),
                     onPressed: _isSubmitting ? null : _submit,
                   ),
@@ -1012,12 +1278,18 @@ class _QuickAddProductDialog extends StatefulWidget {
 class _QuickAddProductDialogState extends State<_QuickAddProductDialog> {
   late final TextEditingController _nameCtrl;
   final TextEditingController _skuCtrl = TextEditingController();
-  final TextEditingController _colorCtrl = TextEditingController(text: 'افتراضي');
-  final TextEditingController _sizeCtrl = TextEditingController(text: 'افتراضي');
+  final TextEditingController _colorCtrl = TextEditingController(
+    text: 'افتراضي',
+  );
+  final TextEditingController _sizeCtrl = TextEditingController(
+    text: 'افتراضي',
+  );
   final TextEditingController _costCtrl = TextEditingController(text: '100');
   final TextEditingController _sellCtrl = TextEditingController(text: '150');
   final TextEditingController _qtyCtrl = TextEditingController(text: '1');
-  final TextEditingController _reasonCtrl = TextEditingController(text: 'فاتورة توريد بضاعة جديدة');
+  final TextEditingController _reasonCtrl = TextEditingController(
+    text: 'فاتورة توريد بضاعة جديدة',
+  );
 
   List<dynamic> _categories = [];
   String? _selectedCategoryId;
@@ -1099,7 +1371,9 @@ class _QuickAddProductDialogState extends State<_QuickAddProductDialog> {
 
     setState(() => _isSaving = true);
     try {
-      final detail = await context.read<InventoryCubit>().quickCreateProductAndReceive(
+      final detail = await context
+          .read<InventoryCubit>()
+          .quickCreateProductAndReceive(
             productName: name,
             categoryId: _selectedCategoryId ?? 'default_cat',
             sku: sku,
@@ -1144,13 +1418,21 @@ class _QuickAddProductDialogState extends State<_QuickAddProductDialog> {
                       color: AppColors.surfaceContainer,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.add_box, color: AppColors.primary, size: 24),
+                    child: const Icon(
+                      Icons.add_box,
+                      color: AppColors.primary,
+                      size: 24,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   const Expanded(
                     child: Text(
                       'إضافة واستلام منتج جديد فوراً',
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.onSurface),
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.onSurface,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -1164,7 +1446,9 @@ class _QuickAddProductDialogState extends State<_QuickAddProductDialog> {
               const SizedBox(height: 12),
 
               if (_isLoading)
-                const Expanded(child: Center(child: CircularProgressIndicator()))
+                const Expanded(
+                  child: Center(child: CircularProgressIndicator()),
+                )
               else
                 Expanded(
                   child: SingleChildScrollView(
@@ -1200,119 +1484,12 @@ class _QuickAddProductDialogState extends State<_QuickAddProductDialog> {
                               );
                             }).toList(),
                             onChanged: (val) {
-                              if (val != null) setState(() => _selectedCategoryId = val);
+                              if (val != null) {
+                                setState(() => _selectedCategoryId = val);
+                              }
                             },
                           ),
                         const SizedBox(height: 12),
-
-                        // SKU & Color
-                        Row(
-                          children: [
-                            Expanded(
-                              flex: 3,
-                              child: TextFormField(
-                                controller: _skuCtrl,
-                                decoration: const InputDecoration(
-                                  labelText: 'كود الصنف / الباركود (SKU) *',
-                                  prefixIcon: Icon(Icons.qr_code),
-                                  border: OutlineInputBorder(),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              flex: 2,
-                              child: TextFormField(
-                                controller: _colorCtrl,
-                                decoration: const InputDecoration(
-                                  labelText: 'اللون',
-                                  prefixIcon: Icon(Icons.palette_outlined),
-                                  border: OutlineInputBorder(),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Size & Quantity
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: _sizeCtrl,
-                                decoration: const InputDecoration(
-                                  labelText: 'المقاس',
-                                  prefixIcon: Icon(Icons.straighten),
-                                  border: OutlineInputBorder(),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: TextFormField(
-                                controller: _qtyCtrl,
-                                keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(
-                                  labelText: 'الكمية المستلمة *',
-                                  prefixIcon: Icon(Icons.numbers),
-                                  border: OutlineInputBorder(),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Cost & Sell Prices
-                        Builder(
-                          builder: (context) {
-                            final authState = context.watch<AuthCubit>().state;
-                            final isCashier = authState is AuthAuthenticated && authState.user.role.toLowerCase() == 'cashier';
-
-                            return Row(
-                              children: [
-                                if (!isCashier) ...[
-                                  Expanded(
-                                    child: TextFormField(
-                                      controller: _costCtrl,
-                                      keyboardType: TextInputType.number,
-                                      decoration: const InputDecoration(
-                                        labelText: 'سعر التكلفة (ج.م) *',
-                                        prefixIcon: Icon(Icons.attach_money),
-                                        border: OutlineInputBorder(),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                ],
-                                Expanded(
-                                  child: TextFormField(
-                                    controller: _sellCtrl,
-                                    keyboardType: TextInputType.number,
-                                    decoration: const InputDecoration(
-                                      labelText: 'سعر البيع (ج.م) *',
-                                      prefixIcon: Icon(Icons.sell_outlined),
-                                      border: OutlineInputBorder(),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Reason / Supplier
-                        TextFormField(
-                          controller: _reasonCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'اسم المورد / رقم الفاتورة *',
-                            hintText: 'مثال: شركة النور - فاتورة #105',
-                            prefixIcon: Icon(Icons.receipt_long),
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
 
                         if (_errorMsg != null) ...[
                           const SizedBox(height: 12),
@@ -1325,7 +1502,11 @@ class _QuickAddProductDialogState extends State<_QuickAddProductDialog> {
                             ),
                             child: Text(
                               _errorMsg!,
-                              style: const TextStyle(color: AppColors.error, fontSize: 13, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                color: AppColors.error,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ],
@@ -1350,12 +1531,24 @@ class _QuickAddProductDialogState extends State<_QuickAddProductDialog> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
                     ),
                     icon: _isSaving
-                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
                         : const Icon(Icons.save),
-                    label: Text(_isSaving ? 'جاري الحفظ...' : 'حفظ واستلام البضاعة فوراً'),
+                    label: Text(
+                      _isSaving ? 'جاري الحفظ...' : 'حفظ واستلام البضاعة فوراً',
+                    ),
                     onPressed: _isSaving ? null : _submitQuickAdd,
                   ),
                 ],

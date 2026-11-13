@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/widgets/app_feedback.dart';
 import '../../../../core/widgets/show_customer_dialog.dart';
 import '../../domain/entities/customer_entity.dart';
 import '../cubits/customer_cubit.dart';
@@ -192,27 +193,16 @@ class _CustomerViewState extends State<_CustomerView> {
                       );
                     }
                     if (state.customers.isEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.people_outline_rounded,
-                              size: 64,
-                              color: Colors.grey,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              _searchCtrl.text.isEmpty
-                                  ? 'لا يوجد عملاء مسجلون حتى الآن. اضغط على "إضافة عميل جديد" للبدء.'
-                                  : 'لا يوجد عملاء يطابقون "${_searchCtrl.text}".',
-                              style: TextStyle(
-                                color: Colors.grey.shade700,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
+                      return AppEmptyState(
+                        icon: Icons.people_outline_rounded,
+                        title: _searchCtrl.text.isEmpty
+                            ? 'لا يوجد عملاء مسجلون حتى الآن'
+                            : 'لا يوجد عملاء يطابقون "${_searchCtrl.text}"',
+                        subtitle: _searchCtrl.text.isEmpty
+                            ? 'قم بإضافة عملاء جدد لحفظ نقاط الولاء والخصومات الخاصة بهم.'
+                            : 'تأكد من كتابة الاسم أو رقم الهاتف بشكل صحيح.',
+                        actionLabel: _searchCtrl.text.isEmpty ? 'إضافة عميل جديد' : null,
+                        onAction: _searchCtrl.text.isEmpty ? () => showCustomerDialog(context) : null,
                       );
                     }
                     return ListView.separated(
@@ -395,29 +385,18 @@ class _CustomerViewState extends State<_CustomerView> {
     );
   }
 
-  void _confirmDelete(BuildContext context, CustomerEntity customer) {
-    showDialog(
+  Future<void> _confirmDelete(BuildContext context, CustomerEntity customer) async {
+    final confirmed = await AppFeedback.confirmDelete(
       context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('تأكيد الحذف'),
-        content: Text('هل أنت متأكد من حذف العميل "${customer.name}"؟'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-            ),
-            onPressed: () {
-              context.read<CustomerCubit>().deleteCustomer(customer.id);
-              Navigator.pop(dialogCtx);
-            },
-            child: const Text('حذف', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+      title: 'تأكيد حذف العميل',
+      content: 'هل أنت متأكد من حذف العميل "${customer.name}"؟ سيتم حذف بيانات نقاطه وتصنيفه.',
     );
+
+    if (confirmed && context.mounted) {
+      await context.read<CustomerCubit>().deleteCustomer(customer.id);
+      if (context.mounted) {
+        AppFeedback.showSuccess(context, 'تم حذف العميل "${customer.name}" بنجاح');
+      }
+    }
   }
 }

@@ -36,6 +36,7 @@ abstract class PurchasesRepository {
     String? notes,
     required List<PurchaseItemDraft> items,
     required String userId,
+    String? goodsReceiptId,
   });
 
   // Supplier Payments

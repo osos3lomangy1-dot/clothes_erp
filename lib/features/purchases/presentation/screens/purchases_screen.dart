@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/widgets/app_feedback.dart';
 
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
+import '../../../inventory/domain/entities/goods_receipt_entity.dart';
+import '../../../inventory/presentation/cubits/goods_receipt_cubit.dart';
+import '../../../inventory/presentation/cubits/goods_receipt_state.dart';
 import '../../domain/entities/purchase_entity.dart';
 import '../../domain/entities/supplier_entity.dart';
 import '../cubits/purchases_cubit.dart';
@@ -24,6 +28,7 @@ class PurchasesScreen extends StatelessWidget {
       providers: [
         BlocProvider(create: (_) => getIt<PurchasesCubit>()..loadPurchases()),
         BlocProvider(create: (_) => getIt<SuppliersCubit>()..loadSuppliers()),
+        BlocProvider(create: (_) => getIt<GoodsReceiptCubit>()..loadGoodsReceipts(status: 'pending')),
       ],
       child: const _PurchasesView(),
     );
@@ -54,7 +59,7 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -64,9 +69,13 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
   }
 
   bool _isCreatingInvoice = false;
+  GoodsReceiptEntity? _selectedReceiptForInvoice;
 
-  void _openCreatePurchase() {
-    setState(() => _isCreatingInvoice = true);
+  void _openCreatePurchase({GoodsReceiptEntity? fromReceipt}) {
+    setState(() {
+      _selectedReceiptForInvoice = fromReceipt;
+      _isCreatingInvoice = true;
+    });
   }
 
   void _openAddSupplierDialog() {
@@ -227,11 +236,19 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
 
     if (_isCreatingInvoice) {
       return CreatePurchaseScreen(
-        onBack: () => setState(() => _isCreatingInvoice = false),
+        initialGoodsReceipt: _selectedReceiptForInvoice,
+        onBack: () => setState(() {
+          _isCreatingInvoice = false;
+          _selectedReceiptForInvoice = null;
+        }),
         onSaved: () {
-          setState(() => _isCreatingInvoice = false);
+          setState(() {
+            _isCreatingInvoice = false;
+            _selectedReceiptForInvoice = null;
+          });
           context.read<PurchasesCubit>().loadPurchases();
           context.read<SuppliersCubit>().loadSuppliers();
+          context.read<GoodsReceiptCubit>().loadGoodsReceipts(status: 'pending');
         },
       );
     }
@@ -278,6 +295,10 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
                 text: 'فواتير المشتريات',
               ),
               Tab(
+                icon: Icon(Icons.pending_actions_rounded),
+                text: 'استلامات معلقة (Pending Receipts)',
+              ),
+              Tab(
                 icon: Icon(Icons.business_rounded),
                 text: 'سجل الموردين والمديونيات',
               ),
@@ -294,6 +315,7 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
                 controller: _tabController,
                 children: [
                   _buildPurchasesTab(),
+                  _buildPendingReceiptsTab(),
                   _buildSuppliersTab(),
                 ],
               ),
@@ -392,6 +414,155 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
   // ─────────────────────────────────────────────────────────────────────────
   // TAB 1: PURCHASES LIST
   // ─────────────────────────────────────────────────────────────────────────
+
+  Widget _buildPendingReceiptsTab() {
+    return BlocBuilder<GoodsReceiptCubit, GoodsReceiptState>(
+      builder: (context, state) {
+        if (state.status == GoodsReceiptStatus.loading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final receipts = state.receipts.where((r) => r.isPending).toList();
+
+        if (receipts.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.check_circle_outline_rounded, size: 64, color: Colors.grey.shade400),
+                const SizedBox(height: 12),
+                const Text(
+                  'لا توجد استلامات مخزنية معلقة بانتظار الفوترة',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'كل الشحنات المستلمة من الكاشير تمت مراجعتها وفوترتها للموردين بنجاح.',
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: receipts.length,
+          separatorBuilder: (c, i) => const SizedBox(height: 12),
+          itemBuilder: (ctx, idx) {
+            final r = receipts[idx];
+            return Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.shade200),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.orange.shade300),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.pending_actions_rounded, size: 16, color: Colors.orange.shade800),
+                            const SizedBox(width: 4),
+                            Text(
+                              'بانتظار الفوترة (Pending Audit)',
+                              style: TextStyle(color: Colors.orange.shade900, fontWeight: FontWeight.bold, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'شحنة رقم: #${r.id.substring(0, 8)}',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      ),
+                      const Spacer(),
+                      Text(
+                        'المستلم: ${r.cashierId}',
+                        style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'تاريخ الاستلام: ${r.receivedAt.year}/${r.receivedAt.month}/${r.receivedAt.day}',
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                  if (r.notes != null && r.notes!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'ملاحظات: ${r.notes}',
+                      style: TextStyle(color: Colors.grey.shade800, fontSize: 13, fontStyle: FontStyle.italic),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  const Divider(height: 1),
+                  const SizedBox(height: 10),
+
+                  // Items summary
+                  Text(
+                    'الأصناف المستلمة (إجمالي ${r.totalItems} قطعة):',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: r.items.map((it) {
+                      return Chip(
+                        backgroundColor: Colors.grey.shade100,
+                        avatar: const Icon(Icons.checkroom_rounded, size: 16, color: AppColors.primary),
+                        label: Text(
+                          '${it.productName ?? 'منتج'} (${it.size} - ${it.color}): ${it.quantity} قطع',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        icon: const Icon(Icons.receipt_long_rounded, color: Colors.white, size: 16),
+                        label: const Text(
+                          'تحويل إلى فاتورة مشتريات (تسجيل التكلفة والمديونية)',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                        onPressed: () => _openCreatePurchase(fromReceipt: r),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
   Widget _buildPurchasesTab() {
     return BlocBuilder<PurchasesCubit, PurchasesState>(
@@ -756,23 +927,20 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
                   tooltip: 'حذف',
                   icon: const Icon(Icons.delete_outline_rounded, size: 20, color: Colors.red),
                   onPressed: () async {
-                    final confirm = await showDialog<bool>(
+                    final confirm = await AppFeedback.confirmDelete(
                       context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('تأكيد الحذف'),
-                        content: Text('هل تريد حذف المورد "${s.name}"؟'),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                            onPressed: () => Navigator.pop(ctx, true),
-                            child: const Text('حذف', style: TextStyle(color: Colors.white)),
-                          ),
-                        ],
-                      ),
+                      title: 'تأكيد حذف المورد',
+                      content: 'هل تريد حذف المورد "${s.name}"؟ سيتم الاحتفاظ بسجل فواتيره السابقة لأغراض الأرشفة.',
                     );
-                    if (confirm == true && mounted) {
-                      context.read<SuppliersCubit>().deleteSupplier(s.id);
+                    if (confirm && mounted) {
+                      final success = await context.read<SuppliersCubit>().deleteSupplier(s.id);
+                      if (mounted) {
+                        if (success) {
+                          AppFeedback.showSuccess(context, 'تم حذف المورد "${s.name}" بنجاح');
+                        } else {
+                          AppFeedback.showError(context, 'تعذر حذف المورد');
+                        }
+                      }
                     }
                   },
                 ),

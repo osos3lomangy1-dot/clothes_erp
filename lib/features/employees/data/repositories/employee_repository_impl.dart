@@ -2,6 +2,8 @@ import 'package:dartz/dartz.dart';
 import 'package:injectable/injectable.dart';
 import '../../../../core/errors/failures.dart';
 import '../../domain/entities/employee_entity.dart';
+import '../../domain/entities/employee_payroll_summary.dart';
+import '../../../expenses/domain/entities/expense_entity.dart';
 import '../../domain/repositories/employee_repository.dart';
 import '../datasources/employee_local_data_source.dart';
 
@@ -66,6 +68,40 @@ class EmployeeRepositoryImpl implements EmployeeRepository {
     try {
       await _localDataSource.deleteEmployee(id);
       return const Right(unit);
+    } catch (e) {
+      return Left(CacheFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, EmployeePayrollSummary>> getPayrollSummary(String employeeId, {DateTime? monthDate}) async {
+    try {
+      final summary = await _localDataSource.getPayrollSummary(employeeId, monthDate: monthDate);
+      return Right(summary);
+    } catch (e) {
+      return Left(CacheFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, ExpenseEntity>> recordPayrollTransaction({
+    required String employeeId,
+    required String type,
+    required int amount,
+    String? note,
+    required DateTime date,
+    required String currentUserId,
+  }) async {
+    try {
+      final tx = await _localDataSource.recordPayrollTransaction(
+        employeeId: employeeId,
+        type: type,
+        amount: amount,
+        note: note,
+        date: date,
+        currentUserId: currentUserId,
+      );
+      return Right(tx);
     } catch (e) {
       return Left(CacheFailure(e.toString()));
     }

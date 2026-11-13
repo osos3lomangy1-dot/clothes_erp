@@ -112,6 +112,8 @@ import 'package:clothes_erp/features/inventory/domain/usecases/get_all_inventory
     as _i926;
 import 'package:clothes_erp/features/inventory/domain/usecases/get_low_stock_usecase.dart'
     as _i232;
+import 'package:clothes_erp/features/inventory/presentation/cubits/goods_receipt_cubit.dart'
+    as _i528;
 import 'package:clothes_erp/features/inventory/presentation/cubits/inventory_cubit.dart'
     as _i779;
 import 'package:clothes_erp/features/inventory/presentation/cubits/inventory_log_cubit.dart'
@@ -391,6 +393,9 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i254.BranchProvider>(),
         gh<_i874.TxWriter>(),
       ),
+    );
+    gh.factory<_i528.GoodsReceiptCubit>(
+      () => _i528.GoodsReceiptCubit(gh<_i1019.InventoryLocalDataSource>()),
     );
     gh.lazySingleton<_i351.ExpenseRepository>(
       () => _i868.ExpenseRepositoryImpl(gh<_i503.ExpensesLocalDataSource>()),

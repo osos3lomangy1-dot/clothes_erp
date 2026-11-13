@@ -20,6 +20,7 @@ import '../../../shifts/presentation/screens/shift_screen.dart';
 import '../../../invoices/domain/entities/invoice_details_entity.dart';
 import '../../../invoices/domain/repositories/invoices_repository.dart';
 import '../../../invoices/presentation/widgets/sale_success_dialog.dart';
+import '../../../employees/presentation/widgets/cashier_profile_dialog.dart';
 
 Color _getCategoryColor(String? categoryId) {
   if (categoryId == null || categoryId.isEmpty) return const Color(0xFF673AB7);
@@ -185,7 +186,7 @@ class _PosViewState extends State<_PosView> {
                       ),
                     ),
                   ),
-                // Cashier Badge
+                // Cashier Badge & Financial Summary Quick Access
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: Center(
@@ -194,27 +195,41 @@ class _PosViewState extends State<_PosView> {
                         final cashierName = authState is AuthAuthenticated
                             ? authState.user.name
                             : 'كاشير';
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
+                        final cashierId = authState is AuthAuthenticated
+                            ? authState.user.id
+                            : '';
+                        return Tooltip(
+                          message: 'عرض ملف ومستحقات الكاشير (الراتب، البونص، الوردية)',
+                          child: InkWell(
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.person_rounded, size: 16, color: Colors.white),
-                              const SizedBox(width: 6),
-                              Text(
-                                cashierName,
-                                style: GoogleFonts.cairo(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            onTap: cashierId.isNotEmpty
+                                ? () => CashierProfileDialog.show(context, employeeId: cashierId)
+                                : null,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
                               ),
-                            ],
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.person_rounded, size: 16, color: Colors.white),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    cashierName,
+                                    style: GoogleFonts.cairo(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Icon(Icons.info_outline_rounded, size: 14, color: Colors.white70),
+                                ],
+                              ),
+                            ),
                           ),
                         );
                       },

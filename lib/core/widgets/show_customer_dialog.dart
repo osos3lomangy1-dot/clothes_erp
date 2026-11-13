@@ -1,5 +1,6 @@
 
   import 'package:clothes_erp/core/constants/app_colors.dart';
+import 'package:clothes_erp/core/widgets/app_feedback.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -141,7 +142,10 @@ void showCustomerDialog(BuildContext context, {CustomerEntity? customer}) {
                 final points = int.tryParse(pointsCtrl.text.trim()) ?? 0;
                 final discount = int.tryParse(discountCtrl.text.trim()) ?? 0;
 
-                if (name.isEmpty || phone.isEmpty) return;
+                if (name.isEmpty || phone.isEmpty) {
+                  AppFeedback.showError(dialogCtx, 'يرجى إدخال اسم العميل ورقم هاتفه');
+                  return;
+                }
 
                 if (isEditing) {
                   await cubit.updateCustomer(
@@ -153,6 +157,10 @@ void showCustomerDialog(BuildContext context, {CustomerEntity? customer}) {
                       customerType: selectedType,
                     ),
                   );
+                  if (dialogCtx.mounted) {
+                    Navigator.pop(dialogCtx);
+                    AppFeedback.showSuccess(context, 'تم تعديل بيانات العميل بنجاح');
+                  }
                 } else {
                   await cubit.addCustomer(
                     CustomerEntity(
@@ -165,8 +173,11 @@ void showCustomerDialog(BuildContext context, {CustomerEntity? customer}) {
                       createdAt: DateTime.now(),
                     ),
                   );
+                  if (dialogCtx.mounted) {
+                    Navigator.pop(dialogCtx);
+                    AppFeedback.showSuccess(context, 'تمت إضافة العميل "$name" بنجاح');
+                  }
                 }
-                if (dialogCtx.mounted) Navigator.pop(dialogCtx);
               },
               child: Text(
                 isEditing ? 'حفظ التعديلات' : 'إضافة العميل',

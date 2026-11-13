@@ -6,6 +6,7 @@ import '../../../../core/utils/money.dart';
 import '../../domain/entities/employee_entity.dart';
 import '../cubits/employee_cubit.dart';
 import '../cubits/employee_state.dart';
+import '../widgets/cashier_profile_dialog.dart';
 
 class EmployeeListScreen extends StatelessWidget {
   const EmployeeListScreen({super.key});
@@ -523,6 +524,11 @@ class _EmployeeListViewState extends State<EmployeeListView> {
                                     onChanged: (value) {
                                       context.read<EmployeeCubit>().updateStatus(employee.id, value);
                                     },
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.account_balance_wallet_outlined, color: Colors.teal),
+                                    tooltip: 'كشف الراتب، البونص والمستحقات المالية',
+                                    onPressed: () => CashierProfileDialog.show(context, employeeId: employee.id),
                                   ),
                                   IconButton(
                                     icon: const Icon(Icons.edit_outlined, color: AppColors.primary),

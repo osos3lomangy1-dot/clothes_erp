@@ -15,8 +15,47 @@ void main() {
       await db.close();
     });
 
-    test('schemaVersion must be 3', () {
-      expect(db.schemaVersion, equals(3));
+    test('schemaVersion must be 4', () {
+      expect(db.schemaVersion, equals(4));
+    });
+
+    test('Insert and query goods_receipts and goods_receipt_items in schema v4', () async {
+      final now = DateTime.now();
+
+      await db.into(db.goodsReceipts).insert(
+        GoodsReceiptsCompanion.insert(
+          id: 'rec-test-1',
+          branchId: 'branch-main',
+          cashierId: 'cashier-1',
+          receivedAt: now,
+          status: const drift.Value('pending'),
+          totalItems: const drift.Value(5),
+          notes: const drift.Value('شحنة تجريبية'),
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      await db.into(db.goodsReceiptItems).insert(
+        GoodsReceiptItemsCompanion.insert(
+          id: 'item-test-1',
+          receiptId: 'rec-test-1',
+          variantId: 'var-1',
+          quantity: 5,
+          createdAt: now,
+        ),
+      );
+
+      final receipt = await (db.select(db.goodsReceipts)..where((r) => r.id.equals('rec-test-1'))).getSingle();
+      expect(receipt.id, equals('rec-test-1'));
+      expect(receipt.cashierId, equals('cashier-1'));
+      expect(receipt.status, equals('pending'));
+      expect(receipt.totalItems, equals(5));
+
+      final items = await (db.select(db.goodsReceiptItems)..where((i) => i.receiptId.equals('rec-test-1'))).get();
+      expect(items.length, equals(1));
+      expect(items.first.variantId, equals('var-1'));
+      expect(items.first.quantity, equals(5));
     });
 
     test('Insert and query customers table with discountPercent & customerType', () async {

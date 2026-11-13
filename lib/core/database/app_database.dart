@@ -433,6 +433,32 @@ class LoyaltyTransactions extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+class GoodsReceipts extends Table {
+  TextColumn get id => text()();
+  TextColumn get branchId => text()();
+  TextColumn get cashierId => text()();
+  DateTimeColumn get receivedAt => dateTime()();
+  TextColumn get status => text().withDefault(const Constant('pending'))(); // pending, invoiced, cancelled
+  IntColumn get totalItems => integer().withDefault(const Constant(0))();
+  TextColumn get notes => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class GoodsReceiptItems extends Table {
+  TextColumn get id => text()();
+  TextColumn get receiptId => text()();
+  TextColumn get variantId => text()();
+  IntColumn get quantity => integer()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 void _setupSqlite(CommonDatabase rawDb) {
   rawDb.execute('PRAGMA journal_mode = WAL;');
   rawDb.execute('PRAGMA synchronous = NORMAL;');
@@ -502,13 +528,15 @@ QueryExecutor _openConnection() {
     PurchaseItems,
     SupplierPayments,
     LoyaltyTransactions,
+    GoodsReceipts,
+    GoodsReceiptItems,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -573,6 +601,11 @@ class AppDatabase extends _$AppDatabase {
           "('loyalty_max_redeem_percent', '30', $nowMs);",
         );
       }
+
+      if (from < 4) {
+        await m.createTable(goodsReceipts);
+        await m.createTable(goodsReceiptItems);
+      }
     },
     beforeOpen: (details) async {
       Future<void> addColumnIfNotExists(
@@ -594,6 +627,24 @@ class AppDatabase extends _$AppDatabase {
           }
         } catch (_) {}
       }
+
+      Future<void> createTableIfNotExists(
+        String table,
+        TableInfo tableInfo,
+      ) async {
+        try {
+          final result = await customSelect(
+            'SELECT name FROM sqlite_master WHERE type="table" AND name="$table"',
+          ).get();
+          if (result.isEmpty) {
+            final m = Migrator(this);
+            await m.createTable(tableInfo);
+          }
+        } catch (_) {}
+      }
+
+      await createTableIfNotExists('goods_receipts', goodsReceipts);
+      await createTableIfNotExists('goods_receipt_items', goodsReceiptItems);
 
       await addColumnIfNotExists(
         'product_variants',

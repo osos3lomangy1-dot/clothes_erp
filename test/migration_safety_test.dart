@@ -69,9 +69,9 @@ void main() {
       // Running a query triggers Drift open + onUpgrade
       await upgradedDb.customSelect('SELECT 1').get();
 
-      // Verify user_version was bumped to 3
+      // Verify user_version was bumped to 4
       final versionResult = await upgradedDb.customSelect('PRAGMA user_version').getSingle();
-      expect(versionResult.data['user_version'], equals(3));
+      expect(versionResult.data['user_version'], equals(4));
 
       // -----------------------------------------------------------------------
       // STEP 3: Call onUpgrade a SECOND time (to simulate running when columns/tables already exist,
@@ -81,13 +81,19 @@ void main() {
 
       // Calling onUpgrade again MUST NOT throw any exception!
       await expectLater(
-        upgradedDb.migration.onUpgrade(migrator, 1, 3),
+        upgradedDb.migration.onUpgrade(migrator, 1, 4),
         completes,
       );
 
       // Call it a THIRD time to be 100% sure it is fully idempotent
       await expectLater(
-        upgradedDb.migration.onUpgrade(migrator, 2, 3),
+        upgradedDb.migration.onUpgrade(migrator, 2, 4),
+        completes,
+      );
+
+      // Call it from 3 to 4
+      await expectLater(
+        upgradedDb.migration.onUpgrade(migrator, 3, 4),
         completes,
       );
 
@@ -116,6 +122,8 @@ void main() {
       expect(await tableExists('purchase_items'), isTrue);
       expect(await tableExists('supplier_payments'), isTrue);
       expect(await tableExists('loyalty_transactions'), isTrue);
+      expect(await tableExists('goods_receipts'), isTrue);
+      expect(await tableExists('goods_receipt_items'), isTrue);
 
       // -----------------------------------------------------------------------
       // STEP 5: Test inserting and querying rows using all 4 new columns
@@ -221,13 +229,19 @@ void main() {
 
       // Calling onUpgrade again directly when columns already exist MUST complete cleanly
       await expectLater(
-        db.migration.onUpgrade(migrator, 1, 3),
+        db.migration.onUpgrade(migrator, 1, 4),
         completes,
       );
 
-      // Call it once more from 2 to 3
+      // Call it once more from 2 to 4
       await expectLater(
-        db.migration.onUpgrade(migrator, 2, 3),
+        db.migration.onUpgrade(migrator, 2, 4),
+        completes,
+      );
+
+      // Call it from 3 to 4
+      await expectLater(
+        db.migration.onUpgrade(migrator, 3, 4),
         completes,
       );
 

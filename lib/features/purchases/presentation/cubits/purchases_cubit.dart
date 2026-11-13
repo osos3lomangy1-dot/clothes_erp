@@ -46,6 +46,7 @@ class PurchasesCubit extends Cubit<PurchasesState> {
     String? notes,
     required List<PurchaseItemDraft> items,
     required String userId,
+    String? goodsReceiptId,
   }) async {
     emit(state.copyWith(status: PurchasesStatus.loading));
 
@@ -57,6 +58,7 @@ class PurchasesCubit extends Cubit<PurchasesState> {
       notes: notes,
       items: items,
       userId: userId,
+      goodsReceiptId: goodsReceiptId,
     );
 
     return result.fold(

@@ -9,6 +9,7 @@ import '../../features/auth/presentation/cubits/auth_cubit.dart';
 import '../../features/auth/presentation/cubits/auth_state.dart';
 import '../../features/products/presentation/screens/product_list_screen.dart';
 import '../../features/inventory/presentation/screens/inventory_screen.dart';
+import '../../features/inventory/presentation/screens/blind_receive_screen.dart';
 import '../../features/inventory/presentation/screens/inventory_logs_screen.dart';
 import '../../features/customers/presentation/screens/customer_screen.dart';
 import '../../features/returns/presentation/screens/return_screen.dart';
@@ -155,6 +156,7 @@ class _MainLayoutState extends State<MainLayout> {
                           _navItem(Icons.receipt_long_rounded, 'سجل فواتير المبيعات', const InvoicesScreen()),
                           _navItem(Icons.inventory_2_rounded, 'المنتجات والتصنيفات', const ProductListScreen()),
                           _navItem(Icons.warehouse_rounded, 'إدارة المخزون', const InventoryScreen()),
+                          _navItem(Icons.move_to_inbox_rounded, 'استلام بضاعة (شحنة جديدة)', const BlindReceiveScreen()),
                           BlocBuilder<AuthCubit, AuthState>(
                             builder: (context, authState) {
                               final isAdmin = authState is! AuthAuthenticated || authState.user.role == 'admin';

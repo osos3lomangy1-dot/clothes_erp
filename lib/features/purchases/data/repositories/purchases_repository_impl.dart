@@ -130,6 +130,7 @@ class PurchasesRepositoryImpl implements PurchasesRepository {
     String? notes,
     required List<PurchaseItemDraft> items,
     required String userId,
+    String? goodsReceiptId,
   }) async {
     if (!await _isAuthorizedAdmin()) {
       return const Left(AuthFailure(_unauthorizedMsg));
@@ -143,6 +144,7 @@ class PurchasesRepositoryImpl implements PurchasesRepository {
         notes: notes,
         items: items,
         userId: userId,
+        goodsReceiptId: goodsReceiptId,
       );
       return Right(purchase);
     } catch (e) {

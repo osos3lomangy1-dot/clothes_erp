@@ -6,6 +6,7 @@ import '../../../../core/di/injection.dart';
 import 'package:drift/drift.dart' hide Column, Table;
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
+import '../../../inventory/domain/entities/goods_receipt_entity.dart';
 import '../../data/datasources/purchases_local_data_source.dart';
 
 import '../cubits/purchases_cubit.dart';
@@ -38,11 +39,13 @@ class _InvoiceItemRow {
 class CreatePurchaseScreen extends StatefulWidget {
   final VoidCallback? onBack;
   final VoidCallback? onSaved;
+  final GoodsReceiptEntity? initialGoodsReceipt;
 
   const CreatePurchaseScreen({
     super.key,
     this.onBack,
     this.onSaved,
+    this.initialGoodsReceipt,
   });
 
   @override
@@ -75,6 +78,27 @@ class _CreatePurchaseScreenState extends State<CreatePurchaseScreen> {
   void initState() {
     super.initState();
     context.read<SuppliersCubit>().loadSuppliers();
+
+    if (widget.initialGoodsReceipt != null) {
+      final gr = widget.initialGoodsReceipt!;
+      if (gr.notes != null && gr.notes!.isNotEmpty) {
+        _notesController.text = 'مبنية على استلام بضاعة #${gr.id}: ${gr.notes}';
+      } else {
+        _notesController.text = 'مبنية على استلام بضاعة معلق #${gr.id}';
+      }
+
+      for (final it in gr.items) {
+        _items.add(_InvoiceItemRow(
+          variantId: it.variantId,
+          productName: it.productName ?? 'منتج',
+          sku: it.sku ?? '',
+          color: it.color ?? '',
+          size: it.size ?? '',
+          qty: it.quantity,
+          costPricePounds: 0.0,
+        ));
+      }
+    }
   }
 
   @override
@@ -413,6 +437,7 @@ class _CreatePurchaseScreenState extends State<CreatePurchaseScreen> {
                 : _notesController.text.trim(),
             items: itemsDraft,
             userId: currentUserId,
+            goodsReceiptId: widget.initialGoodsReceipt?.id,
           );
 
       if (!mounted) return;

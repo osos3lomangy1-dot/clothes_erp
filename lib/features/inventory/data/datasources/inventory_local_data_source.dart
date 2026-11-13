@@ -4,8 +4,19 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/database/branch_provider.dart';
 import '../../../../core/database/tx_writer.dart';
+import '../../domain/entities/goods_receipt_entity.dart';
 
 enum StockMovementType { sale, return_, receive, adjustment, stocktake }
+
+class GoodsReceiptDraftItem {
+  final String variantId;
+  final int quantity;
+
+  const GoodsReceiptDraftItem({
+    required this.variantId,
+    required this.quantity,
+  });
+}
 
 @lazySingleton
 class InventoryLocalDataSource {
@@ -255,6 +266,188 @@ class InventoryLocalDataSource {
       sellPrice: sellPrice,
       productName: productName,
     );
+  }
+
+  // ==========================================
+  // BLIND GOODS RECEIPTS (الكاشير والمدير)
+  // ==========================================
+
+  Future<GoodsReceiptEntity> createGoodsReceipt({
+    required List<GoodsReceiptDraftItem> items,
+    required String cashierId,
+    String? notes,
+    DateTime? receivedAt,
+  }) async {
+    if (items.isEmpty) {
+      throw Exception('لا يمكن إنشاء استلام مخزني فارغ');
+    }
+
+    final branchId = await _branchId();
+    final receiptId = _uuid.v4();
+    final now = receivedAt ?? DateTime.now();
+    final totalItems = items.fold(0, (sum, it) => sum + it.quantity);
+
+    // 1. First record receipt header and items, and write audit via TxWriter
+    await _tx.write(
+      writeFn: () async {
+        await _db.into(_db.goodsReceipts).insert(
+              GoodsReceiptsCompanion.insert(
+                id: receiptId,
+                branchId: branchId,
+                cashierId: cashierId,
+                receivedAt: now,
+                status: const Value('pending'),
+                totalItems: Value(totalItems),
+                notes: Value(notes?.trim()),
+                createdAt: now,
+                updatedAt: now,
+              ),
+            );
+
+        for (final it in items) {
+          final itemId = _uuid.v4();
+          await _db.into(_db.goodsReceiptItems).insert(
+                GoodsReceiptItemsCompanion.insert(
+                  id: itemId,
+                  receiptId: receiptId,
+                  variantId: it.variantId,
+                  quantity: it.quantity,
+                  createdAt: now,
+                ),
+              );
+        }
+      },
+      branchId: branchId,
+      entity: 'goods_receipt',
+      entityId: receiptId,
+      operation: 'insert',
+      userId: cashierId,
+    );
+
+    // 2. Increase stock immediately via applyStockMovement for every item
+    for (final it in items) {
+      await applyStockMovement(
+        variantId: it.variantId,
+        qtyDelta: it.quantity,
+        type: StockMovementType.receive,
+        reason: 'استلام بضاعة شحنة معلقة #$receiptId',
+        userId: cashierId,
+        refType: 'goods_receipt',
+        refId: receiptId,
+      );
+    }
+
+    final created = await getGoodsReceiptById(receiptId);
+    return created!;
+  }
+
+  Future<List<GoodsReceiptEntity>> getGoodsReceipts({String? status}) async {
+    var query = _db.select(_db.goodsReceipts);
+    if (status != null && status.isNotEmpty) {
+      query = query..where((r) => r.status.equals(status));
+    }
+    query = query..orderBy([(r) => OrderingTerm.desc(r.receivedAt)]);
+
+    final rows = await query.get();
+    final result = <GoodsReceiptEntity>[];
+    for (final r in rows) {
+      final items = await _getItemsForReceipt(r.id);
+      result.add(
+        GoodsReceiptEntity(
+          id: r.id,
+          branchId: r.branchId,
+          cashierId: r.cashierId,
+          receivedAt: r.receivedAt,
+          status: r.status,
+          totalItems: r.totalItems,
+          notes: r.notes,
+          createdAt: r.createdAt,
+          updatedAt: r.updatedAt,
+          items: items,
+        ),
+      );
+    }
+    return result;
+  }
+
+  Future<GoodsReceiptEntity?> getGoodsReceiptById(String receiptId) async {
+    final r = await (_db.select(_db.goodsReceipts)
+          ..where((g) => g.id.equals(receiptId)))
+        .getSingleOrNull();
+    if (r == null) return null;
+
+    final items = await _getItemsForReceipt(r.id);
+    return GoodsReceiptEntity(
+      id: r.id,
+      branchId: r.branchId,
+      cashierId: r.cashierId,
+      receivedAt: r.receivedAt,
+      status: r.status,
+      totalItems: r.totalItems,
+      notes: r.notes,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+      items: items,
+    );
+  }
+
+  Future<void> updateGoodsReceiptStatus({
+    required String receiptId,
+    required String newStatus,
+    required String userId,
+  }) async {
+    final branchId = await _branchId();
+    final now = DateTime.now();
+
+    await _tx.write(
+      writeFn: () async {
+        await (_db.update(_db.goodsReceipts)..where((g) => g.id.equals(receiptId)))
+            .write(
+          GoodsReceiptsCompanion(
+            status: Value(newStatus),
+            updatedAt: Value(now),
+          ),
+        );
+      },
+      branchId: branchId,
+      entity: 'goods_receipt',
+      entityId: receiptId,
+      operation: 'update_status',
+      userId: userId,
+    );
+  }
+
+  Future<List<GoodsReceiptItemEntity>> _getItemsForReceipt(String receiptId) async {
+    final query = _db.select(_db.goodsReceiptItems).join([
+      innerJoin(
+        _db.productVariants,
+        _db.productVariants.id.equalsExp(_db.goodsReceiptItems.variantId),
+      ),
+      innerJoin(
+        _db.products,
+        _db.products.id.equalsExp(_db.productVariants.productId),
+      ),
+    ])..where(_db.goodsReceiptItems.receiptId.equals(receiptId));
+
+    final rows = await query.get();
+
+    return rows.map((r) {
+      final item = r.readTable(_db.goodsReceiptItems);
+      final variant = r.readTable(_db.productVariants);
+      final product = r.readTable(_db.products);
+
+      return GoodsReceiptItemEntity(
+        id: item.id,
+        receiptId: item.receiptId,
+        variantId: item.variantId,
+        productName: product.name,
+        sku: variant.sku,
+        color: variant.color,
+        size: variant.size,
+        quantity: item.quantity,
+        createdAt: item.createdAt,
+      );
+    }).toList();
   }
 }
 

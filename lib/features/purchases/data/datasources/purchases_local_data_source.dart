@@ -50,6 +50,7 @@ abstract class PurchasesLocalDataSource {
     String? notes,
     required List<PurchaseItemDraft> items,
     required String userId,
+    String? goodsReceiptId,
   });
 
   // Supplier Payments
@@ -283,6 +284,7 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
     String? notes,
     required List<PurchaseItemDraft> items,
     required String userId,
+    String? goodsReceiptId,
   }) async {
     if (items.isEmpty) {
       throw Exception('لا يمكن إنشاء فاتورة شراء بدون أصناف');
@@ -330,7 +332,7 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
             ),
           );
 
-      // B. Insert Items & update stock
+      // B. Insert Items & update stock (only update stock if NOT linked to existing goods receipt)
       for (final it in items) {
         final itemId = _uuid.v4();
         final lineTotal = it.qty * it.costPrice;
@@ -347,13 +349,15 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
               ),
             );
 
-        // Update variant stock & costPrice in product_variants
+        // Always update variant costPrice in product_variants
         final variant = await (_db.select(_db.productVariants)
               ..where((v) => v.id.equals(it.variantId)))
             .getSingleOrNull();
 
         if (variant != null) {
-          final newQty = variant.quantity + it.qty;
+          final shouldIncreaseStock = (goodsReceiptId == null || goodsReceiptId.trim().isEmpty);
+          final newQty = shouldIncreaseStock ? (variant.quantity + it.qty) : variant.quantity;
+
           await (_db.update(_db.productVariants)
                 ..where((v) => v.id.equals(it.variantId)))
               .write(
@@ -364,22 +368,36 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
             ),
           );
 
-          // Write inventory log
-          await _db.into(_db.inventoryLogs).insert(
-                InventoryLogsCompanion.insert(
-                  id: _uuid.v4(),
-                  branchId: branchId,
-                  variantId: it.variantId,
-                  type: 'in',
-                  qtyDelta: it.qty,
-                  refType: 'purchase',
-                  refId: Value(purchaseId),
-                  reason: Value('فاتورة مشتريات #${invoiceNumber ?? ''}'),
-                  userId: userId,
-                  createdAt: now,
-                ),
-              );
+          if (shouldIncreaseStock) {
+            // Write inventory log only if we increased stock
+            await _db.into(_db.inventoryLogs).insert(
+                  InventoryLogsCompanion.insert(
+                    id: _uuid.v4(),
+                    branchId: branchId,
+                    variantId: it.variantId,
+                    type: 'in',
+                    qtyDelta: it.qty,
+                    refType: 'purchase',
+                    refId: Value(purchaseId),
+                    reason: Value('فاتورة مشتريات #${invoiceNumber ?? ''}'),
+                    userId: userId,
+                    createdAt: now,
+                  ),
+                );
+          }
         }
+      }
+
+      // If linked to goodsReceiptId, mark GoodsReceipt status as 'invoiced'
+      if (goodsReceiptId != null && goodsReceiptId.trim().isNotEmpty) {
+        await (_db.update(_db.goodsReceipts)
+              ..where((g) => g.id.equals(goodsReceiptId.trim())))
+            .write(
+          GoodsReceiptsCompanion(
+            status: const Value('invoiced'),
+            updatedAt: Value(now),
+          ),
+        );
       }
 
       // C. Update Supplier balance (shop owes supplier)
