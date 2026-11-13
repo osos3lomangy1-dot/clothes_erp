@@ -284,6 +284,32 @@ class AppUpdateService {
     }
   }
 
+  /// Applies a downloaded update by replacing the current executable (portable/self-update)
+  /// and restarts the app. Intended for Windows portable builds.
+  static Future<void> applyUpdateAndRestart(String newExePath) async {
+    if (!Platform.isWindows) {
+      throw UnsupportedError('Self-update restart is only supported on Windows');
+    }
+    final currentExe = Platform.resolvedExecutable;
+    final dir = await getApplicationSupportDirectory();
+    final scriptPath = '${dir.path}${Platform.pathSeparator}apply_update_${DateTime.now().millisecondsSinceEpoch}.bat';
+    final script = '''
+@echo off
+timeout /t 2 /nobreak >nul
+:retry
+move /y "$newExePath" "$currentExe" >nul 2>&1
+if errorlevel 1 (
+  timeout /t 1 /nobreak >nul
+  goto retry
+)
+start "" "$currentExe"
+del "%~f0"
+''';
+    await File(scriptPath).writeAsString(script);
+    await Process.start('cmd', ['/c', scriptPath], mode: ProcessStartMode.detached);
+    exit(0);
+  }
+
   static Future<void> checkForUpdate(
     BuildContext context, {
     bool forceCheck = false,

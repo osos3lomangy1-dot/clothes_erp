@@ -112,6 +112,51 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
     }
   }
 
+  Future<void> _installUpdate() async {
+    final path = _downloadedPath;
+    if (path == null) return;
+    final lower = path.toLowerCase();
+    try {
+      if (Platform.isWindows && (lower.endsWith('.exe') || lower.endsWith('.msix'))) {
+        final uri = Uri.file(path);
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        return;
+      }
+      if (Platform.isWindows && lower.endsWith('.zip')) {
+        await launchUrl(Uri.file(File(path).parent.path), mode: LaunchMode.externalApplication);
+        return;
+      }
+      await _openFile();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذر بدء التثبيت: $e'), backgroundColor: AppColors.error),
+      );
+    }
+  }
+
+  Future<void> _applyPortableUpdate() async {
+    final path = _downloadedPath;
+    if (path == null) return;
+    final lower = path.toLowerCase();
+    if (!Platform.isWindows || !lower.endsWith('.exe')) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('التحديث الذاتي متاح فقط لملفات .exe على ويندوز'), backgroundColor: AppColors.warning),
+        );
+      }
+      return;
+    }
+    try {
+      await AppUpdateService.applyUpdateAndRestart(path);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذر تطبيق التحديث: $e'), backgroundColor: AppColors.error),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final updateInfo = widget.updateInfo;
@@ -313,33 +358,50 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
     }
 
     if (_downloadedPath != null) {
-      return Row(
+      final isPortableExe = Platform.isWindows && _downloadedPath!.toLowerCase().endsWith('.exe');
+      return Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: _openFolder,
-              icon: const Icon(Icons.folder_open_rounded),
-              label: const Text('فتح المجلد'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _openFolder,
+                  icon: const Icon(Icons.folder_open_rounded),
+                  label: const Text('فتح المجلد'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: ElevatedButton.icon(
+                  onPressed: _installUpdate,
+                  icon: const Icon(Icons.install_desktop_rounded, color: Colors.white),
+                  label: const Text('تثبيت الآن', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (isPortableExe) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton.icon(
+                onPressed: _applyPortableUpdate,
+                icon: const Icon(Icons.restart_alt_rounded),
+                label: const Text('تطبيق التحديث وإعادة التشغيل (نسخة محمولة)'),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            flex: 2,
-            child: ElevatedButton.icon(
-              onPressed: _openFile,
-              icon: const Icon(Icons.install_desktop_rounded, color: Colors.white),
-              label: const Text('تثبيت الآن', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ),
+          ],
         ],
       );
     }
