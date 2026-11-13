@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import '../config/app_config.dart';
 import '../constants/app_colors.dart';
@@ -57,6 +59,12 @@ class AppUpdateInfo {
 }
 
 class AppUpdateService {
+  static const String _githubToken = String.fromEnvironment('GITHUB_TOKEN');
+  static const String _githubRepo = String.fromEnvironment(
+    'GITHUB_REPO',
+    defaultValue: 'osos3lomangy1-dot/clothes_erp',
+  );
+
   static const String configCollection = 'app_config';
   static const String updateDoc = 'update_info';
 
@@ -114,8 +122,102 @@ class AppUpdateService {
     return false;
   }
 
-  /// Fetches update info from Firestore `app_config/update_info`.
-  static Future<AppUpdateInfo?> fetchUpdateInfo({FirebaseFirestore? firestore}) async {
+  /// Fetches update info directly from GitHub Releases API (Primary Source).
+  static Future<AppUpdateInfo?> fetchFromGitHubReleases({
+    http.Client? client,
+    String? repo,
+    String? token,
+  }) async {
+    final effectiveRepo = repo ?? _githubRepo;
+    final effectiveToken = token ?? _githubToken;
+
+    if (effectiveRepo.isEmpty) return null;
+
+    final url = Uri.parse('https://api.github.com/repos/$effectiveRepo/releases/latest');
+    final headers = <String, String>{
+      'Accept': 'application/vnd.github.v3+json',
+      'User-Agent': 'clothes_erp-updater',
+    };
+    if (effectiveToken.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $effectiveToken';
+    }
+
+    final httpClient = client ?? http.Client();
+    try {
+      final response = await httpClient.get(url, headers: headers).timeout(
+        const Duration(seconds: 10),
+      );
+
+      if (response.statusCode != 200) {
+        debugPrint('AppUpdateService: GitHub returned status ${response.statusCode}');
+        return null;
+      }
+
+      final rawBody = utf8.decode(response.bodyBytes);
+      final data = jsonDecode(rawBody) as Map<String, dynamic>;
+      final tagName = (data['tag_name'] as String? ?? '').trim();
+      if (tagName.isEmpty) return null;
+
+      // Extract version and optional build number from tag (e.g. "v1.0.2" or "1.0.2+3")
+      final cleanTag = tagName.startsWith('v') || tagName.startsWith('V')
+          ? tagName.substring(1).trim()
+          : tagName;
+
+      String versionStr = cleanTag;
+      int buildNum = 0;
+
+      if (cleanTag.contains('+')) {
+        final parts = cleanTag.split('+');
+        versionStr = parts[0].trim();
+        buildNum = int.tryParse(parts[1].trim()) ?? 0;
+      }
+
+      // Find preferred download asset (.exe installer -> .msix -> .zip -> release page)
+      final assets = (data['assets'] as List?) ?? [];
+      String downloadUrl = data['html_url'] as String? ?? '';
+
+      String? exeUrl;
+      String? msixUrl;
+      String? zipUrl;
+
+      for (final asset in assets) {
+        if (asset is Map<String, dynamic>) {
+          final name = (asset['name'] as String? ?? '').toLowerCase();
+          final browserUrl = asset['browser_download_url'] as String? ?? '';
+          if (name.endsWith('.exe')) {
+            exeUrl = browserUrl;
+          } else if (name.endsWith('.msix')) {
+            msixUrl = browserUrl;
+          } else if (name.endsWith('.zip')) {
+            zipUrl = browserUrl;
+          }
+        }
+      }
+
+      downloadUrl = exeUrl ?? msixUrl ?? zipUrl ?? downloadUrl;
+      final releaseNotes = data['body'] as String? ?? '';
+
+      return AppUpdateInfo(
+        latestVersion: versionStr,
+        latestBuildNumber: buildNum,
+        downloadUrl: downloadUrl,
+        releaseNotes: releaseNotes,
+        isForceUpdate: releaseNotes.contains('[FORCE_UPDATE]') ||
+            releaseNotes.contains('إجباري'),
+        enabled: true,
+      );
+    } catch (e) {
+      debugPrint('AppUpdateService: Error fetching from GitHub Releases: $e');
+      return null;
+    } finally {
+      if (client == null) {
+        httpClient.close();
+      }
+    }
+  }
+
+  /// Fetches update info from Firestore `app_config/update_info` (Fallback Source).
+  static Future<AppUpdateInfo?> fetchFromFirestore({FirebaseFirestore? firestore}) async {
     if (!kEnableFirebase) return null;
     try {
       final db = firestore ?? FirebaseFirestore.instance;
@@ -129,9 +231,24 @@ class AppUpdateService {
         // Silently skip when Firestore rules are not deployed or offline
         return null;
       }
-      debugPrint('AppUpdateService: Error fetching update info: $e');
+      debugPrint('AppUpdateService: Error fetching from Firestore: $e');
       return null;
     }
+  }
+
+  /// Fetches update info trying GitHub Releases first, then falling back to Firestore.
+  static Future<AppUpdateInfo?> fetchUpdateInfo({
+    FirebaseFirestore? firestore,
+    http.Client? httpClient,
+  }) async {
+    // 1. Primary Source: GitHub Releases
+    final githubInfo = await fetchFromGitHubReleases(client: httpClient);
+    if (githubInfo != null) {
+      return githubInfo;
+    }
+
+    // 2. Fallback Source: Firebase Firestore
+    return await fetchFromFirestore(firestore: firestore);
   }
 
   /// Publishes new update configuration to Firestore.
@@ -150,6 +267,7 @@ class AppUpdateService {
     bool showNoUpdateToast = false,
     FirebaseFirestore? firestore,
     PackageInfo? mockPackageInfo,
+    http.Client? mockHttpClient,
   }) async {
     if (!forceCheck && _hasAutoChecked) {
       return;
@@ -161,11 +279,29 @@ class AppUpdateService {
       final currentVersion = packageInfo.version.trim();
       final currentBuildNumber = int.tryParse(packageInfo.buildNumber.trim()) ?? 0;
 
-      final updateInfo = await fetchUpdateInfo(firestore: firestore);
+      final updateInfo = await fetchUpdateInfo(
+        firestore: firestore,
+        httpClient: mockHttpClient,
+      );
 
       if (!context.mounted) return;
 
-      if (updateInfo == null || !updateInfo.enabled) {
+      // When update information could not be retrieved (no internet / error)
+      if (updateInfo == null) {
+        if (showNoUpdateToast) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('تعذر التحقق من التحديثات، يرجى التأكد من اتصال الإنترنت'),
+              backgroundColor: AppColors.warning,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+
+      // When updates are explicitly disabled remotely
+      if (!updateInfo.enabled) {
         if (showNoUpdateToast) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -226,4 +362,5 @@ class AppUpdateService {
     }
   }
 }
+
 

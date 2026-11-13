@@ -1,7 +1,10 @@
+import 'dart:convert';
 import 'package:clothes_erp/core/services/app_update_service.dart';
 import 'package:clothes_erp/core/services/widgets/app_update_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 void main() {
   group('AppUpdateService - Version Comparison Tests', () {
@@ -215,6 +218,140 @@ void main() {
         find.text('هذا التحديث إجباري لمتابعة استخدام النظام ومزامنة البيانات.'),
         findsOneWidget,
       );
+    });
+  });
+
+  group('AppUpdateService - GitHub Releases Fetch Tests', () {
+    test('parses latest release with .exe installer asset priority', () async {
+      final mockClient = MockClient((request) async {
+        expect(request.url.path, '/repos/test-owner/test-repo/releases/latest');
+        expect(request.headers['User-Agent'], 'clothes_erp-updater');
+
+        final payload = {
+          'tag_name': 'v1.0.2',
+          'html_url': 'https://github.com/test-owner/test-repo/releases/tag/v1.0.2',
+          'body': '• إصلاحات عامة\n• تحسينات الأداء',
+          'assets': [
+            {
+              'name': 'clothes_erp_v1.0.2.zip',
+              'browser_download_url': 'https://github.com/download/app.zip',
+            },
+            {
+              'name': 'clothes_erp_setup_v1.0.2.exe',
+              'browser_download_url': 'https://github.com/download/setup.exe',
+            },
+          ],
+        };
+
+        return http.Response(
+          jsonEncode(payload),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      });
+
+      final info = await AppUpdateService.fetchFromGitHubReleases(
+        client: mockClient,
+        repo: 'test-owner/test-repo',
+      );
+
+      expect(info, isNotNull);
+      expect(info!.latestVersion, '1.0.2');
+      expect(info.latestBuildNumber, 0);
+      // Selected .exe over .zip:
+      expect(info.downloadUrl, 'https://github.com/download/setup.exe');
+      expect(info.releaseNotes, contains('إصلاحات عامة'));
+      expect(info.isForceUpdate, isFalse);
+      expect(info.enabled, isTrue);
+    });
+
+    test('parses tag with build number (e.g. v1.0.3+5)', () async {
+      final mockClient = MockClient((request) async {
+        final payload = {
+          'tag_name': 'v1.0.3+5',
+          'html_url': 'https://github.com/test-owner/test-repo/releases/tag/v1.0.3+5',
+          'body': 'تحديث جديد',
+          'assets': [],
+        };
+        return http.Response(
+          jsonEncode(payload),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      });
+
+      final info = await AppUpdateService.fetchFromGitHubReleases(
+        client: mockClient,
+        repo: 'test-owner/test-repo',
+      );
+
+      expect(info, isNotNull);
+      expect(info!.latestVersion, '1.0.3');
+      expect(info.latestBuildNumber, 5);
+      expect(info.downloadUrl, 'https://github.com/test-owner/test-repo/releases/tag/v1.0.3+5');
+    });
+
+    test('sends Authorization header when token is provided', () async {
+      String? sentAuth;
+      final mockClient = MockClient((request) async {
+        sentAuth = request.headers['Authorization'];
+        final payload = {
+          'tag_name': 'v1.0.4',
+          'html_url': 'https://github.com/test-owner/test-repo',
+          'body': '',
+          'assets': [],
+        };
+        return http.Response(
+          jsonEncode(payload),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      });
+
+      await AppUpdateService.fetchFromGitHubReleases(
+        client: mockClient,
+        repo: 'test-owner/test-repo',
+        token: 'ghp_secret_token_12345',
+      );
+
+      expect(sentAuth, 'Bearer ghp_secret_token_12345');
+    });
+
+    test('returns null when GitHub API returns 404 or error', () async {
+      final mockClient = MockClient((request) async {
+        return http.Response('{"message": "Not Found"}', 404);
+      });
+
+      final info = await AppUpdateService.fetchFromGitHubReleases(
+        client: mockClient,
+        repo: 'test-owner/test-repo',
+      );
+
+      expect(info, isNull);
+    });
+
+    test('detects mandatory update from release notes trigger', () async {
+      final mockClient = MockClient((request) async {
+        final payload = {
+          'tag_name': 'v2.0.0',
+          'html_url': 'https://github.com/test-owner/test-repo',
+          'body': 'تحديث هام [FORCE_UPDATE] يرجى الترقية فوراً',
+          'assets': [],
+        };
+        return http.Response(
+          jsonEncode(payload),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      });
+
+      final info = await AppUpdateService.fetchFromGitHubReleases(
+        client: mockClient,
+        repo: 'test-owner/test-repo',
+      );
+
+      expect(info, isNotNull);
+      expect(info!.isForceUpdate, isTrue);
     });
   });
 }

@@ -1,5 +1,8 @@
 name: Windows Build & Release
 
+permissions:
+  contents: write
+
 on:
   push:
     branches: [ main, dev ]
@@ -153,7 +156,7 @@ jobs:
           }
 
       - name: Build Windows Release
-        run: flutter build windows --release
+        run: flutter build windows --release --dart-define=GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
 
       - name: Get App Version
         id: version
@@ -229,7 +232,7 @@ jobs:
       # ─────────────────────────────────────────────────────────────────────────
       - name: Build Windows Safe Mode Release
         if: ${{ github.event.inputs.build_safe_mode != 'false' }}
-        run: flutter build windows --release --dart-define=ENABLE_FIREBASE=false
+        run: flutter build windows --release --dart-define=ENABLE_FIREBASE=false --dart-define=GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
 
       - name: Package Safe Mode Release (ZIP)
         if: ${{ github.event.inputs.build_safe_mode != 'false' }}
@@ -251,3 +254,26 @@ jobs:
           path: orchid-erp-windows-safe-mode.zip
           retention-days: 30
           if-no-files-found: error
+
+      # ─────────────────────────────────────────────────────────────────────────
+      # AUTOMATIC GITHUB RELEASE CREATION
+      # Publishes an official GitHub Release with installer & zip assets
+      # whenever changes are pushed to main.
+      # ─────────────────────────────────────────────────────────────────────────
+      - name: Create or Update GitHub Release
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.APP_VERSION }}
+          name: "Release v${{ env.APP_VERSION }}"
+          body: |
+            ## تحديث نظام أوركيد ERP v${{ env.APP_VERSION }}
+            - تم بناء النسخة ورفع ملفات التثبيت بنجاح.
+          files: |
+            Orkeed_erp_windows_v${{ env.APP_VERSION }}.zip
+            build/installer/*.exe
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
