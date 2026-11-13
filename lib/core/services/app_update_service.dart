@@ -1,8 +1,11 @@
-import 'dart:convert';
+﻿import 'dart:convert';
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import '../config/app_config.dart';
 import '../constants/app_colors.dart';
 import 'widgets/app_update_dialog.dart';
@@ -70,13 +73,10 @@ class AppUpdateService {
 
   static bool _hasAutoChecked = false;
 
-  /// Reset check state (useful for tests or manual re-check)
   static void resetAutoCheckState() {
     _hasAutoChecked = false;
   }
 
-  /// Compares two semantic version strings (e.g., '1.0.1' and '1.0.0').
-  /// Returns 1 if v1 > v2, -1 if v1 < v2, and 0 if equal.
   static int compareSemanticVersions(String v1, String v2) {
     final cleanV1 = v1.split('-').first.trim();
     final cleanV2 = v2.split('-').first.trim();
@@ -94,7 +94,6 @@ class AppUpdateService {
     return 0;
   }
 
-  /// Determines if an update is available given current and remote versions.
   static bool isUpdateAvailable({
     required String currentVersion,
     required int currentBuildNumber,
@@ -110,7 +109,6 @@ class AppUpdateService {
     return compareSemanticVersions(remoteVersion, currentVersion) > 0;
   }
 
-  /// Determines if the update is mandatory.
   static bool isForceUpdateRequired({
     required String currentVersion,
     required int currentBuildNumber,
@@ -122,7 +120,6 @@ class AppUpdateService {
     return false;
   }
 
-  /// Fetches update info directly from GitHub Releases API (Primary Source).
   static Future<AppUpdateInfo?> fetchFromGitHubReleases({
     http.Client? client,
     String? repo,
@@ -158,7 +155,6 @@ class AppUpdateService {
       final tagName = (data['tag_name'] as String? ?? '').trim();
       if (tagName.isEmpty) return null;
 
-      // Extract version and optional build number from tag (e.g. "v1.0.2" or "1.0.2+3")
       final cleanTag = tagName.startsWith('v') || tagName.startsWith('V')
           ? tagName.substring(1).trim()
           : tagName;
@@ -172,7 +168,6 @@ class AppUpdateService {
         buildNum = int.tryParse(parts[1].trim()) ?? 0;
       }
 
-      // Find preferred download asset (.exe installer -> .msix -> .zip -> release page)
       final assets = (data['assets'] as List?) ?? [];
       String downloadUrl = data['html_url'] as String? ?? '';
 
@@ -216,7 +211,6 @@ class AppUpdateService {
     }
   }
 
-  /// Fetches update info from Firestore `app_config/update_info` (Fallback Source).
   static Future<AppUpdateInfo?> fetchFromFirestore({FirebaseFirestore? firestore}) async {
     if (!kEnableFirebase) return null;
     try {
@@ -228,7 +222,6 @@ class AppUpdateService {
       return AppUpdateInfo.fromMap(doc.data()!);
     } catch (e) {
       if (e.toString().contains('permission-denied')) {
-        // Silently skip when Firestore rules are not deployed or offline
         return null;
       }
       debugPrint('AppUpdateService: Error fetching from Firestore: $e');
@@ -236,22 +229,17 @@ class AppUpdateService {
     }
   }
 
-  /// Fetches update info trying GitHub Releases first, then falling back to Firestore.
   static Future<AppUpdateInfo?> fetchUpdateInfo({
     FirebaseFirestore? firestore,
     http.Client? httpClient,
   }) async {
-    // 1. Primary Source: GitHub Releases
     final githubInfo = await fetchFromGitHubReleases(client: httpClient);
     if (githubInfo != null) {
       return githubInfo;
     }
-
-    // 2. Fallback Source: Firebase Firestore
     return await fetchFromFirestore(firestore: firestore);
   }
 
-  /// Publishes new update configuration to Firestore.
   static Future<void> publishUpdateInfo(
     AppUpdateInfo info, {
     FirebaseFirestore? firestore,
@@ -260,7 +248,42 @@ class AppUpdateService {
     await db.collection(configCollection).doc(updateDoc).set(info.toMap(), SetOptions(merge: true));
   }
 
-  /// Checks for updates and displays the modern Arabic update dialog if a new version is found.
+  static Future<String> downloadUpdate(
+    String url, {
+    void Function(double progress)? onProgress,
+    CancelToken? cancelToken,
+    Dio? dio,
+  }) async {
+    final dir = await getApplicationSupportDirectory();
+    final uri = Uri.parse(url);
+    var fileName = uri.pathSegments.isNotEmpty ? uri.pathSegments.last : '';
+    fileName = fileName.split('?').first;
+    if (fileName.isEmpty) {
+      fileName = 'update_${DateTime.now().millisecondsSinceEpoch}.exe';
+    }
+    final safeName = fileName.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
+    final filePath = '${dir.path}${Platform.pathSeparator}update_${DateTime.now().millisecondsSinceEpoch}_$safeName';
+
+    final client = dio ?? Dio();
+    try {
+      await client.download(
+        url,
+        filePath,
+        cancelToken: cancelToken,
+        onReceiveProgress: (received, total) {
+          if (total > 0) {
+            onProgress?.call((received / total).clamp(0.0, 1.0));
+          }
+        },
+      );
+      return filePath;
+    } finally {
+      if (dio == null) {
+        client.close();
+      }
+    }
+  }
+
   static Future<void> checkForUpdate(
     BuildContext context, {
     bool forceCheck = false,
@@ -286,7 +309,6 @@ class AppUpdateService {
 
       if (!context.mounted) return;
 
-      // When update information could not be retrieved (no internet / error)
       if (updateInfo == null) {
         if (showNoUpdateToast) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -300,7 +322,6 @@ class AppUpdateService {
         return;
       }
 
-      // When updates are explicitly disabled remotely
       if (!updateInfo.enabled) {
         if (showNoUpdateToast) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -362,5 +383,3 @@ class AppUpdateService {
     }
   }
 }
-
-
