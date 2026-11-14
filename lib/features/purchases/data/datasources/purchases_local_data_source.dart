@@ -438,13 +438,14 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
               ),
             );
 
-        // Optionally record in expenses
+        // Optionally record in expenses with kind='supplier_payment'
         await _db.into(_db.expenses).insert(
               ExpensesCompanion.insert(
                 id: _uuid.v4(),
                 branchId: branchId,
                 category: 'مشتريات بضاعة',
                 amount: paidAmount,
+                kind: const Value('supplier_payment'),
                 note: Value('دفعة فاتورة شراء #${invoiceNumber ?? ''}'),
                 userId: userId,
                 expenseDate: purchaseDate,
@@ -575,13 +576,14 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
         }
       }
 
-      // 4. Log in expenses
+      // 4. Log in expenses with kind='supplier_payment'
       await _db.into(_db.expenses).insert(
             ExpensesCompanion.insert(
               id: _uuid.v4(),
               branchId: branchId,
               category: 'سداد موردين',
               amount: amount,
+              kind: const Value('supplier_payment'),
               note: Value(notes ?? 'سداد دفعة مورد'),
               userId: userId,
               expenseDate: paymentDate,

@@ -39,16 +39,18 @@ class PosLocalDataSource {
     return rows.map((r) => r.readTable(_db.productVariants)).toList();
   }
 
-  Future<void> checkout({
+  Future<String> checkout({
     required List<Map<String, dynamic>> items,
     required int total,
     required String cashierId,
     String? customerId,
     String? shiftId,
+    String? paymentMethod,
+    String? saleId,
   }) async {
     final now = DateTime.now();
     final branchId = await _branchId();
-    final saleId = _uuid.v4();
+    final effectiveSaleId = saleId ?? _uuid.v4();
 
     String? effectiveShiftId = shiftId;
     if (effectiveShiftId == null) {
@@ -65,7 +67,7 @@ class PosLocalDataSource {
     await _tx.write(
       writeFn: () async {
         await _db.into(_db.sales).insert(SalesCompanion.insert(
-          id: saleId,
+          id: effectiveSaleId,
           branchId: branchId,
           shortRef: 'S${now.millisecondsSinceEpoch}',
           cashierId: cashierId,
@@ -74,7 +76,7 @@ class PosLocalDataSource {
           subtotal: total,
           discountType: 'none',
           total: total,
-          paymentMethod: 'cash',
+          paymentMethod: paymentMethod ?? 'cash',
           date: now,
           createdAt: now,
           updatedAt: now,
@@ -83,7 +85,7 @@ class PosLocalDataSource {
           await _db.into(_db.saleItems).insert(SaleItemsCompanion.insert(
             id: _uuid.v4(),
             branchId: branchId,
-            saleId: saleId,
+            saleId: effectiveSaleId,
             variantId: item['variantId'] as String,
             productName: item['name'] as String,
             color: item['color'] as String,
@@ -101,16 +103,17 @@ class PosLocalDataSource {
             reason: 'sale',
             userId: cashierId,
             refType: 'sale',
-            refId: saleId,
+            refId: effectiveSaleId,
           );
         }
       },
       branchId: branchId,
       entity: 'sale',
-      entityId: saleId,
+      entityId: effectiveSaleId,
       operation: 'insert',
       userId: cashierId,
     );
+    return effectiveSaleId;
   }
 }
 

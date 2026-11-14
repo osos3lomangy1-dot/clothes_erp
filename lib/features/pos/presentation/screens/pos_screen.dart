@@ -21,6 +21,15 @@ import '../../../invoices/domain/entities/invoice_details_entity.dart';
 import '../../../invoices/domain/repositories/invoices_repository.dart';
 import '../../../invoices/presentation/widgets/sale_success_dialog.dart';
 import '../../../employees/presentation/widgets/cashier_profile_dialog.dart';
+import '../../../../core/features/feature_gate.dart';
+import '../../../../core/services/crash_logger_service.dart';
+import '../../../../core/database/app_database.dart';
+import 'package:drift/drift.dart' show Value;
+import '../../../installments/domain/facades/installments_facade.dart';
+import '../../../installments/presentation/screens/installment_detail_screen.dart';
+import '../../../installments/data/services/manager_pin_service.dart';
+import '../../domain/entities/sale_entity.dart';
+import '../widgets/installment_checkout_dialog.dart';
 
 Color _getCategoryColor(String? categoryId) {
   if (categoryId == null || categoryId.isEmpty) return const Color(0xFF673AB7);
@@ -1477,7 +1486,22 @@ class _CartPanelState extends State<_CartPanel> {
   final _receivedCtrl = TextEditingController();
   bool _isPercentageDiscount = false;
   String _paymentMethod = 'cash'; // 'cash' or 'card'
+  bool _installmentAvailable = false;
   bool _isWholesaleMode = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkInstallmentAvailability();
+  }
+
+  Future<void> _checkInstallmentAvailability() async {
+    final gate = getIt<FeatureGate>();
+    final featureOn = await gate.isEnabled(FeatureKeys.installments);
+    final meta = await gate.getMeta('payment.installment');
+    final paymentOn = meta != '0';
+    if (mounted) setState(() => _installmentAvailable = featureOn && paymentOn);
+  }
 
   @override
   void dispose() {
@@ -1533,6 +1557,10 @@ class _CartPanelState extends State<_CartPanel> {
   }
 
   Future<void> _handleCheckout(PosState state) async {
+    if (_paymentMethod == 'installment') {
+      await _handleInstallmentCheckout();
+      return;
+    }
     if (state.cart.isEmpty || state.isProcessing) return;
 
     String? cashierId;
@@ -1578,6 +1606,152 @@ class _CartPanelState extends State<_CartPanel> {
         );
       }
     }
+  }
+
+  Future<void> _handleInstallmentCheckout() async {
+    // TD-006: Atomic POS+installment checkout.
+    // Sale and contract are created in two separate transactions.
+    // If createContract fails after checkout succeeds, the sale is orphaned.
+    // Future fix requires TxWriter continuation callback.
+    // TD-010: SaleEntity uses double for money — inconsistent with piasters-as-int.
+
+    // CRITICAL: Capture BEFORE checkout (state resets on success)
+    final posState = context.read<PosCubit>().state;
+    final customer = posState.customer;
+    final totalPiasters = posState.total;
+
+    if (customer == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('اختر عميلاً أولاً للتقسيط')));
+      return;
+    }
+    if (totalPiasters <= 0) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('السلة فارغة')));
+      return;
+    }
+
+    final gate = getIt<FeatureGate>();
+    final pinRequired = getIt.isRegistered<ManagerPinService>()
+        ? await getIt<ManagerPinService>().isPinRequired()
+        : (await gate.getMeta('installments.pin.require')) != '0';
+
+    final plansResult = await getIt<InstallmentsFacade>().listPlans();
+    final activePlans =
+        plansResult.getOrElse(() => []).where((p) => p.isActive).toList();
+
+    if (activePlans.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('لا توجد خطط تقسيط مفعلة. أضف خطة أولاً.')));
+      return;
+    }
+
+    if (!mounted) return;
+
+    final config = await showDialog<InstallmentCheckoutConfig>(
+      context: context,
+      builder: (_) => InstallmentCheckoutDialog(
+        plans: activePlans,
+        totalPiasters: totalPiasters,
+        pinRequired: pinRequired,
+      ),
+    );
+    if (config == null || !mounted) return;
+
+    // Pre-verify PIN before checkout so that an incorrect PIN NEVER creates a sale or clears the cart
+    if (pinRequired || config.pin.isNotEmpty) {
+      if (getIt.isRegistered<ManagerPinService>()) {
+        final pinCheck = await getIt<ManagerPinService>().verifyPin(
+          pin: config.pin,
+          operation: 'create_contract',
+        );
+        if (!mounted) return;
+        if (!pinCheck.ok) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(pinCheck.error ?? 'الرقم السري للمدير غير صحيح'),
+            backgroundColor: AppColors.error,
+          ));
+          return; // ABORT: DO NOT PROCEED TO CHECKOUT
+        }
+      }
+    }
+
+    // Step 1: create sale, capture via callback
+    final posCubit = context.read<PosCubit>();
+    SaleEntity? createdSale;
+    final success = await posCubit.checkout(
+      paymentMethod: 'installment',
+      onSaleCreated: (sale) => createdSale = sale,
+    );
+
+    if (!mounted) return;
+
+    if (!success || createdSale == null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('فشل إنشاء الفاتورة')));
+      return;
+    }
+
+    // Step 2: create contract
+    final contractResult = await getIt<InstallmentsFacade>().createContract(
+      saleId: createdSale!.id,
+      customerId: customer.id,
+      planId: config.planId,
+      totalPiasters: totalPiasters,
+      downPaymentPiasters: config.downPaymentPiasters,
+      interestBp: config.interestBp,
+      interestModel: config.interestModel,
+      durationMonths: config.durationMonths,
+      startDate: DateTime.now(),
+      pin: config.pin,
+    );
+
+    if (!mounted) return;
+
+    contractResult.fold(
+      (failure) async {
+        // Rollback / cancel created sale so it doesn't remain orphaned
+        try {
+          final db = getIt<AppDatabase>();
+          await (db.update(db.sales)..where((t) => t.id.equals(createdSale!.id)))
+              .write(SalesCompanion(
+                status: const Value('cancelled'),
+                deletedAt: Value(DateTime.now()),
+                updatedAt: Value(DateTime.now()),
+              ));
+        } catch (_) {}
+
+        CrashLoggerService.logCrash(
+          Exception(
+              'POS installment partial: sale ${createdSale!.id} rolled back, '
+              'contract failed: ${failure.message}'),
+          StackTrace.current,
+          context: 'POS_INSTALLMENT_PARTIAL',
+        );
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(
+              'فشل إنشاء عقد التقسيط: ${failure.message}\n'
+              'تم إلغاء الفاتورة لعدم اكتمال التقسيط.'),
+          backgroundColor: AppColors.error,
+          duration: const Duration(seconds: 8),
+        ));
+      },
+      (contract) {
+        // checkout already cleared cart — no clearCart() needed
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('تم إنشاء عقد التقسيط بنجاح'),
+          backgroundColor: Colors.green,
+        ));
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) =>
+                  InstallmentDetailScreen(contractId: contract.id)),
+        );
+      },
+    );
   }
 
   @override
@@ -2147,6 +2321,33 @@ class _CartPanelState extends State<_CartPanel> {
                               ),
                             ),
                           ),
+                          if (_installmentAvailable) ...[
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () => setState(() => _paymentMethod = 'installment'),
+                                style: ElevatedButton.styleFrom(
+                                  elevation: _paymentMethod == 'installment' ? 2 : 0,
+                                  backgroundColor: _paymentMethod == 'installment'
+                                      ? AppColors.primary
+                                      : AppColors.surfaceContainerLowest,
+                                  foregroundColor: _paymentMethod == 'installment'
+                                      ? Colors.white
+                                      : AppColors.onSurface,
+                                  side: BorderSide(
+                                    color: _paymentMethod == 'installment'
+                                        ? AppColors.primary
+                                        : AppColors.outlineVariant,
+                                  ),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                ),
+                                icon: const Icon(Icons.payments_rounded, size: 18),
+                                label: Text('تقسيط',
+                                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13)),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
 

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/common.dart';
 
@@ -227,6 +228,9 @@ class Expenses extends Table {
   TextColumn get branchId => text()();
   TextColumn get category => text()();
   IntColumn get amount => integer()();
+  TextColumn get kind => text()
+      .withDefault(const Constant('operating'))
+      .check(const CustomExpression<bool>("kind IN ('operating', 'supplier_payment')"))();
   TextColumn get note => text().nullable()();
   TextColumn get userId => text()();
   DateTimeColumn get expenseDate => dateTime()();
@@ -625,7 +629,24 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
+
+  @visibleForTesting
+  Future<void> migrateToV6(Migrator m) async {
+    final result = await customSelect('PRAGMA table_info("expenses")').get();
+    final cols = result
+        .map((r) => (r.data['name'] as String).toLowerCase())
+        .toSet();
+    if (!cols.contains('kind')) {
+      await m.addColumn(expenses, expenses.kind);
+    }
+    await customStatement('''
+      UPDATE expenses
+      SET kind = 'supplier_payment'
+      WHERE category IN ('مشتريات بضاعة', 'سداد موردين')
+        AND kind = 'operating'
+    ''');
+  }
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -701,6 +722,10 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(customerInstallments);
         await m.createTable(installmentPayments);
       }
+
+      if (from < 6 && to >= 6) {
+        await migrateToV6(m);
+      }
     },
     beforeOpen: (details) async {
       Future<void> addColumnIfNotExists(
@@ -763,6 +788,11 @@ class AppDatabase extends _$AppDatabase {
         'users',
         'salary',
         'INTEGER NOT NULL DEFAULT 0',
+      );
+      await addColumnIfNotExists(
+        'expenses',
+        'kind',
+        "TEXT NOT NULL DEFAULT 'operating' CHECK (kind IN ('operating', 'supplier_payment'))",
       );
     },
   );

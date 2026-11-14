@@ -67,9 +67,10 @@ class ReportsLocalDataSourceImpl implements ReportsLocalDataSource {
 
     final totalProfit = totalRevenue - totalCost;
 
-    // 3. Calculate expenses in this period
+    // 3. Calculate expenses in this period (operating expenses only)
     final expensesQuery = _db.select(_db.expenses)
       ..where((e) =>
+          e.kind.equals('operating') &
           e.expenseDate.isBiggerOrEqualValue(start) &
           e.expenseDate.isSmallerOrEqualValue(end) &
           e.deletedAt.isNull());

@@ -216,4 +216,22 @@ void main() {
     expect(find.text('تسجيل دفعة جديدة'), findsOneWidget);
     expect(find.text('إلغاء العقد'), findsOneWidget);
   });
+
+  testWidgets('5. correctly marks installment as paid after payment is recorded', (
+    tester,
+  ) async {
+    await facade.recordPayment(
+      contractId: contract.id,
+      amountPiasters: 8000,
+      paymentMethod: 'cash',
+      pin: '1234',
+    );
+
+    await tester.pumpWidget(buildTestWidget());
+    await tester.pumpAndSettle();
+
+    expect(find.text('مدفوع'), findsWidgets);
+    expect(find.text('200.00 ج.م'), findsOneWidget);
+    expect(find.text('400.00 ج.م'), findsOneWidget);
+  });
 }

@@ -7090,6 +7090,19 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    check: () => const CustomExpression<bool>(
+      "kind IN ('operating', 'supplier_payment')",
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('operating'),
+  );
   static const VerificationMeta _noteMeta = const VerificationMeta('note');
   @override
   late final GeneratedColumn<String> note = GeneratedColumn<String>(
@@ -7158,6 +7171,7 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
     branchId,
     category,
     amount,
+    kind,
     note,
     userId,
     expenseDate,
@@ -7205,6 +7219,12 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
       );
     } else if (isInserting) {
       context.missing(_amountMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
     }
     if (data.containsKey('note')) {
       context.handle(
@@ -7278,6 +7298,10 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
         DriftSqlType.int,
         data['${effectivePrefix}amount'],
       )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
       note: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}note'],
@@ -7316,6 +7340,7 @@ class Expense extends DataClass implements Insertable<Expense> {
   final String branchId;
   final String category;
   final int amount;
+  final String kind;
   final String? note;
   final String userId;
   final DateTime expenseDate;
@@ -7327,6 +7352,7 @@ class Expense extends DataClass implements Insertable<Expense> {
     required this.branchId,
     required this.category,
     required this.amount,
+    required this.kind,
     this.note,
     required this.userId,
     required this.expenseDate,
@@ -7341,6 +7367,7 @@ class Expense extends DataClass implements Insertable<Expense> {
     map['branch_id'] = Variable<String>(branchId);
     map['category'] = Variable<String>(category);
     map['amount'] = Variable<int>(amount);
+    map['kind'] = Variable<String>(kind);
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
     }
@@ -7360,6 +7387,7 @@ class Expense extends DataClass implements Insertable<Expense> {
       branchId: Value(branchId),
       category: Value(category),
       amount: Value(amount),
+      kind: Value(kind),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       userId: Value(userId),
       expenseDate: Value(expenseDate),
@@ -7381,6 +7409,7 @@ class Expense extends DataClass implements Insertable<Expense> {
       branchId: serializer.fromJson<String>(json['branchId']),
       category: serializer.fromJson<String>(json['category']),
       amount: serializer.fromJson<int>(json['amount']),
+      kind: serializer.fromJson<String>(json['kind']),
       note: serializer.fromJson<String?>(json['note']),
       userId: serializer.fromJson<String>(json['userId']),
       expenseDate: serializer.fromJson<DateTime>(json['expenseDate']),
@@ -7397,6 +7426,7 @@ class Expense extends DataClass implements Insertable<Expense> {
       'branchId': serializer.toJson<String>(branchId),
       'category': serializer.toJson<String>(category),
       'amount': serializer.toJson<int>(amount),
+      'kind': serializer.toJson<String>(kind),
       'note': serializer.toJson<String?>(note),
       'userId': serializer.toJson<String>(userId),
       'expenseDate': serializer.toJson<DateTime>(expenseDate),
@@ -7411,6 +7441,7 @@ class Expense extends DataClass implements Insertable<Expense> {
     String? branchId,
     String? category,
     int? amount,
+    String? kind,
     Value<String?> note = const Value.absent(),
     String? userId,
     DateTime? expenseDate,
@@ -7422,6 +7453,7 @@ class Expense extends DataClass implements Insertable<Expense> {
     branchId: branchId ?? this.branchId,
     category: category ?? this.category,
     amount: amount ?? this.amount,
+    kind: kind ?? this.kind,
     note: note.present ? note.value : this.note,
     userId: userId ?? this.userId,
     expenseDate: expenseDate ?? this.expenseDate,
@@ -7435,6 +7467,7 @@ class Expense extends DataClass implements Insertable<Expense> {
       branchId: data.branchId.present ? data.branchId.value : this.branchId,
       category: data.category.present ? data.category.value : this.category,
       amount: data.amount.present ? data.amount.value : this.amount,
+      kind: data.kind.present ? data.kind.value : this.kind,
       note: data.note.present ? data.note.value : this.note,
       userId: data.userId.present ? data.userId.value : this.userId,
       expenseDate: data.expenseDate.present
@@ -7453,6 +7486,7 @@ class Expense extends DataClass implements Insertable<Expense> {
           ..write('branchId: $branchId, ')
           ..write('category: $category, ')
           ..write('amount: $amount, ')
+          ..write('kind: $kind, ')
           ..write('note: $note, ')
           ..write('userId: $userId, ')
           ..write('expenseDate: $expenseDate, ')
@@ -7469,6 +7503,7 @@ class Expense extends DataClass implements Insertable<Expense> {
     branchId,
     category,
     amount,
+    kind,
     note,
     userId,
     expenseDate,
@@ -7484,6 +7519,7 @@ class Expense extends DataClass implements Insertable<Expense> {
           other.branchId == this.branchId &&
           other.category == this.category &&
           other.amount == this.amount &&
+          other.kind == this.kind &&
           other.note == this.note &&
           other.userId == this.userId &&
           other.expenseDate == this.expenseDate &&
@@ -7497,6 +7533,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
   final Value<String> branchId;
   final Value<String> category;
   final Value<int> amount;
+  final Value<String> kind;
   final Value<String?> note;
   final Value<String> userId;
   final Value<DateTime> expenseDate;
@@ -7509,6 +7546,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     this.branchId = const Value.absent(),
     this.category = const Value.absent(),
     this.amount = const Value.absent(),
+    this.kind = const Value.absent(),
     this.note = const Value.absent(),
     this.userId = const Value.absent(),
     this.expenseDate = const Value.absent(),
@@ -7522,6 +7560,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     required String branchId,
     required String category,
     required int amount,
+    this.kind = const Value.absent(),
     this.note = const Value.absent(),
     required String userId,
     required DateTime expenseDate,
@@ -7542,6 +7581,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     Expression<String>? branchId,
     Expression<String>? category,
     Expression<int>? amount,
+    Expression<String>? kind,
     Expression<String>? note,
     Expression<String>? userId,
     Expression<DateTime>? expenseDate,
@@ -7555,6 +7595,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
       if (branchId != null) 'branch_id': branchId,
       if (category != null) 'category': category,
       if (amount != null) 'amount': amount,
+      if (kind != null) 'kind': kind,
       if (note != null) 'note': note,
       if (userId != null) 'user_id': userId,
       if (expenseDate != null) 'expense_date': expenseDate,
@@ -7570,6 +7611,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     Value<String>? branchId,
     Value<String>? category,
     Value<int>? amount,
+    Value<String>? kind,
     Value<String?>? note,
     Value<String>? userId,
     Value<DateTime>? expenseDate,
@@ -7583,6 +7625,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
       branchId: branchId ?? this.branchId,
       category: category ?? this.category,
       amount: amount ?? this.amount,
+      kind: kind ?? this.kind,
       note: note ?? this.note,
       userId: userId ?? this.userId,
       expenseDate: expenseDate ?? this.expenseDate,
@@ -7607,6 +7650,9 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     }
     if (amount.present) {
       map['amount'] = Variable<int>(amount.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
     }
     if (note.present) {
       map['note'] = Variable<String>(note.value);
@@ -7639,6 +7685,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
           ..write('branchId: $branchId, ')
           ..write('category: $category, ')
           ..write('amount: $amount, ')
+          ..write('kind: $kind, ')
           ..write('note: $note, ')
           ..write('userId: $userId, ')
           ..write('expenseDate: $expenseDate, ')
@@ -22361,6 +22408,7 @@ typedef $$ExpensesTableCreateCompanionBuilder =
       required String branchId,
       required String category,
       required int amount,
+      Value<String> kind,
       Value<String?> note,
       required String userId,
       required DateTime expenseDate,
@@ -22375,6 +22423,7 @@ typedef $$ExpensesTableUpdateCompanionBuilder =
       Value<String> branchId,
       Value<String> category,
       Value<int> amount,
+      Value<String> kind,
       Value<String?> note,
       Value<String> userId,
       Value<DateTime> expenseDate,
@@ -22410,6 +22459,11 @@ class $$ExpensesTableFilterComposer
 
   ColumnFilters<int> get amount => $composableBuilder(
     column: $table.amount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -22473,6 +22527,11 @@ class $$ExpensesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get note => $composableBuilder(
     column: $table.note,
     builder: (column) => ColumnOrderings(column),
@@ -22524,6 +22583,9 @@ class $$ExpensesTableAnnotationComposer
 
   GeneratedColumn<int> get amount =>
       $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
 
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
@@ -22578,6 +22640,7 @@ class $$ExpensesTableTableManager
                 Value<String> branchId = const Value.absent(),
                 Value<String> category = const Value.absent(),
                 Value<int> amount = const Value.absent(),
+                Value<String> kind = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<String> userId = const Value.absent(),
                 Value<DateTime> expenseDate = const Value.absent(),
@@ -22590,6 +22653,7 @@ class $$ExpensesTableTableManager
                 branchId: branchId,
                 category: category,
                 amount: amount,
+                kind: kind,
                 note: note,
                 userId: userId,
                 expenseDate: expenseDate,
@@ -22604,6 +22668,7 @@ class $$ExpensesTableTableManager
                 required String branchId,
                 required String category,
                 required int amount,
+                Value<String> kind = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 required String userId,
                 required DateTime expenseDate,
@@ -22616,6 +22681,7 @@ class $$ExpensesTableTableManager
                 branchId: branchId,
                 category: category,
                 amount: amount,
+                kind: kind,
                 note: note,
                 userId: userId,
                 expenseDate: expenseDate,

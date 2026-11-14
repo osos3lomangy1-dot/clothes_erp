@@ -29,13 +29,27 @@ class PosRepositoryImpl implements PosRepository {
         'price': i.price,
         'cost': 0,
       }).toList();
-      await _localDataSource.checkout(
+      final createdId = await _localDataSource.checkout(
         items: items,
         total: sale.total.toInt(),
         cashierId: sale.cashierId,
         customerId: sale.customerId,
+        paymentMethod: sale.paymentMethod,
+        saleId: sale.id.isNotEmpty ? sale.id : null,
       );
-      return Right(sale);
+      return Right(SaleEntity(
+        id: createdId,
+        date: sale.date,
+        cashierId: sale.cashierId,
+        cashierName: sale.cashierName,
+        items: sale.items,
+        subtotal: sale.subtotal,
+        discount: sale.discount,
+        total: sale.total,
+        paymentMethod: sale.paymentMethod,
+        customerId: sale.customerId,
+        syncStatus: sale.syncStatus,
+      ));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

@@ -108,8 +108,8 @@ class PartnersLocalDataSourceImpl implements PartnersLocalDataSource {
 
     final grossProfit = totalRevenue - totalCost;
 
-    // 3. Expenses
-    var expQ = _db.select(_db.expenses)..where((e) => e.deletedAt.isNull());
+    // 3. Expenses (Operating expenses only)
+    var expQ = _db.select(_db.expenses)..where((e) => e.deletedAt.isNull() & e.kind.equals('operating'));
     if (from != null) expQ = expQ..where((e) => e.expenseDate.isBiggerOrEqualValue(from));
     if (to != null) expQ = expQ..where((e) => e.expenseDate.isSmallerOrEqualValue(to));
     final expenses = await expQ.get();

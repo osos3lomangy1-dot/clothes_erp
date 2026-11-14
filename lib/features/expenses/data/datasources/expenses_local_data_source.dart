@@ -33,7 +33,7 @@ class ExpensesLocalDataSourceImpl implements ExpensesLocalDataSource {
 
   @override
   Future<List<ExpenseEntity>> getExpenses({DateTime? from, DateTime? to, String? category}) async {
-    var query = _db.select(_db.expenses)..where((e) => e.deletedAt.isNull());
+    var query = _db.select(_db.expenses)..where((e) => e.deletedAt.isNull() & e.kind.equals('operating'));
 
     if (from != null) {
       query = query..where((e) => e.expenseDate.isBiggerOrEqualValue(from));
@@ -53,6 +53,7 @@ class ExpensesLocalDataSourceImpl implements ExpensesLocalDataSource {
       branchId: r.branchId,
       category: r.category,
       amount: r.amount,
+      kind: r.kind,
       note: r.note,
       userId: r.userId,
       expenseDate: r.expenseDate,
@@ -63,7 +64,7 @@ class ExpensesLocalDataSourceImpl implements ExpensesLocalDataSource {
   @override
   Future<ExpenseEntity?> getExpenseById(String id) async {
     final row = await (_db.select(_db.expenses)
-          ..where((e) => e.id.equals(id) & e.deletedAt.isNull()))
+          ..where((e) => e.id.equals(id) & e.deletedAt.isNull() & e.kind.equals('operating')))
         .getSingleOrNull();
 
     if (row == null) return null;
@@ -72,6 +73,7 @@ class ExpensesLocalDataSourceImpl implements ExpensesLocalDataSource {
       branchId: row.branchId,
       category: row.category,
       amount: row.amount,
+      kind: row.kind,
       note: row.note,
       userId: row.userId,
       expenseDate: row.expenseDate,
@@ -106,6 +108,7 @@ class ExpensesLocalDataSourceImpl implements ExpensesLocalDataSource {
             branchId: branchId,
             category: category.trim(),
             amount: amount,
+            kind: const Value('operating'),
             note: Value(note?.trim()),
             userId: userId,
             expenseDate: expenseDate,
@@ -127,6 +130,7 @@ class ExpensesLocalDataSourceImpl implements ExpensesLocalDataSource {
       branchId: branchId,
       category: category.trim(),
       amount: amount,
+      kind: 'operating',
       note: note?.trim(),
       userId: userId,
       expenseDate: expenseDate,
@@ -158,7 +162,8 @@ class ExpensesLocalDataSourceImpl implements ExpensesLocalDataSource {
 
   @override
   Future<int> getTotalExpenses({DateTime? from, DateTime? to}) async {
-    var query = _db.select(_db.expenses)..where((e) => e.deletedAt.isNull());
+    var query = _db.select(_db.expenses)
+      ..where((e) => e.deletedAt.isNull() & e.kind.equals('operating'));
     if (from != null) {
       query = query..where((e) => e.expenseDate.isBiggerOrEqualValue(from));
     }
