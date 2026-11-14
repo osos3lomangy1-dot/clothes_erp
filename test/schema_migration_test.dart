@@ -15,11 +15,11 @@ void main() {
       await db.close();
     });
 
-    test('schemaVersion must be 4', () {
-      expect(db.schemaVersion, equals(4));
+    test('schemaVersion must be 5', () {
+      expect(db.schemaVersion, equals(5));
     });
 
-    test('Insert and query goods_receipts and goods_receipt_items in schema v4', () async {
+    test('Insert and query goods_receipts and goods_receipt_items in schema v5', () async {
       final now = DateTime.now();
 
       await db.into(db.goodsReceipts).insert(

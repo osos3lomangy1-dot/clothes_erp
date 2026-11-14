@@ -1,27 +1,32 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../constants/app_colors.dart';
 import '../di/injection.dart';
+import '../features/feature_gate.dart';
 import '../services/crash_logger_service.dart';
 import '../services/rest_sync_service.dart';
 import '../../features/auth/presentation/cubits/auth_cubit.dart';
 import '../../features/auth/presentation/cubits/auth_state.dart';
-import '../../features/products/presentation/screens/product_list_screen.dart';
-import '../../features/inventory/presentation/screens/inventory_screen.dart';
-import '../../features/inventory/presentation/screens/blind_receive_screen.dart';
-import '../../features/inventory/presentation/screens/inventory_logs_screen.dart';
+import '../../features/crash_logs/presentation/screens/crash_logs_screen.dart';
 import '../../features/customers/presentation/screens/customer_screen.dart';
-import '../../features/returns/presentation/screens/return_screen.dart';
-import '../../features/reports/presentation/screens/reports_screen.dart';
 import '../../features/employees/presentation/screens/employee_list_screen.dart';
 import '../../features/expenses/presentation/screens/expenses_screen.dart';
+import '../../features/installments/presentation/screens/installments_list_screen.dart';
+import '../../features/inventory/presentation/screens/blind_receive_screen.dart';
+import '../../features/inventory/presentation/screens/inventory_logs_screen.dart';
+import '../../features/inventory/presentation/screens/inventory_screen.dart';
+import '../../features/invoices/presentation/screens/invoices_screen.dart';
 import '../../features/partners/presentation/screens/partners_screen.dart';
 import '../../features/pos/presentation/screens/pos_screen.dart';
+import '../../features/products/presentation/screens/product_list_screen.dart';
 import '../../features/purchases/presentation/screens/purchases_screen.dart';
-import '../../features/crash_logs/presentation/screens/crash_logs_screen.dart';
+import '../../features/reports/presentation/screens/reports_screen.dart';
+import '../../features/returns/presentation/screens/return_screen.dart';
+import '../../features/settings/presentation/screens/system_settings_screen.dart';
 import '../../features/shifts/presentation/screens/shift_screen.dart';
-import '../../features/invoices/presentation/screens/invoices_screen.dart';
 
 class MainLayout extends StatefulWidget {
   final Widget child;
@@ -45,7 +50,6 @@ class _MainLayoutState extends State<MainLayout> {
     _currentScreen = widget.child;
 
     final syncService = getIt<RestSyncService>();
-    // Start background auto-sync timer (every 5 minutes + immediate initial check)
     syncService.startAutoSync(interval: const Duration(minutes: 5));
 
     _syncSubscription = syncService.isSyncingStream.listen((syncing) {
@@ -104,8 +108,21 @@ class _MainLayoutState extends State<MainLayout> {
     }
   }
 
+  bool _isAdmin(AuthState authState) {
+    if (authState is! AuthAuthenticated) return true;
+    return authState.user.role != 'cashier';
+  }
+
+  bool _featureEnabled(Map<String, bool> features, String key) {
+    final def = FeatureKeys.byKey[key];
+    if (def == null) return false;
+    if (def.coreAlwaysEnabled) return true;
+    return features[key] ?? def.defaultEnabled;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final featureGate = getIt<FeatureGate>();
     return Scaffold(
       body: Row(
         children: [
@@ -121,19 +138,24 @@ class _MainLayoutState extends State<MainLayout> {
                       mainAxisAlignment: _isCollapsed ? MainAxisAlignment.center : MainAxisAlignment.spaceBetween,
                       children: [
                         if (!_isCollapsed) ...[
-                          const Row(
-                            children: [
-                              Icon(Icons.storefront_rounded, color: Colors.white, size: 24),
-                              SizedBox(width: 10),
-                              Text(
-                                'نظام الملابس',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                          const Expanded(
+                            child: Row(
+                              children: [
+                                Icon(Icons.storefront_rounded, color: Colors.white, size: 24),
+                                SizedBox(width: 10),
+                                Flexible(
+                                  child: Text(
+                                    'نظام الملابس',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ],
                         IconButton(
@@ -146,62 +168,58 @@ class _MainLayoutState extends State<MainLayout> {
                   ),
                   const Divider(color: Colors.white24, height: 1),
                   Expanded(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 8),
-                          _navItem(Icons.dashboard_rounded, 'لوحة التحكم', widget.child),
-                          _navItem(Icons.point_of_sale_rounded, 'نقطة البيع (الكاشير)', null, isPos: true),
-                          _navItem(Icons.lock_clock_rounded, 'الورديات وتصفية الدرج', const ShiftScreen()),
-                          _navItem(Icons.receipt_long_rounded, 'سجل فواتير المبيعات', const InvoicesScreen()),
-                          _navItem(Icons.inventory_2_rounded, 'المنتجات والتصنيفات', const ProductListScreen()),
-                          _navItem(Icons.warehouse_rounded, 'إدارة المخزون', const InventoryScreen()),
-                          _navItem(Icons.move_to_inbox_rounded, 'استلام بضاعة (شحنة جديدة)', const BlindReceiveScreen()),
-                          BlocBuilder<AuthCubit, AuthState>(
-                            builder: (context, authState) {
-                              final isAdmin = authState is! AuthAuthenticated || authState.user.role == 'admin';
-                              if (!isAdmin) return const SizedBox.shrink();
-                              return _navItem(Icons.local_shipping_rounded, 'المشتريات والموردين', const PurchasesScreen());
-                            },
-                          ),
-                          _navItem(Icons.history_rounded, 'حركات المخزن', const InventoryLogsScreen()),
-                          _navItem(Icons.people_alt_rounded, 'سجل العملاء', const CustomerScreen()),
-                          _navItem(Icons.payments_outlined, 'إدارة المصروفات', const ExpensesScreen()),
-                          _navItem(Icons.assignment_return_rounded, 'إدارة المرتجعات', const ReturnScreen()),
-                          BlocBuilder<AuthCubit, AuthState>(
-                            builder: (context, authState) {
-                              final isAdmin = authState is! AuthAuthenticated || authState.user.role == 'admin';
-                              if (!isAdmin) return const SizedBox.shrink();
-                              return _navItem(Icons.bar_chart_rounded, 'تقارير المبيعات', const ReportsScreen());
-                            },
-                          ),
-                          BlocBuilder<AuthCubit, AuthState>(
-                            builder: (context, authState) {
-                              final isAdmin = authState is! AuthAuthenticated || authState.user.role == 'admin';
-                              if (!isAdmin) return const SizedBox.shrink();
-                              return _navItem(Icons.handshake_rounded, 'الشركاء وتوزيع الأرباح', const PartnersScreen());
-                            },
-                          ),
-                          BlocBuilder<AuthCubit, AuthState>(
-                            builder: (context, authState) {
-                              final isAdmin = authState is! AuthAuthenticated || authState.user.role == 'admin';
-                              if (!isAdmin) return const SizedBox.shrink();
-                              return _navItem(Icons.badge_rounded, 'فريق العمل والموظفون', const EmployeeListScreen());
-                            },
-                          ),
-                          BlocBuilder<AuthCubit, AuthState>(
-                            builder: (context, authState) {
-                              final isAdmin = authState is! AuthAuthenticated || authState.user.role == 'admin';
-                              if (!isAdmin) return const SizedBox.shrink();
-                              return _navItem(
-                                Icons.bug_report_rounded,
-                                'سجلات الأعطال',
-                                const CrashLogsScreen(),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
+                    child: StreamBuilder<Map<String, bool>>(
+                      stream: featureGate.watchFeatures(),
+                      initialData: const <String, bool>{},
+                      builder: (context, snapshot) {
+                        final features = snapshot.data ?? const <String, bool>{};
+                        return BlocBuilder<AuthCubit, AuthState>(
+                          builder: (context, authState) {
+                            final isAdmin = _isAdmin(authState);
+                            return SingleChildScrollView(
+                              child: Column(
+                                children: [
+                                  const SizedBox(height: 8),
+                                  _navItem(Icons.dashboard_rounded, 'لوحة التحكم', widget.child),
+                                  if (_featureEnabled(features, FeatureKeys.pos))
+                                    _navItem(Icons.point_of_sale_rounded, 'نقطة البيع (الكاشير)', null, isPos: true),
+                                  if (_featureEnabled(features, FeatureKeys.shifts))
+                                    _navItem(Icons.lock_clock_rounded, 'الورديات وتصفية الدرج', const ShiftScreen()),
+                                  _navItem(Icons.receipt_long_rounded, 'سجل فواتير المبيعات', const InvoicesScreen()),
+                                  if (_featureEnabled(features, FeatureKeys.inventory)) ...[
+                                    _navItem(Icons.inventory_2_rounded, 'المنتجات والتصنيفات', const ProductListScreen()),
+                                    _navItem(Icons.warehouse_rounded, 'إدارة المخزون', const InventoryScreen()),
+                                    _navItem(Icons.move_to_inbox_rounded, 'استلام بضاعة (شحنة جديدة)', const BlindReceiveScreen()),
+                                  ],
+                                  if (isAdmin &&
+                                      _featureEnabled(features, FeatureKeys.purchases) &&
+                                      _featureEnabled(features, FeatureKeys.suppliers))
+                                    _navItem(Icons.local_shipping_rounded, 'المشتريات والموردين', const PurchasesScreen()),
+                                  if (_featureEnabled(features, FeatureKeys.inventoryLogs))
+                                    _navItem(Icons.history_rounded, 'حركات المخزن', const InventoryLogsScreen()),
+                                  if (_featureEnabled(features, FeatureKeys.customers))
+                                    _navItem(Icons.people_alt_rounded, 'سجل العملاء', const CustomerScreen()),
+                                  if (_featureEnabled(features, FeatureKeys.installments))
+                                    _navItem(Icons.payments_rounded, 'التقسيط', const InstallmentsListScreen()),
+                                  if (_featureEnabled(features, FeatureKeys.expenses))
+                                    _navItem(Icons.payments_outlined, 'إدارة المصروفات', const ExpensesScreen()),
+                                  _navItem(Icons.assignment_return_rounded, 'إدارة المرتجعات', const ReturnScreen()),
+                                  if (isAdmin && _featureEnabled(features, FeatureKeys.reports))
+                                    _navItem(Icons.bar_chart_rounded, 'تقارير المبيعات', const ReportsScreen()),
+                                  if (isAdmin && _featureEnabled(features, FeatureKeys.partners))
+                                    _navItem(Icons.handshake_rounded, 'الشركاء وتوزيع الأرباح', const PartnersScreen()),
+                                  if (isAdmin && _featureEnabled(features, FeatureKeys.employees))
+                                    _navItem(Icons.badge_rounded, 'فريق العمل والموظفون', const EmployeeListScreen()),
+                                  if (isAdmin)
+                                    _navItem(Icons.settings_rounded, 'إعدادات النظام', const SystemSettingsScreen()),
+                                  if (isAdmin)
+                                    _navItem(Icons.bug_report_rounded, 'سجلات الأعطال', const CrashLogsScreen()),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
                     ),
                   ),
                   const Divider(color: Colors.white24, height: 1),

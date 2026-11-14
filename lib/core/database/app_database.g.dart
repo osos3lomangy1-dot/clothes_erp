@@ -15586,6 +15586,2487 @@ class GoodsReceiptItemsCompanion extends UpdateCompanion<GoodsReceiptItem> {
   }
 }
 
+class $InstallmentPlansTable extends InstallmentPlans
+    with TableInfo<$InstallmentPlansTable, InstallmentPlan> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InstallmentPlansTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _durationMonthsMeta = const VerificationMeta(
+    'durationMonths',
+  );
+  @override
+  late final GeneratedColumn<int> durationMonths = GeneratedColumn<int>(
+    'duration_months',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _downPaymentPiastersMeta =
+      const VerificationMeta('downPaymentPiasters');
+  @override
+  late final GeneratedColumn<int> downPaymentPiasters = GeneratedColumn<int>(
+    'down_payment_piasters',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _interestBpMeta = const VerificationMeta(
+    'interestBp',
+  );
+  @override
+  late final GeneratedColumn<int> interestBp = GeneratedColumn<int>(
+    'interest_bp',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+    'isActive',
+  );
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+    'is_active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_active" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    branchId,
+    name,
+    description,
+    durationMonths,
+    downPaymentPiasters,
+    interestBp,
+    isActive,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'installment_plans';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InstallmentPlan> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_branchIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('duration_months')) {
+      context.handle(
+        _durationMonthsMeta,
+        durationMonths.isAcceptableOrUnknown(
+          data['duration_months']!,
+          _durationMonthsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_durationMonthsMeta);
+    }
+    if (data.containsKey('down_payment_piasters')) {
+      context.handle(
+        _downPaymentPiastersMeta,
+        downPaymentPiasters.isAcceptableOrUnknown(
+          data['down_payment_piasters']!,
+          _downPaymentPiastersMeta,
+        ),
+      );
+    }
+    if (data.containsKey('interest_bp')) {
+      context.handle(
+        _interestBpMeta,
+        interestBp.isAcceptableOrUnknown(data['interest_bp']!, _interestBpMeta),
+      );
+    }
+    if (data.containsKey('is_active')) {
+      context.handle(
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  InstallmentPlan map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InstallmentPlan(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      ),
+      durationMonths: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}duration_months'],
+      )!,
+      downPaymentPiasters: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}down_payment_piasters'],
+      )!,
+      interestBp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}interest_bp'],
+      )!,
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+    );
+  }
+
+  @override
+  $InstallmentPlansTable createAlias(String alias) {
+    return $InstallmentPlansTable(attachedDatabase, alias);
+  }
+}
+
+class InstallmentPlan extends DataClass implements Insertable<InstallmentPlan> {
+  final String id;
+  final String branchId;
+  final String name;
+  final String? description;
+  final int durationMonths;
+  final int downPaymentPiasters;
+  final int interestBp;
+  final bool isActive;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  const InstallmentPlan({
+    required this.id,
+    required this.branchId,
+    required this.name,
+    this.description,
+    required this.durationMonths,
+    required this.downPaymentPiasters,
+    required this.interestBp,
+    required this.isActive,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['branch_id'] = Variable<String>(branchId);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    map['duration_months'] = Variable<int>(durationMonths);
+    map['down_payment_piasters'] = Variable<int>(downPaymentPiasters);
+    map['interest_bp'] = Variable<int>(interestBp);
+    map['is_active'] = Variable<bool>(isActive);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    return map;
+  }
+
+  InstallmentPlansCompanion toCompanion(bool nullToAbsent) {
+    return InstallmentPlansCompanion(
+      id: Value(id),
+      branchId: Value(branchId),
+      name: Value(name),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
+      durationMonths: Value(durationMonths),
+      downPaymentPiasters: Value(downPaymentPiasters),
+      interestBp: Value(interestBp),
+      isActive: Value(isActive),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory InstallmentPlan.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InstallmentPlan(
+      id: serializer.fromJson<String>(json['id']),
+      branchId: serializer.fromJson<String>(json['branchId']),
+      name: serializer.fromJson<String>(json['name']),
+      description: serializer.fromJson<String?>(json['description']),
+      durationMonths: serializer.fromJson<int>(json['durationMonths']),
+      downPaymentPiasters: serializer.fromJson<int>(
+        json['downPaymentPiasters'],
+      ),
+      interestBp: serializer.fromJson<int>(json['interestBp']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'branchId': serializer.toJson<String>(branchId),
+      'name': serializer.toJson<String>(name),
+      'description': serializer.toJson<String?>(description),
+      'durationMonths': serializer.toJson<int>(durationMonths),
+      'downPaymentPiasters': serializer.toJson<int>(downPaymentPiasters),
+      'interestBp': serializer.toJson<int>(interestBp),
+      'isActive': serializer.toJson<bool>(isActive),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+    };
+  }
+
+  InstallmentPlan copyWith({
+    String? id,
+    String? branchId,
+    String? name,
+    Value<String?> description = const Value.absent(),
+    int? durationMonths,
+    int? downPaymentPiasters,
+    int? interestBp,
+    bool? isActive,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+  }) => InstallmentPlan(
+    id: id ?? this.id,
+    branchId: branchId ?? this.branchId,
+    name: name ?? this.name,
+    description: description.present ? description.value : this.description,
+    durationMonths: durationMonths ?? this.durationMonths,
+    downPaymentPiasters: downPaymentPiasters ?? this.downPaymentPiasters,
+    interestBp: interestBp ?? this.interestBp,
+    isActive: isActive ?? this.isActive,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+  );
+  InstallmentPlan copyWithCompanion(InstallmentPlansCompanion data) {
+    return InstallmentPlan(
+      id: data.id.present ? data.id.value : this.id,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      name: data.name.present ? data.name.value : this.name,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      durationMonths: data.durationMonths.present
+          ? data.durationMonths.value
+          : this.durationMonths,
+      downPaymentPiasters: data.downPaymentPiasters.present
+          ? data.downPaymentPiasters.value
+          : this.downPaymentPiasters,
+      interestBp: data.interestBp.present
+          ? data.interestBp.value
+          : this.interestBp,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstallmentPlan(')
+          ..write('id: $id, ')
+          ..write('branchId: $branchId, ')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('durationMonths: $durationMonths, ')
+          ..write('downPaymentPiasters: $downPaymentPiasters, ')
+          ..write('interestBp: $interestBp, ')
+          ..write('isActive: $isActive, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    branchId,
+    name,
+    description,
+    durationMonths,
+    downPaymentPiasters,
+    interestBp,
+    isActive,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InstallmentPlan &&
+          other.id == this.id &&
+          other.branchId == this.branchId &&
+          other.name == this.name &&
+          other.description == this.description &&
+          other.durationMonths == this.durationMonths &&
+          other.downPaymentPiasters == this.downPaymentPiasters &&
+          other.interestBp == this.interestBp &&
+          other.isActive == this.isActive &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
+}
+
+class InstallmentPlansCompanion extends UpdateCompanion<InstallmentPlan> {
+  final Value<String> id;
+  final Value<String> branchId;
+  final Value<String> name;
+  final Value<String?> description;
+  final Value<int> durationMonths;
+  final Value<int> downPaymentPiasters;
+  final Value<int> interestBp;
+  final Value<bool> isActive;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<int> rowid;
+  const InstallmentPlansCompanion({
+    this.id = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.description = const Value.absent(),
+    this.durationMonths = const Value.absent(),
+    this.downPaymentPiasters = const Value.absent(),
+    this.interestBp = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  InstallmentPlansCompanion.insert({
+    required String id,
+    required String branchId,
+    required String name,
+    this.description = const Value.absent(),
+    required int durationMonths,
+    this.downPaymentPiasters = const Value.absent(),
+    this.interestBp = const Value.absent(),
+    this.isActive = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       branchId = Value(branchId),
+       name = Value(name),
+       durationMonths = Value(durationMonths),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<InstallmentPlan> custom({
+    Expression<String>? id,
+    Expression<String>? branchId,
+    Expression<String>? name,
+    Expression<String>? description,
+    Expression<int>? durationMonths,
+    Expression<int>? downPaymentPiasters,
+    Expression<int>? interestBp,
+    Expression<bool>? isActive,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (branchId != null) 'branch_id': branchId,
+      if (name != null) 'name': name,
+      if (description != null) 'description': description,
+      if (durationMonths != null) 'duration_months': durationMonths,
+      if (downPaymentPiasters != null)
+        'down_payment_piasters': downPaymentPiasters,
+      if (interestBp != null) 'interest_bp': interestBp,
+      if (isActive != null) 'is_active': isActive,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  InstallmentPlansCompanion copyWith({
+    Value<String>? id,
+    Value<String>? branchId,
+    Value<String>? name,
+    Value<String?>? description,
+    Value<int>? durationMonths,
+    Value<int>? downPaymentPiasters,
+    Value<int>? interestBp,
+    Value<bool>? isActive,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<int>? rowid,
+  }) {
+    return InstallmentPlansCompanion(
+      id: id ?? this.id,
+      branchId: branchId ?? this.branchId,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      durationMonths: durationMonths ?? this.durationMonths,
+      downPaymentPiasters: downPaymentPiasters ?? this.downPaymentPiasters,
+      interestBp: interestBp ?? this.interestBp,
+      isActive: isActive ?? this.isActive,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (durationMonths.present) {
+      map['duration_months'] = Variable<int>(durationMonths.value);
+    }
+    if (downPaymentPiasters.present) {
+      map['down_payment_piasters'] = Variable<int>(downPaymentPiasters.value);
+    }
+    if (interestBp.present) {
+      map['interest_bp'] = Variable<int>(interestBp.value);
+    }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstallmentPlansCompanion(')
+          ..write('id: $id, ')
+          ..write('branchId: $branchId, ')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('durationMonths: $durationMonths, ')
+          ..write('downPaymentPiasters: $downPaymentPiasters, ')
+          ..write('interestBp: $interestBp, ')
+          ..write('isActive: $isActive, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CustomerInstallmentsTable extends CustomerInstallments
+    with TableInfo<$CustomerInstallmentsTable, CustomerInstallment> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CustomerInstallmentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _saleIdMeta = const VerificationMeta('saleId');
+  @override
+  late final GeneratedColumn<String> saleId = GeneratedColumn<String>(
+    'sale_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _customerIdMeta = const VerificationMeta(
+    'customerId',
+  );
+  @override
+  late final GeneratedColumn<String> customerId = GeneratedColumn<String>(
+    'customer_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _planIdMeta = const VerificationMeta('planId');
+  @override
+  late final GeneratedColumn<String> planId = GeneratedColumn<String>(
+    'plan_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _totalPiastersMeta = const VerificationMeta(
+    'totalPiasters',
+  );
+  @override
+  late final GeneratedColumn<int> totalPiasters = GeneratedColumn<int>(
+    'total_piasters',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _downPaymentPiastersMeta =
+      const VerificationMeta('downPaymentPiasters');
+  @override
+  late final GeneratedColumn<int> downPaymentPiasters = GeneratedColumn<int>(
+    'down_payment_piasters',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _principalPiastersMeta = const VerificationMeta(
+    'principalPiasters',
+  );
+  @override
+  late final GeneratedColumn<int> principalPiasters = GeneratedColumn<int>(
+    'principal_piasters',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _interestBpMeta = const VerificationMeta(
+    'interestBp',
+  );
+  @override
+  late final GeneratedColumn<int> interestBp = GeneratedColumn<int>(
+    'interest_bp',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _monthlyAmountPiastersMeta =
+      const VerificationMeta('monthlyAmountPiasters');
+  @override
+  late final GeneratedColumn<int> monthlyAmountPiasters = GeneratedColumn<int>(
+    'monthly_amount_piasters',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _remainingPiastersMeta = const VerificationMeta(
+    'remainingPiasters',
+  );
+  @override
+  late final GeneratedColumn<int> remainingPiasters = GeneratedColumn<int>(
+    'remaining_piasters',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _durationMonthsMeta = const VerificationMeta(
+    'durationMonths',
+  );
+  @override
+  late final GeneratedColumn<int> durationMonths = GeneratedColumn<int>(
+    'duration_months',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startDateMeta = const VerificationMeta(
+    'startDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startDate = GeneratedColumn<DateTime>(
+    'start_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _endDateMeta = const VerificationMeta(
+    'endDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> endDate = GeneratedColumn<DateTime>(
+    'end_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('active'),
+  );
+  static const VerificationMeta _createdByMeta = const VerificationMeta(
+    'createdBy',
+  );
+  @override
+  late final GeneratedColumn<String> createdBy = GeneratedColumn<String>(
+    'created_by',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    branchId,
+    saleId,
+    customerId,
+    planId,
+    totalPiasters,
+    downPaymentPiasters,
+    principalPiasters,
+    interestBp,
+    monthlyAmountPiasters,
+    remainingPiasters,
+    durationMonths,
+    startDate,
+    endDate,
+    status,
+    createdBy,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'customer_installments';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CustomerInstallment> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_branchIdMeta);
+    }
+    if (data.containsKey('sale_id')) {
+      context.handle(
+        _saleIdMeta,
+        saleId.isAcceptableOrUnknown(data['sale_id']!, _saleIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_saleIdMeta);
+    }
+    if (data.containsKey('customer_id')) {
+      context.handle(
+        _customerIdMeta,
+        customerId.isAcceptableOrUnknown(data['customer_id']!, _customerIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_customerIdMeta);
+    }
+    if (data.containsKey('plan_id')) {
+      context.handle(
+        _planIdMeta,
+        planId.isAcceptableOrUnknown(data['plan_id']!, _planIdMeta),
+      );
+    }
+    if (data.containsKey('total_piasters')) {
+      context.handle(
+        _totalPiastersMeta,
+        totalPiasters.isAcceptableOrUnknown(
+          data['total_piasters']!,
+          _totalPiastersMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_totalPiastersMeta);
+    }
+    if (data.containsKey('down_payment_piasters')) {
+      context.handle(
+        _downPaymentPiastersMeta,
+        downPaymentPiasters.isAcceptableOrUnknown(
+          data['down_payment_piasters']!,
+          _downPaymentPiastersMeta,
+        ),
+      );
+    }
+    if (data.containsKey('principal_piasters')) {
+      context.handle(
+        _principalPiastersMeta,
+        principalPiasters.isAcceptableOrUnknown(
+          data['principal_piasters']!,
+          _principalPiastersMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_principalPiastersMeta);
+    }
+    if (data.containsKey('interest_bp')) {
+      context.handle(
+        _interestBpMeta,
+        interestBp.isAcceptableOrUnknown(data['interest_bp']!, _interestBpMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_interestBpMeta);
+    }
+    if (data.containsKey('monthly_amount_piasters')) {
+      context.handle(
+        _monthlyAmountPiastersMeta,
+        monthlyAmountPiasters.isAcceptableOrUnknown(
+          data['monthly_amount_piasters']!,
+          _monthlyAmountPiastersMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_monthlyAmountPiastersMeta);
+    }
+    if (data.containsKey('remaining_piasters')) {
+      context.handle(
+        _remainingPiastersMeta,
+        remainingPiasters.isAcceptableOrUnknown(
+          data['remaining_piasters']!,
+          _remainingPiastersMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_remainingPiastersMeta);
+    }
+    if (data.containsKey('duration_months')) {
+      context.handle(
+        _durationMonthsMeta,
+        durationMonths.isAcceptableOrUnknown(
+          data['duration_months']!,
+          _durationMonthsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_durationMonthsMeta);
+    }
+    if (data.containsKey('start_date')) {
+      context.handle(
+        _startDateMeta,
+        startDate.isAcceptableOrUnknown(data['start_date']!, _startDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startDateMeta);
+    }
+    if (data.containsKey('end_date')) {
+      context.handle(
+        _endDateMeta,
+        endDate.isAcceptableOrUnknown(data['end_date']!, _endDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_endDateMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('created_by')) {
+      context.handle(
+        _createdByMeta,
+        createdBy.isAcceptableOrUnknown(data['created_by']!, _createdByMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdByMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CustomerInstallment map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CustomerInstallment(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      )!,
+      saleId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sale_id'],
+      )!,
+      customerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}customer_id'],
+      )!,
+      planId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}plan_id'],
+      ),
+      totalPiasters: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_piasters'],
+      )!,
+      downPaymentPiasters: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}down_payment_piasters'],
+      )!,
+      principalPiasters: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}principal_piasters'],
+      )!,
+      interestBp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}interest_bp'],
+      )!,
+      monthlyAmountPiasters: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}monthly_amount_piasters'],
+      )!,
+      remainingPiasters: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}remaining_piasters'],
+      )!,
+      durationMonths: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}duration_months'],
+      )!,
+      startDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}start_date'],
+      )!,
+      endDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}end_date'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      createdBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}created_by'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+    );
+  }
+
+  @override
+  $CustomerInstallmentsTable createAlias(String alias) {
+    return $CustomerInstallmentsTable(attachedDatabase, alias);
+  }
+}
+
+class CustomerInstallment extends DataClass
+    implements Insertable<CustomerInstallment> {
+  final String id;
+  final String branchId;
+  final String saleId;
+  final String customerId;
+  final String? planId;
+  final int totalPiasters;
+  final int downPaymentPiasters;
+  final int principalPiasters;
+  final int interestBp;
+  final int monthlyAmountPiasters;
+  final int remainingPiasters;
+  final int durationMonths;
+  final DateTime startDate;
+  final DateTime endDate;
+  final String status;
+  final String createdBy;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  const CustomerInstallment({
+    required this.id,
+    required this.branchId,
+    required this.saleId,
+    required this.customerId,
+    this.planId,
+    required this.totalPiasters,
+    required this.downPaymentPiasters,
+    required this.principalPiasters,
+    required this.interestBp,
+    required this.monthlyAmountPiasters,
+    required this.remainingPiasters,
+    required this.durationMonths,
+    required this.startDate,
+    required this.endDate,
+    required this.status,
+    required this.createdBy,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['branch_id'] = Variable<String>(branchId);
+    map['sale_id'] = Variable<String>(saleId);
+    map['customer_id'] = Variable<String>(customerId);
+    if (!nullToAbsent || planId != null) {
+      map['plan_id'] = Variable<String>(planId);
+    }
+    map['total_piasters'] = Variable<int>(totalPiasters);
+    map['down_payment_piasters'] = Variable<int>(downPaymentPiasters);
+    map['principal_piasters'] = Variable<int>(principalPiasters);
+    map['interest_bp'] = Variable<int>(interestBp);
+    map['monthly_amount_piasters'] = Variable<int>(monthlyAmountPiasters);
+    map['remaining_piasters'] = Variable<int>(remainingPiasters);
+    map['duration_months'] = Variable<int>(durationMonths);
+    map['start_date'] = Variable<DateTime>(startDate);
+    map['end_date'] = Variable<DateTime>(endDate);
+    map['status'] = Variable<String>(status);
+    map['created_by'] = Variable<String>(createdBy);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    return map;
+  }
+
+  CustomerInstallmentsCompanion toCompanion(bool nullToAbsent) {
+    return CustomerInstallmentsCompanion(
+      id: Value(id),
+      branchId: Value(branchId),
+      saleId: Value(saleId),
+      customerId: Value(customerId),
+      planId: planId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(planId),
+      totalPiasters: Value(totalPiasters),
+      downPaymentPiasters: Value(downPaymentPiasters),
+      principalPiasters: Value(principalPiasters),
+      interestBp: Value(interestBp),
+      monthlyAmountPiasters: Value(monthlyAmountPiasters),
+      remainingPiasters: Value(remainingPiasters),
+      durationMonths: Value(durationMonths),
+      startDate: Value(startDate),
+      endDate: Value(endDate),
+      status: Value(status),
+      createdBy: Value(createdBy),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory CustomerInstallment.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CustomerInstallment(
+      id: serializer.fromJson<String>(json['id']),
+      branchId: serializer.fromJson<String>(json['branchId']),
+      saleId: serializer.fromJson<String>(json['saleId']),
+      customerId: serializer.fromJson<String>(json['customerId']),
+      planId: serializer.fromJson<String?>(json['planId']),
+      totalPiasters: serializer.fromJson<int>(json['totalPiasters']),
+      downPaymentPiasters: serializer.fromJson<int>(
+        json['downPaymentPiasters'],
+      ),
+      principalPiasters: serializer.fromJson<int>(json['principalPiasters']),
+      interestBp: serializer.fromJson<int>(json['interestBp']),
+      monthlyAmountPiasters: serializer.fromJson<int>(
+        json['monthlyAmountPiasters'],
+      ),
+      remainingPiasters: serializer.fromJson<int>(json['remainingPiasters']),
+      durationMonths: serializer.fromJson<int>(json['durationMonths']),
+      startDate: serializer.fromJson<DateTime>(json['startDate']),
+      endDate: serializer.fromJson<DateTime>(json['endDate']),
+      status: serializer.fromJson<String>(json['status']),
+      createdBy: serializer.fromJson<String>(json['createdBy']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'branchId': serializer.toJson<String>(branchId),
+      'saleId': serializer.toJson<String>(saleId),
+      'customerId': serializer.toJson<String>(customerId),
+      'planId': serializer.toJson<String?>(planId),
+      'totalPiasters': serializer.toJson<int>(totalPiasters),
+      'downPaymentPiasters': serializer.toJson<int>(downPaymentPiasters),
+      'principalPiasters': serializer.toJson<int>(principalPiasters),
+      'interestBp': serializer.toJson<int>(interestBp),
+      'monthlyAmountPiasters': serializer.toJson<int>(monthlyAmountPiasters),
+      'remainingPiasters': serializer.toJson<int>(remainingPiasters),
+      'durationMonths': serializer.toJson<int>(durationMonths),
+      'startDate': serializer.toJson<DateTime>(startDate),
+      'endDate': serializer.toJson<DateTime>(endDate),
+      'status': serializer.toJson<String>(status),
+      'createdBy': serializer.toJson<String>(createdBy),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+    };
+  }
+
+  CustomerInstallment copyWith({
+    String? id,
+    String? branchId,
+    String? saleId,
+    String? customerId,
+    Value<String?> planId = const Value.absent(),
+    int? totalPiasters,
+    int? downPaymentPiasters,
+    int? principalPiasters,
+    int? interestBp,
+    int? monthlyAmountPiasters,
+    int? remainingPiasters,
+    int? durationMonths,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? status,
+    String? createdBy,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+  }) => CustomerInstallment(
+    id: id ?? this.id,
+    branchId: branchId ?? this.branchId,
+    saleId: saleId ?? this.saleId,
+    customerId: customerId ?? this.customerId,
+    planId: planId.present ? planId.value : this.planId,
+    totalPiasters: totalPiasters ?? this.totalPiasters,
+    downPaymentPiasters: downPaymentPiasters ?? this.downPaymentPiasters,
+    principalPiasters: principalPiasters ?? this.principalPiasters,
+    interestBp: interestBp ?? this.interestBp,
+    monthlyAmountPiasters: monthlyAmountPiasters ?? this.monthlyAmountPiasters,
+    remainingPiasters: remainingPiasters ?? this.remainingPiasters,
+    durationMonths: durationMonths ?? this.durationMonths,
+    startDate: startDate ?? this.startDate,
+    endDate: endDate ?? this.endDate,
+    status: status ?? this.status,
+    createdBy: createdBy ?? this.createdBy,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+  );
+  CustomerInstallment copyWithCompanion(CustomerInstallmentsCompanion data) {
+    return CustomerInstallment(
+      id: data.id.present ? data.id.value : this.id,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      saleId: data.saleId.present ? data.saleId.value : this.saleId,
+      customerId: data.customerId.present
+          ? data.customerId.value
+          : this.customerId,
+      planId: data.planId.present ? data.planId.value : this.planId,
+      totalPiasters: data.totalPiasters.present
+          ? data.totalPiasters.value
+          : this.totalPiasters,
+      downPaymentPiasters: data.downPaymentPiasters.present
+          ? data.downPaymentPiasters.value
+          : this.downPaymentPiasters,
+      principalPiasters: data.principalPiasters.present
+          ? data.principalPiasters.value
+          : this.principalPiasters,
+      interestBp: data.interestBp.present
+          ? data.interestBp.value
+          : this.interestBp,
+      monthlyAmountPiasters: data.monthlyAmountPiasters.present
+          ? data.monthlyAmountPiasters.value
+          : this.monthlyAmountPiasters,
+      remainingPiasters: data.remainingPiasters.present
+          ? data.remainingPiasters.value
+          : this.remainingPiasters,
+      durationMonths: data.durationMonths.present
+          ? data.durationMonths.value
+          : this.durationMonths,
+      startDate: data.startDate.present ? data.startDate.value : this.startDate,
+      endDate: data.endDate.present ? data.endDate.value : this.endDate,
+      status: data.status.present ? data.status.value : this.status,
+      createdBy: data.createdBy.present ? data.createdBy.value : this.createdBy,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CustomerInstallment(')
+          ..write('id: $id, ')
+          ..write('branchId: $branchId, ')
+          ..write('saleId: $saleId, ')
+          ..write('customerId: $customerId, ')
+          ..write('planId: $planId, ')
+          ..write('totalPiasters: $totalPiasters, ')
+          ..write('downPaymentPiasters: $downPaymentPiasters, ')
+          ..write('principalPiasters: $principalPiasters, ')
+          ..write('interestBp: $interestBp, ')
+          ..write('monthlyAmountPiasters: $monthlyAmountPiasters, ')
+          ..write('remainingPiasters: $remainingPiasters, ')
+          ..write('durationMonths: $durationMonths, ')
+          ..write('startDate: $startDate, ')
+          ..write('endDate: $endDate, ')
+          ..write('status: $status, ')
+          ..write('createdBy: $createdBy, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    branchId,
+    saleId,
+    customerId,
+    planId,
+    totalPiasters,
+    downPaymentPiasters,
+    principalPiasters,
+    interestBp,
+    monthlyAmountPiasters,
+    remainingPiasters,
+    durationMonths,
+    startDate,
+    endDate,
+    status,
+    createdBy,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CustomerInstallment &&
+          other.id == this.id &&
+          other.branchId == this.branchId &&
+          other.saleId == this.saleId &&
+          other.customerId == this.customerId &&
+          other.planId == this.planId &&
+          other.totalPiasters == this.totalPiasters &&
+          other.downPaymentPiasters == this.downPaymentPiasters &&
+          other.principalPiasters == this.principalPiasters &&
+          other.interestBp == this.interestBp &&
+          other.monthlyAmountPiasters == this.monthlyAmountPiasters &&
+          other.remainingPiasters == this.remainingPiasters &&
+          other.durationMonths == this.durationMonths &&
+          other.startDate == this.startDate &&
+          other.endDate == this.endDate &&
+          other.status == this.status &&
+          other.createdBy == this.createdBy &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
+}
+
+class CustomerInstallmentsCompanion
+    extends UpdateCompanion<CustomerInstallment> {
+  final Value<String> id;
+  final Value<String> branchId;
+  final Value<String> saleId;
+  final Value<String> customerId;
+  final Value<String?> planId;
+  final Value<int> totalPiasters;
+  final Value<int> downPaymentPiasters;
+  final Value<int> principalPiasters;
+  final Value<int> interestBp;
+  final Value<int> monthlyAmountPiasters;
+  final Value<int> remainingPiasters;
+  final Value<int> durationMonths;
+  final Value<DateTime> startDate;
+  final Value<DateTime> endDate;
+  final Value<String> status;
+  final Value<String> createdBy;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<int> rowid;
+  const CustomerInstallmentsCompanion({
+    this.id = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.saleId = const Value.absent(),
+    this.customerId = const Value.absent(),
+    this.planId = const Value.absent(),
+    this.totalPiasters = const Value.absent(),
+    this.downPaymentPiasters = const Value.absent(),
+    this.principalPiasters = const Value.absent(),
+    this.interestBp = const Value.absent(),
+    this.monthlyAmountPiasters = const Value.absent(),
+    this.remainingPiasters = const Value.absent(),
+    this.durationMonths = const Value.absent(),
+    this.startDate = const Value.absent(),
+    this.endDate = const Value.absent(),
+    this.status = const Value.absent(),
+    this.createdBy = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CustomerInstallmentsCompanion.insert({
+    required String id,
+    required String branchId,
+    required String saleId,
+    required String customerId,
+    this.planId = const Value.absent(),
+    required int totalPiasters,
+    this.downPaymentPiasters = const Value.absent(),
+    required int principalPiasters,
+    required int interestBp,
+    required int monthlyAmountPiasters,
+    required int remainingPiasters,
+    required int durationMonths,
+    required DateTime startDate,
+    required DateTime endDate,
+    this.status = const Value.absent(),
+    required String createdBy,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       branchId = Value(branchId),
+       saleId = Value(saleId),
+       customerId = Value(customerId),
+       totalPiasters = Value(totalPiasters),
+       principalPiasters = Value(principalPiasters),
+       interestBp = Value(interestBp),
+       monthlyAmountPiasters = Value(monthlyAmountPiasters),
+       remainingPiasters = Value(remainingPiasters),
+       durationMonths = Value(durationMonths),
+       startDate = Value(startDate),
+       endDate = Value(endDate),
+       createdBy = Value(createdBy),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<CustomerInstallment> custom({
+    Expression<String>? id,
+    Expression<String>? branchId,
+    Expression<String>? saleId,
+    Expression<String>? customerId,
+    Expression<String>? planId,
+    Expression<int>? totalPiasters,
+    Expression<int>? downPaymentPiasters,
+    Expression<int>? principalPiasters,
+    Expression<int>? interestBp,
+    Expression<int>? monthlyAmountPiasters,
+    Expression<int>? remainingPiasters,
+    Expression<int>? durationMonths,
+    Expression<DateTime>? startDate,
+    Expression<DateTime>? endDate,
+    Expression<String>? status,
+    Expression<String>? createdBy,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (branchId != null) 'branch_id': branchId,
+      if (saleId != null) 'sale_id': saleId,
+      if (customerId != null) 'customer_id': customerId,
+      if (planId != null) 'plan_id': planId,
+      if (totalPiasters != null) 'total_piasters': totalPiasters,
+      if (downPaymentPiasters != null)
+        'down_payment_piasters': downPaymentPiasters,
+      if (principalPiasters != null) 'principal_piasters': principalPiasters,
+      if (interestBp != null) 'interest_bp': interestBp,
+      if (monthlyAmountPiasters != null)
+        'monthly_amount_piasters': monthlyAmountPiasters,
+      if (remainingPiasters != null) 'remaining_piasters': remainingPiasters,
+      if (durationMonths != null) 'duration_months': durationMonths,
+      if (startDate != null) 'start_date': startDate,
+      if (endDate != null) 'end_date': endDate,
+      if (status != null) 'status': status,
+      if (createdBy != null) 'created_by': createdBy,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CustomerInstallmentsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? branchId,
+    Value<String>? saleId,
+    Value<String>? customerId,
+    Value<String?>? planId,
+    Value<int>? totalPiasters,
+    Value<int>? downPaymentPiasters,
+    Value<int>? principalPiasters,
+    Value<int>? interestBp,
+    Value<int>? monthlyAmountPiasters,
+    Value<int>? remainingPiasters,
+    Value<int>? durationMonths,
+    Value<DateTime>? startDate,
+    Value<DateTime>? endDate,
+    Value<String>? status,
+    Value<String>? createdBy,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<int>? rowid,
+  }) {
+    return CustomerInstallmentsCompanion(
+      id: id ?? this.id,
+      branchId: branchId ?? this.branchId,
+      saleId: saleId ?? this.saleId,
+      customerId: customerId ?? this.customerId,
+      planId: planId ?? this.planId,
+      totalPiasters: totalPiasters ?? this.totalPiasters,
+      downPaymentPiasters: downPaymentPiasters ?? this.downPaymentPiasters,
+      principalPiasters: principalPiasters ?? this.principalPiasters,
+      interestBp: interestBp ?? this.interestBp,
+      monthlyAmountPiasters:
+          monthlyAmountPiasters ?? this.monthlyAmountPiasters,
+      remainingPiasters: remainingPiasters ?? this.remainingPiasters,
+      durationMonths: durationMonths ?? this.durationMonths,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      status: status ?? this.status,
+      createdBy: createdBy ?? this.createdBy,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
+    }
+    if (saleId.present) {
+      map['sale_id'] = Variable<String>(saleId.value);
+    }
+    if (customerId.present) {
+      map['customer_id'] = Variable<String>(customerId.value);
+    }
+    if (planId.present) {
+      map['plan_id'] = Variable<String>(planId.value);
+    }
+    if (totalPiasters.present) {
+      map['total_piasters'] = Variable<int>(totalPiasters.value);
+    }
+    if (downPaymentPiasters.present) {
+      map['down_payment_piasters'] = Variable<int>(downPaymentPiasters.value);
+    }
+    if (principalPiasters.present) {
+      map['principal_piasters'] = Variable<int>(principalPiasters.value);
+    }
+    if (interestBp.present) {
+      map['interest_bp'] = Variable<int>(interestBp.value);
+    }
+    if (monthlyAmountPiasters.present) {
+      map['monthly_amount_piasters'] = Variable<int>(
+        monthlyAmountPiasters.value,
+      );
+    }
+    if (remainingPiasters.present) {
+      map['remaining_piasters'] = Variable<int>(remainingPiasters.value);
+    }
+    if (durationMonths.present) {
+      map['duration_months'] = Variable<int>(durationMonths.value);
+    }
+    if (startDate.present) {
+      map['start_date'] = Variable<DateTime>(startDate.value);
+    }
+    if (endDate.present) {
+      map['end_date'] = Variable<DateTime>(endDate.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (createdBy.present) {
+      map['created_by'] = Variable<String>(createdBy.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CustomerInstallmentsCompanion(')
+          ..write('id: $id, ')
+          ..write('branchId: $branchId, ')
+          ..write('saleId: $saleId, ')
+          ..write('customerId: $customerId, ')
+          ..write('planId: $planId, ')
+          ..write('totalPiasters: $totalPiasters, ')
+          ..write('downPaymentPiasters: $downPaymentPiasters, ')
+          ..write('principalPiasters: $principalPiasters, ')
+          ..write('interestBp: $interestBp, ')
+          ..write('monthlyAmountPiasters: $monthlyAmountPiasters, ')
+          ..write('remainingPiasters: $remainingPiasters, ')
+          ..write('durationMonths: $durationMonths, ')
+          ..write('startDate: $startDate, ')
+          ..write('endDate: $endDate, ')
+          ..write('status: $status, ')
+          ..write('createdBy: $createdBy, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $InstallmentPaymentsTable extends InstallmentPayments
+    with TableInfo<$InstallmentPaymentsTable, InstallmentPayment> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InstallmentPaymentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _customerInstallmentIdMeta =
+      const VerificationMeta('customerInstallmentId');
+  @override
+  late final GeneratedColumn<String> customerInstallmentId =
+      GeneratedColumn<String>(
+        'customer_installment_id',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _amountPiastersMeta = const VerificationMeta(
+    'amountPiasters',
+  );
+  @override
+  late final GeneratedColumn<int> amountPiasters = GeneratedColumn<int>(
+    'amount_piasters',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _paymentMethodMeta = const VerificationMeta(
+    'paymentMethod',
+  );
+  @override
+  late final GeneratedColumn<String> paymentMethod = GeneratedColumn<String>(
+    'payment_method',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _paidAtMeta = const VerificationMeta('paidAt');
+  @override
+  late final GeneratedColumn<DateTime> paidAt = GeneratedColumn<DateTime>(
+    'paid_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _receiptNumberMeta = const VerificationMeta(
+    'receiptNumber',
+  );
+  @override
+  late final GeneratedColumn<String> receiptNumber = GeneratedColumn<String>(
+    'receipt_number',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _recordedByMeta = const VerificationMeta(
+    'recordedBy',
+  );
+  @override
+  late final GeneratedColumn<String> recordedBy = GeneratedColumn<String>(
+    'recorded_by',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    branchId,
+    customerInstallmentId,
+    amountPiasters,
+    paymentMethod,
+    paidAt,
+    receiptNumber,
+    notes,
+    recordedBy,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'installment_payments';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InstallmentPayment> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_branchIdMeta);
+    }
+    if (data.containsKey('customer_installment_id')) {
+      context.handle(
+        _customerInstallmentIdMeta,
+        customerInstallmentId.isAcceptableOrUnknown(
+          data['customer_installment_id']!,
+          _customerInstallmentIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_customerInstallmentIdMeta);
+    }
+    if (data.containsKey('amount_piasters')) {
+      context.handle(
+        _amountPiastersMeta,
+        amountPiasters.isAcceptableOrUnknown(
+          data['amount_piasters']!,
+          _amountPiastersMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_amountPiastersMeta);
+    }
+    if (data.containsKey('payment_method')) {
+      context.handle(
+        _paymentMethodMeta,
+        paymentMethod.isAcceptableOrUnknown(
+          data['payment_method']!,
+          _paymentMethodMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_paymentMethodMeta);
+    }
+    if (data.containsKey('paid_at')) {
+      context.handle(
+        _paidAtMeta,
+        paidAt.isAcceptableOrUnknown(data['paid_at']!, _paidAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_paidAtMeta);
+    }
+    if (data.containsKey('receipt_number')) {
+      context.handle(
+        _receiptNumberMeta,
+        receiptNumber.isAcceptableOrUnknown(
+          data['receipt_number']!,
+          _receiptNumberMeta,
+        ),
+      );
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    if (data.containsKey('recorded_by')) {
+      context.handle(
+        _recordedByMeta,
+        recordedBy.isAcceptableOrUnknown(data['recorded_by']!, _recordedByMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_recordedByMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  InstallmentPayment map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InstallmentPayment(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      )!,
+      customerInstallmentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}customer_installment_id'],
+      )!,
+      amountPiasters: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount_piasters'],
+      )!,
+      paymentMethod: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payment_method'],
+      )!,
+      paidAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}paid_at'],
+      )!,
+      receiptNumber: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}receipt_number'],
+      ),
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
+      recordedBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}recorded_by'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+    );
+  }
+
+  @override
+  $InstallmentPaymentsTable createAlias(String alias) {
+    return $InstallmentPaymentsTable(attachedDatabase, alias);
+  }
+}
+
+class InstallmentPayment extends DataClass
+    implements Insertable<InstallmentPayment> {
+  final String id;
+  final String branchId;
+  final String customerInstallmentId;
+  final int amountPiasters;
+  final String paymentMethod;
+  final DateTime paidAt;
+  final String? receiptNumber;
+  final String? notes;
+  final String recordedBy;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  const InstallmentPayment({
+    required this.id,
+    required this.branchId,
+    required this.customerInstallmentId,
+    required this.amountPiasters,
+    required this.paymentMethod,
+    required this.paidAt,
+    this.receiptNumber,
+    this.notes,
+    required this.recordedBy,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['branch_id'] = Variable<String>(branchId);
+    map['customer_installment_id'] = Variable<String>(customerInstallmentId);
+    map['amount_piasters'] = Variable<int>(amountPiasters);
+    map['payment_method'] = Variable<String>(paymentMethod);
+    map['paid_at'] = Variable<DateTime>(paidAt);
+    if (!nullToAbsent || receiptNumber != null) {
+      map['receipt_number'] = Variable<String>(receiptNumber);
+    }
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    map['recorded_by'] = Variable<String>(recordedBy);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    return map;
+  }
+
+  InstallmentPaymentsCompanion toCompanion(bool nullToAbsent) {
+    return InstallmentPaymentsCompanion(
+      id: Value(id),
+      branchId: Value(branchId),
+      customerInstallmentId: Value(customerInstallmentId),
+      amountPiasters: Value(amountPiasters),
+      paymentMethod: Value(paymentMethod),
+      paidAt: Value(paidAt),
+      receiptNumber: receiptNumber == null && nullToAbsent
+          ? const Value.absent()
+          : Value(receiptNumber),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
+      recordedBy: Value(recordedBy),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory InstallmentPayment.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InstallmentPayment(
+      id: serializer.fromJson<String>(json['id']),
+      branchId: serializer.fromJson<String>(json['branchId']),
+      customerInstallmentId: serializer.fromJson<String>(
+        json['customerInstallmentId'],
+      ),
+      amountPiasters: serializer.fromJson<int>(json['amountPiasters']),
+      paymentMethod: serializer.fromJson<String>(json['paymentMethod']),
+      paidAt: serializer.fromJson<DateTime>(json['paidAt']),
+      receiptNumber: serializer.fromJson<String?>(json['receiptNumber']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      recordedBy: serializer.fromJson<String>(json['recordedBy']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'branchId': serializer.toJson<String>(branchId),
+      'customerInstallmentId': serializer.toJson<String>(customerInstallmentId),
+      'amountPiasters': serializer.toJson<int>(amountPiasters),
+      'paymentMethod': serializer.toJson<String>(paymentMethod),
+      'paidAt': serializer.toJson<DateTime>(paidAt),
+      'receiptNumber': serializer.toJson<String?>(receiptNumber),
+      'notes': serializer.toJson<String?>(notes),
+      'recordedBy': serializer.toJson<String>(recordedBy),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+    };
+  }
+
+  InstallmentPayment copyWith({
+    String? id,
+    String? branchId,
+    String? customerInstallmentId,
+    int? amountPiasters,
+    String? paymentMethod,
+    DateTime? paidAt,
+    Value<String?> receiptNumber = const Value.absent(),
+    Value<String?> notes = const Value.absent(),
+    String? recordedBy,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+  }) => InstallmentPayment(
+    id: id ?? this.id,
+    branchId: branchId ?? this.branchId,
+    customerInstallmentId: customerInstallmentId ?? this.customerInstallmentId,
+    amountPiasters: amountPiasters ?? this.amountPiasters,
+    paymentMethod: paymentMethod ?? this.paymentMethod,
+    paidAt: paidAt ?? this.paidAt,
+    receiptNumber: receiptNumber.present
+        ? receiptNumber.value
+        : this.receiptNumber,
+    notes: notes.present ? notes.value : this.notes,
+    recordedBy: recordedBy ?? this.recordedBy,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+  );
+  InstallmentPayment copyWithCompanion(InstallmentPaymentsCompanion data) {
+    return InstallmentPayment(
+      id: data.id.present ? data.id.value : this.id,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      customerInstallmentId: data.customerInstallmentId.present
+          ? data.customerInstallmentId.value
+          : this.customerInstallmentId,
+      amountPiasters: data.amountPiasters.present
+          ? data.amountPiasters.value
+          : this.amountPiasters,
+      paymentMethod: data.paymentMethod.present
+          ? data.paymentMethod.value
+          : this.paymentMethod,
+      paidAt: data.paidAt.present ? data.paidAt.value : this.paidAt,
+      receiptNumber: data.receiptNumber.present
+          ? data.receiptNumber.value
+          : this.receiptNumber,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      recordedBy: data.recordedBy.present
+          ? data.recordedBy.value
+          : this.recordedBy,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstallmentPayment(')
+          ..write('id: $id, ')
+          ..write('branchId: $branchId, ')
+          ..write('customerInstallmentId: $customerInstallmentId, ')
+          ..write('amountPiasters: $amountPiasters, ')
+          ..write('paymentMethod: $paymentMethod, ')
+          ..write('paidAt: $paidAt, ')
+          ..write('receiptNumber: $receiptNumber, ')
+          ..write('notes: $notes, ')
+          ..write('recordedBy: $recordedBy, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    branchId,
+    customerInstallmentId,
+    amountPiasters,
+    paymentMethod,
+    paidAt,
+    receiptNumber,
+    notes,
+    recordedBy,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InstallmentPayment &&
+          other.id == this.id &&
+          other.branchId == this.branchId &&
+          other.customerInstallmentId == this.customerInstallmentId &&
+          other.amountPiasters == this.amountPiasters &&
+          other.paymentMethod == this.paymentMethod &&
+          other.paidAt == this.paidAt &&
+          other.receiptNumber == this.receiptNumber &&
+          other.notes == this.notes &&
+          other.recordedBy == this.recordedBy &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
+}
+
+class InstallmentPaymentsCompanion extends UpdateCompanion<InstallmentPayment> {
+  final Value<String> id;
+  final Value<String> branchId;
+  final Value<String> customerInstallmentId;
+  final Value<int> amountPiasters;
+  final Value<String> paymentMethod;
+  final Value<DateTime> paidAt;
+  final Value<String?> receiptNumber;
+  final Value<String?> notes;
+  final Value<String> recordedBy;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<int> rowid;
+  const InstallmentPaymentsCompanion({
+    this.id = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.customerInstallmentId = const Value.absent(),
+    this.amountPiasters = const Value.absent(),
+    this.paymentMethod = const Value.absent(),
+    this.paidAt = const Value.absent(),
+    this.receiptNumber = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.recordedBy = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  InstallmentPaymentsCompanion.insert({
+    required String id,
+    required String branchId,
+    required String customerInstallmentId,
+    required int amountPiasters,
+    required String paymentMethod,
+    required DateTime paidAt,
+    this.receiptNumber = const Value.absent(),
+    this.notes = const Value.absent(),
+    required String recordedBy,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       branchId = Value(branchId),
+       customerInstallmentId = Value(customerInstallmentId),
+       amountPiasters = Value(amountPiasters),
+       paymentMethod = Value(paymentMethod),
+       paidAt = Value(paidAt),
+       recordedBy = Value(recordedBy),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<InstallmentPayment> custom({
+    Expression<String>? id,
+    Expression<String>? branchId,
+    Expression<String>? customerInstallmentId,
+    Expression<int>? amountPiasters,
+    Expression<String>? paymentMethod,
+    Expression<DateTime>? paidAt,
+    Expression<String>? receiptNumber,
+    Expression<String>? notes,
+    Expression<String>? recordedBy,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (branchId != null) 'branch_id': branchId,
+      if (customerInstallmentId != null)
+        'customer_installment_id': customerInstallmentId,
+      if (amountPiasters != null) 'amount_piasters': amountPiasters,
+      if (paymentMethod != null) 'payment_method': paymentMethod,
+      if (paidAt != null) 'paid_at': paidAt,
+      if (receiptNumber != null) 'receipt_number': receiptNumber,
+      if (notes != null) 'notes': notes,
+      if (recordedBy != null) 'recorded_by': recordedBy,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  InstallmentPaymentsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? branchId,
+    Value<String>? customerInstallmentId,
+    Value<int>? amountPiasters,
+    Value<String>? paymentMethod,
+    Value<DateTime>? paidAt,
+    Value<String?>? receiptNumber,
+    Value<String?>? notes,
+    Value<String>? recordedBy,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<int>? rowid,
+  }) {
+    return InstallmentPaymentsCompanion(
+      id: id ?? this.id,
+      branchId: branchId ?? this.branchId,
+      customerInstallmentId:
+          customerInstallmentId ?? this.customerInstallmentId,
+      amountPiasters: amountPiasters ?? this.amountPiasters,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      paidAt: paidAt ?? this.paidAt,
+      receiptNumber: receiptNumber ?? this.receiptNumber,
+      notes: notes ?? this.notes,
+      recordedBy: recordedBy ?? this.recordedBy,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
+    }
+    if (customerInstallmentId.present) {
+      map['customer_installment_id'] = Variable<String>(
+        customerInstallmentId.value,
+      );
+    }
+    if (amountPiasters.present) {
+      map['amount_piasters'] = Variable<int>(amountPiasters.value);
+    }
+    if (paymentMethod.present) {
+      map['payment_method'] = Variable<String>(paymentMethod.value);
+    }
+    if (paidAt.present) {
+      map['paid_at'] = Variable<DateTime>(paidAt.value);
+    }
+    if (receiptNumber.present) {
+      map['receipt_number'] = Variable<String>(receiptNumber.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (recordedBy.present) {
+      map['recorded_by'] = Variable<String>(recordedBy.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstallmentPaymentsCompanion(')
+          ..write('id: $id, ')
+          ..write('branchId: $branchId, ')
+          ..write('customerInstallmentId: $customerInstallmentId, ')
+          ..write('amountPiasters: $amountPiasters, ')
+          ..write('paymentMethod: $paymentMethod, ')
+          ..write('paidAt: $paidAt, ')
+          ..write('receiptNumber: $receiptNumber, ')
+          ..write('notes: $notes, ')
+          ..write('recordedBy: $recordedBy, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -15620,6 +18101,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $GoodsReceiptsTable goodsReceipts = $GoodsReceiptsTable(this);
   late final $GoodsReceiptItemsTable goodsReceiptItems =
       $GoodsReceiptItemsTable(this);
+  late final $InstallmentPlansTable installmentPlans = $InstallmentPlansTable(
+    this,
+  );
+  late final $CustomerInstallmentsTable customerInstallments =
+      $CustomerInstallmentsTable(this);
+  late final $InstallmentPaymentsTable installmentPayments =
+      $InstallmentPaymentsTable(this);
   late final Index idxInventoryLogsVariantIdCreatedAt = Index(
     'idx_inventory_logs_variantId_createdAt',
     'CREATE INDEX idx_inventory_logs_variantId_createdAt ON inventory_logs (variant_id, created_at)',
@@ -15658,6 +18146,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     loyaltyTransactions,
     goodsReceipts,
     goodsReceiptItems,
+    installmentPlans,
+    customerInstallments,
+    installmentPayments,
     idxInventoryLogsVariantIdCreatedAt,
     idxSyncQueueStatusCreatedAt,
   ];
@@ -24335,6 +26826,1191 @@ typedef $$GoodsReceiptItemsTableProcessedTableManager =
       GoodsReceiptItem,
       PrefetchHooks Function()
     >;
+typedef $$InstallmentPlansTableCreateCompanionBuilder =
+    InstallmentPlansCompanion Function({
+      required String id,
+      required String branchId,
+      required String name,
+      Value<String?> description,
+      required int durationMonths,
+      Value<int> downPaymentPiasters,
+      Value<int> interestBp,
+      Value<bool> isActive,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+typedef $$InstallmentPlansTableUpdateCompanionBuilder =
+    InstallmentPlansCompanion Function({
+      Value<String> id,
+      Value<String> branchId,
+      Value<String> name,
+      Value<String?> description,
+      Value<int> durationMonths,
+      Value<int> downPaymentPiasters,
+      Value<int> interestBp,
+      Value<bool> isActive,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+
+class $$InstallmentPlansTableFilterComposer
+    extends Composer<_$AppDatabase, $InstallmentPlansTable> {
+  $$InstallmentPlansTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get durationMonths => $composableBuilder(
+    column: $table.durationMonths,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get downPaymentPiasters => $composableBuilder(
+    column: $table.downPaymentPiasters,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get interestBp => $composableBuilder(
+    column: $table.interestBp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InstallmentPlansTableOrderingComposer
+    extends Composer<_$AppDatabase, $InstallmentPlansTable> {
+  $$InstallmentPlansTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get durationMonths => $composableBuilder(
+    column: $table.durationMonths,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get downPaymentPiasters => $composableBuilder(
+    column: $table.downPaymentPiasters,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get interestBp => $composableBuilder(
+    column: $table.interestBp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InstallmentPlansTableAnnotationComposer
+    extends Composer<_$AppDatabase, $InstallmentPlansTable> {
+  $$InstallmentPlansTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get durationMonths => $composableBuilder(
+    column: $table.durationMonths,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get downPaymentPiasters => $composableBuilder(
+    column: $table.downPaymentPiasters,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get interestBp => $composableBuilder(
+    column: $table.interestBp,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+}
+
+class $$InstallmentPlansTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $InstallmentPlansTable,
+          InstallmentPlan,
+          $$InstallmentPlansTableFilterComposer,
+          $$InstallmentPlansTableOrderingComposer,
+          $$InstallmentPlansTableAnnotationComposer,
+          $$InstallmentPlansTableCreateCompanionBuilder,
+          $$InstallmentPlansTableUpdateCompanionBuilder,
+          (
+            InstallmentPlan,
+            BaseReferences<
+              _$AppDatabase,
+              $InstallmentPlansTable,
+              InstallmentPlan
+            >,
+          ),
+          InstallmentPlan,
+          PrefetchHooks Function()
+        > {
+  $$InstallmentPlansTableTableManager(
+    _$AppDatabase db,
+    $InstallmentPlansTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InstallmentPlansTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$InstallmentPlansTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$InstallmentPlansTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> branchId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                Value<int> durationMonths = const Value.absent(),
+                Value<int> downPaymentPiasters = const Value.absent(),
+                Value<int> interestBp = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InstallmentPlansCompanion(
+                id: id,
+                branchId: branchId,
+                name: name,
+                description: description,
+                durationMonths: durationMonths,
+                downPaymentPiasters: downPaymentPiasters,
+                interestBp: interestBp,
+                isActive: isActive,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String branchId,
+                required String name,
+                Value<String?> description = const Value.absent(),
+                required int durationMonths,
+                Value<int> downPaymentPiasters = const Value.absent(),
+                Value<int> interestBp = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InstallmentPlansCompanion.insert(
+                id: id,
+                branchId: branchId,
+                name: name,
+                description: description,
+                durationMonths: durationMonths,
+                downPaymentPiasters: downPaymentPiasters,
+                interestBp: interestBp,
+                isActive: isActive,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InstallmentPlansTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $InstallmentPlansTable,
+      InstallmentPlan,
+      $$InstallmentPlansTableFilterComposer,
+      $$InstallmentPlansTableOrderingComposer,
+      $$InstallmentPlansTableAnnotationComposer,
+      $$InstallmentPlansTableCreateCompanionBuilder,
+      $$InstallmentPlansTableUpdateCompanionBuilder,
+      (
+        InstallmentPlan,
+        BaseReferences<_$AppDatabase, $InstallmentPlansTable, InstallmentPlan>,
+      ),
+      InstallmentPlan,
+      PrefetchHooks Function()
+    >;
+typedef $$CustomerInstallmentsTableCreateCompanionBuilder =
+    CustomerInstallmentsCompanion Function({
+      required String id,
+      required String branchId,
+      required String saleId,
+      required String customerId,
+      Value<String?> planId,
+      required int totalPiasters,
+      Value<int> downPaymentPiasters,
+      required int principalPiasters,
+      required int interestBp,
+      required int monthlyAmountPiasters,
+      required int remainingPiasters,
+      required int durationMonths,
+      required DateTime startDate,
+      required DateTime endDate,
+      Value<String> status,
+      required String createdBy,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+typedef $$CustomerInstallmentsTableUpdateCompanionBuilder =
+    CustomerInstallmentsCompanion Function({
+      Value<String> id,
+      Value<String> branchId,
+      Value<String> saleId,
+      Value<String> customerId,
+      Value<String?> planId,
+      Value<int> totalPiasters,
+      Value<int> downPaymentPiasters,
+      Value<int> principalPiasters,
+      Value<int> interestBp,
+      Value<int> monthlyAmountPiasters,
+      Value<int> remainingPiasters,
+      Value<int> durationMonths,
+      Value<DateTime> startDate,
+      Value<DateTime> endDate,
+      Value<String> status,
+      Value<String> createdBy,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+
+class $$CustomerInstallmentsTableFilterComposer
+    extends Composer<_$AppDatabase, $CustomerInstallmentsTable> {
+  $$CustomerInstallmentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get saleId => $composableBuilder(
+    column: $table.saleId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customerId => $composableBuilder(
+    column: $table.customerId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get planId => $composableBuilder(
+    column: $table.planId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalPiasters => $composableBuilder(
+    column: $table.totalPiasters,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get downPaymentPiasters => $composableBuilder(
+    column: $table.downPaymentPiasters,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get principalPiasters => $composableBuilder(
+    column: $table.principalPiasters,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get interestBp => $composableBuilder(
+    column: $table.interestBp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get monthlyAmountPiasters => $composableBuilder(
+    column: $table.monthlyAmountPiasters,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get remainingPiasters => $composableBuilder(
+    column: $table.remainingPiasters,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get durationMonths => $composableBuilder(
+    column: $table.durationMonths,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get endDate => $composableBuilder(
+    column: $table.endDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get createdBy => $composableBuilder(
+    column: $table.createdBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CustomerInstallmentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CustomerInstallmentsTable> {
+  $$CustomerInstallmentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get saleId => $composableBuilder(
+    column: $table.saleId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get customerId => $composableBuilder(
+    column: $table.customerId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get planId => $composableBuilder(
+    column: $table.planId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalPiasters => $composableBuilder(
+    column: $table.totalPiasters,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get downPaymentPiasters => $composableBuilder(
+    column: $table.downPaymentPiasters,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get principalPiasters => $composableBuilder(
+    column: $table.principalPiasters,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get interestBp => $composableBuilder(
+    column: $table.interestBp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get monthlyAmountPiasters => $composableBuilder(
+    column: $table.monthlyAmountPiasters,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get remainingPiasters => $composableBuilder(
+    column: $table.remainingPiasters,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get durationMonths => $composableBuilder(
+    column: $table.durationMonths,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get endDate => $composableBuilder(
+    column: $table.endDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get createdBy => $composableBuilder(
+    column: $table.createdBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CustomerInstallmentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CustomerInstallmentsTable> {
+  $$CustomerInstallmentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<String> get saleId =>
+      $composableBuilder(column: $table.saleId, builder: (column) => column);
+
+  GeneratedColumn<String> get customerId => $composableBuilder(
+    column: $table.customerId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get planId =>
+      $composableBuilder(column: $table.planId, builder: (column) => column);
+
+  GeneratedColumn<int> get totalPiasters => $composableBuilder(
+    column: $table.totalPiasters,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get downPaymentPiasters => $composableBuilder(
+    column: $table.downPaymentPiasters,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get principalPiasters => $composableBuilder(
+    column: $table.principalPiasters,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get interestBp => $composableBuilder(
+    column: $table.interestBp,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get monthlyAmountPiasters => $composableBuilder(
+    column: $table.monthlyAmountPiasters,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get remainingPiasters => $composableBuilder(
+    column: $table.remainingPiasters,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get durationMonths => $composableBuilder(
+    column: $table.durationMonths,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get startDate =>
+      $composableBuilder(column: $table.startDate, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get endDate =>
+      $composableBuilder(column: $table.endDate, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get createdBy =>
+      $composableBuilder(column: $table.createdBy, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+}
+
+class $$CustomerInstallmentsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CustomerInstallmentsTable,
+          CustomerInstallment,
+          $$CustomerInstallmentsTableFilterComposer,
+          $$CustomerInstallmentsTableOrderingComposer,
+          $$CustomerInstallmentsTableAnnotationComposer,
+          $$CustomerInstallmentsTableCreateCompanionBuilder,
+          $$CustomerInstallmentsTableUpdateCompanionBuilder,
+          (
+            CustomerInstallment,
+            BaseReferences<
+              _$AppDatabase,
+              $CustomerInstallmentsTable,
+              CustomerInstallment
+            >,
+          ),
+          CustomerInstallment,
+          PrefetchHooks Function()
+        > {
+  $$CustomerInstallmentsTableTableManager(
+    _$AppDatabase db,
+    $CustomerInstallmentsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CustomerInstallmentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CustomerInstallmentsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$CustomerInstallmentsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> branchId = const Value.absent(),
+                Value<String> saleId = const Value.absent(),
+                Value<String> customerId = const Value.absent(),
+                Value<String?> planId = const Value.absent(),
+                Value<int> totalPiasters = const Value.absent(),
+                Value<int> downPaymentPiasters = const Value.absent(),
+                Value<int> principalPiasters = const Value.absent(),
+                Value<int> interestBp = const Value.absent(),
+                Value<int> monthlyAmountPiasters = const Value.absent(),
+                Value<int> remainingPiasters = const Value.absent(),
+                Value<int> durationMonths = const Value.absent(),
+                Value<DateTime> startDate = const Value.absent(),
+                Value<DateTime> endDate = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String> createdBy = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CustomerInstallmentsCompanion(
+                id: id,
+                branchId: branchId,
+                saleId: saleId,
+                customerId: customerId,
+                planId: planId,
+                totalPiasters: totalPiasters,
+                downPaymentPiasters: downPaymentPiasters,
+                principalPiasters: principalPiasters,
+                interestBp: interestBp,
+                monthlyAmountPiasters: monthlyAmountPiasters,
+                remainingPiasters: remainingPiasters,
+                durationMonths: durationMonths,
+                startDate: startDate,
+                endDate: endDate,
+                status: status,
+                createdBy: createdBy,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String branchId,
+                required String saleId,
+                required String customerId,
+                Value<String?> planId = const Value.absent(),
+                required int totalPiasters,
+                Value<int> downPaymentPiasters = const Value.absent(),
+                required int principalPiasters,
+                required int interestBp,
+                required int monthlyAmountPiasters,
+                required int remainingPiasters,
+                required int durationMonths,
+                required DateTime startDate,
+                required DateTime endDate,
+                Value<String> status = const Value.absent(),
+                required String createdBy,
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CustomerInstallmentsCompanion.insert(
+                id: id,
+                branchId: branchId,
+                saleId: saleId,
+                customerId: customerId,
+                planId: planId,
+                totalPiasters: totalPiasters,
+                downPaymentPiasters: downPaymentPiasters,
+                principalPiasters: principalPiasters,
+                interestBp: interestBp,
+                monthlyAmountPiasters: monthlyAmountPiasters,
+                remainingPiasters: remainingPiasters,
+                durationMonths: durationMonths,
+                startDate: startDate,
+                endDate: endDate,
+                status: status,
+                createdBy: createdBy,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CustomerInstallmentsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CustomerInstallmentsTable,
+      CustomerInstallment,
+      $$CustomerInstallmentsTableFilterComposer,
+      $$CustomerInstallmentsTableOrderingComposer,
+      $$CustomerInstallmentsTableAnnotationComposer,
+      $$CustomerInstallmentsTableCreateCompanionBuilder,
+      $$CustomerInstallmentsTableUpdateCompanionBuilder,
+      (
+        CustomerInstallment,
+        BaseReferences<
+          _$AppDatabase,
+          $CustomerInstallmentsTable,
+          CustomerInstallment
+        >,
+      ),
+      CustomerInstallment,
+      PrefetchHooks Function()
+    >;
+typedef $$InstallmentPaymentsTableCreateCompanionBuilder =
+    InstallmentPaymentsCompanion Function({
+      required String id,
+      required String branchId,
+      required String customerInstallmentId,
+      required int amountPiasters,
+      required String paymentMethod,
+      required DateTime paidAt,
+      Value<String?> receiptNumber,
+      Value<String?> notes,
+      required String recordedBy,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+typedef $$InstallmentPaymentsTableUpdateCompanionBuilder =
+    InstallmentPaymentsCompanion Function({
+      Value<String> id,
+      Value<String> branchId,
+      Value<String> customerInstallmentId,
+      Value<int> amountPiasters,
+      Value<String> paymentMethod,
+      Value<DateTime> paidAt,
+      Value<String?> receiptNumber,
+      Value<String?> notes,
+      Value<String> recordedBy,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+
+class $$InstallmentPaymentsTableFilterComposer
+    extends Composer<_$AppDatabase, $InstallmentPaymentsTable> {
+  $$InstallmentPaymentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customerInstallmentId => $composableBuilder(
+    column: $table.customerInstallmentId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get amountPiasters => $composableBuilder(
+    column: $table.amountPiasters,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get paymentMethod => $composableBuilder(
+    column: $table.paymentMethod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get paidAt => $composableBuilder(
+    column: $table.paidAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get receiptNumber => $composableBuilder(
+    column: $table.receiptNumber,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recordedBy => $composableBuilder(
+    column: $table.recordedBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InstallmentPaymentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $InstallmentPaymentsTable> {
+  $$InstallmentPaymentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get customerInstallmentId => $composableBuilder(
+    column: $table.customerInstallmentId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amountPiasters => $composableBuilder(
+    column: $table.amountPiasters,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get paymentMethod => $composableBuilder(
+    column: $table.paymentMethod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get paidAt => $composableBuilder(
+    column: $table.paidAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get receiptNumber => $composableBuilder(
+    column: $table.receiptNumber,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recordedBy => $composableBuilder(
+    column: $table.recordedBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InstallmentPaymentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $InstallmentPaymentsTable> {
+  $$InstallmentPaymentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<String> get customerInstallmentId => $composableBuilder(
+    column: $table.customerInstallmentId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get amountPiasters => $composableBuilder(
+    column: $table.amountPiasters,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get paymentMethod => $composableBuilder(
+    column: $table.paymentMethod,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get paidAt =>
+      $composableBuilder(column: $table.paidAt, builder: (column) => column);
+
+  GeneratedColumn<String> get receiptNumber => $composableBuilder(
+    column: $table.receiptNumber,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<String> get recordedBy => $composableBuilder(
+    column: $table.recordedBy,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+}
+
+class $$InstallmentPaymentsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $InstallmentPaymentsTable,
+          InstallmentPayment,
+          $$InstallmentPaymentsTableFilterComposer,
+          $$InstallmentPaymentsTableOrderingComposer,
+          $$InstallmentPaymentsTableAnnotationComposer,
+          $$InstallmentPaymentsTableCreateCompanionBuilder,
+          $$InstallmentPaymentsTableUpdateCompanionBuilder,
+          (
+            InstallmentPayment,
+            BaseReferences<
+              _$AppDatabase,
+              $InstallmentPaymentsTable,
+              InstallmentPayment
+            >,
+          ),
+          InstallmentPayment,
+          PrefetchHooks Function()
+        > {
+  $$InstallmentPaymentsTableTableManager(
+    _$AppDatabase db,
+    $InstallmentPaymentsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InstallmentPaymentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$InstallmentPaymentsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$InstallmentPaymentsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> branchId = const Value.absent(),
+                Value<String> customerInstallmentId = const Value.absent(),
+                Value<int> amountPiasters = const Value.absent(),
+                Value<String> paymentMethod = const Value.absent(),
+                Value<DateTime> paidAt = const Value.absent(),
+                Value<String?> receiptNumber = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<String> recordedBy = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InstallmentPaymentsCompanion(
+                id: id,
+                branchId: branchId,
+                customerInstallmentId: customerInstallmentId,
+                amountPiasters: amountPiasters,
+                paymentMethod: paymentMethod,
+                paidAt: paidAt,
+                receiptNumber: receiptNumber,
+                notes: notes,
+                recordedBy: recordedBy,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String branchId,
+                required String customerInstallmentId,
+                required int amountPiasters,
+                required String paymentMethod,
+                required DateTime paidAt,
+                Value<String?> receiptNumber = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                required String recordedBy,
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InstallmentPaymentsCompanion.insert(
+                id: id,
+                branchId: branchId,
+                customerInstallmentId: customerInstallmentId,
+                amountPiasters: amountPiasters,
+                paymentMethod: paymentMethod,
+                paidAt: paidAt,
+                receiptNumber: receiptNumber,
+                notes: notes,
+                recordedBy: recordedBy,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InstallmentPaymentsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $InstallmentPaymentsTable,
+      InstallmentPayment,
+      $$InstallmentPaymentsTableFilterComposer,
+      $$InstallmentPaymentsTableOrderingComposer,
+      $$InstallmentPaymentsTableAnnotationComposer,
+      $$InstallmentPaymentsTableCreateCompanionBuilder,
+      $$InstallmentPaymentsTableUpdateCompanionBuilder,
+      (
+        InstallmentPayment,
+        BaseReferences<
+          _$AppDatabase,
+          $InstallmentPaymentsTable,
+          InstallmentPayment
+        >,
+      ),
+      InstallmentPayment,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -24389,4 +28065,10 @@ class $AppDatabaseManager {
       $$GoodsReceiptsTableTableManager(_db, _db.goodsReceipts);
   $$GoodsReceiptItemsTableTableManager get goodsReceiptItems =>
       $$GoodsReceiptItemsTableTableManager(_db, _db.goodsReceiptItems);
+  $$InstallmentPlansTableTableManager get installmentPlans =>
+      $$InstallmentPlansTableTableManager(_db, _db.installmentPlans);
+  $$CustomerInstallmentsTableTableManager get customerInstallments =>
+      $$CustomerInstallmentsTableTableManager(_db, _db.customerInstallments);
+  $$InstallmentPaymentsTableTableManager get installmentPayments =>
+      $$InstallmentPaymentsTableTableManager(_db, _db.installmentPayments);
 }

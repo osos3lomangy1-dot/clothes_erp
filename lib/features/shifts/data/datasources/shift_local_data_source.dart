@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/database/branch_provider.dart';
 import '../../../../core/database/tx_writer.dart';
+import '../../../../core/features/feature_gate.dart';
 import '../../domain/entities/shift_entity.dart';
 import '../../domain/entities/shift_summary_entity.dart';
 
@@ -30,30 +31,21 @@ class ShiftLocalDataSourceImpl implements ShiftLocalDataSource {
   final AppDatabase _db;
   final BranchProvider _branchProvider;
   final TxWriter _tx;
+  final FeatureGate _featureGate;
   final _uuid = const Uuid();
 
-  ShiftLocalDataSourceImpl(this._db, this._branchProvider, this._tx);
+  ShiftLocalDataSourceImpl(this._db, this._branchProvider, this._tx, this._featureGate);
 
   Future<String> _branchId() => _branchProvider.getBranchId();
 
   @override
   Future<bool> isShiftsEnabled() async {
-    final row = await (_db.select(_db.appMeta)
-          ..where((t) => t.key.equals('shifts_enabled')))
-        .getSingleOrNull();
-    if (row == null) return true; // Default is true
-    return row.value.toLowerCase() == 'true';
+    return _featureGate.isEnabled(FeatureKeys.shifts);
   }
 
   @override
   Future<void> setShiftsEnabled(bool enabled) async {
-    await _db.into(_db.appMeta).insertOnConflictUpdate(
-      AppMetaCompanion(
-        key: const Value('shifts_enabled'),
-        value: Value(enabled.toString()),
-        updatedAt: Value(DateTime.now()),
-      ),
-    );
+    await _featureGate.setFeatureEnabled(FeatureKeys.shifts, enabled, userId: 'system');
   }
 
   @override

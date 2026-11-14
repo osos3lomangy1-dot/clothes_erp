@@ -1,44 +1,68 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dartz/dartz.dart';
+import 'package:drift/drift.dart';
 import 'package:injectable/injectable.dart';
-import '../../../../core/config/app_config.dart';
+
+import '../../../../core/database/app_database.dart';
 import '../../../../core/errors/failures.dart';
 import '../../domain/entities/inventory_log_entity.dart';
 import '../../domain/repositories/inventory_log_repository.dart';
 
 @LazySingleton(as: InventoryLogRepository)
 class InventoryLogRepositoryImpl implements InventoryLogRepository {
-  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
+  final AppDatabase _db;
 
-  InventoryLogRepositoryImpl();
+  InventoryLogRepositoryImpl(this._db);
 
   @override
   Future<Either<Failure, List<InventoryLogEntity>>> getLogs() async {
-    if (!kEnableFirebase) {
-      return const Right([]);
-    }
     try {
-      final snapshot = await _firestore
-          .collection('inventory_logs')
-          .orderBy('date', descending: true)
-          .get();
-      final logs = snapshot.docs.map((doc) {
-        final data = doc.data();
+      final query = _db.select(_db.inventoryLogs).join([
+        leftOuterJoin(
+          _db.productVariants,
+          _db.productVariants.id.equalsExp(_db.inventoryLogs.variantId),
+        ),
+        leftOuterJoin(
+          _db.products,
+          _db.products.id.equalsExp(_db.productVariants.productId),
+        ),
+        leftOuterJoin(
+          _db.users,
+          _db.users.id.equalsExp(_db.inventoryLogs.userId),
+        ),
+      ])
+        ..orderBy([
+          OrderingTerm(
+            expression: _db.inventoryLogs.createdAt,
+            mode: OrderingMode.desc,
+          ),
+        ]);
+
+      final rows = await query.get();
+
+      final logs = rows.map((row) {
+        final log = row.readTable(_db.inventoryLogs);
+        final variant = row.readTableOrNull(_db.productVariants);
+        final product = row.readTableOrNull(_db.products);
+        final user = row.readTableOrNull(_db.users);
+
         return InventoryLogEntity(
-          id: doc.id,
-          productId: data['productId'] ?? '',
-          variantId: data['variantId'],
-          type: data['type'] ?? 'out',
-          quantity: data['quantity'] ?? 0,
-          date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
-          userId: data['userId'] ?? '',
+          id: log.id,
+          productId: variant?.productId ?? log.variantId,
+          variantId: log.variantId,
+          productName: product?.name,
+          variantSize: variant?.size,
+          variantColor: variant?.color,
+          userName: user?.displayName ?? user?.username ?? log.userId,
+          type: log.type,
+          quantity: log.qtyDelta.abs(),
+          date: log.createdAt,
+          userId: log.userId,
         );
       }).toList();
+
       return Right(logs);
-    } on FirebaseException catch (e) {
-      return Left(ServerFailure(e.message ?? 'Firebase error'));
     } catch (e) {
-      return Left(ServerFailure(e.toString()));
+      return Left(CacheFailure(e.toString()));
     }
   }
 }

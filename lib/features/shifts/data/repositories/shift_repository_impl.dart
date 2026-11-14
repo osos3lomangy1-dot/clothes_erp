@@ -1,6 +1,8 @@
 import 'package:dartz/dartz.dart';
 import 'package:injectable/injectable.dart';
+
 import '../../../../core/errors/failures.dart';
+import '../../../../core/features/feature_gate.dart';
 import '../../domain/entities/shift_entity.dart';
 import '../../domain/entities/shift_summary_entity.dart';
 import '../../domain/repositories/shift_repository.dart';
@@ -9,8 +11,9 @@ import '../datasources/shift_local_data_source.dart';
 @LazySingleton(as: ShiftRepository)
 class ShiftRepositoryImpl implements ShiftRepository {
   final ShiftLocalDataSource _localDataSource;
+  final FeatureGate _featureGate;
 
-  ShiftRepositoryImpl(this._localDataSource);
+  ShiftRepositoryImpl(this._localDataSource, this._featureGate);
 
   @override
   Future<Either<Failure, bool>> isShiftsEnabled() async {
@@ -59,6 +62,9 @@ class ShiftRepositoryImpl implements ShiftRepository {
     String? cashierName,
   }) async {
     try {
+      if (!await _featureGate.isEnabled(FeatureKeys.shifts)) {
+        return const Left(CacheFailure('ميزة الورديات غير مفعّلة'));
+      }
       final shift = await _localDataSource.openShift(
         openingBalance: openingBalance,
         cashierId: cashierId,

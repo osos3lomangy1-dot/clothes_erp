@@ -1,6 +1,8 @@
 import 'package:clothes_erp/core/database/app_database.dart';
 import 'package:clothes_erp/core/database/branch_provider.dart';
+import 'package:clothes_erp/core/database/tx_writer.dart';
 import 'package:clothes_erp/core/errors/failures.dart';
+import 'package:clothes_erp/core/features/feature_gate.dart';
 import 'package:clothes_erp/features/auth/data/datasources/auth_local_data_source.dart';
 import 'package:clothes_erp/features/auth/data/models/user_model.dart';
 import 'package:clothes_erp/features/purchases/data/datasources/purchases_local_data_source.dart';
@@ -41,9 +43,10 @@ void main() {
   setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
     branchProvider = BranchProvider(db);
+    final featureGate = FeatureGate(db, FakeAuthLocalDataSource(), TxWriter(db), branchProvider);
     localDataSource = PurchasesLocalDataSourceImpl(db, branchProvider);
     fakeAuth = FakeAuthLocalDataSource();
-    repository = PurchasesRepositoryImpl(localDataSource, fakeAuth);
+    repository = PurchasesRepositoryImpl(localDataSource, fakeAuth, featureGate);
   });
 
   tearDown(() async {

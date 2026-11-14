@@ -459,6 +459,92 @@ class GoodsReceiptItems extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+class InstallmentPlans extends Table {
+  TextColumn get id => text()();
+  TextColumn get branchId => text()();
+  TextColumn get name => text()();
+  TextColumn get description => text().nullable()();
+  IntColumn get durationMonths => integer()();
+  IntColumn get downPaymentPiasters => integer().withDefault(const Constant(0))();
+  IntColumn get interestBp => integer().withDefault(const Constant(0))();
+  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+
+  @override
+  List<String> get customConstraints => const [
+    'CHECK(duration_months >= 1 AND duration_months <= 120)',
+    'CHECK(down_payment_piasters >= 0)',
+    'CHECK(interest_bp >= 0 AND interest_bp <= 10000)',
+  ];
+}
+
+class CustomerInstallments extends Table {
+  TextColumn get id => text()();
+  TextColumn get branchId => text()();
+  TextColumn get saleId => text()();
+  TextColumn get customerId => text()();
+  TextColumn get planId => text().nullable()();
+  IntColumn get totalPiasters => integer()();
+  IntColumn get downPaymentPiasters => integer().withDefault(const Constant(0))();
+  IntColumn get principalPiasters => integer()();
+  IntColumn get interestBp => integer()();
+  IntColumn get monthlyAmountPiasters => integer()();
+  IntColumn get remainingPiasters => integer()();
+  IntColumn get durationMonths => integer()();
+  DateTimeColumn get startDate => dateTime()();
+  DateTimeColumn get endDate => dateTime()();
+  TextColumn get status => text().withDefault(const Constant('active'))();
+  TextColumn get createdBy => text()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+
+  @override
+  List<String> get customConstraints => const [
+    "CHECK(status IN ('active','completed','overdue','cancelled'))",
+    "CHECK(principal_piasters = total_piasters - down_payment_piasters)",
+    'CHECK(total_piasters >= 0)',
+    'CHECK(down_payment_piasters >= 0)',
+    'CHECK(principal_piasters >= 0)',
+    'CHECK(interest_bp >= 0 AND interest_bp <= 10000)',
+    'CHECK(monthly_amount_piasters >= 0)',
+    'CHECK(remaining_piasters >= 0)',
+    'CHECK(duration_months >= 1 AND duration_months <= 120)',
+  ];
+}
+
+class InstallmentPayments extends Table {
+  TextColumn get id => text()();
+  TextColumn get branchId => text()();
+  TextColumn get customerInstallmentId => text()();
+  IntColumn get amountPiasters => integer()();
+  TextColumn get paymentMethod => text()();
+  DateTimeColumn get paidAt => dateTime()();
+  TextColumn get receiptNumber => text().nullable()();
+  TextColumn get notes => text().nullable()();
+  TextColumn get recordedBy => text()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+
+  @override
+  List<String> get customConstraints => const [
+    "CHECK(payment_method IN ('cash','card'))",
+    'CHECK(amount_piasters > 0)',
+  ];
+}
+
 void _setupSqlite(CommonDatabase rawDb) {
   rawDb.execute('PRAGMA journal_mode = WAL;');
   rawDb.execute('PRAGMA synchronous = NORMAL;');
@@ -530,13 +616,16 @@ QueryExecutor _openConnection() {
     LoyaltyTransactions,
     GoodsReceipts,
     GoodsReceiptItems,
+    InstallmentPlans,
+    CustomerInstallments,
+    InstallmentPayments,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -606,6 +695,12 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(goodsReceipts);
         await m.createTable(goodsReceiptItems);
       }
+
+      if (from < 5) {
+        await m.createTable(installmentPlans);
+        await m.createTable(customerInstallments);
+        await m.createTable(installmentPayments);
+      }
     },
     beforeOpen: (details) async {
       Future<void> addColumnIfNotExists(
@@ -645,6 +740,9 @@ class AppDatabase extends _$AppDatabase {
 
       await createTableIfNotExists('goods_receipts', goodsReceipts);
       await createTableIfNotExists('goods_receipt_items', goodsReceiptItems);
+      await createTableIfNotExists('installment_plans', installmentPlans);
+      await createTableIfNotExists('customer_installments', customerInstallments);
+      await createTableIfNotExists('installment_payments', installmentPayments);
 
       await addColumnIfNotExists(
         'product_variants',

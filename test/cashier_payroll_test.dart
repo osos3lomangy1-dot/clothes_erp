@@ -1,6 +1,9 @@
 import 'package:clothes_erp/core/database/app_database.dart';
 import 'package:clothes_erp/core/database/branch_provider.dart';
 import 'package:clothes_erp/core/database/tx_writer.dart';
+import 'package:clothes_erp/core/features/feature_gate.dart';
+import 'package:clothes_erp/features/auth/data/datasources/auth_local_data_source.dart';
+import 'package:clothes_erp/features/auth/data/models/user_model.dart';
 import 'package:clothes_erp/features/employees/data/datasources/employee_local_data_source.dart';
 import 'package:clothes_erp/features/employees/data/repositories/employee_repository_impl.dart';
 import 'package:clothes_erp/features/employees/domain/entities/employee_entity.dart';
@@ -9,6 +12,15 @@ import 'package:clothes_erp/features/employees/presentation/cubits/cashier_payro
 import 'package:clothes_erp/features/employees/presentation/cubits/cashier_payroll_state.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+class _FakeAuthLocalDataSource implements AuthLocalDataSource {
+  @override
+  Future<void> cacheUser(UserModel user) async {}
+  @override
+  Future<UserModel?> getCachedUser() async => null;
+  @override
+  Future<void> clearCache() async {}
+}
 
 void main() {
   late AppDatabase db;
@@ -22,7 +34,7 @@ void main() {
     bp = BranchProvider(db);
     tx = TxWriter(db);
     ds = EmployeeLocalDataSourceImpl(db, bp, tx);
-    repo = EmployeeRepositoryImpl(ds);
+    repo = EmployeeRepositoryImpl(ds, FeatureGate(db, _FakeAuthLocalDataSource(), tx, bp));
   });
 
   tearDown(() async {

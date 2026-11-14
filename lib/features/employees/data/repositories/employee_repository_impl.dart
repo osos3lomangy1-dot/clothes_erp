@@ -1,17 +1,20 @@
 import 'package:dartz/dartz.dart';
 import 'package:injectable/injectable.dart';
+
 import '../../../../core/errors/failures.dart';
+import '../../../../core/features/feature_gate.dart';
+import '../../../expenses/domain/entities/expense_entity.dart';
 import '../../domain/entities/employee_entity.dart';
 import '../../domain/entities/employee_payroll_summary.dart';
-import '../../../expenses/domain/entities/expense_entity.dart';
 import '../../domain/repositories/employee_repository.dart';
 import '../datasources/employee_local_data_source.dart';
 
 @LazySingleton(as: EmployeeRepository)
 class EmployeeRepositoryImpl implements EmployeeRepository {
   final EmployeeLocalDataSource _localDataSource;
+  final FeatureGate _featureGate;
 
-  EmployeeRepositoryImpl(this._localDataSource);
+  EmployeeRepositoryImpl(this._localDataSource, this._featureGate);
 
   @override
   Future<Either<Failure, List<EmployeeEntity>>> getEmployees({String? search}) async {
@@ -36,6 +39,9 @@ class EmployeeRepositoryImpl implements EmployeeRepository {
   @override
   Future<Either<Failure, EmployeeEntity>> addEmployee(EmployeeEntity employee, {String? password}) async {
     try {
+      if (!await _featureGate.isEnabled(FeatureKeys.employees)) {
+        return const Left(CacheFailure('ميزة الموظفين غير مفعّلة'));
+      }
       final created = await _localDataSource.addEmployee(employee, password: password);
       return Right(created);
     } catch (e) {
@@ -93,6 +99,9 @@ class EmployeeRepositoryImpl implements EmployeeRepository {
     required String currentUserId,
   }) async {
     try {
+      if (!await _featureGate.isEnabled(FeatureKeys.payroll)) {
+        return const Left(CacheFailure('ميزة الرواتب غير مفعّلة'));
+      }
       final tx = await _localDataSource.recordPayrollTransaction(
         employeeId: employeeId,
         type: type,

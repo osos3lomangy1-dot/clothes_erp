@@ -1,10 +1,23 @@
 import 'package:clothes_erp/core/database/app_database.dart';
 import 'package:clothes_erp/core/database/branch_provider.dart';
 import 'package:clothes_erp/core/database/tx_writer.dart';
+import 'package:clothes_erp/core/features/feature_gate.dart';
+import 'package:clothes_erp/features/auth/data/datasources/auth_local_data_source.dart';
+import 'package:clothes_erp/features/auth/data/models/user_model.dart';
 import 'package:clothes_erp/features/shifts/data/datasources/shift_local_data_source.dart';
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+class _FakeAuthLocalDataSource implements AuthLocalDataSource {
+  UserModel? _user;
+  @override
+  Future<void> cacheUser(UserModel user) async => _user = user;
+  @override
+  Future<UserModel?> getCachedUser() async => _user;
+  @override
+  Future<void> clearCache() async => _user = null;
+}
 
 void main() {
   late AppDatabase db;
@@ -16,7 +29,8 @@ void main() {
     db = AppDatabase(NativeDatabase.memory());
     branchProvider = BranchProvider(db);
     txWriter = TxWriter(db);
-    dataSource = ShiftLocalDataSourceImpl(db, branchProvider, txWriter);
+    final featureGate = FeatureGate(db, _FakeAuthLocalDataSource(), txWriter, branchProvider);
+    dataSource = ShiftLocalDataSourceImpl(db, branchProvider, txWriter, featureGate);
   });
 
   tearDown(() async {

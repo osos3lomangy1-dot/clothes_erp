@@ -1,6 +1,8 @@
 import 'package:dartz/dartz.dart';
 import 'package:injectable/injectable.dart';
+
 import '../../../../core/errors/failures.dart';
+import '../../../../core/features/feature_gate.dart';
 import '../../../auth/data/datasources/auth_local_data_source.dart';
 import '../../domain/entities/purchase_entity.dart';
 import '../../domain/entities/supplier_entity.dart';
@@ -12,16 +14,15 @@ import '../datasources/purchases_local_data_source.dart';
 class PurchasesRepositoryImpl implements PurchasesRepository {
   final PurchasesLocalDataSource _localDataSource;
   final AuthLocalDataSource _authLocalDataSource;
+  final FeatureGate _featureGate;
 
-  PurchasesRepositoryImpl(this._localDataSource, this._authLocalDataSource);
+  PurchasesRepositoryImpl(this._localDataSource, this._authLocalDataSource, this._featureGate);
 
   static const String _unauthorizedMsg =
       'ليس لديك صلاحية للوصول لبيانات المشتريات والموردين (خاص بالإدارة فقط)';
 
   Future<bool> _isAuthorizedAdmin() async {
     final user = await _authLocalDataSource.getCachedUser();
-    // Default to true only if no user is cached (e.g. dev/test mode without auth),
-    // but if user has role 'cashier', strictly block.
     if (user != null && user.role.toLowerCase() == 'cashier') {
       return false;
     }
@@ -52,6 +53,10 @@ class PurchasesRepositoryImpl implements PurchasesRepository {
       return const Left(AuthFailure(_unauthorizedMsg));
     }
     try {
+      if (!await _featureGate.isEnabled(FeatureKeys.suppliers) ||
+          !await _featureGate.isEnabled(FeatureKeys.purchases)) {
+        return const Left(CacheFailure('ميزة الموردين/المشتريات غير مفعّلة'));
+      }
       final supplier = await _localDataSource.addSupplier(
         name: name,
         phone: phone,
@@ -136,6 +141,9 @@ class PurchasesRepositoryImpl implements PurchasesRepository {
       return const Left(AuthFailure(_unauthorizedMsg));
     }
     try {
+      if (!await _featureGate.isEnabled(FeatureKeys.purchases)) {
+        return const Left(CacheFailure('ميزة المشتريات غير مفعّلة'));
+      }
       final purchase = await _localDataSource.createPurchaseInvoice(
         supplierId: supplierId,
         invoiceNumber: invoiceNumber,
@@ -167,6 +175,9 @@ class PurchasesRepositoryImpl implements PurchasesRepository {
       return const Left(AuthFailure(_unauthorizedMsg));
     }
     try {
+      if (!await _featureGate.isEnabled(FeatureKeys.purchases)) {
+        return const Left(CacheFailure('ميزة المشتريات غير مفعّلة'));
+      }
       final payment = await _localDataSource.addSupplierPayment(
         supplierId: supplierId,
         purchaseId: purchaseId,

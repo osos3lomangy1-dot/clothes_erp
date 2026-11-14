@@ -1,6 +1,8 @@
 import 'package:dartz/dartz.dart';
 import 'package:injectable/injectable.dart';
+
 import '../../../../core/errors/failures.dart';
+import '../../../../core/features/feature_gate.dart';
 import '../../domain/entities/expense_entity.dart';
 import '../../domain/repositories/expense_repository.dart';
 import '../datasources/expenses_local_data_source.dart';
@@ -8,8 +10,9 @@ import '../datasources/expenses_local_data_source.dart';
 @LazySingleton(as: ExpenseRepository)
 class ExpenseRepositoryImpl implements ExpenseRepository {
   final ExpensesLocalDataSource localDataSource;
+  final FeatureGate _featureGate;
 
-  ExpenseRepositoryImpl(this.localDataSource);
+  ExpenseRepositoryImpl(this.localDataSource, this._featureGate);
 
   @override
   Future<Either<Failure, List<ExpenseEntity>>> getExpenses({
@@ -38,6 +41,9 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
     required String userId,
   }) async {
     try {
+      if (!await _featureGate.isEnabled(FeatureKeys.expenses)) {
+        return const Left(CacheFailure('ميزة المصروفات غير مفعّلة'));
+      }
       final entity = await localDataSource.addExpense(
         category: category,
         amount: amount,

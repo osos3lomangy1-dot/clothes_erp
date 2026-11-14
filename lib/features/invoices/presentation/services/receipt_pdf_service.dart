@@ -45,9 +45,9 @@ class ReceiptPdfService {
 
   static Future<Uint8List> generateReceiptPdf(
     InvoiceDetailsEntity invoice, {
-    String storeName = 'محل أوركيد للملابس',
+    String storeName = ' أوركيد ',
     String storePhone = '01000000000',
-    String storeAddress = 'القاهرة - مصر',
+    String storeAddress = 'بني سويف  ',
     String returnPolicy = 'الاستبدال والاسترجاع خلال 14 يوماً بالفاتورة وأصل التكت',
   }) async {
     final doc = pw.Document();

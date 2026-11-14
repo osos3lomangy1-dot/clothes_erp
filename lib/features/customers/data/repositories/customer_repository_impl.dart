@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
 import 'package:injectable/injectable.dart';
 import '../../../../core/errors/failures.dart';
+import '../../../../core/features/feature_gate.dart';
 import '../../domain/entities/customer_entity.dart';
 import '../../domain/repositories/customer_repository.dart';
 import '../datasources/customers_local_data_source.dart';
@@ -8,8 +9,9 @@ import '../datasources/customers_local_data_source.dart';
 @LazySingleton(as: CustomerRepository)
 class CustomerRepositoryImpl implements CustomerRepository {
   final CustomersLocalDataSource _localDataSource;
+  final FeatureGate _featureGate;
 
-  CustomerRepositoryImpl(this._localDataSource);
+  CustomerRepositoryImpl(this._localDataSource, this._featureGate);
 
   @override
   Future<Either<Failure, List<CustomerEntity>>> getCustomers({String? search}) async {
@@ -35,6 +37,13 @@ class CustomerRepositoryImpl implements CustomerRepository {
   @override
   Future<Either<Failure, void>> addCustomer(CustomerEntity customer) async {
     try {
+      if (!await _featureGate.isEnabled(FeatureKeys.customers)) {
+        return const Left(CacheFailure('ميزة العملاء غير مفعّلة'));
+      }
+      if (customer.loyaltyPoints != 0 &&
+          !await _featureGate.isEnabled(FeatureKeys.loyalty)) {
+        return Left(FeatureDisabledFailure(FeatureKeys.loyalty));
+      }
       await _localDataSource.addCustomer(
         name: customer.name,
         phone: customer.phone,
@@ -51,6 +60,12 @@ class CustomerRepositoryImpl implements CustomerRepository {
   @override
   Future<Either<Failure, void>> updateCustomer(CustomerEntity customer) async {
     try {
+      final existing = await _localDataSource.getCustomerById(customer.id);
+      final isLoyaltyChange =
+          existing != null && customer.loyaltyPoints != existing.loyaltyPoints;
+      if (isLoyaltyChange && !await _featureGate.isEnabled(FeatureKeys.loyalty)) {
+        return Left(FeatureDisabledFailure(FeatureKeys.loyalty));
+      }
       await _localDataSource.updateCustomer(
         id: customer.id,
         name: customer.name,

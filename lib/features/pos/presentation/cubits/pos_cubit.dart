@@ -392,7 +392,11 @@ class PosCubit extends Cubit<PosState> {
 
   void changePaymentMethod(String method) {}
 
-  Future<bool> checkout({String? cashierId, String paymentMethod = 'cash'}) async {
+  Future<bool> checkout({
+    String? cashierId,
+    String paymentMethod = 'cash',
+    void Function(SaleEntity sale)? onSaleCreated,
+  }) async {
     final state = this.state;
     if (state.cart.isEmpty) return false;
     emit(state.copyWith(isProcessing: true));
@@ -419,6 +423,10 @@ class PosCubit extends Cubit<PosState> {
       final result = await _createSaleUseCase(sale);
       final success = result.isRight();
       if (success) {
+        // Fire optional callback with the CREATED sale (contains generated ID)
+        final createdSale = result.getOrElse(() => sale);
+        onSaleCreated?.call(createdSale);
+
         emit(PosLoaded(
           filteredVariants: state.filteredVariants,
           categories: state.categories,

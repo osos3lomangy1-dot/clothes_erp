@@ -1,6 +1,8 @@
 import 'package:dartz/dartz.dart';
 import 'package:injectable/injectable.dart';
+
 import '../../../../core/errors/failures.dart';
+import '../../../../core/features/feature_gate.dart';
 import '../../domain/entities/sale_entity.dart';
 import '../../domain/repositories/pos_repository.dart';
 import '../datasources/pos_local_data_source.dart';
@@ -8,12 +10,16 @@ import '../datasources/pos_local_data_source.dart';
 @LazySingleton(as: PosRepository)
 class PosRepositoryImpl implements PosRepository {
   final PosLocalDataSource _localDataSource;
+  final FeatureGate _featureGate;
 
-  PosRepositoryImpl(this._localDataSource);
+  PosRepositoryImpl(this._localDataSource, this._featureGate);
 
   @override
   Future<Either<Failure, SaleEntity>> createSale(SaleEntity sale) async {
     try {
+      if (!await _featureGate.isEnabled(FeatureKeys.pos)) {
+        return const Left(CacheFailure('ميزة نقطة البيع غير مفعّلة'));
+      }
       final items = sale.items.map((i) => {
         'variantId': i.variantId,
         'name': i.productName,
