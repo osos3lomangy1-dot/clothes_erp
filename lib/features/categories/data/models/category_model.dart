@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/entities/category_entity.dart';
 
 class CategoryModel extends CategoryEntity {
@@ -60,7 +59,11 @@ class CategoryModel extends CategoryEntity {
       id: documentId,
       name: data['name'] ?? '',
       description: data['description'] ?? '',
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: data['createdAt'] is DateTime
+          ? data['createdAt'] as DateTime
+          : (data['createdAt'] is String
+              ? DateTime.tryParse(data['createdAt']) ?? DateTime.now()
+              : DateTime.now()),
     );
   }
 
@@ -68,7 +71,7 @@ class CategoryModel extends CategoryEntity {
     return {
       'name': name,
       'description': description,
-      'createdAt': Timestamp.fromDate(createdAt),
+      'createdAt': createdAt.toIso8601String(),
     };
   }
 }

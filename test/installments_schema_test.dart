@@ -146,12 +146,12 @@ void main() {
         if (file.existsSync()) file.deleteSync();
       });
       final db1 = AppDatabase(NativeDatabase(file));
-      expect(db1.schemaVersion, 6);
+      expect(db1.schemaVersion, 8);
       await db1.customSelect('SELECT 1').getSingle();
       await db1.close();
 
       final db2 = AppDatabase(NativeDatabase(file));
-      expect(db2.schemaVersion, 6);
+      expect(db2.schemaVersion, 8);
       await db2.customSelect('SELECT 1').getSingle();
       final tables = await db2.customSelect(
         "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('installment_plans','customer_installments','installment_payments')",

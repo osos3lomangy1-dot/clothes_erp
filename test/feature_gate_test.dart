@@ -155,6 +155,20 @@ void main() {
       expect(features[FeatureKeys.expenses], true, reason: 'cashier attempt must not change state');
     });
 
+    test('TD-005: fail-closed admin check returns false when no user is logged in', () async {
+      auth.setUser(null);
+      expect(await gate.isCurrentUserAdmin(), isFalse);
+
+      await expectLater(
+        () => gate.setFeatureEnabled(FeatureKeys.expenses, false, userId: 'anonymous'),
+        throwsA(isA<Exception>()),
+      );
+      await expectLater(
+        () => gate.setMeta('payment.cash', '0', userId: 'anonymous'),
+        throwsA(isA<Exception>()),
+      );
+    });
+
     test('changes emit via FeatureGate stream (sidebar updates immediately)', () async {
       final events = <Map<String, bool>>[];
       final sub = gate.watchFeatures().listen(events.add);

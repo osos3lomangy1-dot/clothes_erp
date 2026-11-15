@@ -344,6 +344,28 @@ class _ReportsScreenState extends State<ReportsScreen> {
                             children: [
                               Row(
                                 children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Icon(Icons.analytics_rounded, color: AppColors.primary, size: 24),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  const Text(
+                                    'القسم الأول: تقرير الأرباح والخسائر (P&L)',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                      color: AppColors.onSurface,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
                                   Expanded(
                                     child: _ReportCard(
                                       title: 'إجمالي المبيعات',
@@ -484,8 +506,108 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                     ),
                                   ),
                                 ),
-                              const SizedBox(height: 16),
-                              const InstallmentsReportSection(),
+                               const SizedBox(height: 24),
+                               // Section 2: Cash Flow (التدفقات النقدية والخزينة)
+                               Row(
+                                 children: [
+                                   Container(
+                                     padding: const EdgeInsets.all(8),
+                                     decoration: BoxDecoration(
+                                       color: Colors.teal.shade50,
+                                       borderRadius: BorderRadius.circular(10),
+                                     ),
+                                     child: Icon(Icons.account_balance_wallet_rounded, color: Colors.teal.shade800, size: 24),
+                                   ),
+                                   const SizedBox(width: 10),
+                                   const Text(
+                                     'القسم الثاني: التدفقات النقدية والخزينة (Cash Flow)',
+                                     style: TextStyle(
+                                       fontWeight: FontWeight.bold,
+                                       fontSize: 18,
+                                       color: AppColors.onSurface,
+                                     ),
+                                   ),
+                                 ],
+                               ),
+                               const SizedBox(height: 12),
+                               Row(
+                                 children: [
+                                   Expanded(
+                                     child: _ReportCard(
+                                       title: 'إجمالي المقبوضات (داخل الخزينة)',
+                                       value: '${Money(report.cashFlowIn).toDisplay()} ج.م',
+                                       icon: Icons.arrow_downward_rounded,
+                                       color: Colors.green.shade700,
+                                     ),
+                                   ),
+                                   const SizedBox(width: 10),
+                                   Expanded(
+                                     child: _ReportCard(
+                                       title: 'إجمالي المدفوعات (خارج الخزينة)',
+                                       value: '${Money(report.cashFlowOut).toDisplay()} ج.م',
+                                       icon: Icons.arrow_upward_rounded,
+                                       color: AppColors.error,
+                                     ),
+                                   ),
+                                   const SizedBox(width: 10),
+                                   Expanded(
+                                     child: _ReportCard(
+                                       title: 'صافي السيولة النقدية (Net Cash)',
+                                       value: '${Money(report.netCashFlow).toDisplay()} ج.م',
+                                       icon: Icons.account_balance_rounded,
+                                       color: report.netCashFlow >= 0 ? Colors.teal.shade700 : AppColors.error,
+                                     ),
+                                   ),
+                                 ],
+                               ),
+                               const SizedBox(height: 12),
+                               Card(
+                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                 child: Padding(
+                                   padding: const EdgeInsets.all(16),
+                                   child: Column(
+                                     crossAxisAlignment: CrossAxisAlignment.start,
+                                     children: [
+                                       const Text(
+                                         'تفصيل المقبوضات والمدفوعات بحسب الوسيلة (من حركات النقدية)',
+                                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                       ),
+                                       const Divider(height: 20),
+                                       ...['cash', 'card', 'transfer'].map((m) {
+                                         final mIn = report.cashFlowInByMethod[m] ?? 0;
+                                         final mOut = report.cashFlowOutByMethod[m] ?? 0;
+                                         if (mIn == 0 && mOut == 0) return const SizedBox.shrink();
+                                         final label = m == 'cash' ? 'نقدي (كاش)' : (m == 'card' ? 'بطاقة / فيزا' : 'تحويل بنكي');
+                                         return Padding(
+                                           padding: const EdgeInsets.symmetric(vertical: 6),
+                                           child: Row(
+                                             children: [
+                                               Expanded(
+                                                 flex: 2,
+                                                 child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                               ),
+                                               Expanded(
+                                                 flex: 3,
+                                                 child: Text('داخل: +${Money(mIn).toDisplay()} ج.م', style: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.bold)),
+                                               ),
+                                               Expanded(
+                                                 flex: 3,
+                                                 child: Text('خارج: -${Money(mOut).toDisplay()} ج.م', style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
+                                               ),
+                                               Expanded(
+                                                 flex: 2,
+                                                 child: Text('الصافي: ${Money(mIn - mOut).toDisplay()} ج.م', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                               ),
+                                             ],
+                                           ),
+                                         );
+                                       }),
+                                     ],
+                                   ),
+                                 ),
+                               ),
+                               const SizedBox(height: 20),
+                               const InstallmentsReportSection(),
                             ],
                           );
                         }

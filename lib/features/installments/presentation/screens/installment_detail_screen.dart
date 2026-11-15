@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_colors.dart';
@@ -80,11 +79,9 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
         ),
         title: Text(
           'تفاصيل عقد التقسيط',
-          style: GoogleFonts.cairo(
-            fontWeight: FontWeight.bold,
+          style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
             fontSize: 18,
-            color: AppColors.onSurface,
-          ),
+            color: AppColors.onSurface,),
         ),
         actions: [
           IconButton(
@@ -117,7 +114,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                   const SizedBox(height: 12),
                   Text(
                     'خطأ: ${state.errorMessage ?? "تعذر تحميل تفاصيل العقد"}',
-                    style: GoogleFonts.cairo(fontSize: 14),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 14),
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
@@ -231,19 +228,15 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                   children: [
                     Text(
                       displayName,
-                      style: GoogleFonts.cairo(
-                        fontWeight: FontWeight.bold,
+                      style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
                         fontSize: 22,
-                        color: AppColors.onSurface,
-                      ),
+                        color: AppColors.onSurface,),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'عقد تقسيط رقم: #${contract.id.substring(0, 8).toUpperCase()}',
-                      style: GoogleFonts.cairo(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                      ),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: 12,
+                        color: Colors.grey.shade600,),
                     ),
                   ],
                 ),
@@ -268,18 +261,14 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                   children: [
                     Text(
                       'نسبة السداد: $percentDisplay%',
-                      style: GoogleFonts.cairo(
-                        fontWeight: FontWeight.bold,
+                      style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
                         fontSize: 13,
-                        color: AppColors.primary,
-                      ),
+                        color: AppColors.primary,),
                     ),
                     Text(
                       '${Money(totalPaidPiasters).toDisplay()} ج.م مسدد من إجمالي ${Money(totalContractObligation).toDisplay()} ج.م',
-                      style: GoogleFonts.cairo(
-                        fontSize: 12,
-                        color: Colors.grey.shade700,
-                      ),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: 12,
+                        color: Colors.grey.shade700,),
                     ),
                   ],
                 ),
@@ -429,11 +418,9 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
               children: [
                 Text(
                   title,
-                  style: GoogleFonts.cairo(
-                    fontSize: 12,
+                  style: TextStyle(fontFamily: 'Cairo', fontSize: 12,
                     color: Colors.grey.shade700,
-                    fontWeight: FontWeight.w600,
-                  ),
+                    fontWeight: FontWeight.w600,),
                 ),
                 const SizedBox(height: 2),
                 FittedBox(
@@ -441,11 +428,9 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                   alignment: Alignment.centerRight,
                   child: Text(
                     value,
-                    style: GoogleFonts.cairo(
-                      fontSize: 15,
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 15,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.onSurface,
-                    ),
+                      color: AppColors.onSurface,),
                   ),
                 ),
               ],
@@ -464,15 +449,13 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
         const SizedBox(width: 6),
         Text(
           '$label: ',
-          style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey.shade600),
+          style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade600),
         ),
         Text(
           value,
-          style: GoogleFonts.cairo(
-            fontSize: 12,
+          style: TextStyle(fontFamily: 'Cairo', fontSize: 12,
             fontWeight: FontWeight.bold,
-            color: AppColors.onSurface,
-          ),
+            color: AppColors.onSurface,),
         ),
       ],
     );
@@ -498,7 +481,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
             icon: const Icon(Icons.payment_rounded, size: 20),
             label: Text(
               'تسجيل دفعة جديدة',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 14),
             ),
             onPressed: () {
               Navigator.of(context).push(
@@ -520,7 +503,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
             icon: const Icon(Icons.cancel_outlined, size: 20),
             label: Text(
               'إلغاء العقد',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 14),
             ),
             onPressed: () => _confirmCancelContract(context, cubit),
           ),
@@ -550,7 +533,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'تأكيد إلغاء العقد',
-          style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+          style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -558,7 +541,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
           children: [
             Text(
               'هل أنت متأكد من رغبتك في إلغاء هذا العقد؟ لن يمكن تسجيل دفعات جديدة عليه بعد الإلغاء.',
-              style: GoogleFonts.cairo(fontSize: 13),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 13),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -567,7 +550,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: 'الرقم السري للمدير (PIN)',
-                labelStyle: GoogleFonts.cairo(),
+                labelStyle: TextStyle(fontFamily: 'Cairo'),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                 prefixIcon: const Icon(Icons.lock_outline_rounded),
               ),
@@ -577,7 +560,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(),
-            child: Text('رجوع', style: GoogleFonts.cairo(color: Colors.grey.shade700)),
+            child: Text('رجوع', style: TextStyle(fontFamily: 'Cairo', color: Colors.grey.shade700)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -601,7 +584,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                 );
               }
             },
-            child: Text('تأكيد الإلغاء', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+            child: Text('تأكيد الإلغاء', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -653,7 +636,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                   const SizedBox(width: 10),
                   Text(
                     'جدول الأقساط والاستحقاقات',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                 ],
               ),
@@ -665,7 +648,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                 ),
                 child: Text(
                   '${schedule.length} أقساط مجدولة',
-                  style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -677,7 +660,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
               child: Center(
                 child: Text(
                   'لا يوجد جدول متاح لهذا العقد',
-                  style: GoogleFonts.cairo(color: Colors.grey),
+                  style: TextStyle(fontFamily: 'Cairo', color: Colors.grey),
                 ),
               ),
             )
@@ -692,12 +675,10 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
                     headingRowColor: WidgetStateProperty.all(const Color(0xFFF8F9FC)),
-                    headingTextStyle: GoogleFonts.cairo(
-                      fontWeight: FontWeight.bold,
+                    headingTextStyle: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
                       fontSize: 13,
-                      color: AppColors.onSurface,
-                    ),
-                    dataTextStyle: GoogleFonts.cairo(fontSize: 13, color: AppColors.onSurface),
+                      color: AppColors.onSurface,),
+                    dataTextStyle: TextStyle(fontFamily: 'Cairo', fontSize: 13, color: AppColors.onSurface),
                     columnSpacing: 24,
                     horizontalMargin: 16,
                     columns: const [
@@ -768,11 +749,9 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                               ),
                               child: Text(
                                 '${entry.installmentNumber}',
-                                style: GoogleFonts.cairo(
-                                  fontWeight: FontWeight.bold,
+                                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
                                   fontSize: 12,
-                                  color: isPaid ? AppColors.success : Colors.grey.shade800,
-                                ),
+                                  color: isPaid ? AppColors.success : Colors.grey.shade800,),
                               ),
                             ),
                           ),
@@ -789,7 +768,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                           DataCell(
                             Text(
                               '${Money(entry.amountPiasters).toDisplay()} ج.م',
-                              style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+                              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
                             ),
                           ),
                           DataCell(Text('${Money(entry.principalComponentPiasters).toDisplay()} ج.م')),
@@ -809,11 +788,9 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                                   const SizedBox(width: 4),
                                   Text(
                                     statusLabel,
-                                    style: GoogleFonts.cairo(
-                                      color: statusColor,
+                                    style: TextStyle(fontFamily: 'Cairo', color: statusColor,
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 11,
-                                    ),
+                                      fontSize: 11,),
                                   ),
                                 ],
                               ),
@@ -867,7 +844,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                   const SizedBox(width: 10),
                   Text(
                     'سجل الدفعات والمتحصلات',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                 ],
               ),
@@ -879,7 +856,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                 ),
                 child: Text(
                   '${payments.length} دفعات مسجلة',
-                  style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -891,7 +868,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
               child: Center(
                 child: Text(
                   'لم يتم تسجيل أي دفعات حتى الآن',
-                  style: GoogleFonts.cairo(color: Colors.grey),
+                  style: TextStyle(fontFamily: 'Cairo', color: Colors.grey),
                 ),
               ),
             )
@@ -935,11 +912,9 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                           children: [
                             Text(
                               isDownPayment ? 'دفعة مقدمة' : 'دفعة قسط: ${Money(payment.amountPiasters).toDisplay()} ج.م',
-                              style: GoogleFonts.cairo(
-                                fontWeight: FontWeight.bold,
+                              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
                                 fontSize: 14,
-                                color: AppColors.onSurface,
-                              ),
+                                color: AppColors.onSurface,),
                             ),
                             const SizedBox(height: 2),
                             Wrap(
@@ -947,17 +922,17 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                               children: [
                                 Text(
                                   'طريقة الدفع: $payMethodAr',
-                                  style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey.shade600),
+                                  style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey.shade600),
                                 ),
                                 Text('•', style: TextStyle(color: Colors.grey.shade400)),
                                 Text(
                                   'بواسطة: ${payment.recordedBy}',
-                                  style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey.shade600),
+                                  style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey.shade600),
                                 ),
                                 Text('•', style: TextStyle(color: Colors.grey.shade400)),
                                 Text(
                                   dateStr,
-                                  style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey.shade600),
+                                  style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey.shade600),
                                 ),
                               ],
                             ),
@@ -975,8 +950,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                         ),
                         child: Text(
                           '${Money(payment.amountPiasters).toDisplay()} ج.م',
-                          style: GoogleFonts.cairo(
-                            fontWeight: FontWeight.bold,
+                          style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
                             fontSize: 14,
                             color: isDownPayment ? const Color(0xFF0369A1) : AppColors.success,
                           ),
@@ -1044,7 +1018,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
           const SizedBox(width: 6),
           Text(
             label,
-            style: GoogleFonts.cairo(color: color, fontWeight: FontWeight.bold, fontSize: 12),
+            style: TextStyle(fontFamily: 'Cairo', color: color, fontWeight: FontWeight.bold, fontSize: 12),
           ),
         ],
       ),

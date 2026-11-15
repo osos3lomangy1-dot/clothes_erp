@@ -124,6 +124,51 @@ void main() {
     expect(logs.first.qtyDelta, 2);
     expect(logs.first.type, 'return_');
     expect(logs.first.reason, 'Defective zipper');
+
+    // 5. Cash movements must record refund movement (Clarification 2)
+    final movements = await db.select(db.cashMovements).get();
+    expect(movements.length, 1);
+    expect(movements.first.type, 'refund');
+    expect(movements.first.direction, 'out');
+    expect(movements.first.amountPiasters, 2000);
+  });
+
+  test('runtime return records active shift_id in cash_movements', () async {
+    final now = DateTime.now();
+    // Seed active shift
+    await db.into(db.shifts).insert(ShiftsCompanion.insert(
+      id: 'active-shift-55',
+      branchId: 'b1',
+      cashierId: 'cashier1',
+      openingBalance: 5000,
+      openedAt: now,
+      createdAt: now,
+      updatedAt: now,
+    ));
+
+    final vid = await seedProductAndVariant(initialQty: 10, price: 1500);
+    final returnItem = ReturnItemEntity(
+      variantId: vid,
+      productName: 'T-Shirt',
+      color: 'White',
+      size: 'L',
+      maxQty: 1,
+      qty: 1,
+      refundUnitPrice: 1500,
+    );
+
+    await returnsDs.processReturn(
+      saleId: 's-shift-1',
+      items: [returnItem],
+      reason: 'Wrong size',
+      userId: 'cashier1',
+    );
+
+    final movements = await (db.select(db.cashMovements)..where((m) => m.referenceId.isNotNull())).get();
+    expect(movements.length, 1);
+    expect(movements.first.shiftId, equals('active-shift-55'));
+    expect(movements.first.amountPiasters, equals(1500));
+    expect(movements.first.direction, equals('out'));
   });
 
   test('atomicity: inject failure during applyStockMovement, assert no return record is created and stock remains unchanged', () async {

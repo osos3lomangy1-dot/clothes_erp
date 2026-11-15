@@ -175,12 +175,51 @@ class ShiftLocalDataSourceImpl implements ShiftLocalDataSource {
       cashExpenses += exp.amount;
     }
 
-    final expectedCash = shiftRow.openingBalance + cashSales - cashReturns - cashExpenses;
+    // 4. Cash Movements direction-based calculation (Phase 2 §2.5)
+    final openedAtSec = openedAt.millisecondsSinceEpoch ~/ 1000;
+    final closedAtSec = closedAt.millisecondsSinceEpoch ~/ 1000;
+
+    final movementsQuery = _db.select(_db.cashMovements)
+      ..where((m) =>
+          (m.shiftId.equals(shiftId) |
+              (m.shiftId.isNull() &
+                  m.createdAt.isBiggerOrEqualValue(openedAtSec) &
+                  m.createdAt.isSmallerOrEqualValue(closedAtSec))) &
+          m.deletedAt.isNull());
+    final movements = await movementsQuery.get();
+
+    final int expectedCash;
+    int effectiveCashSales = cashSales;
+    int effectiveCardSales = cardSales;
+
+    if (movements.isNotEmpty) {
+      final cashIn = movements
+          .where((m) => m.method == 'cash' && m.direction == 'in')
+          .fold<int>(0, (s, m) => s + m.amountPiasters);
+      final cashOut = movements
+          .where((m) => m.method == 'cash' && m.direction == 'out')
+          .fold<int>(0, (s, m) => s + m.amountPiasters);
+      expectedCash = shiftRow.openingBalance + cashIn - cashOut;
+
+      final movementCashSales = movements
+          .where((m) => m.method == 'cash' && m.type == 'sale' && m.direction == 'in')
+          .fold<int>(0, (s, m) => s + m.amountPiasters);
+      final movementCardSales = movements
+          .where((m) => m.method == 'card' && m.type == 'sale' && m.direction == 'in')
+          .fold<int>(0, (s, m) => s + m.amountPiasters);
+
+      if (movementCashSales > 0 || movementCardSales > 0) {
+        effectiveCashSales = movementCashSales;
+        effectiveCardSales = movementCardSales;
+      }
+    } else {
+      expectedCash = shiftRow.openingBalance + cashSales - cashReturns - cashExpenses;
+    }
 
     return ShiftSummaryEntity(
       shift: shiftEntity,
-      cashSales: cashSales,
-      cardSales: cardSales,
+      cashSales: effectiveCashSales,
+      cardSales: effectiveCardSales,
       otherSales: otherSales,
       cashReturns: cashReturns,
       cashExpenses: cashExpenses,

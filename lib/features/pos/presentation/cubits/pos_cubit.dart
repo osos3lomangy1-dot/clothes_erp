@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import '../../domain/entities/payment_split.dart';
 import '../../domain/entities/sale_entity.dart';
 import '../../domain/entities/sale_item_entity.dart';
 import '../../domain/usecases/create_sale_usecase.dart';
@@ -394,11 +395,25 @@ class PosCubit extends Cubit<PosState> {
 
   Future<bool> checkout({
     String? cashierId,
+    List<PaymentSplit>? splits,
     String paymentMethod = 'cash',
     void Function(SaleEntity sale)? onSaleCreated,
   }) async {
     final state = this.state;
     if (state.cart.isEmpty) return false;
+
+    final effectiveSplits = splits ?? [
+      PaymentSplit(
+        method: paymentMethod == 'card' ? 'card' : 'cash',
+        amountPiasters: state.total,
+      ),
+    ];
+
+    if (paymentMethod != 'installment') {
+      final splitTotal = effectiveSplits.fold<int>(0, (s, sp) => s + sp.amountPiasters);
+      if (splitTotal != state.total) return false;
+    }
+
     emit(state.copyWith(isProcessing: true));
 
     try {
@@ -415,10 +430,13 @@ class PosCubit extends Cubit<PosState> {
         cashierName: 'Cashier',
         customerId: state.customer?.id,
         items: state.cart,
-        subtotal: state.subtotal.toDouble(),
-        discount: (state.subtotal - state.total).toDouble(),
-        total: state.total.toDouble(),
-        paymentMethod: paymentMethod,
+        subtotal: state.subtotal,
+        discount: state.subtotal - state.total,
+        total: state.total,
+        paymentMethod: paymentMethod == 'installment'
+            ? 'installment'
+            : (effectiveSplits.length > 1 ? 'split' : effectiveSplits.first.method),
+        splits: effectiveSplits,
       );
       final result = await _createSaleUseCase(sale);
       final success = result.isRight();

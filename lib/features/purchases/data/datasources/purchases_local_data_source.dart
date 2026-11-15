@@ -438,19 +438,21 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
               ),
             );
 
-        // Optionally record in expenses with kind='supplier_payment'
-        await _db.into(_db.expenses).insert(
-              ExpensesCompanion.insert(
+        // Phase 2: Record in cash_movements instead of expenses
+        final nowSec = now.millisecondsSinceEpoch ~/ 1000;
+        await _db.into(_db.cashMovements).insert(
+              CashMovementsCompanion.insert(
                 id: _uuid.v4(),
                 branchId: branchId,
-                category: 'مشتريات بضاعة',
-                amount: paidAmount,
-                kind: const Value('supplier_payment'),
-                note: Value('دفعة فاتورة شراء #${invoiceNumber ?? ''}'),
-                userId: userId,
-                expenseDate: purchaseDate,
-                createdAt: now,
-                updatedAt: now,
+                shiftId: const Value.absent(),
+                type: 'purchase_payment',
+                method: 'cash',
+                direction: 'out',
+                amountPiasters: paidAmount,
+                referenceId: Value(purchaseId),
+                notes: Value('دفعة فاتورة شراء #${invoiceNumber ?? ''}'),
+                createdAt: nowSec,
+                updatedAt: nowSec,
               ),
             );
       }
@@ -576,19 +578,24 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
         }
       }
 
-      // 4. Log in expenses with kind='supplier_payment'
-      await _db.into(_db.expenses).insert(
-            ExpensesCompanion.insert(
+      // 4. Phase 2: Log in cash_movements instead of expenses
+      final nowSec = now.millisecondsSinceEpoch ~/ 1000;
+      final mMethod = paymentMethod.toLowerCase() == 'card'
+          ? 'card'
+          : (paymentMethod.toLowerCase() == 'transfer' ? 'transfer' : 'cash');
+      await _db.into(_db.cashMovements).insert(
+            CashMovementsCompanion.insert(
               id: _uuid.v4(),
               branchId: branchId,
-              category: 'سداد موردين',
-              amount: amount,
-              kind: const Value('supplier_payment'),
-              note: Value(notes ?? 'سداد دفعة مورد'),
-              userId: userId,
-              expenseDate: paymentDate,
-              createdAt: now,
-              updatedAt: now,
+              shiftId: const Value.absent(),
+              type: 'supplier_payment',
+              method: mMethod,
+              direction: 'out',
+              amountPiasters: amount,
+              referenceId: Value(paymentId),
+              notes: Value(notes ?? 'سداد دفعة مورد'),
+              createdAt: nowSec,
+              updatedAt: nowSec,
             ),
           );
 

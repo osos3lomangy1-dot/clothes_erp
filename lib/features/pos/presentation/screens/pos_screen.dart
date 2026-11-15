@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:google_fonts/google_fonts.dart';
-
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/money.dart';
@@ -28,8 +26,10 @@ import 'package:drift/drift.dart' show Value;
 import '../../../installments/domain/facades/installments_facade.dart';
 import '../../../installments/presentation/screens/installment_detail_screen.dart';
 import '../../../installments/data/services/manager_pin_service.dart';
+import '../../domain/entities/payment_split.dart';
 import '../../domain/entities/sale_entity.dart';
 import '../widgets/installment_checkout_dialog.dart';
+import '../widgets/split_payment_dialog.dart';
 
 Color _getCategoryColor(String? categoryId) {
   if (categoryId == null || categoryId.isEmpty) return const Color(0xFF673AB7);
@@ -159,7 +159,7 @@ class _PosViewState extends State<_PosView> {
                   const SizedBox(width: 8),
                   Text(
                     'نقطة البيع (POS)',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 18),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 18),
                   ),
                 ],
               ),
@@ -188,7 +188,7 @@ class _PosViewState extends State<_PosView> {
                             const SizedBox(width: 4),
                             Text(
                               'وردية مفتوحة',
-                              style: GoogleFonts.cairo(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                              style: TextStyle(fontFamily: 'Cairo', color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
@@ -228,11 +228,9 @@ class _PosViewState extends State<_PosView> {
                                   const SizedBox(width: 6),
                                   Text(
                                     cashierName,
-                                    style: GoogleFonts.cairo(
-                                      color: Colors.white,
+                                    style: TextStyle(fontFamily: 'Cairo', color: Colors.white,
                                       fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                                      fontWeight: FontWeight.w600,),
                                   ),
                                   const SizedBox(width: 4),
                                   const Icon(Icons.info_outline_rounded, size: 14, color: Colors.white70),
@@ -307,7 +305,7 @@ class _PosViewState extends State<_PosView> {
         ),
         title: Text(
           'نقطة البيع (POS)',
-          style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white),
+          style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white),
         ),
       ),
       body: Center(
@@ -338,14 +336,14 @@ class _PosViewState extends State<_PosView> {
                     const SizedBox(height: 20),
                     Text(
                       isAdmin ? 'تنبيه: لا توجد وردية مفتوحة' : 'الوردية مغلقة - الرجاء فتح وردية',
-                      style: GoogleFonts.cairo(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.onSurface),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.onSurface),
                     ),
                     const SizedBox(height: 10),
                     Text(
                       isAdmin
                           ? 'أهلاً بك يا مدير! يمكنك فتح وردية فورية بضغطة زر لبدء البيع السريع، أو فتح وردية جديدة وتحديد رصيد الفكة.'
                           : 'لا يمكنك إصدار فواتير بيع في نقطة البيع قبل فتح وردية وتحديد عهدة الفكة في الدرج.',
-                      style: GoogleFonts.cairo(fontSize: 14, color: Colors.grey.shade600, height: 1.5),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: 14, color: Colors.grey.shade600, height: 1.5),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 28),
@@ -385,7 +383,7 @@ class _PosViewState extends State<_PosView> {
                               : const Icon(Icons.flash_on_rounded, color: Colors.white, size: 22),
                           label: Text(
                             'بدء البيع السريع فوراً (فكة 0 ج.م)',
-                            style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                            style: TextStyle(fontFamily: 'Cairo', color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
                           ),
                         ),
                       ),
@@ -421,7 +419,7 @@ class _PosViewState extends State<_PosView> {
                           icon: const Icon(Icons.lock_open_rounded, color: AppColors.primary, size: 20),
                           label: Text(
                             'فتح وردية وتحديد رصيد الفكة',
-                            style: GoogleFonts.cairo(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 15),
+                            style: TextStyle(fontFamily: 'Cairo', color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 15),
                           ),
                         ),
                       ),
@@ -457,7 +455,7 @@ class _PosViewState extends State<_PosView> {
                           icon: const Icon(Icons.lock_open_rounded, color: Colors.white, size: 20),
                           label: Text(
                             'فتح وردية جديدة',
-                            style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                            style: TextStyle(fontFamily: 'Cairo', color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
                           ),
                         ),
                       ),
@@ -528,10 +526,10 @@ class _ProductPanelState extends State<_ProductPanel> {
             child: TextField(
               controller: _searchCtrl,
               focusNode: widget.searchFocusNode,
-              style: GoogleFonts.cairo(fontSize: 14),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 14),
               decoration: InputDecoration(
                 hintText: 'بحث بالاسم أو كود الصنف أو المقاس... [F2]',
-                hintStyle: GoogleFonts.cairo(color: Colors.grey.shade500, fontSize: 13),
+                hintStyle: TextStyle(fontFamily: 'Cairo', color: Colors.grey.shade500, fontSize: 13),
                 prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primary),
                 suffixIcon: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -555,11 +553,9 @@ class _ProductPanelState extends State<_ProductPanel> {
                       ),
                       child: Text(
                         'F2',
-                        style: GoogleFonts.cairo(
-                          fontSize: 11,
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.onSurface,
-                        ),
+                          color: AppColors.onSurface,),
                       ),
                     ),
                   ],
@@ -649,17 +645,15 @@ class _ProductPanelState extends State<_ProductPanel> {
                         Text(
                           state.message,
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.cairo(
-                            color: AppColors.error,
+                          style: TextStyle(fontFamily: 'Cairo', color: AppColors.error,
                             fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                          ),
+                            fontWeight: FontWeight.bold,),
                         ),
                         const SizedBox(height: 16),
                         ElevatedButton.icon(
                           onPressed: () => context.read<PosCubit>().init(),
                           icon: const Icon(Icons.refresh_rounded),
-                          label: Text('إعادة المحاولة', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                          label: Text('إعادة المحاولة', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
@@ -680,7 +674,7 @@ class _ProductPanelState extends State<_ProductPanel> {
                         const SizedBox(height: 12),
                         Text(
                           'لا توجد منتجات مطابقة للبحث',
-                          style: GoogleFonts.cairo(color: Colors.grey.shade600, fontSize: 15),
+                          style: TextStyle(fontFamily: 'Cairo', color: Colors.grey.shade600, fontSize: 15),
                         ),
                       ],
                     ),
@@ -746,11 +740,9 @@ class _ProductPanelState extends State<_ProductPanel> {
         child: Center(
           child: Text(
             label,
-            style: GoogleFonts.cairo(
-              color: isSelected ? AppColors.onPrimary : AppColors.onSurface,
+            style: TextStyle(fontFamily: 'Cairo', color: isSelected ? AppColors.onPrimary : AppColors.onSurface,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-              fontSize: 13,
-            ),
+              fontSize: 13,),
           ),
         ),
       ),
@@ -852,11 +844,9 @@ class _ProductCard extends StatelessWidget {
                         child: Center(
                           child: Text(
                             initialLetter,
-                            style: GoogleFonts.cairo(
-                              color: Colors.white,
+                            style: TextStyle(fontFamily: 'Cairo', color: Colors.white,
                               fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                            ),
+                              fontSize: 18,),
                           ),
                         ),
                       ),
@@ -882,11 +872,9 @@ class _ProductCard extends StatelessWidget {
                                   const SizedBox(width: 3),
                                   Text(
                                     'المقاسات',
-                                    style: GoogleFonts.cairo(
-                                      fontSize: 10,
+                                    style: TextStyle(fontFamily: 'Cairo', fontSize: 10,
                                       fontWeight: FontWeight.bold,
-                                      color: AppColors.primary,
-                                    ),
+                                      color: AppColors.primary,),
                                   ),
                                 ],
                               ),
@@ -902,11 +890,9 @@ class _ProductCard extends StatelessWidget {
                   // Product Title
                   Text(
                     displayName,
-                    style: GoogleFonts.cairo(
-                      fontWeight: FontWeight.bold,
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
                       fontSize: 15,
-                      color: AppColors.onSurface,
-                    ),
+                      color: AppColors.onSurface,),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -924,17 +910,15 @@ class _ProductCard extends StatelessWidget {
                         ),
                         child: Text(
                           '${variant.color} • ${variant.size}',
-                          style: GoogleFonts.cairo(
-                            fontSize: 11,
+                          style: TextStyle(fontFamily: 'Cairo', fontSize: 11,
                             fontWeight: FontWeight.bold,
-                            color: Colors.grey.shade700,
-                          ),
+                            color: Colors.grey.shade700,),
                         ),
                       ),
                       const SizedBox(width: 6),
                       Text(
                         variant.sku,
-                        style: GoogleFonts.cairo(fontSize: 10, color: Colors.grey.shade500),
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: 10, color: Colors.grey.shade500),
                       ),
                     ],
                   ),
@@ -944,11 +928,9 @@ class _ProductCard extends StatelessWidget {
                   // Price
                   Text(
                     '${Money(variant.salePrice).toDisplay()} ج.م',
-                    style: GoogleFonts.cairo(
-                      fontWeight: FontWeight.bold,
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
                       fontSize: 17,
-                      color: AppColors.primary,
-                    ),
+                      color: AppColors.primary,),
                   ),
 
                   const SizedBox(height: 8),
@@ -974,7 +956,7 @@ class _ProductCard extends StatelessWidget {
                         icon: const Icon(Icons.add_shopping_cart_rounded, size: 16),
                         label: Text(
                           'إضافة للسلة',
-                          style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold),
+                          style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold),
                         ),
                       ),
                     )
@@ -997,11 +979,9 @@ class _ProductCard extends StatelessWidget {
                             child: Text(
                               '$inCartQty في السلة',
                               textAlign: TextAlign.center,
-                              style: GoogleFonts.cairo(
-                                color: Colors.white,
+                              style: TextStyle(fontFamily: 'Cairo', color: Colors.white,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
+                                fontSize: 12,),
                             ),
                           ),
                           IconButton(
@@ -1050,11 +1030,9 @@ class _ProductCard extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: GoogleFonts.cairo(
-          fontSize: 10,
+        style: TextStyle(fontFamily: 'Cairo', fontSize: 10,
           fontWeight: FontWeight.bold,
-          color: text,
-        ),
+          color: text,),
       ),
     );
   }
@@ -1165,11 +1143,9 @@ class _VariantModalState extends State<_VariantModal> {
                     child: Center(
                       child: Text(
                         displayName.isNotEmpty ? displayName.substring(0, 1).toUpperCase() : 'P',
-                        style: GoogleFonts.cairo(
-                          color: Colors.white,
+                        style: TextStyle(fontFamily: 'Cairo', color: Colors.white,
                           fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
+                          fontWeight: FontWeight.bold,),
                       ),
                     ),
                   ),
@@ -1180,15 +1156,13 @@ class _VariantModalState extends State<_VariantModal> {
                       children: [
                         Text(
                           displayName,
-                          style: GoogleFonts.cairo(
-                            fontSize: 17,
+                          style: TextStyle(fontFamily: 'Cairo', fontSize: 17,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.onSurface,
-                          ),
+                            color: AppColors.onSurface,),
                         ),
                         Text(
                           'كود الصنف: ${v.sku} • السعر: ${Money(v.salePrice).toDisplay()} ج.م',
-                          style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey.shade600),
+                          style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade600),
                         ),
                       ],
                     ),
@@ -1204,7 +1178,7 @@ class _VariantModalState extends State<_VariantModal> {
               // Color Selection
               Text(
                 'اللون المختار: $_selectedColor',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 13),
               ),
               const SizedBox(height: 8),
               Wrap(
@@ -1258,11 +1232,9 @@ class _VariantModalState extends State<_VariantModal> {
                           const SizedBox(width: 6),
                           Text(
                             colorName,
-                            style: GoogleFonts.cairo(
-                              fontSize: 12,
+                            style: TextStyle(fontFamily: 'Cairo', fontSize: 12,
                               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              color: isSelected ? AppColors.primary : AppColors.onSurface,
-                            ),
+                              color: isSelected ? AppColors.primary : AppColors.onSurface,),
                           ),
                         ],
                       ),
@@ -1276,7 +1248,7 @@ class _VariantModalState extends State<_VariantModal> {
               // Size Selection (Grid of buttons showing size and remaining stock)
               Text(
                 'المقاس: $_selectedSize',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 13),
               ),
               const SizedBox(height: 8),
               Wrap(
@@ -1322,8 +1294,7 @@ class _VariantModalState extends State<_VariantModal> {
                         children: [
                           Text(
                             sizeLabel,
-                            style: GoogleFonts.cairo(
-                              fontWeight: FontWeight.bold,
+                            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
                               fontSize: 14,
                               color: isSelected
                                   ? Colors.white
@@ -1332,8 +1303,7 @@ class _VariantModalState extends State<_VariantModal> {
                           ),
                           Text(
                             isOutOfStock ? 'نفذ' : '$stock متبقي',
-                            style: GoogleFonts.cairo(
-                              fontSize: 10,
+                            style: TextStyle(fontFamily: 'Cairo', fontSize: 10,
                               color: isSelected
                                   ? Colors.white.withValues(alpha: 0.85)
                                   : (isOutOfStock ? Colors.red : Colors.grey.shade600),
@@ -1357,7 +1327,7 @@ class _VariantModalState extends State<_VariantModal> {
                     children: [
                       Text(
                         'الكمية المطلوبة:',
-                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
+                        style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 13),
                       ),
                       const SizedBox(height: 6),
                       Row(
@@ -1376,7 +1346,7 @@ class _VariantModalState extends State<_VariantModal> {
                             ),
                             child: Text(
                               '$_qty',
-                              style: GoogleFonts.cairo(fontSize: 18, fontWeight: FontWeight.bold),
+                              style: TextStyle(fontFamily: 'Cairo', fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                           ),
                           IconButton(
@@ -1404,11 +1374,9 @@ class _VariantModalState extends State<_VariantModal> {
                                   ),
                                   child: Text(
                                     '$preset',
-                                    style: GoogleFonts.cairo(
-                                      fontSize: 11,
+                                    style: TextStyle(fontFamily: 'Cairo', fontSize: 11,
                                       fontWeight: FontWeight.bold,
-                                      color: _qty == preset ? Colors.white : AppColors.onSurface,
-                                    ),
+                                      color: _qty == preset ? Colors.white : AppColors.onSurface,),
                                   ),
                                 ),
                               ),
@@ -1423,15 +1391,13 @@ class _VariantModalState extends State<_VariantModal> {
                     children: [
                       Text(
                         'إجمالي الصنف:',
-                        style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey.shade600),
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade600),
                       ),
                       Text(
                         '${Money(v.salePrice * _qty).toDisplay()} ج.م',
-                        style: GoogleFonts.cairo(
-                          fontSize: 18,
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
+                          color: AppColors.primary,),
                       ),
                     ],
                   ),
@@ -1459,7 +1425,7 @@ class _VariantModalState extends State<_VariantModal> {
                   icon: const Icon(Icons.add_shopping_cart_rounded, color: Colors.white, size: 18),
                   label: Text(
                     maxStock <= 0 ? 'المنتج غير متوفر' : 'إضافة إلى السلة ($_qty قطعة - ${Money(v.salePrice * _qty).toDisplay()} ج.م)',
-                    style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 15, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -1561,6 +1527,10 @@ class _CartPanelState extends State<_CartPanel> {
       await _handleInstallmentCheckout();
       return;
     }
+    if (_paymentMethod == 'split') {
+      await _handleSplitCheckout(state);
+      return;
+    }
     if (state.cart.isEmpty || state.isProcessing) return;
 
     String? cashierId;
@@ -1598,7 +1568,63 @@ class _CartPanelState extends State<_CartPanel> {
           SnackBar(
             content: Text(
               'تم إتمام عملية البيع بنجاح!',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
+            ),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleSplitCheckout(PosState state) async {
+    if (state.cart.isEmpty || state.isProcessing) return;
+
+    final splits = await showDialog<List<PaymentSplit>>(
+      context: context,
+      builder: (_) => SplitPaymentDialog(totalPiasters: state.total),
+    );
+
+    if (splits == null || !mounted) return;
+
+    String? cashierId;
+    try {
+      final authState = context.read<AuthCubit>().state;
+      if (authState is AuthAuthenticated) {
+        cashierId = authState.user.id;
+      }
+    } catch (_) {}
+
+    final messenger = ScaffoldMessenger.of(context);
+    final posCubit = context.read<PosCubit>();
+    final ok = await posCubit.checkout(
+      cashierId: cashierId,
+      splits: splits,
+      paymentMethod: 'split',
+    );
+    if (ok && mounted) {
+      _receivedCtrl.clear();
+      _discountCtrl.clear();
+      setState(() => _isWholesaleMode = false);
+
+      final invoicesRepo = getIt<InvoicesRepository>();
+      final res = await invoicesRepo.getInvoices(limit: 1);
+      InvoiceDetailsEntity? latestInvoice;
+      res.fold((_) {}, (list) => latestInvoice = list.isNotEmpty ? list.first : null);
+
+      if (latestInvoice != null && mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => SaleSuccessDialog(invoice: latestInvoice!),
+        );
+      } else {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              'تم إتمام عملية البيع المجزأ بنجاح!',
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
             ),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
@@ -1794,11 +1820,9 @@ class _CartPanelState extends State<_CartPanel> {
                         children: [
                           Text(
                             'سلة المشتريات',
-                            style: GoogleFonts.cairo(
-                              fontWeight: FontWeight.bold,
+                            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
                               fontSize: 16,
-                              color: AppColors.onSurface,
-                            ),
+                              color: AppColors.onSurface,),
                           ),
                           const SizedBox(width: 8),
                           // Badge showing items & pieces
@@ -1810,11 +1834,9 @@ class _CartPanelState extends State<_CartPanel> {
                             ),
                             child: Text(
                               '${state.cart.length} أصناف • $totalPieces قطع',
-                              style: GoogleFonts.cairo(
-                                color: AppColors.onPrimary,
+                              style: TextStyle(fontFamily: 'Cairo', color: AppColors.onPrimary,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 10,
-                              ),
+                                fontSize: 10,),
                             ),
                           ),
                         ],
@@ -1848,11 +1870,9 @@ class _CartPanelState extends State<_CartPanel> {
                                 ),
                                 child: Text(
                                   'قطاعي',
-                                  style: GoogleFonts.cairo(
-                                    fontSize: 10,
+                                  style: TextStyle(fontFamily: 'Cairo', fontSize: 10,
                                     fontWeight: FontWeight.bold,
-                                    color: !_isWholesaleMode ? Colors.white : Colors.grey.shade700,
-                                  ),
+                                    color: !_isWholesaleMode ? Colors.white : Colors.grey.shade700,),
                                 ),
                               ),
                             ),
@@ -1879,11 +1899,9 @@ class _CartPanelState extends State<_CartPanel> {
                                     const SizedBox(width: 3),
                                     Text(
                                       'بيع جملة',
-                                      style: GoogleFonts.cairo(
-                                        fontSize: 10,
+                                      style: TextStyle(fontFamily: 'Cairo', fontSize: 10,
                                         fontWeight: FontWeight.bold,
-                                        color: _isWholesaleMode ? Colors.white : Colors.purple.shade700,
-                                      ),
+                                        color: _isWholesaleMode ? Colors.white : Colors.purple.shade700,),
                                     ),
                                   ],
                                 ),
@@ -1907,7 +1925,7 @@ class _CartPanelState extends State<_CartPanel> {
                         icon: const Icon(Icons.delete_sweep_rounded, size: 16),
                         label: Text(
                           'مسح',
-                          style: GoogleFonts.cairo(fontSize: 11),
+                          style: TextStyle(fontFamily: 'Cairo', fontSize: 11),
                         ),
                       ),
                     ],
@@ -1947,10 +1965,8 @@ class _CartPanelState extends State<_CartPanel> {
                                       Flexible(
                                         child: Text(
                                           state.customer!.name,
-                                          style: GoogleFonts.cairo(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 13,
-                                          ),
+                                          style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
+                                            fontSize: 13,),
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
@@ -1965,11 +1981,9 @@ class _CartPanelState extends State<_CartPanel> {
                                           ),
                                           child: Text(
                                             'تاجر جملة',
-                                            style: GoogleFonts.cairo(
-                                              fontSize: 9,
+                                            style: TextStyle(fontFamily: 'Cairo', fontSize: 9,
                                               fontWeight: FontWeight.bold,
-                                              color: Colors.purple.shade800,
-                                            ),
+                                              color: Colors.purple.shade800,),
                                           ),
                                         ),
                                       ],
@@ -1984,11 +1998,9 @@ class _CartPanelState extends State<_CartPanel> {
                                           ),
                                           child: Text(
                                             'خصم ${state.customer!.discountPercent}%',
-                                            style: GoogleFonts.cairo(
-                                              fontSize: 9,
+                                            style: TextStyle(fontFamily: 'Cairo', fontSize: 9,
                                               fontWeight: FontWeight.bold,
-                                              color: Colors.green.shade800,
-                                            ),
+                                              color: Colors.green.shade800,),
                                           ),
                                         ),
                                       ],
@@ -1998,7 +2010,7 @@ class _CartPanelState extends State<_CartPanel> {
                                     children: [
                                       Text(
                                         state.customer!.phone,
-                                        style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey.shade600),
+                                        style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey.shade600),
                                       ),
                                       const SizedBox(width: 8),
                                       Container(
@@ -2014,11 +2026,9 @@ class _CartPanelState extends State<_CartPanel> {
                                             const SizedBox(width: 2),
                                             Text(
                                               '${state.customer!.loyaltyPoints} نقطة',
-                                              style: GoogleFonts.cairo(
-                                                fontSize: 9,
+                                              style: TextStyle(fontFamily: 'Cairo', fontSize: 9,
                                                 fontWeight: FontWeight.bold,
-                                                color: Colors.brown,
-                                              ),
+                                                color: Colors.brown,),
                                             ),
                                           ],
                                         ),
@@ -2061,11 +2071,9 @@ class _CartPanelState extends State<_CartPanel> {
                             Expanded(
                               child: Text(
                                 'عميل نقدي',
-                                style: GoogleFonts.cairo(
-                                  fontWeight: FontWeight.bold,
+                                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
                                   fontSize: 12,
-                                  color: AppColors.onSurface,
-                                ),
+                                  color: AppColors.onSurface,),
                               ),
                             ),
                             // Single Clean Button: Assign Customer
@@ -2079,7 +2087,7 @@ class _CartPanelState extends State<_CartPanel> {
                               icon: const Icon(Icons.person_search_rounded, size: 15),
                               label: Text(
                                 'تعيين عميل',
-                                style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold),
+                                style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold),
                               ),
                               onPressed: () async {
                                 final selected = await showDialog<CustomerEntity>(
@@ -2108,18 +2116,14 @@ class _CartPanelState extends State<_CartPanel> {
                               const SizedBox(height: 12),
                               Text(
                                 'سلة المشتريات فارغة',
-                                style: GoogleFonts.cairo(
-                                  color: Colors.grey.shade500,
+                                style: TextStyle(fontFamily: 'Cairo', color: Colors.grey.shade500,
                                   fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                                  fontWeight: FontWeight.w600,),
                               ),
                               Text(
                                 'انقر على أي منتج لإضافته فوراً إلى الفاتورة',
-                                style: GoogleFonts.cairo(
-                                  color: Colors.grey.shade400,
-                                  fontSize: 11,
-                                ),
+                                style: TextStyle(fontFamily: 'Cairo', color: Colors.grey.shade400,
+                                  fontSize: 11,),
                               ),
                             ],
                           ),
@@ -2160,11 +2164,11 @@ class _CartPanelState extends State<_CartPanel> {
                         children: [
                           Text(
                             'المجموع الفرعي',
-                            style: GoogleFonts.cairo(fontSize: 13, color: Colors.grey.shade600),
+                            style: TextStyle(fontFamily: 'Cairo', fontSize: 13, color: Colors.grey.shade600),
                           ),
                           Text(
                             '${Money(state.subtotal).toDisplay()} ج.م',
-                            style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.bold),
+                            style: TextStyle(fontFamily: 'Cairo', fontSize: 14, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
@@ -2176,7 +2180,7 @@ class _CartPanelState extends State<_CartPanel> {
                         children: [
                           Text(
                             'الخصم',
-                            style: GoogleFonts.cairo(fontSize: 13, color: Colors.grey.shade600),
+                            style: TextStyle(fontFamily: 'Cairo', fontSize: 13, color: Colors.grey.shade600),
                           ),
                           Row(
                             mainAxisSize: MainAxisSize.min,
@@ -2216,7 +2220,7 @@ class _CartPanelState extends State<_CartPanel> {
                                 child: TextField(
                                   controller: _discountCtrl,
                                   keyboardType: TextInputType.number,
-                                  style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold),
+                                  style: TextStyle(fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.bold),
                                   textAlign: TextAlign.center,
                                   decoration: InputDecoration(
                                     hintText: '0',
@@ -2250,15 +2254,13 @@ class _CartPanelState extends State<_CartPanel> {
                           children: [
                             Text(
                               'الإجمالي النهائي',
-                              style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.bold),
+                              style: TextStyle(fontFamily: 'Cairo', fontSize: 15, fontWeight: FontWeight.bold),
                             ),
                             Text(
                               '${Money(state.total).toDisplay()} ج.م',
-                              style: GoogleFonts.cairo(
-                                fontSize: 22,
+                              style: TextStyle(fontFamily: 'Cairo', fontSize: 22,
                                 fontWeight: FontWeight.w900,
-                                color: AppColors.primary,
-                              ),
+                                color: AppColors.primary,),
                             ),
                           ],
                         ),
@@ -2290,7 +2292,7 @@ class _CartPanelState extends State<_CartPanel> {
                               icon: const Icon(Icons.payments_outlined, size: 18),
                               label: Text(
                                 'نقدي (كاش)',
-                                style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
+                                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 13),
                               ),
                             ),
                           ),
@@ -2317,7 +2319,34 @@ class _CartPanelState extends State<_CartPanel> {
                               icon: const Icon(Icons.credit_card_rounded, size: 18),
                               label: Text(
                                 'بطاقة / فيزا',
-                                style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
+                                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () => setState(() => _paymentMethod = 'split'),
+                              style: ElevatedButton.styleFrom(
+                                elevation: _paymentMethod == 'split' ? 2 : 0,
+                                backgroundColor: _paymentMethod == 'split'
+                                    ? AppColors.primary
+                                    : AppColors.surfaceContainerLowest,
+                                foregroundColor: _paymentMethod == 'split'
+                                    ? Colors.white
+                                    : AppColors.onSurface,
+                                side: BorderSide(
+                                  color: _paymentMethod == 'split'
+                                      ? AppColors.primary
+                                      : AppColors.outlineVariant,
+                                ),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                              ),
+                              icon: const Icon(Icons.call_split_rounded, size: 18),
+                              label: Text(
+                                'دفع مجزأ',
+                                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 13),
                               ),
                             ),
                           ),
@@ -2344,7 +2373,7 @@ class _CartPanelState extends State<_CartPanel> {
                                 ),
                                 icon: const Icon(Icons.payments_rounded, size: 18),
                                 label: Text('تقسيط',
-                                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13)),
+                                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 13)),
                               ),
                             ),
                           ],
@@ -2358,7 +2387,7 @@ class _CartPanelState extends State<_CartPanel> {
                           children: [
                             Text(
                               'الدفع السريع:',
-                              style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey.shade600),
+                              style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey.shade600),
                             ),
                             const SizedBox(width: 6),
                             // Exact Amount Preset
@@ -2377,7 +2406,7 @@ class _CartPanelState extends State<_CartPanel> {
                                 ),
                                 child: Text(
                                   'المبلغ بالضبط',
-                                  style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                  style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
                                 ),
                               ),
                             ),
@@ -2401,7 +2430,7 @@ class _CartPanelState extends State<_CartPanel> {
                                     ),
                                     child: Text(
                                       '$preset',
-                                      style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold),
+                                      style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold),
                                     ),
                                   ),
                                 ),
@@ -2414,7 +2443,7 @@ class _CartPanelState extends State<_CartPanel> {
                           children: [
                             Text(
                               'المستلم:',
-                              style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey.shade600),
+                              style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade600),
                             ),
                             const SizedBox(width: 8),
                             Expanded(
@@ -2423,7 +2452,7 @@ class _CartPanelState extends State<_CartPanel> {
                                 child: TextField(
                                   controller: _receivedCtrl,
                                   keyboardType: TextInputType.number,
-                                  style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold),
+                                  style: TextStyle(fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.bold),
                                   decoration: InputDecoration(
                                     hintText: 'المبلغ المدفوع',
                                     isDense: true,
@@ -2442,15 +2471,13 @@ class _CartPanelState extends State<_CartPanel> {
                             const SizedBox(width: 12),
                             Text(
                               'الباقي: ',
-                              style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey.shade600),
+                              style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade600),
                             ),
                             Text(
                               '${Money(changePiasters).toDisplay()} ج.م',
-                              style: GoogleFonts.cairo(
-                                fontSize: 14,
+                              style: TextStyle(fontFamily: 'Cairo', fontSize: 14,
                                 fontWeight: FontWeight.bold,
-                                color: changePiasters > 0 ? AppColors.success : AppColors.onSurface,
-                              ),
+                                color: changePiasters > 0 ? AppColors.success : AppColors.onSurface,),
                             ),
                           ],
                         ),
@@ -2479,7 +2506,7 @@ class _CartPanelState extends State<_CartPanel> {
                               ? const CircularProgressIndicator(color: Colors.white)
                               : Text(
                                   'إتمام عملية البيع [F12]',
-                                  style: GoogleFonts.cairo(fontSize: 17, fontWeight: FontWeight.bold),
+                                  style: TextStyle(fontFamily: 'Cairo', fontSize: 17, fontWeight: FontWeight.bold),
                                 ),
                         ),
                       ),
@@ -2510,11 +2537,9 @@ class _CartPanelState extends State<_CartPanel> {
         ),
         child: Text(
           label,
-          style: GoogleFonts.cairo(
-            fontSize: 12,
+          style: TextStyle(fontFamily: 'Cairo', fontSize: 12,
             fontWeight: FontWeight.bold,
-            color: isSelected ? Colors.white : AppColors.onSurface,
-          ),
+            color: isSelected ? Colors.white : AppColors.onSurface,),
         ),
       ),
     );
@@ -2583,7 +2608,7 @@ class _CartItemTileState extends State<_CartItemTile> {
             const SizedBox(width: 8),
             Text(
               'تعديل سعر الصنف (سعر خاص / جملة)',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 16),
             ),
           ],
         ),
@@ -2595,14 +2620,14 @@ class _CartItemTileState extends State<_CartItemTile> {
             children: [
               Text(
                 '${item.productName} (${item.color} - ${item.size})',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: priceCtrl,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 autofocus: true,
-                style: GoogleFonts.cairo(fontSize: 14),
+                style: TextStyle(fontFamily: 'Cairo', fontSize: 14),
                 decoration: InputDecoration(
                   labelText: 'سعر بيع الوحدة بالج.م *',
                   suffixText: 'ج.م',
@@ -2621,7 +2646,7 @@ class _CartItemTileState extends State<_CartItemTile> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('إلغاء', style: GoogleFonts.cairo()),
+            child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -2637,7 +2662,7 @@ class _CartItemTileState extends State<_CartItemTile> {
             },
             child: Text(
               'حفظ السعر',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: Colors.white),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, color: Colors.white),
             ),
           ),
         ],
@@ -2678,11 +2703,9 @@ class _CartItemTileState extends State<_CartItemTile> {
               children: [
                 Text(
                   item.productName,
-                  style: GoogleFonts.cairo(
-                    fontWeight: FontWeight.bold,
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
                     fontSize: 13,
-                    color: AppColors.onSurface,
-                  ),
+                    color: AppColors.onSurface,),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -2697,11 +2720,9 @@ class _CartItemTileState extends State<_CartItemTile> {
                       ),
                       child: Text(
                         '${item.color} • ${item.size}',
-                        style: GoogleFonts.cairo(
-                          fontSize: 10,
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          color: Colors.grey.shade700,
-                        ),
+                          color: Colors.grey.shade700,),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -2720,11 +2741,9 @@ class _CartItemTileState extends State<_CartItemTile> {
                           children: [
                             Text(
                               '${Money(item.price).toDisplay()} ج.م',
-                              style: GoogleFonts.cairo(
-                                fontSize: 11,
+                              style: TextStyle(fontFamily: 'Cairo', fontSize: 11,
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
-                              ),
+                                color: AppColors.primary,),
                             ),
                             const SizedBox(width: 2),
                             const Icon(Icons.edit_outlined, size: 12, color: AppColors.primary),
@@ -2768,11 +2787,9 @@ class _CartItemTileState extends State<_CartItemTile> {
                     focusNode: _qtyFocus,
                     keyboardType: TextInputType.number,
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.cairo(
-                      fontSize: 13,
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 13,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
+                      color: AppColors.primary,),
                     decoration: const InputDecoration(
                       contentPadding: EdgeInsets.zero,
                       isDense: true,
@@ -2808,11 +2825,9 @@ class _CartItemTileState extends State<_CartItemTile> {
           // Line Total
           Text(
             '${Money(item.total).toDisplay()} ج.م',
-            style: GoogleFonts.cairo(
-              fontWeight: FontWeight.bold,
+            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
               fontSize: 13,
-              color: AppColors.primary,
-            ),
+              color: AppColors.primary,),
           ),
 
           IconButton(
@@ -2974,7 +2989,7 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
               const SizedBox(width: 8),
               Text(
                 _isCreatingNew ? 'إضافة عميل جديد' : 'تعيين عميل للفاتورة',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ],
           ),
@@ -2984,7 +2999,7 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
               icon: const Icon(Icons.add, size: 16),
               label: Text(
                 'عميل جديد',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 12),
               ),
             )
           else
@@ -2993,7 +3008,7 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
               icon: const Icon(Icons.arrow_back_rounded, size: 16),
               label: Text(
                 'رجوع للبحث',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 12),
               ),
             ),
         ],
@@ -3009,10 +3024,10 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
               children: [
                 TextField(
                   controller: _searchCtrl,
-                  style: GoogleFonts.cairo(fontSize: 13),
+                  style: TextStyle(fontFamily: 'Cairo', fontSize: 13),
                   decoration: InputDecoration(
                     hintText: 'ابحث بالاسم أو رقم الهاتف...',
-                    hintStyle: GoogleFonts.cairo(fontSize: 12),
+                    hintStyle: TextStyle(fontFamily: 'Cairo', fontSize: 12),
                     prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primary, size: 20),
                     suffixIcon: _searchCtrl.text.isNotEmpty
                         ? IconButton(
@@ -3046,11 +3061,9 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
                                   const SizedBox(height: 8),
                                   Text(
                                     'لا توجد نتائج مطابقة',
-                                    style: GoogleFonts.cairo(
-                                      color: Colors.grey.shade600,
+                                    style: TextStyle(fontFamily: 'Cairo', color: Colors.grey.shade600,
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
+                                      fontSize: 13,),
                                   ),
                                   const SizedBox(height: 12),
                                   ElevatedButton.icon(
@@ -3065,11 +3078,9 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
                                       _searchCtrl.text.trim().isNotEmpty
                                           ? 'تسجيل "${_searchCtrl.text.trim()}" كعميل جديد'
                                           : 'إضافة عميل جديد',
-                                      style: GoogleFonts.cairo(
-                                        color: Colors.white,
+                                      style: TextStyle(fontFamily: 'Cairo', color: Colors.white,
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                      ),
+                                        fontSize: 12,),
                                     ),
                                   ),
                                 ],
@@ -3097,7 +3108,7 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
                                       Expanded(
                                         child: Text(
                                           customer.name,
-                                          style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
+                                          style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 13),
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
@@ -3112,11 +3123,9 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
                                           ),
                                           child: Text(
                                             'جملة',
-                                            style: GoogleFonts.cairo(
-                                              fontSize: 9,
+                                            style: TextStyle(fontFamily: 'Cairo', fontSize: 9,
                                               fontWeight: FontWeight.bold,
-                                              color: Colors.purple.shade800,
-                                            ),
+                                              color: Colors.purple.shade800,),
                                           ),
                                         ),
                                       if (customer.discountPercent > 0)
@@ -3130,18 +3139,16 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
                                           ),
                                           child: Text(
                                             '${customer.discountPercent}% خصم',
-                                            style: GoogleFonts.cairo(
-                                              fontSize: 9,
+                                            style: TextStyle(fontFamily: 'Cairo', fontSize: 9,
                                               fontWeight: FontWeight.bold,
-                                              color: Colors.green.shade800,
-                                            ),
+                                              color: Colors.green.shade800,),
                                           ),
                                         ),
                                     ],
                                   ),
                                   subtitle: Text(
                                     customer.phone,
-                                    style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey.shade600),
+                                    style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey.shade600),
                                   ),
                                   trailing: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -3151,11 +3158,9 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
                                     ),
                                     child: Text(
                                       '${customer.loyaltyPoints} نقطة',
-                                      style: GoogleFonts.cairo(
-                                        fontSize: 10,
+                                      style: TextStyle(fontFamily: 'Cairo', fontSize: 10,
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.brown.shade800,
-                                      ),
+                                        color: Colors.brown.shade800,),
                                     ),
                                   ),
                                   onTap: () => Navigator.pop(context, customer),
@@ -3177,7 +3182,7 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
                     const SizedBox(height: 4),
                     TextFormField(
                       controller: _nameCtrl,
-                      style: GoogleFonts.cairo(fontSize: 13),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: 13),
                       decoration: InputDecoration(
                         labelText: 'اسم العميل *',
                         hintText: 'مثال: محمد أحمد',
@@ -3191,7 +3196,7 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
                     TextFormField(
                       controller: _phoneCtrl,
                       keyboardType: TextInputType.phone,
-                      style: GoogleFonts.cairo(fontSize: 13),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: 13),
                       decoration: InputDecoration(
                         labelText: 'رقم الهاتف *',
                         hintText: 'مثال: 01012345678',
@@ -3204,7 +3209,7 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       initialValue: _customerType,
-                      style: GoogleFonts.cairo(fontSize: 13, color: AppColors.onSurface),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: 13, color: AppColors.onSurface),
                       decoration: InputDecoration(
                         labelText: 'تصنيف العميل',
                         prefixIcon: const Icon(Icons.category_outlined, size: 20),
@@ -3212,9 +3217,9 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                       items: [
-                        DropdownMenuItem(value: 'retail', child: Text('عميل عادي (قطاعي)', style: GoogleFonts.cairo())),
-                        DropdownMenuItem(value: 'wholesale', child: Text('تاجر جملة (Wholesale)', style: GoogleFonts.cairo())),
-                        DropdownMenuItem(value: 'vip', child: Text('عميل مميز (VIP)', style: GoogleFonts.cairo())),
+                        DropdownMenuItem(value: 'retail', child: Text('عميل عادي (قطاعي)', style: TextStyle(fontFamily: 'Cairo'))),
+                        DropdownMenuItem(value: 'wholesale', child: Text('تاجر جملة (Wholesale)', style: TextStyle(fontFamily: 'Cairo'))),
+                        DropdownMenuItem(value: 'vip', child: Text('عميل مميز (VIP)', style: TextStyle(fontFamily: 'Cairo'))),
                       ],
                       onChanged: (val) {
                         if (val != null) setState(() => _customerType = val);
@@ -3224,7 +3229,7 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
                     TextFormField(
                       controller: _discountCtrl,
                       keyboardType: TextInputType.number,
-                      style: GoogleFonts.cairo(fontSize: 13),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: 13),
                       decoration: InputDecoration(
                         labelText: 'نسبة الخصم الدائم للعميل (%) [اختياري]',
                         hintText: 'مثال: 5 أو 10',
@@ -3245,12 +3250,12 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
         if (!_isCreatingNew)
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('إلغاء', style: GoogleFonts.cairo(color: Colors.grey.shade700)),
+            child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo', color: Colors.grey.shade700)),
           )
         else ...[
           TextButton(
             onPressed: () => setState(() => _isCreatingNew = false),
-            child: Text('رجوع', style: GoogleFonts.cairo(color: Colors.grey.shade700)),
+            child: Text('رجوع', style: TextStyle(fontFamily: 'Cairo', color: Colors.grey.shade700)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -3261,7 +3266,7 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
             onPressed: _isSavingNew ? null : _submitNewCustomer,
             child: _isSavingNew
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : Text('حفظ وتعيين للفاتورة', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: Colors.white)),
+                : Text('حفظ وتعيين للفاتورة', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, color: Colors.white)),
           ),
         ],
       ],

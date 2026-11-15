@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/entities/user_entity.dart';
 
 class UserModel extends UserEntity {
@@ -74,7 +73,11 @@ class UserModel extends UserEntity {
       email: data['email'] ?? '',
       role: data['role'] ?? '',
       isActive: data['isActive'] ?? true,
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: data['createdAt'] is DateTime
+          ? data['createdAt'] as DateTime
+          : (data['createdAt'] is String
+              ? DateTime.tryParse(data['createdAt']) ?? DateTime.now()
+              : DateTime.now()),
     );
   }
 
@@ -84,7 +87,7 @@ class UserModel extends UserEntity {
       'email': email,
       'role': role,
       'isActive': isActive,
-      'createdAt': Timestamp.fromDate(createdAt),
+      'createdAt': createdAt.toIso8601String(),
     };
   }
 }

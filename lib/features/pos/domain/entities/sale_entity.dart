@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'payment_split.dart';
 import 'sale_item_entity.dart';
 
 class SaleEntity extends Equatable {
@@ -7,12 +8,13 @@ class SaleEntity extends Equatable {
   final String cashierId;
   final String cashierName;
   final List<SaleItemEntity> items;
-  final double subtotal;
-  final double discount;
-  final double total;
+  final int subtotal;
+  final int discount;
+  final int total;
   final String paymentMethod;
   final String? customerId;
   final String syncStatus;
+  final List<PaymentSplit>? splits;
 
   const SaleEntity({
     required this.id,
@@ -20,12 +22,13 @@ class SaleEntity extends Equatable {
     required this.cashierId,
     this.cashierName = '',
     required this.items,
-    this.subtotal = 0.0,
-    this.discount = 0.0,
-    this.total = 0.0,
+    this.subtotal = 0,
+    this.discount = 0,
+    this.total = 0,
     required this.paymentMethod,
     this.customerId,
     this.syncStatus = 'synced',
+    this.splits,
   });
 
   @override
@@ -41,5 +44,6 @@ class SaleEntity extends Equatable {
         paymentMethod,
         customerId,
         syncStatus,
+        splits,
       ];
 }

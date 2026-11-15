@@ -31,10 +31,11 @@ class PosRepositoryImpl implements PosRepository {
       }).toList();
       final createdId = await _localDataSource.checkout(
         items: items,
-        total: sale.total.toInt(),
+        total: sale.total,
         cashierId: sale.cashierId,
         customerId: sale.customerId,
         paymentMethod: sale.paymentMethod,
+        splits: sale.splits,
         saleId: sale.id.isNotEmpty ? sale.id : null,
       );
       return Right(SaleEntity(
@@ -49,6 +50,7 @@ class PosRepositoryImpl implements PosRepository {
         paymentMethod: sale.paymentMethod,
         customerId: sale.customerId,
         syncStatus: sale.syncStatus,
+        splits: sale.splits,
       ));
     } catch (e) {
       return Left(ServerFailure(e.toString()));

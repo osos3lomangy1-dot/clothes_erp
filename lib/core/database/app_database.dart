@@ -549,6 +549,73 @@ class InstallmentPayments extends Table {
   ];
 }
 
+class CashMovements extends Table {
+  TextColumn get id => text()();
+  TextColumn get branchId => text()();
+  TextColumn get shiftId => text().nullable()();
+  TextColumn get type => text()();
+  TextColumn get method => text()();
+  TextColumn get direction => text()();
+  IntColumn get amountPiasters => integer()();
+  TextColumn get referenceId => text().nullable()();
+  TextColumn get notes => text().nullable()();
+  IntColumn get createdAt => integer()();
+  IntColumn get updatedAt => integer()();
+  IntColumn get deletedAt => integer().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+
+  @override
+  List<String> get customConstraints => const [
+    "CHECK (type IN ("
+    "'sale','refund',"
+    "'purchase_payment','supplier_payment',"
+    "'expense','deposit','withdrawal',"
+    "'installment_down','installment_payment',"
+    "'purchase_reversal','supplier_payment_reversal','expense_reversal'"
+    "))",
+    "CHECK (method IN ('cash','card','transfer'))",
+    "CHECK (direction IN ('in','out'))",
+    "CHECK (amount_piasters > 0)",
+    "CHECK ("
+    "  (type = 'sale' AND direction = 'in') OR "
+    "  (type = 'refund' AND direction = 'out') OR "
+    "  (type = 'purchase_payment' AND direction = 'out') OR "
+    "  (type = 'supplier_payment' AND direction = 'out') OR "
+    "  (type = 'expense' AND direction = 'out') OR "
+    "  (type = 'deposit' AND direction = 'in') OR "
+    "  (type = 'withdrawal' AND direction = 'out') OR "
+    "  (type = 'installment_down' AND direction = 'in') OR "
+    "  (type = 'installment_payment' AND direction = 'in') OR "
+    "  (type = 'purchase_reversal' AND direction = 'in') OR "
+    "  (type = 'supplier_payment_reversal' AND direction = 'in') OR "
+    "  (type = 'expense_reversal' AND direction = 'in')"
+    ")",
+  ];
+}
+
+class SalePayments extends Table {
+  TextColumn get id => text()();
+  TextColumn get branchId => text()();
+  TextColumn get saleId => text()();
+  TextColumn get method => text()();
+  IntColumn get amountPiasters => integer()();
+  TextColumn get shiftId => text().nullable()();
+  IntColumn get createdAt => integer()();
+  IntColumn get updatedAt => integer()();
+  IntColumn get deletedAt => integer().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+
+  @override
+  List<String> get customConstraints => const [
+    "CHECK (method IN ('cash', 'card'))",
+    "CHECK (amount_piasters > 0)",
+  ];
+}
+
 void _setupSqlite(CommonDatabase rawDb) {
   rawDb.execute('PRAGMA journal_mode = WAL;');
   rawDb.execute('PRAGMA synchronous = NORMAL;');
@@ -623,13 +690,15 @@ QueryExecutor _openConnection() {
     InstallmentPlans,
     CustomerInstallments,
     InstallmentPayments,
+    CashMovements,
+    SalePayments,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 8;
 
   @visibleForTesting
   Future<void> migrateToV6(Migrator m) async {
@@ -645,6 +714,251 @@ class AppDatabase extends _$AppDatabase {
       SET kind = 'supplier_payment'
       WHERE category IN ('مشتريات بضاعة', 'سداد موردين')
         AND kind = 'operating'
+    ''');
+  }
+
+  @visibleForTesting
+  Future<void> backfillCashMovements() async {
+    // 1. Sales (excluding customer installments and already backfilled)
+    await customStatement('''
+      INSERT INTO cash_movements
+        (id, branch_id, shift_id, type, method, direction, amount_piasters, reference_id, notes, created_at, updated_at)
+      SELECT
+        lower(hex(randomblob(16))),
+        s.branch_id,
+        s.shift_id,
+        'sale',
+        CASE WHEN lower(s.payment_method) = 'card' THEN 'card' WHEN lower(s.payment_method) = 'transfer' THEN 'transfer' ELSE 'cash' END,
+        'in',
+        s.total,
+        s.id,
+        'مبيعات نقدية / شبكة',
+        s.created_at,
+        s.updated_at
+      FROM sales s
+      WHERE s.deleted_at IS NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM customer_installments ci
+          WHERE ci.sale_id = s.id AND ci.deleted_at IS NULL
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM cash_movements cm
+          WHERE cm.reference_id = s.id AND cm.type = 'sale'
+        );
+    ''');
+
+    // 2. Supplier payments
+    await customStatement('''
+      INSERT INTO cash_movements
+        (id, branch_id, shift_id, type, method, direction, amount_piasters, reference_id, notes, created_at, updated_at)
+      SELECT
+        lower(hex(randomblob(16))),
+        sp.branch_id,
+        NULL,
+        'supplier_payment',
+        CASE WHEN lower(sp.payment_method) = 'card' THEN 'card' WHEN lower(sp.payment_method) = 'transfer' THEN 'transfer' ELSE 'cash' END,
+        'out',
+        sp.amount,
+        sp.id,
+        sp.notes,
+        sp.created_at,
+        sp.created_at
+      FROM supplier_payments sp
+      WHERE NOT EXISTS (
+        SELECT 1 FROM cash_movements cm
+        WHERE cm.reference_id = sp.id AND cm.type = 'supplier_payment'
+      );
+    ''');
+
+    // 3. Purchases advance payments (where paid_amount > 0 and NOT already in supplier_payments)
+    await customStatement('''
+      INSERT INTO cash_movements
+        (id, branch_id, shift_id, type, method, direction, amount_piasters, reference_id, notes, created_at, updated_at)
+      SELECT
+        lower(hex(randomblob(16))),
+        p.branch_id,
+        NULL,
+        'purchase_payment',
+        'cash',
+        'out',
+        p.paid_amount,
+        p.id,
+        p.notes,
+        p.created_at,
+        p.updated_at
+      FROM purchases p
+      WHERE p.deleted_at IS NULL
+        AND p.paid_amount > 0
+        AND NOT EXISTS (
+          SELECT 1 FROM supplier_payments sp
+          WHERE sp.purchase_id = p.id
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM cash_movements cm
+          WHERE cm.reference_id = p.id AND cm.type = 'purchase_payment'
+        );
+    ''');
+
+    // 4. Returns (refunds)
+    await customStatement('''
+      INSERT INTO cash_movements
+        (id, branch_id, shift_id, type, method, direction, amount_piasters, reference_id, notes, created_at, updated_at)
+      SELECT
+        lower(hex(randomblob(16))),
+        r.branch_id,
+        NULL,
+        'refund',
+        CASE WHEN lower(r.payment_method) = 'card' THEN 'card' WHEN lower(r.payment_method) = 'transfer' THEN 'transfer' ELSE 'cash' END,
+        'out',
+        r.refund_amount,
+        r.id,
+        r.reason,
+        r.created_at,
+        r.updated_at
+      FROM returns r
+      WHERE r.deleted_at IS NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM cash_movements cm
+          WHERE cm.reference_id = r.id AND cm.type = 'refund'
+        );
+    ''');
+
+    // 5. Installment down payments (from customer_installments)
+    await customStatement('''
+      INSERT INTO cash_movements
+        (id, branch_id, shift_id, type, method, direction, amount_piasters, reference_id, notes, created_at, updated_at)
+      SELECT
+        lower(hex(randomblob(16))),
+        ci.branch_id,
+        s.shift_id,
+        'installment_down',
+        'cash',
+        'in',
+        ci.down_payment_piasters,
+        ci.id,
+        'مقدم عقد تقسيط',
+        ci.created_at,
+        ci.updated_at
+      FROM customer_installments ci
+      LEFT JOIN sales s ON s.id = ci.sale_id
+      WHERE ci.deleted_at IS NULL
+        AND ci.down_payment_piasters > 0
+        AND NOT EXISTS (
+          SELECT 1 FROM cash_movements cm
+          WHERE cm.reference_id = ci.id AND cm.type = 'installment_down'
+        );
+    ''');
+
+    // 6. Installment payments
+    await customStatement('''
+      INSERT INTO cash_movements
+        (id, branch_id, shift_id, type, method, direction, amount_piasters, reference_id, notes, created_at, updated_at)
+      SELECT
+        lower(hex(randomblob(16))),
+        ip.branch_id,
+        NULL,
+        'installment_payment',
+        CASE WHEN lower(ip.payment_method) = 'card' THEN 'card' WHEN lower(ip.payment_method) = 'transfer' THEN 'transfer' ELSE 'cash' END,
+        'in',
+        ip.amount_piasters,
+        ip.id,
+        ip.notes,
+        ip.created_at,
+        ip.updated_at
+      FROM installment_payments ip
+      WHERE ip.deleted_at IS NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM cash_movements cm
+          WHERE cm.reference_id = ip.id AND cm.type = 'installment_payment'
+        );
+    ''');
+
+    // 7. Operating expenses
+    await customStatement('''
+      INSERT INTO cash_movements
+        (id, branch_id, shift_id, type, method, direction, amount_piasters, reference_id, notes, created_at, updated_at)
+      SELECT
+        lower(hex(randomblob(16))),
+        e.branch_id,
+        NULL,
+        'expense',
+        'cash',
+        'out',
+        e.amount,
+        e.id,
+        e.note,
+        e.created_at,
+        e.updated_at
+      FROM expenses e
+      WHERE e.deleted_at IS NULL
+        AND e.kind = 'operating'
+        AND NOT EXISTS (
+          SELECT 1 FROM cash_movements cm
+          WHERE cm.reference_id = e.id AND cm.type = 'expense'
+        );
+    ''');
+  }
+
+  @visibleForTesting
+  Future<void> migrateToV7(Migrator m) async {
+    // 1. Detect open shift (Correction 3: closed_at IS NULL)
+    final openShiftRow = await customSelect(
+      'SELECT id FROM shifts WHERE closed_at IS NULL AND deleted_at IS NULL LIMIT 1',
+    ).getSingleOrNull();
+
+    if (openShiftRow != null) {
+      final openShiftId = openShiftRow.read<String>('id');
+      // Correction 2: timestamps in SECONDS
+      final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      await customStatement(
+        'INSERT OR REPLACE INTO app_meta ("key", "value", "updated_at") VALUES (?, ?, ?)',
+        ['migration_v7_open_shift_id', openShiftId, nowSec],
+      );
+    }
+
+    // 2. Create cash_movements table if missing
+    final tables = await customSelect(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='cash_movements'",
+    ).get();
+    if (tables.isEmpty) {
+      await m.createTable(cashMovements);
+    }
+
+    // 3. Backfill cash movements
+    await backfillCashMovements();
+  }
+
+  @visibleForTesting
+  Future<void> migrateToV8(Migrator m) async {
+    final tables = await customSelect(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='sale_payments'",
+    ).get();
+    if (tables.isEmpty) {
+      await m.createTable(salePayments);
+    }
+    await customStatement('''
+      INSERT INTO sale_payments
+        (id, branch_id, sale_id, method, amount_piasters, shift_id, created_at, updated_at)
+      SELECT
+        lower(hex(randomblob(16))),
+        s.branch_id,
+        s.id,
+        CASE WHEN lower(s.payment_method) = 'card' THEN 'card' ELSE 'cash' END,
+        s.total,
+        s.shift_id,
+        s.created_at,
+        s.updated_at
+      FROM sales s
+      WHERE s.deleted_at IS NULL
+        AND s.total > 0
+        AND NOT EXISTS (
+          SELECT 1 FROM customer_installments ci
+          WHERE ci.sale_id = s.id AND ci.deleted_at IS NULL
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM sale_payments sp
+          WHERE sp.sale_id = s.id
+        );
     ''');
   }
 
@@ -726,6 +1040,14 @@ class AppDatabase extends _$AppDatabase {
       if (from < 6 && to >= 6) {
         await migrateToV6(m);
       }
+
+      if (from < 7 && to >= 7) {
+        await migrateToV7(m);
+      }
+
+      if (from < 8 && to >= 8) {
+        await migrateToV8(m);
+      }
     },
     beforeOpen: (details) async {
       Future<void> addColumnIfNotExists(
@@ -768,6 +1090,8 @@ class AppDatabase extends _$AppDatabase {
       await createTableIfNotExists('installment_plans', installmentPlans);
       await createTableIfNotExists('customer_installments', customerInstallments);
       await createTableIfNotExists('installment_payments', installmentPayments);
+      await createTableIfNotExists('cash_movements', cashMovements);
+      await createTableIfNotExists('sale_payments', salePayments);
 
       await addColumnIfNotExists(
         'product_variants',
@@ -796,4 +1120,12 @@ class AppDatabase extends _$AppDatabase {
       );
     },
   );
+}
+
+Future<String?> getMigrationOpenShiftBannerMessage(AppDatabase db) async {
+  final row = await (db.select(db.appMeta)
+        ..where((t) => t.key.equals('migration_v7_open_shift_id')))
+      .getSingleOrNull();
+  if (row == null || row.value.isEmpty) return null;
+  return 'وردية ${row.value} كانت مفتوحة أثناء ترقية قاعدة البيانات. راجع حركاتها قبل الإغلاق.';
 }

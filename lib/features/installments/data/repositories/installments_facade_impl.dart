@@ -11,6 +11,7 @@ import '../../../../core/database/tx_writer.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/features/feature_gate.dart';
 import '../../../auth/data/datasources/auth_local_data_source.dart';
+import '../../../pos/domain/entities/payment_split.dart';
 import '../services/manager_pin_service.dart';
 import '../../domain/entities/customer_installment_entity.dart';
 import '../../domain/entities/installment_payment_entity.dart';
@@ -261,6 +262,7 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
     required int durationMonths,
     required DateTime startDate,
     required String pin,
+    List<PaymentSplit>? downPaymentSplits,
   }) async {
     if (!await _featureGate.isEnabled(FeatureKeys.installments)) {
       return Left(FeatureDisabledFailure(FeatureKeys.installments));
@@ -398,22 +400,67 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
           );
 
           if (downPaymentPiasters > 0) {
-            final paymentId = const Uuid().v4();
-            await _db.into(_db.installmentPayments).insert(
-              InstallmentPaymentsCompanion.insert(
-                id: paymentId,
-                branchId: branchId,
-                customerInstallmentId: contractId,
-                amountPiasters: downPaymentPiasters,
-                paymentMethod: 'cash',
-                paidAt: now,
-                receiptNumber: const Value('DOWN_PAYMENT'),
-                notes: const Value('دفعة مقدمة عند إنشاء العقد'),
-                recordedBy: userId,
-                createdAt: now,
-                updatedAt: now,
-              ),
-            );
+            final nowSec = now.millisecondsSinceEpoch ~/ 1000;
+            final activeShift = await (_db.select(_db.shifts)
+                  ..where((s) => s.closedAt.isNull() & s.deletedAt.isNull())
+                  ..orderBy([(s) => OrderingTerm.desc(s.openedAt)])
+                  ..limit(1))
+                .getSingleOrNull();
+
+            final splits = (downPaymentSplits != null && downPaymentSplits.isNotEmpty)
+                ? downPaymentSplits
+                : [PaymentSplit(method: 'cash', amountPiasters: downPaymentPiasters)];
+
+            for (final split in splits) {
+              final spId = const Uuid().v4();
+              await _db.into(_db.salePayments).insert(
+                SalePaymentsCompanion.insert(
+                  id: spId,
+                  branchId: branchId,
+                  saleId: saleId,
+                  method: split.method,
+                  amountPiasters: split.amountPiasters,
+                  shiftId: Value(activeShift?.id),
+                  createdAt: nowSec,
+                  updatedAt: nowSec,
+                ),
+              );
+
+              await _db.into(_db.cashMovements).insert(
+                CashMovementsCompanion.insert(
+                  id: const Uuid().v4(),
+                  branchId: branchId,
+                  shiftId: Value(activeShift?.id),
+                  type: 'installment_down',
+                  method: split.method,
+                  direction: 'in',
+                  amountPiasters: split.amountPiasters,
+                  referenceId: Value(contractId),
+                  notes: Value('مقدم عقد تقسيط (${split.method})'),
+                  createdAt: nowSec,
+                  updatedAt: nowSec,
+                ),
+              );
+            }
+
+            if (downPaymentSplits == null) {
+              final paymentId = const Uuid().v4();
+              await _db.into(_db.installmentPayments).insert(
+                InstallmentPaymentsCompanion.insert(
+                  id: paymentId,
+                  branchId: branchId,
+                  customerInstallmentId: contractId,
+                  amountPiasters: downPaymentPiasters,
+                  paymentMethod: 'cash',
+                  paidAt: now,
+                  receiptNumber: const Value('DOWN_PAYMENT'),
+                  notes: const Value('دفعة مقدمة عند إنشاء العقد'),
+                  recordedBy: userId,
+                  createdAt: now,
+                  updatedAt: now,
+                ),
+              );
+            }
           }
         },
         branchId: branchId,

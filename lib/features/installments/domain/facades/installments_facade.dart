@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
 
 import '../../../../core/errors/failures.dart';
+import '../../../pos/domain/entities/payment_split.dart';
 import '../entities/customer_installment_entity.dart';
 import '../entities/installment_payment_entity.dart';
 import '../entities/installment_plan_entity.dart';
@@ -33,6 +34,7 @@ abstract class InstallmentsFacade {
     required int durationMonths,
     required DateTime startDate,
     required String pin,
+    List<PaymentSplit>? downPaymentSplits,
   });
   Future<Either<Failure, CustomerInstallmentEntity>> getContract(String id);
   Future<Either<Failure, List<CustomerInstallmentEntity>>> listContracts({

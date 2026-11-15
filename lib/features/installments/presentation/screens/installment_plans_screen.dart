@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:google_fonts/google_fonts.dart';
-
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/features/feature_gate.dart';
@@ -83,15 +81,13 @@ class _InstallmentPlansViewState extends State<_InstallmentPlansView> {
           children: [
             Text(
               'خطط التقسيط',
-              style: GoogleFonts.cairo(
-                fontWeight: FontWeight.bold,
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
                 fontSize: 18,
-                color: AppColors.onSurface,
-              ),
+                color: AppColors.onSurface,),
             ),
             Text(
               'تعريف الشروط، مدد السداد، ونسب الفوائد',
-              style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey.shade600),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey.shade600),
             ),
           ],
         ),
@@ -110,7 +106,7 @@ class _InstallmentPlansViewState extends State<_InstallmentPlansView> {
         icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: Text(
           'إضافة خطة جديدة',
-          style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(fontFamily: 'Cairo', color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
       body: BlocConsumer<InstallmentPlansCubit, InstallmentPlansState>(
@@ -135,12 +131,12 @@ class _InstallmentPlansViewState extends State<_InstallmentPlansView> {
                   const SizedBox(height: 12),
                   Text(
                     'خطأ: ${state.errorMessage ?? "تعذر تحميل خطط التقسيط"}',
-                    style: GoogleFonts.cairo(fontSize: 14),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 14),
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () => cubit.loadPlans(),
-                    child: Text('إعادة المحاولة', style: GoogleFonts.cairo()),
+                    child: Text('إعادة المحاولة', style: TextStyle(fontFamily: 'Cairo')),
                   ),
                 ],
               ),
@@ -163,12 +159,12 @@ class _InstallmentPlansViewState extends State<_InstallmentPlansView> {
                   const SizedBox(height: 16),
                   Text(
                     'لا توجد خطط تقسيط معرفة حتى الآن',
-                    style: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'أنشئ خطط تقسيط مرنة (مثل: 6 أشهر بدون فوائد، 12 شهر بفائدة 10%)',
-                    style: GoogleFonts.cairo(fontSize: 13, color: Colors.grey.shade600),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 13, color: Colors.grey.shade600),
                   ),
                   const SizedBox(height: 20),
                   ElevatedButton.icon(
@@ -180,7 +176,7 @@ class _InstallmentPlansViewState extends State<_InstallmentPlansView> {
                     ),
                     onPressed: () => _showPlanDialog(context, cubit),
                     icon: const Icon(Icons.add_rounded),
-                    label: Text('إضافة أول خطة', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                    label: Text('إضافة أول خطة', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
@@ -259,16 +255,16 @@ class _InstallmentPlansViewState extends State<_InstallmentPlansView> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'تعطيل خطة التقسيط',
-          style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+          style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
         ),
         content: Text(
           'هل أنت متأكد من تعطيل خطة "${plan.name}"؟ لن يمكن اختيارها لعقود جديدة.',
-          style: GoogleFonts.cairo(fontSize: 13),
+          style: TextStyle(fontFamily: 'Cairo', fontSize: 13),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(),
-            child: Text('إلغاء', style: GoogleFonts.cairo(color: Colors.grey.shade700)),
+            child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo', color: Colors.grey.shade700)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -280,7 +276,7 @@ class _InstallmentPlansViewState extends State<_InstallmentPlansView> {
               Navigator.of(dialogCtx).pop();
               cubit.deactivatePlan(plan.id);
             },
-            child: Text('تعطيل', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+            child: Text('تعطيل', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -383,7 +379,7 @@ class _PlanFormDialogState extends State<_PlanFormDialog> {
           const SizedBox(width: 10),
           Text(
             isEditing ? 'تعديل خطة التقسيط' : 'إضافة خطة تقسيط جديدة',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 17),
+            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 17),
           ),
         ],
       ),
@@ -399,9 +395,9 @@ class _PlanFormDialogState extends State<_PlanFormDialog> {
                 controller: _nameController,
                 decoration: InputDecoration(
                   labelText: 'اسم الخطة (مثال: خطة 6 أشهر)',
-                  labelStyle: GoogleFonts.cairo(),
+                  labelStyle: TextStyle(fontFamily: 'Cairo'),
                   hintText: 'مثال: تقسيط 6 شهور بدون فوائد',
-                  hintStyle: GoogleFonts.cairo(fontSize: 12, color: Colors.grey.shade400),
+                  hintStyle: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade400),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   prefixIcon: const Icon(Icons.bookmark_border_rounded),
                 ),
@@ -414,9 +410,9 @@ class _PlanFormDialogState extends State<_PlanFormDialog> {
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   labelText: 'المدة بالشهور',
-                  labelStyle: GoogleFonts.cairo(),
+                  labelStyle: TextStyle(fontFamily: 'Cairo'),
                   suffixText: 'شهور',
-                  suffixStyle: GoogleFonts.cairo(fontSize: 12),
+                  suffixStyle: TextStyle(fontFamily: 'Cairo', fontSize: 12),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   prefixIcon: const Icon(Icons.calendar_month_outlined),
                 ),
@@ -428,7 +424,7 @@ class _PlanFormDialogState extends State<_PlanFormDialog> {
                 children: [3, 6, 9, 12, 18, 24].map((m) {
                   final isSelected = duration == m;
                   return ChoiceChip(
-                    label: Text('$m شهور', style: GoogleFonts.cairo(fontSize: 11)),
+                    label: Text('$m شهور', style: TextStyle(fontFamily: 'Cairo', fontSize: 11)),
                     selected: isSelected,
                     onSelected: (_) {
                       setState(() => _durationController.text = '$m');
@@ -449,9 +445,9 @@ class _PlanFormDialogState extends State<_PlanFormDialog> {
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: InputDecoration(
                   labelText: 'الدفعة المقدمة (ج.م)',
-                  labelStyle: GoogleFonts.cairo(),
+                  labelStyle: TextStyle(fontFamily: 'Cairo'),
                   helperText: 'أدخل 0 إذا كانت الخطة تتيح التقسيط بدون مقدم',
-                  helperStyle: GoogleFonts.cairo(fontSize: 11),
+                  helperStyle: TextStyle(fontFamily: 'Cairo', fontSize: 11),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   prefixIcon: const Icon(Icons.payments_outlined),
                 ),
@@ -482,15 +478,13 @@ class _PlanFormDialogState extends State<_PlanFormDialog> {
                         children: [
                           Text(
                             'خطة بدون فوائد (0% تقسيط بسعر الكاش)',
-                            style: GoogleFonts.cairo(
-                              fontWeight: FontWeight.bold,
+                            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
                               fontSize: 12,
-                              color: _isZeroInterest ? AppColors.success : AppColors.onSurface,
-                            ),
+                              color: _isZeroInterest ? AppColors.success : AppColors.onSurface,),
                           ),
                           Text(
                             'المبلغ الممول يُقسم بالتساوي على الشهور دون أي زيادة',
-                            style: GoogleFonts.cairo(fontSize: 10, color: Colors.grey.shade600),
+                            style: TextStyle(fontFamily: 'Cairo', fontSize: 10, color: Colors.grey.shade600),
                           ),
                         ],
                       ),
@@ -519,11 +513,11 @@ class _PlanFormDialogState extends State<_PlanFormDialog> {
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   decoration: InputDecoration(
                     labelText: 'نسبة الفائدة (%)',
-                    labelStyle: GoogleFonts.cairo(),
+                    labelStyle: TextStyle(fontFamily: 'Cairo'),
                     helperText: 'نسبة مئوية من أصل المبلغ الممول (مثال: 5 = 5%، 10 = 10%)',
-                    helperStyle: GoogleFonts.cairo(fontSize: 11),
+                    helperStyle: TextStyle(fontFamily: 'Cairo', fontSize: 11),
                     suffixText: '%',
-                    suffixStyle: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+                    suffixStyle: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                     prefixIcon: const Icon(Icons.percent_rounded),
                   ),
@@ -534,7 +528,7 @@ class _PlanFormDialogState extends State<_PlanFormDialog> {
                   children: [5.0, 7.5, 10.0, 12.0, 15.0, 20.0].map((pct) {
                     final isSelected = interestPct == pct;
                     return ChoiceChip(
-                      label: Text('$pct%', style: GoogleFonts.cairo(fontSize: 11)),
+                      label: Text('$pct%', style: TextStyle(fontFamily: 'Cairo', fontSize: 11)),
                       selected: isSelected,
                       onSelected: (_) {
                         setState(() => _interestPercentController.text = '$pct');
@@ -567,7 +561,7 @@ class _PlanFormDialogState extends State<_PlanFormDialog> {
                         Expanded(
                           child: Text(
                             'محاكاة توضيحية لفاتورة بقيمة 1,000 ج.م:',
-                            style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primary),
+                            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primary),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -579,7 +573,7 @@ class _PlanFormDialogState extends State<_PlanFormDialog> {
                           ),
                           child: Text(
                             '$duration شهور',
-                            style: GoogleFonts.cairo(fontSize: 10, fontWeight: FontWeight.bold),
+                            style: TextStyle(fontFamily: 'Cairo', fontSize: 10, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ],
@@ -588,30 +582,28 @@ class _PlanFormDialogState extends State<_PlanFormDialog> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('المقدم:', style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey.shade700)),
-                        Text('${effectiveDown.toStringAsFixed(2)} ج.م', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold)),
+                        Text('المقدم:', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey.shade700)),
+                        Text('${effectiveDown.toStringAsFixed(2)} ج.م', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold)),
                       ],
                     ),
                     const SizedBox(height: 2),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('المبلغ الممول:', style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey.shade700)),
-                        Text('${financed.toStringAsFixed(2)} ج.م', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold)),
+                        Text('المبلغ الممول:', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey.shade700)),
+                        Text('${financed.toStringAsFixed(2)} ج.م', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold)),
                       ],
                     ),
                     const SizedBox(height: 2),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('قيمة الفائدة ($interestPct%):', style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey.shade700)),
+                        Text('قيمة الفائدة ($interestPct%):', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey.shade700)),
                         Text(
                           interestAmount > 0 ? '+${interestAmount.toStringAsFixed(2)} ج.م' : '0.00 ج.م (بدون فائدة)',
-                          style: GoogleFonts.cairo(
-                            fontSize: 11,
+                          style: TextStyle(fontFamily: 'Cairo', fontSize: 11,
                             fontWeight: FontWeight.bold,
-                            color: interestAmount > 0 ? AppColors.warning : AppColors.success,
-                          ),
+                            color: interestAmount > 0 ? AppColors.warning : AppColors.success,),
                         ),
                       ],
                     ),
@@ -619,10 +611,10 @@ class _PlanFormDialogState extends State<_PlanFormDialog> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('القسط الشهري:', style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey.shade700)),
+                        Text('القسط الشهري:', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey.shade700)),
                         Text(
                           '${monthlyPayment.toStringAsFixed(2)} ج.م / شهر',
-                          style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
+                          style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
                         ),
                       ],
                     ),
@@ -630,10 +622,10 @@ class _PlanFormDialogState extends State<_PlanFormDialog> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('إجمالي ما يدفعه العميل:', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold)),
+                        Text('إجمالي ما يدفعه العميل:', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold)),
                         Text(
                           '${totalObligation.toStringAsFixed(2)} ج.م',
-                          style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.onSurface),
+                          style: TextStyle(fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.onSurface),
                         ),
                       ],
                     ),
@@ -648,9 +640,9 @@ class _PlanFormDialogState extends State<_PlanFormDialog> {
                 maxLines: 2,
                 decoration: InputDecoration(
                   labelText: 'الوصف (اختياري)',
-                  labelStyle: GoogleFonts.cairo(),
+                  labelStyle: TextStyle(fontFamily: 'Cairo'),
                   hintText: 'ملاحظات أو شروط خاصة بالخطة (ضامن، صورة بطاقة...)',
-                  hintStyle: GoogleFonts.cairo(fontSize: 11, color: Colors.grey.shade400),
+                  hintStyle: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey.shade400),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               ),
@@ -661,7 +653,7 @@ class _PlanFormDialogState extends State<_PlanFormDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text('إلغاء', style: GoogleFonts.cairo(color: Colors.grey.shade700)),
+          child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo', color: Colors.grey.shade700)),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
@@ -698,7 +690,7 @@ class _PlanFormDialogState extends State<_PlanFormDialog> {
           },
           child: Text(
             isEditing ? 'حفظ التعديلات' : 'إضافة الخطة',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
           ),
         ),
       ],
@@ -756,17 +748,15 @@ class _PlanCard extends StatelessWidget {
                   children: [
                     Text(
                       plan.name,
-                      style: GoogleFonts.cairo(
-                        fontWeight: FontWeight.bold,
+                      style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
                         fontSize: 16,
-                        color: AppColors.onSurface,
-                      ),
+                        color: AppColors.onSurface,),
                     ),
                     if (plan.description != null && plan.description!.isNotEmpty) ...[
                       const SizedBox(height: 2),
                       Text(
                         plan.description!,
-                        style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey.shade600),
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade600),
                       ),
                     ],
                   ],
@@ -792,11 +782,9 @@ class _PlanCard extends StatelessWidget {
                     const SizedBox(width: 4),
                     Text(
                       plan.isActive ? 'مفعلة' : 'معطلة',
-                      style: GoogleFonts.cairo(
-                        fontSize: 11,
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        color: plan.isActive ? AppColors.success : Colors.grey.shade700,
-                      ),
+                        color: plan.isActive ? AppColors.success : Colors.grey.shade700,),
                     ),
                   ],
                 ),
@@ -839,7 +827,7 @@ class _PlanCard extends StatelessWidget {
               TextButton.icon(
                 onPressed: onEdit,
                 icon: const Icon(Icons.edit_outlined, size: 16),
-                label: Text('تعديل', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                label: Text('تعديل', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
               ),
               if (plan.isActive) ...[
                 const SizedBox(width: 8),
@@ -847,7 +835,7 @@ class _PlanCard extends StatelessWidget {
                   style: TextButton.styleFrom(foregroundColor: AppColors.error),
                   onPressed: onDeactivate,
                   icon: const Icon(Icons.block_rounded, size: 16),
-                  label: Text('تعطيل', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                  label: Text('تعطيل', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
                 ),
               ],
             ],
@@ -871,11 +859,9 @@ class _PlanCard extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             label,
-            style: GoogleFonts.cairo(
-              fontSize: 12,
+            style: TextStyle(fontFamily: 'Cairo', fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: textCol,
-            ),
+              color: textCol,),
           ),
         ],
       ),

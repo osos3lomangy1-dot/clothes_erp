@@ -263,7 +263,7 @@ class _ReturnScreenState extends State<ReturnScreen> {
                     child: const Icon(Icons.receipt_rounded, color: AppColors.primary),
                   ),
                   title: Text(
-                    'فاتورة #${sale.id.length > 8 ? sale.id.substring(0, 8) : sale.id} • الإجمالي: ${Money(sale.total.toInt()).toDisplay()} ج.م',
+                    'فاتورة #${sale.id.length > 8 ? sale.id.substring(0, 8) : sale.id} • الإجمالي: ${Money(sale.total).toDisplay()} ج.م',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(
@@ -314,7 +314,7 @@ class _ReturnScreenState extends State<ReturnScreen> {
                   ],
                 ),
                 Text(
-                  'الإجمالي الأصلي: ${Money(sale.total.toInt()).toDisplay()} ج.م',
+                  'الإجمالي الأصلي: ${Money(sale.total).toDisplay()} ج.م',
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary),
                 ),
               ],

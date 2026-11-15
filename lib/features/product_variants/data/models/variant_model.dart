@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/entities/variant_entity.dart';
 
 class VariantModel extends VariantEntity {
@@ -111,7 +110,11 @@ class VariantModel extends VariantEntity {
       costPrice: (data['costPrice'] as num?)?.toInt() ?? 0,
       salePrice: (data['salePrice'] as num?)?.toInt() ?? 0,
       minStock: data['minStock'] ?? 0,
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: data['createdAt'] is DateTime
+          ? data['createdAt'] as DateTime
+          : (data['createdAt'] is String
+              ? DateTime.tryParse(data['createdAt']) ?? DateTime.now()
+              : DateTime.now()),
     );
   }
 
@@ -125,7 +128,7 @@ class VariantModel extends VariantEntity {
       'costPrice': costPrice,
       'salePrice': salePrice,
       'minStock': minStock,
-      'createdAt': Timestamp.fromDate(createdAt),
+      'createdAt': createdAt.toIso8601String(),
     };
   }
 }

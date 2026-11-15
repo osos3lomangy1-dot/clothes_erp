@@ -35,11 +35,21 @@ class ReportsLocalDataSourceImpl implements ReportsLocalDataSource {
 
     final salesRows = await salesQuery.get();
 
+    // Exclude installment-contract sales from P&L revenue & COGS
+    final installmentSales = await (_db.select(_db.customerInstallments)
+          ..where((ci) => ci.deletedAt.isNull()))
+        .get();
+    final installmentSaleIds = installmentSales.map((ci) => ci.saleId).toSet();
+
+    final nonInstallmentSales = salesRows
+        .where((s) => !installmentSaleIds.contains(s.id) && s.paymentMethod != 'installment')
+        .toList();
+
     int totalRevenue = 0;
     final Map<String, int> paymentBreakdown = {};
     final List<String> saleIds = [];
 
-    for (final s in salesRows) {
+    for (final s in nonInstallmentSales) {
       totalRevenue += s.total;
       final method = s.paymentMethod.isNotEmpty ? s.paymentMethod : 'cash';
       paymentBreakdown[method] = (paymentBreakdown[method] ?? 0) + s.total;
@@ -141,6 +151,33 @@ class ReportsLocalDataSourceImpl implements ReportsLocalDataSource {
       );
     }
 
+    // 5. Two-Section Financial Report: Cash Flow section from cash_movements
+    final startSec = start.millisecondsSinceEpoch ~/ 1000;
+    final endSec = end.millisecondsSinceEpoch ~/ 1000;
+
+    final cashMovementsQuery = _db.select(_db.cashMovements)
+      ..where((cm) =>
+          cm.createdAt.isBiggerOrEqualValue(startSec) &
+          cm.createdAt.isSmallerOrEqualValue(endSec) &
+          cm.deletedAt.isNull());
+    final movementRows = await cashMovementsQuery.get();
+
+    int cashFlowIn = 0;
+    int cashFlowOut = 0;
+    final Map<String, int> cashFlowInByMethod = {};
+    final Map<String, int> cashFlowOutByMethod = {};
+
+    for (final m in movementRows) {
+      final method = m.method.isNotEmpty ? m.method : 'cash';
+      if (m.direction == 'in') {
+        cashFlowIn += m.amountPiasters;
+        cashFlowInByMethod[method] = (cashFlowInByMethod[method] ?? 0) + m.amountPiasters;
+      } else if (m.direction == 'out') {
+        cashFlowOut += m.amountPiasters;
+        cashFlowOutByMethod[method] = (cashFlowOutByMethod[method] ?? 0) + m.amountPiasters;
+      }
+    }
+
     return SalesReportEntity(
       startDate: startDate,
       endDate: endDate,
@@ -148,9 +185,13 @@ class ReportsLocalDataSourceImpl implements ReportsLocalDataSource {
       totalCost: totalCost,
       totalProfit: totalProfit,
       totalExpenses: totalExpenses,
-      totalTransactions: salesRows.length,
+      totalTransactions: nonInstallmentSales.length,
       paymentMethodBreakdown: paymentBreakdown,
       topSellingProducts: topSellingProducts,
+      cashFlowIn: cashFlowIn,
+      cashFlowOut: cashFlowOut,
+      cashFlowInByMethod: cashFlowInByMethod,
+      cashFlowOutByMethod: cashFlowOutByMethod,
     );
   }
 }

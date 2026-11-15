@@ -227,7 +227,7 @@ class FeatureGate {
 
   Future<bool> isCurrentUserAdmin() async {
     final user = await _authLocalDataSource.getCachedUser();
-    if (user == null) return true;
+    if (user == null) return false;
     return user.role.toLowerCase() != 'cashier';
   }
 

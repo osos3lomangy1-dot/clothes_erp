@@ -11,9 +11,6 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
-  firebase_core: ^3.10.1
-  firebase_auth: ^5.5.1
-  cloud_firestore: ^5.6.3
   flutter_secure_storage: ^9.2.4
   get_it: ^8.0.3
   injectable: ^2.5.0
@@ -50,6 +47,18 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  fonts:
+    - family: Cairo
+      fonts:
+        - asset: assets/fonts/static/Cairo-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/static/Cairo-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/static/Cairo-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/static/Cairo-Black.ttf
+          weight: 900
 
 msix_config:
   display_name: Orkeed Clothes ERP

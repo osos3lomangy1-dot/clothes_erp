@@ -164,10 +164,14 @@ void main() {
       expect(payments.length, 1);
       expect(payments.first.amount, 40000);
 
-      // Verify Expense recorded
-      final expenses = await (db.select(db.expenses)..where((e) => e.category.equals('مشتريات بضاعة'))).get();
-      expect(expenses.length, 1);
-      expect(expenses.first.amount, 40000);
+      // Phase 2 (Correction 1): Purchases do NOT write to expenses, but record in cash_movements
+      final expenses = await db.select(db.expenses).get();
+      expect(expenses, isEmpty);
+
+      final movements = await (db.select(db.cashMovements)..where((m) => m.type.equals('purchase_payment'))).get();
+      expect(movements.length, 1);
+      expect(movements.first.amountPiasters, 40000);
+      expect(movements.first.direction, 'out');
     });
 
     test('addSupplierPayment reduces supplier debt and updates purchase payment status to paid', () async {

@@ -5,6 +5,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/database/branch_provider.dart';
 import '../../../../core/database/tx_writer.dart';
 import '../../../../features/inventory/data/datasources/inventory_local_data_source.dart';
+import '../../domain/entities/payment_split.dart';
 
 @lazySingleton
 class PosLocalDataSource {
@@ -46,6 +47,7 @@ class PosLocalDataSource {
     String? customerId,
     String? shiftId,
     String? paymentMethod,
+    List<PaymentSplit>? splits,
     String? saleId,
   }) async {
     final now = DateTime.now();
@@ -64,6 +66,24 @@ class PosLocalDataSource {
       }
     }
 
+    final isInstallment = paymentMethod == 'installment';
+    final effectiveSplits = (splits != null && splits.isNotEmpty)
+        ? splits
+        : [
+            PaymentSplit(
+              method: (paymentMethod != null && paymentMethod.toLowerCase() == 'card')
+                  ? 'card'
+                  : 'cash',
+              amountPiasters: total,
+            ),
+          ];
+
+    final effectivePaymentMethod = isInstallment
+        ? 'installment'
+        : (effectiveSplits.length > 1 ? 'split' : effectiveSplits.first.method);
+
+    final nowSec = now.millisecondsSinceEpoch ~/ 1000;
+
     await _tx.write(
       writeFn: () async {
         await _db.into(_db.sales).insert(SalesCompanion.insert(
@@ -76,7 +96,7 @@ class PosLocalDataSource {
           subtotal: total,
           discountType: 'none',
           total: total,
-          paymentMethod: paymentMethod ?? 'cash',
+          paymentMethod: effectivePaymentMethod,
           date: now,
           createdAt: now,
           updatedAt: now,
@@ -105,6 +125,41 @@ class PosLocalDataSource {
             refType: 'sale',
             refId: effectiveSaleId,
           );
+        }
+
+        // For non-installment sales, write sale_payments and cash_movements (sale)
+        if (!isInstallment) {
+          for (final split in effectiveSplits) {
+            final spId = _uuid.v4();
+            await _db.into(_db.salePayments).insert(
+              SalePaymentsCompanion.insert(
+                id: spId,
+                branchId: branchId,
+                saleId: effectiveSaleId,
+                method: split.method,
+                amountPiasters: split.amountPiasters,
+                shiftId: Value(effectiveShiftId),
+                createdAt: nowSec,
+                updatedAt: nowSec,
+              ),
+            );
+
+            await _db.into(_db.cashMovements).insert(
+              CashMovementsCompanion.insert(
+                id: _uuid.v4(),
+                branchId: branchId,
+                shiftId: Value(effectiveShiftId),
+                type: 'sale',
+                method: split.method,
+                direction: 'in',
+                amountPiasters: split.amountPiasters,
+                referenceId: Value(effectiveSaleId),
+                notes: Value('مبيعات نقطة بيع (${split.method})'),
+                createdAt: nowSec,
+                updatedAt: nowSec,
+              ),
+            );
+          }
         }
       },
       branchId: branchId,

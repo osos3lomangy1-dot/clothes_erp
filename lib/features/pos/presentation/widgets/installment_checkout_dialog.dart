@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/money.dart';
@@ -189,7 +187,7 @@ class _InstallmentCheckoutDialogState extends State<InstallmentCheckoutDialog> {
           const SizedBox(width: 10),
           Text(
             'تفاصيل التقسيط',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 18),
+            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 18),
           ),
         ],
       ),
@@ -205,7 +203,7 @@ class _InstallmentCheckoutDialogState extends State<InstallmentCheckoutDialog> {
                 initialValue: _selectedPlan,
                 decoration: InputDecoration(
                   labelText: 'خطة التقسيط',
-                  labelStyle: GoogleFonts.cairo(),
+                  labelStyle: TextStyle(fontFamily: 'Cairo'),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   prefixIcon: const Icon(Icons.view_timeline_outlined),
                 ),
@@ -214,7 +212,7 @@ class _InstallmentCheckoutDialogState extends State<InstallmentCheckoutDialog> {
                           value: p,
                           child: Text(
                             '${p.name} (${p.durationMonths} شهور - فائدة ${p.interestBp / 100}%)',
-                            style: GoogleFonts.cairo(),
+                            style: TextStyle(fontFamily: 'Cairo'),
                           ),
                         ))
                     .toList(),
@@ -227,14 +225,14 @@ class _InstallmentCheckoutDialogState extends State<InstallmentCheckoutDialog> {
                 initialValue: _selectedModel,
                 decoration: InputDecoration(
                   labelText: 'نموذج الفائدة',
-                  labelStyle: GoogleFonts.cairo(),
+                  labelStyle: TextStyle(fontFamily: 'Cairo'),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   prefixIcon: const Icon(Icons.percent_rounded),
                 ),
                 items: InstallmentInterestModel.values
                     .map((m) => DropdownMenuItem(
                           value: m,
-                          child: Text(_modelLabel(m), style: GoogleFonts.cairo(fontSize: 13)),
+                          child: Text(_modelLabel(m), style: TextStyle(fontFamily: 'Cairo', fontSize: 13)),
                         ))
                     .toList(),
                 onChanged: (v) => setState(() => _selectedModel = v!),
@@ -247,9 +245,9 @@ class _InstallmentCheckoutDialogState extends State<InstallmentCheckoutDialog> {
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: InputDecoration(
                   labelText: 'الدفعة المقدمة (بالجنيه)',
-                  labelStyle: GoogleFonts.cairo(),
+                  labelStyle: TextStyle(fontFamily: 'Cairo'),
                   helperText: 'الحد الأقصى: ${Money(widget.totalPiasters).toDisplay()} ج.م',
-                  helperStyle: GoogleFonts.cairo(fontSize: 11),
+                  helperStyle: TextStyle(fontFamily: 'Cairo', fontSize: 11),
                   prefixIcon: const Icon(Icons.account_balance_wallet_outlined),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                 ),
@@ -272,11 +270,11 @@ class _InstallmentCheckoutDialogState extends State<InstallmentCheckoutDialog> {
                       children: [
                         Text(
                           'معاينة حساب التقسيط:',
-                          style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primary),
+                          style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primary),
                         ),
                         Text(
                           '${_selectedPlan.durationMonths} شهور',
-                          style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey.shade700),
+                          style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey.shade700),
                         ),
                       ],
                     ),
@@ -284,32 +282,30 @@ class _InstallmentCheckoutDialogState extends State<InstallmentCheckoutDialog> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('أصل الفاتورة:', style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey.shade600)),
-                        Text('${Money(widget.totalPiasters).toDisplay()} ج.م', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold)),
+                        Text('أصل الفاتورة:', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade600)),
+                        Text('${Money(widget.totalPiasters).toDisplay()} ج.م', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold)),
                       ],
                     ),
                     const SizedBox(height: 4),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('المقدم المدفوع:', style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey.shade600)),
-                        Text('${Money(downPiasters).toDisplay()} ج.م', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF0284C7))),
+                        Text('المقدم المدفوع:', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade600)),
+                        Text('${Money(downPiasters).toDisplay()} ج.م', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF0284C7))),
                       ],
                     ),
                     const SizedBox(height: 4),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('الفائدة المحسوبة:', style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey.shade600)),
+                        Text('الفائدة المحسوبة:', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade600)),
                         Text(
                           totalInterestPiasters > 0
                               ? '${Money(totalInterestPiasters).toDisplay()} ج.م (${_selectedPlan.interestBp / 100}%)'
                               : '0.00 ج.م (بدون فوائد)',
-                          style: GoogleFonts.cairo(
-                            fontSize: 12,
+                          style: TextStyle(fontFamily: 'Cairo', fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            color: totalInterestPiasters > 0 ? AppColors.warning : AppColors.success,
-                          ),
+                            color: totalInterestPiasters > 0 ? AppColors.warning : AppColors.success,),
                         ),
                       ],
                     ),
@@ -317,10 +313,10 @@ class _InstallmentCheckoutDialogState extends State<InstallmentCheckoutDialog> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('القسط الشهري التقديري:', style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey.shade600)),
+                        Text('القسط الشهري التقديري:', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade600)),
                         Text(
                           '${Money(monthlyAmountPiasters).toDisplay()} ج.م / شهر',
-                          style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
+                          style: TextStyle(fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
                         ),
                       ],
                     ),
@@ -328,10 +324,10 @@ class _InstallmentCheckoutDialogState extends State<InstallmentCheckoutDialog> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('إجمالي التزام العميل:', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold)),
+                        Text('إجمالي التزام العميل:', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold)),
                         Text(
                           '${Money(totalObligationPiasters).toDisplay()} ج.م',
-                          style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.onSurface),
+                          style: TextStyle(fontFamily: 'Cairo', fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.onSurface),
                         ),
                       ],
                     ),
@@ -347,7 +343,7 @@ class _InstallmentCheckoutDialogState extends State<InstallmentCheckoutDialog> {
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
                     labelText: 'الرقم السري للمدير (PIN)',
-                    labelStyle: GoogleFonts.cairo(),
+                    labelStyle: TextStyle(fontFamily: 'Cairo'),
                     prefixIcon: const Icon(Icons.lock_outline_rounded),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   ),
@@ -368,7 +364,7 @@ class _InstallmentCheckoutDialogState extends State<InstallmentCheckoutDialog> {
                       Expanded(
                         child: Text(
                           _error!,
-                          style: GoogleFonts.cairo(color: AppColors.error, fontSize: 12, fontWeight: FontWeight.bold),
+                          style: TextStyle(fontFamily: 'Cairo', color: AppColors.error, fontSize: 12, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ],
@@ -382,7 +378,7 @@ class _InstallmentCheckoutDialogState extends State<InstallmentCheckoutDialog> {
       actions: [
         TextButton(
           onPressed: _isValidating ? null : () => Navigator.pop(context),
-          child: Text('إلغاء', style: GoogleFonts.cairo(color: Colors.grey.shade700)),
+          child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo', color: Colors.grey.shade700)),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
@@ -394,7 +390,7 @@ class _InstallmentCheckoutDialogState extends State<InstallmentCheckoutDialog> {
           onPressed: _isValidating ? null : _submit,
           child: _isValidating
               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-              : Text('تأكيد التقسيط', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+              : Text('تأكيد التقسيط', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
         ),
       ],
     );

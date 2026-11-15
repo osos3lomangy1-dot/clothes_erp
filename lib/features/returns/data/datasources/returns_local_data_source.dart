@@ -6,6 +6,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/database/branch_provider.dart';
 import '../../../../core/database/tx_writer.dart';
 import '../../../inventory/data/datasources/inventory_local_data_source.dart';
+import '../../../pos/domain/entities/payment_split.dart';
 import '../../domain/entities/return_entity.dart';
 import '../../domain/entities/return_item_entity.dart';
 
@@ -16,6 +17,9 @@ abstract class ReturnsLocalDataSource {
     required String reason,
     required String userId,
     String paymentMethod = 'cash',
+    List<PaymentRefund>? refunds,
+    bool isManagerOverride = false,
+    String? overridePin,
   });
   Future<List<Sale>> getRecentSales({int limit = 20});
   Future<List<SaleItem>> getSaleItems(String saleId);
@@ -64,6 +68,9 @@ class ReturnsLocalDataSourceImpl implements ReturnsLocalDataSource {
     required String reason,
     required String userId,
     String paymentMethod = 'cash',
+    List<PaymentRefund>? refunds,
+    bool isManagerOverride = false,
+    String? overridePin,
   }) async {
     if (reason.trim().isEmpty) {
       throw Exception('Return reason is required');
@@ -173,12 +180,114 @@ class ReturnsLocalDataSourceImpl implements ReturnsLocalDataSource {
             );
           }
         }
+
+        // 5. Record cash movement for refund with current active shiftId (Clarification 2)
+        final activeShift = await (_db.select(_db.shifts)
+              ..where((s) => s.closedAt.isNull() & s.deletedAt.isNull())
+              ..orderBy([(s) => OrderingTerm.desc(s.openedAt)])
+              ..limit(1))
+            .getSingleOrNull();
+
+        final nowSec = now.millisecondsSinceEpoch ~/ 1000;
+        final mMethod = paymentMethod.toLowerCase() == 'card'
+            ? 'card'
+            : (paymentMethod.toLowerCase() == 'transfer' ? 'transfer' : 'cash');
+
+        if (refunds != null && refunds.isNotEmpty) {
+          for (final ref in refunds) {
+            await _db.into(_db.cashMovements).insert(
+                  CashMovementsCompanion.insert(
+                    id: _uuid.v4(),
+                    branchId: branchId,
+                    shiftId: Value(activeShift?.id),
+                    type: 'refund',
+                    method: ref.method,
+                    direction: 'out',
+                    amountPiasters: ref.amountPiasters,
+                    referenceId: Value(returnId),
+                    notes: Value(isManagerOverride ? 'مرتجع مبيعات (تجاوز مدير): $reason' : 'مرتجع مبيعات: $reason'),
+                    createdAt: nowSec,
+                    updatedAt: nowSec,
+                  ),
+                );
+          }
+        } else {
+          // Check if sale has sale_payments splits
+          final salePaymentsList = saleId.isNotEmpty
+              ? await (_db.select(_db.salePayments)
+                    ..where((sp) => sp.saleId.equals(saleId) & sp.deletedAt.isNull())
+                    ..orderBy([(sp) => OrderingTerm.desc(sp.amountPiasters)]))
+                  .get()
+              : <SalePayment>[];
+
+          if (salePaymentsList.isNotEmpty) {
+            int remainingRefund = totalRefund;
+            for (final sp in salePaymentsList) {
+              if (remainingRefund <= 0) break;
+              final refundForThisPayment = remainingRefund > sp.amountPiasters
+                  ? sp.amountPiasters
+                  : remainingRefund;
+              remainingRefund -= refundForThisPayment;
+
+              await _db.into(_db.cashMovements).insert(
+                    CashMovementsCompanion.insert(
+                      id: _uuid.v4(),
+                      branchId: branchId,
+                      shiftId: Value(activeShift?.id),
+                      type: 'refund',
+                      method: sp.method,
+                      direction: 'out',
+                      amountPiasters: refundForThisPayment,
+                      referenceId: Value(returnId),
+                      notes: Value('مرتجع مبيعات: $reason'),
+                      createdAt: nowSec,
+                      updatedAt: nowSec,
+                    ),
+                  );
+            }
+            if (remainingRefund > 0) {
+              await _db.into(_db.cashMovements).insert(
+                    CashMovementsCompanion.insert(
+                      id: _uuid.v4(),
+                      branchId: branchId,
+                      shiftId: Value(activeShift?.id),
+                      type: 'refund',
+                      method: mMethod,
+                      direction: 'out',
+                      amountPiasters: remainingRefund,
+                      referenceId: Value(returnId),
+                      notes: Value('مرتجع مبيعات: $reason'),
+                      createdAt: nowSec,
+                      updatedAt: nowSec,
+                    ),
+                  );
+            }
+          } else {
+            await _db.into(_db.cashMovements).insert(
+                  CashMovementsCompanion.insert(
+                    id: _uuid.v4(),
+                    branchId: branchId,
+                    shiftId: Value(activeShift?.id),
+                    type: 'refund',
+                    method: mMethod,
+                    direction: 'out',
+                    amountPiasters: totalRefund,
+                    referenceId: Value(returnId),
+                    notes: Value('مرتجع مبيعات: $reason'),
+                    createdAt: nowSec,
+                    updatedAt: nowSec,
+                  ),
+                );
+          }
+        }
       },
       branchId: branchId,
       entity: 'return',
       entityId: returnId,
       operation: 'insert',
       userId: userId,
+      auditAction: isManagerOverride ? 'manager_refund_override' : 'return',
+      payload: isManagerOverride ? '{"managerOverride": true, "reason": "$reason"}' : '{}',
     );
   }
 

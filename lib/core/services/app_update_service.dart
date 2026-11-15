@@ -1,12 +1,10 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'dart:io';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
-import '../config/app_config.dart';
 import '../constants/app_colors.dart';
 import 'widgets/app_update_dialog.dart';
 
@@ -56,7 +54,7 @@ class AppUpdateInfo {
       'release_notes': releaseNotes,
       'is_force_update': isForceUpdate,
       'enabled': enabled,
-      'updated_at': FieldValue.serverTimestamp(),
+      'updated_at': DateTime.now().toIso8601String(),
     };
   }
 }
@@ -211,26 +209,12 @@ class AppUpdateService {
     }
   }
 
-  static Future<AppUpdateInfo?> fetchFromFirestore({FirebaseFirestore? firestore}) async {
-    if (!kEnableFirebase) return null;
-    try {
-      final db = firestore ?? FirebaseFirestore.instance;
-      final doc = await db.collection(configCollection).doc(updateDoc).get();
-      if (!doc.exists || doc.data() == null) {
-        return null;
-      }
-      return AppUpdateInfo.fromMap(doc.data()!);
-    } catch (e) {
-      if (e.toString().contains('permission-denied')) {
-        return null;
-      }
-      debugPrint('AppUpdateService: Error fetching from Firestore: $e');
-      return null;
-    }
+  static Future<AppUpdateInfo?> fetchFromFirestore({dynamic firestore}) async {
+    return null;
   }
 
   static Future<AppUpdateInfo?> fetchUpdateInfo({
-    FirebaseFirestore? firestore,
+    dynamic firestore,
     http.Client? httpClient,
   }) async {
     final githubInfo = await fetchFromGitHubReleases(client: httpClient);
@@ -242,11 +226,8 @@ class AppUpdateService {
 
   static Future<void> publishUpdateInfo(
     AppUpdateInfo info, {
-    FirebaseFirestore? firestore,
-  }) async {
-    final db = firestore ?? FirebaseFirestore.instance;
-    await db.collection(configCollection).doc(updateDoc).set(info.toMap(), SetOptions(merge: true));
-  }
+    dynamic firestore,
+  }) async {}
 
   static Future<String> downloadUpdate(
     String url, {
@@ -314,7 +295,7 @@ del "%~f0"
     BuildContext context, {
     bool forceCheck = false,
     bool showNoUpdateToast = false,
-    FirebaseFirestore? firestore,
+    dynamic firestore,
     PackageInfo? mockPackageInfo,
     http.Client? mockHttpClient,
   }) async {

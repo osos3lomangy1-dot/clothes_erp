@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/entities/product_entity.dart';
 
 class ProductModel extends ProductEntity {
@@ -95,7 +94,11 @@ class ProductModel extends ProductEntity {
       images: (data['images'] as List?)?.map((e) => e.toString()).toList(),
       minStock: data['minStock'] ?? 5,
       isActive: data['isActive'] ?? true,
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: data['createdAt'] is DateTime
+          ? data['createdAt'] as DateTime
+          : (data['createdAt'] is String
+              ? DateTime.tryParse(data['createdAt']) ?? DateTime.now()
+              : DateTime.now()),
     );
   }
 
@@ -108,7 +111,7 @@ class ProductModel extends ProductEntity {
       'images': images,
       'minStock': minStock,
       'isActive': isActive,
-      'createdAt': Timestamp.fromDate(createdAt),
+      'createdAt': createdAt.toIso8601String(),
     };
   }
 }

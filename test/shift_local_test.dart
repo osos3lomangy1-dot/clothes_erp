@@ -10,7 +10,14 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _FakeAuthLocalDataSource implements AuthLocalDataSource {
-  UserModel? _user;
+  UserModel? _user = UserModel(
+    id: 'admin_1',
+    name: 'Admin',
+    email: 'admin@test.com',
+    role: 'admin',
+    isActive: true,
+    createdAt: DateTime(2026, 1, 1),
+  );
   @override
   Future<void> cacheUser(UserModel user) async => _user = user;
   @override
