@@ -129,7 +129,7 @@ class _MainLayoutState extends State<MainLayout> {
         children: [
           SizedBox(
             width: _isCollapsed ? 80 : 250,
-            child: Container(
+            child: Material(
               color: AppColors.primary,
               child: Column(
                 children: [
@@ -359,29 +359,32 @@ class _MainLayoutState extends State<MainLayout> {
   }
 
   Widget _navItem(IconData icon, String title, Widget? screen, {bool isPos = false, VoidCallback? onTapOverride}) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.white),
-      title: _isCollapsed
-          ? null
-          : Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
+    return Material(
+      color: Colors.transparent,
+      child: ListTile(
+        leading: Icon(icon, color: Colors.white),
+        title: _isCollapsed
+            ? null
+            : Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
               ),
-            ),
-      onTap: () {
-        CrashLoggerService.addBreadcrumb('اختيار من القائمة: $title');
-        CrashLoggerService.setContext('شاشة: $title');
-        if (onTapOverride != null) {
-          onTapOverride();
-        } else if (isPos) {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const PosScreen()));
-        } else if (screen != null) {
-          setState(() => _currentScreen = screen);
-        }
-      },
+        onTap: () {
+          CrashLoggerService.addBreadcrumb('اختيار من القائمة: $title');
+          CrashLoggerService.setContext('شاشة: $title');
+          if (onTapOverride != null) {
+            onTapOverride();
+          } else if (isPos) {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const PosScreen()));
+          } else if (screen != null) {
+            setState(() => _currentScreen = screen);
+          }
+        },
+      ),
     );
   }
 }
