@@ -12,6 +12,7 @@ import '../widgets/financial_comparison_bar_chart.dart';
 import '../widgets/payment_method_pie_chart.dart';
 import '../widgets/top_selling_products_widget.dart';
 import '../widgets/installments_report_section.dart';
+import '../widgets/promotions_report_section.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -608,6 +609,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                ),
                                const SizedBox(height: 20),
                                const InstallmentsReportSection(),
+                               const SizedBox(height: 20),
+                               PromotionsReportSection(
+                                 startDate: _dateRange?.start,
+                                 endDate: _dateRange?.end,
+                               ),
                             ],
                           );
                         }

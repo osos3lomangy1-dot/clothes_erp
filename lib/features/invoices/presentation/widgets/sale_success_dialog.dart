@@ -15,11 +15,12 @@ class SaleSuccessDialog extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 450),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
               Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
@@ -47,13 +48,67 @@ class SaleSuccessDialog extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.grey.shade200),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
                   children: [
-                    const Text('المبلغ المطلوب:', style: TextStyle(fontSize: 14)),
-                    Text(
-                      '${Money(invoice.total).toDisplay()} ج.م',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
+                    if (invoice.totalPromotionDiscount > 0 || invoice.discountAmount > 0) ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Flexible(
+                            child: Text('المجموع الفرعي:', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                          ),
+                          Text(
+                            '${Money(invoice.subtotal).toDisplay()} ج.م',
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      if (invoice.totalPromotionDiscount > 0) ...[
+                        const SizedBox(height: 6),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Flexible(
+                              child: Text('خصم العروض:', style: TextStyle(fontSize: 13, color: Colors.green)),
+                            ),
+                            Text(
+                              '-${Money(invoice.totalPromotionDiscount).toDisplay()} ج.م',
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.green),
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (invoice.discountAmount > 0) ...[
+                        const SizedBox(height: 6),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Flexible(
+                              child: Text('خصم إضافي:', style: TextStyle(fontSize: 13, color: Colors.red)),
+                            ),
+                            Text(
+                              '-${Money(invoice.discountAmount).toDisplay()} ج.م',
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.red),
+                            ),
+                          ],
+                        ),
+                      ],
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: Divider(height: 1),
+                      ),
+                    ],
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Flexible(
+                          child: Text('المبلغ المطلوب:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                        ),
+                        Text(
+                          '${Money(invoice.total).toDisplay()} ج.م',
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -117,6 +172,7 @@ class SaleSuccessDialog extends StatelessWidget {
           ),
         ),
       ),
+    ),
     );
   }
 }

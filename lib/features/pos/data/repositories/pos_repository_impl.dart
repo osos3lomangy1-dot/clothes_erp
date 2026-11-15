@@ -28,6 +28,8 @@ class PosRepositoryImpl implements PosRepository {
         'qty': i.quantity,
         'price': i.price,
         'cost': 0,
+        'discount': i.discount,
+        'promotionDiscount': i.promotionDiscount,
       }).toList();
       final createdId = await _localDataSource.checkout(
         items: items,
@@ -37,6 +39,7 @@ class PosRepositoryImpl implements PosRepository {
         paymentMethod: sale.paymentMethod,
         splits: sale.splits,
         saleId: sale.id.isNotEmpty ? sale.id : null,
+        promotionResult: sale.promotionResult,
       );
       return Right(SaleEntity(
         id: createdId,
@@ -51,6 +54,8 @@ class PosRepositoryImpl implements PosRepository {
         customerId: sale.customerId,
         syncStatus: sale.syncStatus,
         splits: sale.splits,
+        promotionResult: sale.promotionResult,
+        promotionDiscount: sale.promotionDiscount,
       ));
     } catch (e) {
       return Left(ServerFailure(e.toString()));

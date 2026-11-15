@@ -22,6 +22,7 @@ import '../../features/invoices/presentation/screens/invoices_screen.dart';
 import '../../features/partners/presentation/screens/partners_screen.dart';
 import '../../features/pos/presentation/screens/pos_screen.dart';
 import '../../features/products/presentation/screens/product_list_screen.dart';
+import '../../features/promotions/presentation/screens/promotions_screen.dart';
 import '../../features/purchases/presentation/screens/purchases_screen.dart';
 import '../../features/reports/presentation/screens/reports_screen.dart';
 import '../../features/returns/presentation/screens/return_screen.dart';
@@ -199,6 +200,8 @@ class _MainLayoutState extends State<MainLayout> {
                                     _navItem(Icons.history_rounded, 'حركات المخزن', const InventoryLogsScreen()),
                                   if (_featureEnabled(features, FeatureKeys.customers))
                                     _navItem(Icons.people_alt_rounded, 'سجل العملاء', const CustomerScreen()),
+                                  if (isAdmin && _featureEnabled(features, FeatureKeys.promotions))
+                                    _navItem(Icons.local_offer_rounded, 'العروض الترويجية', const PromotionsScreen()),
                                   if (_featureEnabled(features, FeatureKeys.installments))
                                     _navItem(Icons.payments_rounded, 'التقسيط', const InstallmentsListScreen()),
                                   if (_featureEnabled(features, FeatureKeys.expenses))

@@ -3826,6 +3826,18 @@ class $SaleItemsTable extends SaleItems
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _promotionDiscountPiastersMeta =
+      const VerificationMeta('promotionDiscountPiasters');
+  @override
+  late final GeneratedColumn<int> promotionDiscountPiasters =
+      GeneratedColumn<int>(
+        'promotion_discount_piasters',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(0),
+      );
   static const VerificationMeta _lineTotalMeta = const VerificationMeta(
     'lineTotal',
   );
@@ -3861,6 +3873,7 @@ class $SaleItemsTable extends SaleItems
     priceSnapshot,
     costSnapshot,
     lineDiscount,
+    promotionDiscountPiasters,
     lineTotal,
     createdAt,
   ];
@@ -3971,6 +3984,15 @@ class $SaleItemsTable extends SaleItems
         ),
       );
     }
+    if (data.containsKey('promotion_discount_piasters')) {
+      context.handle(
+        _promotionDiscountPiastersMeta,
+        promotionDiscountPiasters.isAcceptableOrUnknown(
+          data['promotion_discount_piasters']!,
+          _promotionDiscountPiastersMeta,
+        ),
+      );
+    }
     if (data.containsKey('line_total')) {
       context.handle(
         _lineTotalMeta,
@@ -4040,6 +4062,10 @@ class $SaleItemsTable extends SaleItems
         DriftSqlType.int,
         data['${effectivePrefix}line_discount'],
       )!,
+      promotionDiscountPiasters: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}promotion_discount_piasters'],
+      )!,
       lineTotal: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}line_total'],
@@ -4069,6 +4095,7 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
   final int priceSnapshot;
   final int costSnapshot;
   final int lineDiscount;
+  final int promotionDiscountPiasters;
   final int lineTotal;
   final DateTime createdAt;
   const SaleItem({
@@ -4083,6 +4110,7 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
     required this.priceSnapshot,
     required this.costSnapshot,
     required this.lineDiscount,
+    required this.promotionDiscountPiasters,
     required this.lineTotal,
     required this.createdAt,
   });
@@ -4100,6 +4128,9 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
     map['price_snapshot'] = Variable<int>(priceSnapshot);
     map['cost_snapshot'] = Variable<int>(costSnapshot);
     map['line_discount'] = Variable<int>(lineDiscount);
+    map['promotion_discount_piasters'] = Variable<int>(
+      promotionDiscountPiasters,
+    );
     map['line_total'] = Variable<int>(lineTotal);
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
@@ -4118,6 +4149,7 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
       priceSnapshot: Value(priceSnapshot),
       costSnapshot: Value(costSnapshot),
       lineDiscount: Value(lineDiscount),
+      promotionDiscountPiasters: Value(promotionDiscountPiasters),
       lineTotal: Value(lineTotal),
       createdAt: Value(createdAt),
     );
@@ -4140,6 +4172,9 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
       priceSnapshot: serializer.fromJson<int>(json['priceSnapshot']),
       costSnapshot: serializer.fromJson<int>(json['costSnapshot']),
       lineDiscount: serializer.fromJson<int>(json['lineDiscount']),
+      promotionDiscountPiasters: serializer.fromJson<int>(
+        json['promotionDiscountPiasters'],
+      ),
       lineTotal: serializer.fromJson<int>(json['lineTotal']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
@@ -4159,6 +4194,9 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
       'priceSnapshot': serializer.toJson<int>(priceSnapshot),
       'costSnapshot': serializer.toJson<int>(costSnapshot),
       'lineDiscount': serializer.toJson<int>(lineDiscount),
+      'promotionDiscountPiasters': serializer.toJson<int>(
+        promotionDiscountPiasters,
+      ),
       'lineTotal': serializer.toJson<int>(lineTotal),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
@@ -4176,6 +4214,7 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
     int? priceSnapshot,
     int? costSnapshot,
     int? lineDiscount,
+    int? promotionDiscountPiasters,
     int? lineTotal,
     DateTime? createdAt,
   }) => SaleItem(
@@ -4190,6 +4229,8 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
     priceSnapshot: priceSnapshot ?? this.priceSnapshot,
     costSnapshot: costSnapshot ?? this.costSnapshot,
     lineDiscount: lineDiscount ?? this.lineDiscount,
+    promotionDiscountPiasters:
+        promotionDiscountPiasters ?? this.promotionDiscountPiasters,
     lineTotal: lineTotal ?? this.lineTotal,
     createdAt: createdAt ?? this.createdAt,
   );
@@ -4214,6 +4255,9 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
       lineDiscount: data.lineDiscount.present
           ? data.lineDiscount.value
           : this.lineDiscount,
+      promotionDiscountPiasters: data.promotionDiscountPiasters.present
+          ? data.promotionDiscountPiasters.value
+          : this.promotionDiscountPiasters,
       lineTotal: data.lineTotal.present ? data.lineTotal.value : this.lineTotal,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
@@ -4233,6 +4277,7 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
           ..write('priceSnapshot: $priceSnapshot, ')
           ..write('costSnapshot: $costSnapshot, ')
           ..write('lineDiscount: $lineDiscount, ')
+          ..write('promotionDiscountPiasters: $promotionDiscountPiasters, ')
           ..write('lineTotal: $lineTotal, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
@@ -4252,6 +4297,7 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
     priceSnapshot,
     costSnapshot,
     lineDiscount,
+    promotionDiscountPiasters,
     lineTotal,
     createdAt,
   );
@@ -4270,6 +4316,7 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
           other.priceSnapshot == this.priceSnapshot &&
           other.costSnapshot == this.costSnapshot &&
           other.lineDiscount == this.lineDiscount &&
+          other.promotionDiscountPiasters == this.promotionDiscountPiasters &&
           other.lineTotal == this.lineTotal &&
           other.createdAt == this.createdAt);
 }
@@ -4286,6 +4333,7 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
   final Value<int> priceSnapshot;
   final Value<int> costSnapshot;
   final Value<int> lineDiscount;
+  final Value<int> promotionDiscountPiasters;
   final Value<int> lineTotal;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
@@ -4301,6 +4349,7 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
     this.priceSnapshot = const Value.absent(),
     this.costSnapshot = const Value.absent(),
     this.lineDiscount = const Value.absent(),
+    this.promotionDiscountPiasters = const Value.absent(),
     this.lineTotal = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -4317,6 +4366,7 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
     required int priceSnapshot,
     required int costSnapshot,
     this.lineDiscount = const Value.absent(),
+    this.promotionDiscountPiasters = const Value.absent(),
     required int lineTotal,
     required DateTime createdAt,
     this.rowid = const Value.absent(),
@@ -4344,6 +4394,7 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
     Expression<int>? priceSnapshot,
     Expression<int>? costSnapshot,
     Expression<int>? lineDiscount,
+    Expression<int>? promotionDiscountPiasters,
     Expression<int>? lineTotal,
     Expression<DateTime>? createdAt,
     Expression<int>? rowid,
@@ -4360,6 +4411,8 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
       if (priceSnapshot != null) 'price_snapshot': priceSnapshot,
       if (costSnapshot != null) 'cost_snapshot': costSnapshot,
       if (lineDiscount != null) 'line_discount': lineDiscount,
+      if (promotionDiscountPiasters != null)
+        'promotion_discount_piasters': promotionDiscountPiasters,
       if (lineTotal != null) 'line_total': lineTotal,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
@@ -4378,6 +4431,7 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
     Value<int>? priceSnapshot,
     Value<int>? costSnapshot,
     Value<int>? lineDiscount,
+    Value<int>? promotionDiscountPiasters,
     Value<int>? lineTotal,
     Value<DateTime>? createdAt,
     Value<int>? rowid,
@@ -4394,6 +4448,8 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
       priceSnapshot: priceSnapshot ?? this.priceSnapshot,
       costSnapshot: costSnapshot ?? this.costSnapshot,
       lineDiscount: lineDiscount ?? this.lineDiscount,
+      promotionDiscountPiasters:
+          promotionDiscountPiasters ?? this.promotionDiscountPiasters,
       lineTotal: lineTotal ?? this.lineTotal,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
@@ -4436,6 +4492,11 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
     if (lineDiscount.present) {
       map['line_discount'] = Variable<int>(lineDiscount.value);
     }
+    if (promotionDiscountPiasters.present) {
+      map['promotion_discount_piasters'] = Variable<int>(
+        promotionDiscountPiasters.value,
+      );
+    }
     if (lineTotal.present) {
       map['line_total'] = Variable<int>(lineTotal.value);
     }
@@ -4462,6 +4523,7 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
           ..write('priceSnapshot: $priceSnapshot, ')
           ..write('costSnapshot: $costSnapshot, ')
           ..write('lineDiscount: $lineDiscount, ')
+          ..write('promotionDiscountPiasters: $promotionDiscountPiasters, ')
           ..write('lineTotal: $lineTotal, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
@@ -19389,6 +19451,1537 @@ class SalePaymentsCompanion extends UpdateCompanion<SalePayment> {
   }
 }
 
+class $PromotionsTable extends Promotions
+    with TableInfo<$PromotionsTable, Promotion> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PromotionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _scopeMeta = const VerificationMeta('scope');
+  @override
+  late final GeneratedColumn<String> scope = GeneratedColumn<String>(
+    'scope',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _targetIdMeta = const VerificationMeta(
+    'targetId',
+  );
+  @override
+  late final GeneratedColumn<String> targetId = GeneratedColumn<String>(
+    'target_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _valueBpMeta = const VerificationMeta(
+    'valueBp',
+  );
+  @override
+  late final GeneratedColumn<int> valueBp = GeneratedColumn<int>(
+    'value_bp',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _valuePiastersMeta = const VerificationMeta(
+    'valuePiasters',
+  );
+  @override
+  late final GeneratedColumn<int> valuePiasters = GeneratedColumn<int>(
+    'value_piasters',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _minQuantityMeta = const VerificationMeta(
+    'minQuantity',
+  );
+  @override
+  late final GeneratedColumn<int> minQuantity = GeneratedColumn<int>(
+    'min_quantity',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _startsAtMeta = const VerificationMeta(
+    'startsAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startsAt = GeneratedColumn<DateTime>(
+    'starts_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _endsAtMeta = const VerificationMeta('endsAt');
+  @override
+  late final GeneratedColumn<DateTime> endsAt = GeneratedColumn<DateTime>(
+    'ends_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+    'isActive',
+  );
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+    'is_active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_active" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _priorityMeta = const VerificationMeta(
+    'priority',
+  );
+  @override
+  late final GeneratedColumn<int> priority = GeneratedColumn<int>(
+    'priority',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _createdByMeta = const VerificationMeta(
+    'createdBy',
+  );
+  @override
+  late final GeneratedColumn<String> createdBy = GeneratedColumn<String>(
+    'created_by',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    branchId,
+    name,
+    description,
+    type,
+    scope,
+    targetId,
+    valueBp,
+    valuePiasters,
+    minQuantity,
+    startsAt,
+    endsAt,
+    isActive,
+    priority,
+    createdBy,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'promotions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Promotion> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_branchIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('scope')) {
+      context.handle(
+        _scopeMeta,
+        scope.isAcceptableOrUnknown(data['scope']!, _scopeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_scopeMeta);
+    }
+    if (data.containsKey('target_id')) {
+      context.handle(
+        _targetIdMeta,
+        targetId.isAcceptableOrUnknown(data['target_id']!, _targetIdMeta),
+      );
+    }
+    if (data.containsKey('value_bp')) {
+      context.handle(
+        _valueBpMeta,
+        valueBp.isAcceptableOrUnknown(data['value_bp']!, _valueBpMeta),
+      );
+    }
+    if (data.containsKey('value_piasters')) {
+      context.handle(
+        _valuePiastersMeta,
+        valuePiasters.isAcceptableOrUnknown(
+          data['value_piasters']!,
+          _valuePiastersMeta,
+        ),
+      );
+    }
+    if (data.containsKey('min_quantity')) {
+      context.handle(
+        _minQuantityMeta,
+        minQuantity.isAcceptableOrUnknown(
+          data['min_quantity']!,
+          _minQuantityMeta,
+        ),
+      );
+    }
+    if (data.containsKey('starts_at')) {
+      context.handle(
+        _startsAtMeta,
+        startsAt.isAcceptableOrUnknown(data['starts_at']!, _startsAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startsAtMeta);
+    }
+    if (data.containsKey('ends_at')) {
+      context.handle(
+        _endsAtMeta,
+        endsAt.isAcceptableOrUnknown(data['ends_at']!, _endsAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_endsAtMeta);
+    }
+    if (data.containsKey('is_active')) {
+      context.handle(
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
+      );
+    }
+    if (data.containsKey('priority')) {
+      context.handle(
+        _priorityMeta,
+        priority.isAcceptableOrUnknown(data['priority']!, _priorityMeta),
+      );
+    }
+    if (data.containsKey('created_by')) {
+      context.handle(
+        _createdByMeta,
+        createdBy.isAcceptableOrUnknown(data['created_by']!, _createdByMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdByMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Promotion map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Promotion(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      ),
+      type: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type'],
+      )!,
+      scope: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}scope'],
+      )!,
+      targetId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_id'],
+      ),
+      valueBp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}value_bp'],
+      ),
+      valuePiasters: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}value_piasters'],
+      ),
+      minQuantity: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}min_quantity'],
+      )!,
+      startsAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}starts_at'],
+      )!,
+      endsAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}ends_at'],
+      )!,
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
+      )!,
+      priority: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}priority'],
+      )!,
+      createdBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}created_by'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+    );
+  }
+
+  @override
+  $PromotionsTable createAlias(String alias) {
+    return $PromotionsTable(attachedDatabase, alias);
+  }
+}
+
+class Promotion extends DataClass implements Insertable<Promotion> {
+  final String id;
+  final String branchId;
+  final String name;
+  final String? description;
+  final String type;
+  final String scope;
+  final String? targetId;
+  final int? valueBp;
+  final int? valuePiasters;
+  final int minQuantity;
+  final DateTime startsAt;
+  final DateTime endsAt;
+  final bool isActive;
+  final int priority;
+  final String createdBy;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  const Promotion({
+    required this.id,
+    required this.branchId,
+    required this.name,
+    this.description,
+    required this.type,
+    required this.scope,
+    this.targetId,
+    this.valueBp,
+    this.valuePiasters,
+    required this.minQuantity,
+    required this.startsAt,
+    required this.endsAt,
+    required this.isActive,
+    required this.priority,
+    required this.createdBy,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['branch_id'] = Variable<String>(branchId);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    map['type'] = Variable<String>(type);
+    map['scope'] = Variable<String>(scope);
+    if (!nullToAbsent || targetId != null) {
+      map['target_id'] = Variable<String>(targetId);
+    }
+    if (!nullToAbsent || valueBp != null) {
+      map['value_bp'] = Variable<int>(valueBp);
+    }
+    if (!nullToAbsent || valuePiasters != null) {
+      map['value_piasters'] = Variable<int>(valuePiasters);
+    }
+    map['min_quantity'] = Variable<int>(minQuantity);
+    map['starts_at'] = Variable<DateTime>(startsAt);
+    map['ends_at'] = Variable<DateTime>(endsAt);
+    map['is_active'] = Variable<bool>(isActive);
+    map['priority'] = Variable<int>(priority);
+    map['created_by'] = Variable<String>(createdBy);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    return map;
+  }
+
+  PromotionsCompanion toCompanion(bool nullToAbsent) {
+    return PromotionsCompanion(
+      id: Value(id),
+      branchId: Value(branchId),
+      name: Value(name),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
+      type: Value(type),
+      scope: Value(scope),
+      targetId: targetId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(targetId),
+      valueBp: valueBp == null && nullToAbsent
+          ? const Value.absent()
+          : Value(valueBp),
+      valuePiasters: valuePiasters == null && nullToAbsent
+          ? const Value.absent()
+          : Value(valuePiasters),
+      minQuantity: Value(minQuantity),
+      startsAt: Value(startsAt),
+      endsAt: Value(endsAt),
+      isActive: Value(isActive),
+      priority: Value(priority),
+      createdBy: Value(createdBy),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory Promotion.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Promotion(
+      id: serializer.fromJson<String>(json['id']),
+      branchId: serializer.fromJson<String>(json['branchId']),
+      name: serializer.fromJson<String>(json['name']),
+      description: serializer.fromJson<String?>(json['description']),
+      type: serializer.fromJson<String>(json['type']),
+      scope: serializer.fromJson<String>(json['scope']),
+      targetId: serializer.fromJson<String?>(json['targetId']),
+      valueBp: serializer.fromJson<int?>(json['valueBp']),
+      valuePiasters: serializer.fromJson<int?>(json['valuePiasters']),
+      minQuantity: serializer.fromJson<int>(json['minQuantity']),
+      startsAt: serializer.fromJson<DateTime>(json['startsAt']),
+      endsAt: serializer.fromJson<DateTime>(json['endsAt']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
+      priority: serializer.fromJson<int>(json['priority']),
+      createdBy: serializer.fromJson<String>(json['createdBy']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'branchId': serializer.toJson<String>(branchId),
+      'name': serializer.toJson<String>(name),
+      'description': serializer.toJson<String?>(description),
+      'type': serializer.toJson<String>(type),
+      'scope': serializer.toJson<String>(scope),
+      'targetId': serializer.toJson<String?>(targetId),
+      'valueBp': serializer.toJson<int?>(valueBp),
+      'valuePiasters': serializer.toJson<int?>(valuePiasters),
+      'minQuantity': serializer.toJson<int>(minQuantity),
+      'startsAt': serializer.toJson<DateTime>(startsAt),
+      'endsAt': serializer.toJson<DateTime>(endsAt),
+      'isActive': serializer.toJson<bool>(isActive),
+      'priority': serializer.toJson<int>(priority),
+      'createdBy': serializer.toJson<String>(createdBy),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+    };
+  }
+
+  Promotion copyWith({
+    String? id,
+    String? branchId,
+    String? name,
+    Value<String?> description = const Value.absent(),
+    String? type,
+    String? scope,
+    Value<String?> targetId = const Value.absent(),
+    Value<int?> valueBp = const Value.absent(),
+    Value<int?> valuePiasters = const Value.absent(),
+    int? minQuantity,
+    DateTime? startsAt,
+    DateTime? endsAt,
+    bool? isActive,
+    int? priority,
+    String? createdBy,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+  }) => Promotion(
+    id: id ?? this.id,
+    branchId: branchId ?? this.branchId,
+    name: name ?? this.name,
+    description: description.present ? description.value : this.description,
+    type: type ?? this.type,
+    scope: scope ?? this.scope,
+    targetId: targetId.present ? targetId.value : this.targetId,
+    valueBp: valueBp.present ? valueBp.value : this.valueBp,
+    valuePiasters: valuePiasters.present
+        ? valuePiasters.value
+        : this.valuePiasters,
+    minQuantity: minQuantity ?? this.minQuantity,
+    startsAt: startsAt ?? this.startsAt,
+    endsAt: endsAt ?? this.endsAt,
+    isActive: isActive ?? this.isActive,
+    priority: priority ?? this.priority,
+    createdBy: createdBy ?? this.createdBy,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+  );
+  Promotion copyWithCompanion(PromotionsCompanion data) {
+    return Promotion(
+      id: data.id.present ? data.id.value : this.id,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      name: data.name.present ? data.name.value : this.name,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      type: data.type.present ? data.type.value : this.type,
+      scope: data.scope.present ? data.scope.value : this.scope,
+      targetId: data.targetId.present ? data.targetId.value : this.targetId,
+      valueBp: data.valueBp.present ? data.valueBp.value : this.valueBp,
+      valuePiasters: data.valuePiasters.present
+          ? data.valuePiasters.value
+          : this.valuePiasters,
+      minQuantity: data.minQuantity.present
+          ? data.minQuantity.value
+          : this.minQuantity,
+      startsAt: data.startsAt.present ? data.startsAt.value : this.startsAt,
+      endsAt: data.endsAt.present ? data.endsAt.value : this.endsAt,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      priority: data.priority.present ? data.priority.value : this.priority,
+      createdBy: data.createdBy.present ? data.createdBy.value : this.createdBy,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Promotion(')
+          ..write('id: $id, ')
+          ..write('branchId: $branchId, ')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('type: $type, ')
+          ..write('scope: $scope, ')
+          ..write('targetId: $targetId, ')
+          ..write('valueBp: $valueBp, ')
+          ..write('valuePiasters: $valuePiasters, ')
+          ..write('minQuantity: $minQuantity, ')
+          ..write('startsAt: $startsAt, ')
+          ..write('endsAt: $endsAt, ')
+          ..write('isActive: $isActive, ')
+          ..write('priority: $priority, ')
+          ..write('createdBy: $createdBy, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    branchId,
+    name,
+    description,
+    type,
+    scope,
+    targetId,
+    valueBp,
+    valuePiasters,
+    minQuantity,
+    startsAt,
+    endsAt,
+    isActive,
+    priority,
+    createdBy,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Promotion &&
+          other.id == this.id &&
+          other.branchId == this.branchId &&
+          other.name == this.name &&
+          other.description == this.description &&
+          other.type == this.type &&
+          other.scope == this.scope &&
+          other.targetId == this.targetId &&
+          other.valueBp == this.valueBp &&
+          other.valuePiasters == this.valuePiasters &&
+          other.minQuantity == this.minQuantity &&
+          other.startsAt == this.startsAt &&
+          other.endsAt == this.endsAt &&
+          other.isActive == this.isActive &&
+          other.priority == this.priority &&
+          other.createdBy == this.createdBy &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
+}
+
+class PromotionsCompanion extends UpdateCompanion<Promotion> {
+  final Value<String> id;
+  final Value<String> branchId;
+  final Value<String> name;
+  final Value<String?> description;
+  final Value<String> type;
+  final Value<String> scope;
+  final Value<String?> targetId;
+  final Value<int?> valueBp;
+  final Value<int?> valuePiasters;
+  final Value<int> minQuantity;
+  final Value<DateTime> startsAt;
+  final Value<DateTime> endsAt;
+  final Value<bool> isActive;
+  final Value<int> priority;
+  final Value<String> createdBy;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<int> rowid;
+  const PromotionsCompanion({
+    this.id = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.description = const Value.absent(),
+    this.type = const Value.absent(),
+    this.scope = const Value.absent(),
+    this.targetId = const Value.absent(),
+    this.valueBp = const Value.absent(),
+    this.valuePiasters = const Value.absent(),
+    this.minQuantity = const Value.absent(),
+    this.startsAt = const Value.absent(),
+    this.endsAt = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.priority = const Value.absent(),
+    this.createdBy = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PromotionsCompanion.insert({
+    required String id,
+    required String branchId,
+    required String name,
+    this.description = const Value.absent(),
+    required String type,
+    required String scope,
+    this.targetId = const Value.absent(),
+    this.valueBp = const Value.absent(),
+    this.valuePiasters = const Value.absent(),
+    this.minQuantity = const Value.absent(),
+    required DateTime startsAt,
+    required DateTime endsAt,
+    this.isActive = const Value.absent(),
+    this.priority = const Value.absent(),
+    required String createdBy,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       branchId = Value(branchId),
+       name = Value(name),
+       type = Value(type),
+       scope = Value(scope),
+       startsAt = Value(startsAt),
+       endsAt = Value(endsAt),
+       createdBy = Value(createdBy),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<Promotion> custom({
+    Expression<String>? id,
+    Expression<String>? branchId,
+    Expression<String>? name,
+    Expression<String>? description,
+    Expression<String>? type,
+    Expression<String>? scope,
+    Expression<String>? targetId,
+    Expression<int>? valueBp,
+    Expression<int>? valuePiasters,
+    Expression<int>? minQuantity,
+    Expression<DateTime>? startsAt,
+    Expression<DateTime>? endsAt,
+    Expression<bool>? isActive,
+    Expression<int>? priority,
+    Expression<String>? createdBy,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (branchId != null) 'branch_id': branchId,
+      if (name != null) 'name': name,
+      if (description != null) 'description': description,
+      if (type != null) 'type': type,
+      if (scope != null) 'scope': scope,
+      if (targetId != null) 'target_id': targetId,
+      if (valueBp != null) 'value_bp': valueBp,
+      if (valuePiasters != null) 'value_piasters': valuePiasters,
+      if (minQuantity != null) 'min_quantity': minQuantity,
+      if (startsAt != null) 'starts_at': startsAt,
+      if (endsAt != null) 'ends_at': endsAt,
+      if (isActive != null) 'is_active': isActive,
+      if (priority != null) 'priority': priority,
+      if (createdBy != null) 'created_by': createdBy,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PromotionsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? branchId,
+    Value<String>? name,
+    Value<String?>? description,
+    Value<String>? type,
+    Value<String>? scope,
+    Value<String?>? targetId,
+    Value<int?>? valueBp,
+    Value<int?>? valuePiasters,
+    Value<int>? minQuantity,
+    Value<DateTime>? startsAt,
+    Value<DateTime>? endsAt,
+    Value<bool>? isActive,
+    Value<int>? priority,
+    Value<String>? createdBy,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<int>? rowid,
+  }) {
+    return PromotionsCompanion(
+      id: id ?? this.id,
+      branchId: branchId ?? this.branchId,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      type: type ?? this.type,
+      scope: scope ?? this.scope,
+      targetId: targetId ?? this.targetId,
+      valueBp: valueBp ?? this.valueBp,
+      valuePiasters: valuePiasters ?? this.valuePiasters,
+      minQuantity: minQuantity ?? this.minQuantity,
+      startsAt: startsAt ?? this.startsAt,
+      endsAt: endsAt ?? this.endsAt,
+      isActive: isActive ?? this.isActive,
+      priority: priority ?? this.priority,
+      createdBy: createdBy ?? this.createdBy,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (scope.present) {
+      map['scope'] = Variable<String>(scope.value);
+    }
+    if (targetId.present) {
+      map['target_id'] = Variable<String>(targetId.value);
+    }
+    if (valueBp.present) {
+      map['value_bp'] = Variable<int>(valueBp.value);
+    }
+    if (valuePiasters.present) {
+      map['value_piasters'] = Variable<int>(valuePiasters.value);
+    }
+    if (minQuantity.present) {
+      map['min_quantity'] = Variable<int>(minQuantity.value);
+    }
+    if (startsAt.present) {
+      map['starts_at'] = Variable<DateTime>(startsAt.value);
+    }
+    if (endsAt.present) {
+      map['ends_at'] = Variable<DateTime>(endsAt.value);
+    }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
+    }
+    if (priority.present) {
+      map['priority'] = Variable<int>(priority.value);
+    }
+    if (createdBy.present) {
+      map['created_by'] = Variable<String>(createdBy.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PromotionsCompanion(')
+          ..write('id: $id, ')
+          ..write('branchId: $branchId, ')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('type: $type, ')
+          ..write('scope: $scope, ')
+          ..write('targetId: $targetId, ')
+          ..write('valueBp: $valueBp, ')
+          ..write('valuePiasters: $valuePiasters, ')
+          ..write('minQuantity: $minQuantity, ')
+          ..write('startsAt: $startsAt, ')
+          ..write('endsAt: $endsAt, ')
+          ..write('isActive: $isActive, ')
+          ..write('priority: $priority, ')
+          ..write('createdBy: $createdBy, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PromotionApplicationsTable extends PromotionApplications
+    with TableInfo<$PromotionApplicationsTable, PromotionApplication> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PromotionApplicationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _promotionIdMeta = const VerificationMeta(
+    'promotionId',
+  );
+  @override
+  late final GeneratedColumn<String> promotionId = GeneratedColumn<String>(
+    'promotion_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _saleIdMeta = const VerificationMeta('saleId');
+  @override
+  late final GeneratedColumn<String> saleId = GeneratedColumn<String>(
+    'sale_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _saleItemIdMeta = const VerificationMeta(
+    'saleItemId',
+  );
+  @override
+  late final GeneratedColumn<String> saleItemId = GeneratedColumn<String>(
+    'sale_item_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _discountPiastersMeta = const VerificationMeta(
+    'discountPiasters',
+  );
+  @override
+  late final GeneratedColumn<int> discountPiasters = GeneratedColumn<int>(
+    'discount_piasters',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    branchId,
+    promotionId,
+    saleId,
+    saleItemId,
+    discountPiasters,
+    createdAt,
+    deletedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'promotion_applications';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PromotionApplication> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_branchIdMeta);
+    }
+    if (data.containsKey('promotion_id')) {
+      context.handle(
+        _promotionIdMeta,
+        promotionId.isAcceptableOrUnknown(
+          data['promotion_id']!,
+          _promotionIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_promotionIdMeta);
+    }
+    if (data.containsKey('sale_id')) {
+      context.handle(
+        _saleIdMeta,
+        saleId.isAcceptableOrUnknown(data['sale_id']!, _saleIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_saleIdMeta);
+    }
+    if (data.containsKey('sale_item_id')) {
+      context.handle(
+        _saleItemIdMeta,
+        saleItemId.isAcceptableOrUnknown(
+          data['sale_item_id']!,
+          _saleItemIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_saleItemIdMeta);
+    }
+    if (data.containsKey('discount_piasters')) {
+      context.handle(
+        _discountPiastersMeta,
+        discountPiasters.isAcceptableOrUnknown(
+          data['discount_piasters']!,
+          _discountPiastersMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_discountPiastersMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PromotionApplication map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PromotionApplication(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      )!,
+      promotionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}promotion_id'],
+      )!,
+      saleId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sale_id'],
+      )!,
+      saleItemId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sale_item_id'],
+      )!,
+      discountPiasters: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}discount_piasters'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+    );
+  }
+
+  @override
+  $PromotionApplicationsTable createAlias(String alias) {
+    return $PromotionApplicationsTable(attachedDatabase, alias);
+  }
+}
+
+class PromotionApplication extends DataClass
+    implements Insertable<PromotionApplication> {
+  final String id;
+  final String branchId;
+  final String promotionId;
+  final String saleId;
+  final String saleItemId;
+  final int discountPiasters;
+  final DateTime createdAt;
+  final DateTime? deletedAt;
+  const PromotionApplication({
+    required this.id,
+    required this.branchId,
+    required this.promotionId,
+    required this.saleId,
+    required this.saleItemId,
+    required this.discountPiasters,
+    required this.createdAt,
+    this.deletedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['branch_id'] = Variable<String>(branchId);
+    map['promotion_id'] = Variable<String>(promotionId);
+    map['sale_id'] = Variable<String>(saleId);
+    map['sale_item_id'] = Variable<String>(saleItemId);
+    map['discount_piasters'] = Variable<int>(discountPiasters);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    return map;
+  }
+
+  PromotionApplicationsCompanion toCompanion(bool nullToAbsent) {
+    return PromotionApplicationsCompanion(
+      id: Value(id),
+      branchId: Value(branchId),
+      promotionId: Value(promotionId),
+      saleId: Value(saleId),
+      saleItemId: Value(saleItemId),
+      discountPiasters: Value(discountPiasters),
+      createdAt: Value(createdAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory PromotionApplication.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PromotionApplication(
+      id: serializer.fromJson<String>(json['id']),
+      branchId: serializer.fromJson<String>(json['branchId']),
+      promotionId: serializer.fromJson<String>(json['promotionId']),
+      saleId: serializer.fromJson<String>(json['saleId']),
+      saleItemId: serializer.fromJson<String>(json['saleItemId']),
+      discountPiasters: serializer.fromJson<int>(json['discountPiasters']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'branchId': serializer.toJson<String>(branchId),
+      'promotionId': serializer.toJson<String>(promotionId),
+      'saleId': serializer.toJson<String>(saleId),
+      'saleItemId': serializer.toJson<String>(saleItemId),
+      'discountPiasters': serializer.toJson<int>(discountPiasters),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+    };
+  }
+
+  PromotionApplication copyWith({
+    String? id,
+    String? branchId,
+    String? promotionId,
+    String? saleId,
+    String? saleItemId,
+    int? discountPiasters,
+    DateTime? createdAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+  }) => PromotionApplication(
+    id: id ?? this.id,
+    branchId: branchId ?? this.branchId,
+    promotionId: promotionId ?? this.promotionId,
+    saleId: saleId ?? this.saleId,
+    saleItemId: saleItemId ?? this.saleItemId,
+    discountPiasters: discountPiasters ?? this.discountPiasters,
+    createdAt: createdAt ?? this.createdAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+  );
+  PromotionApplication copyWithCompanion(PromotionApplicationsCompanion data) {
+    return PromotionApplication(
+      id: data.id.present ? data.id.value : this.id,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      promotionId: data.promotionId.present
+          ? data.promotionId.value
+          : this.promotionId,
+      saleId: data.saleId.present ? data.saleId.value : this.saleId,
+      saleItemId: data.saleItemId.present
+          ? data.saleItemId.value
+          : this.saleItemId,
+      discountPiasters: data.discountPiasters.present
+          ? data.discountPiasters.value
+          : this.discountPiasters,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PromotionApplication(')
+          ..write('id: $id, ')
+          ..write('branchId: $branchId, ')
+          ..write('promotionId: $promotionId, ')
+          ..write('saleId: $saleId, ')
+          ..write('saleItemId: $saleItemId, ')
+          ..write('discountPiasters: $discountPiasters, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    branchId,
+    promotionId,
+    saleId,
+    saleItemId,
+    discountPiasters,
+    createdAt,
+    deletedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PromotionApplication &&
+          other.id == this.id &&
+          other.branchId == this.branchId &&
+          other.promotionId == this.promotionId &&
+          other.saleId == this.saleId &&
+          other.saleItemId == this.saleItemId &&
+          other.discountPiasters == this.discountPiasters &&
+          other.createdAt == this.createdAt &&
+          other.deletedAt == this.deletedAt);
+}
+
+class PromotionApplicationsCompanion
+    extends UpdateCompanion<PromotionApplication> {
+  final Value<String> id;
+  final Value<String> branchId;
+  final Value<String> promotionId;
+  final Value<String> saleId;
+  final Value<String> saleItemId;
+  final Value<int> discountPiasters;
+  final Value<DateTime> createdAt;
+  final Value<DateTime?> deletedAt;
+  final Value<int> rowid;
+  const PromotionApplicationsCompanion({
+    this.id = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.promotionId = const Value.absent(),
+    this.saleId = const Value.absent(),
+    this.saleItemId = const Value.absent(),
+    this.discountPiasters = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PromotionApplicationsCompanion.insert({
+    required String id,
+    required String branchId,
+    required String promotionId,
+    required String saleId,
+    required String saleItemId,
+    required int discountPiasters,
+    required DateTime createdAt,
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       branchId = Value(branchId),
+       promotionId = Value(promotionId),
+       saleId = Value(saleId),
+       saleItemId = Value(saleItemId),
+       discountPiasters = Value(discountPiasters),
+       createdAt = Value(createdAt);
+  static Insertable<PromotionApplication> custom({
+    Expression<String>? id,
+    Expression<String>? branchId,
+    Expression<String>? promotionId,
+    Expression<String>? saleId,
+    Expression<String>? saleItemId,
+    Expression<int>? discountPiasters,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (branchId != null) 'branch_id': branchId,
+      if (promotionId != null) 'promotion_id': promotionId,
+      if (saleId != null) 'sale_id': saleId,
+      if (saleItemId != null) 'sale_item_id': saleItemId,
+      if (discountPiasters != null) 'discount_piasters': discountPiasters,
+      if (createdAt != null) 'created_at': createdAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PromotionApplicationsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? branchId,
+    Value<String>? promotionId,
+    Value<String>? saleId,
+    Value<String>? saleItemId,
+    Value<int>? discountPiasters,
+    Value<DateTime>? createdAt,
+    Value<DateTime?>? deletedAt,
+    Value<int>? rowid,
+  }) {
+    return PromotionApplicationsCompanion(
+      id: id ?? this.id,
+      branchId: branchId ?? this.branchId,
+      promotionId: promotionId ?? this.promotionId,
+      saleId: saleId ?? this.saleId,
+      saleItemId: saleItemId ?? this.saleItemId,
+      discountPiasters: discountPiasters ?? this.discountPiasters,
+      createdAt: createdAt ?? this.createdAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
+    }
+    if (promotionId.present) {
+      map['promotion_id'] = Variable<String>(promotionId.value);
+    }
+    if (saleId.present) {
+      map['sale_id'] = Variable<String>(saleId.value);
+    }
+    if (saleItemId.present) {
+      map['sale_item_id'] = Variable<String>(saleItemId.value);
+    }
+    if (discountPiasters.present) {
+      map['discount_piasters'] = Variable<int>(discountPiasters.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PromotionApplicationsCompanion(')
+          ..write('id: $id, ')
+          ..write('branchId: $branchId, ')
+          ..write('promotionId: $promotionId, ')
+          ..write('saleId: $saleId, ')
+          ..write('saleItemId: $saleItemId, ')
+          ..write('discountPiasters: $discountPiasters, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -19432,6 +21025,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $InstallmentPaymentsTable(this);
   late final $CashMovementsTable cashMovements = $CashMovementsTable(this);
   late final $SalePaymentsTable salePayments = $SalePaymentsTable(this);
+  late final $PromotionsTable promotions = $PromotionsTable(this);
+  late final $PromotionApplicationsTable promotionApplications =
+      $PromotionApplicationsTable(this);
   late final Index idxInventoryLogsVariantIdCreatedAt = Index(
     'idx_inventory_logs_variantId_createdAt',
     'CREATE INDEX idx_inventory_logs_variantId_createdAt ON inventory_logs (variant_id, created_at)',
@@ -19475,6 +21071,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     installmentPayments,
     cashMovements,
     salePayments,
+    promotions,
+    promotionApplications,
     idxInventoryLogsVariantIdCreatedAt,
     idxSyncQueueStatusCreatedAt,
   ];
@@ -21767,6 +23365,7 @@ typedef $$SaleItemsTableCreateCompanionBuilder =
       required int priceSnapshot,
       required int costSnapshot,
       Value<int> lineDiscount,
+      Value<int> promotionDiscountPiasters,
       required int lineTotal,
       required DateTime createdAt,
       Value<int> rowid,
@@ -21784,6 +23383,7 @@ typedef $$SaleItemsTableUpdateCompanionBuilder =
       Value<int> priceSnapshot,
       Value<int> costSnapshot,
       Value<int> lineDiscount,
+      Value<int> promotionDiscountPiasters,
       Value<int> lineTotal,
       Value<DateTime> createdAt,
       Value<int> rowid,
@@ -21868,6 +23468,11 @@ class $$SaleItemsTableFilterComposer
 
   ColumnFilters<int> get lineDiscount => $composableBuilder(
     column: $table.lineDiscount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get promotionDiscountPiasters => $composableBuilder(
+    column: $table.promotionDiscountPiasters,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -21964,6 +23569,11 @@ class $$SaleItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get promotionDiscountPiasters => $composableBuilder(
+    column: $table.promotionDiscountPiasters,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get lineTotal => $composableBuilder(
     column: $table.lineTotal,
     builder: (column) => ColumnOrderings(column),
@@ -22045,6 +23655,11 @@ class $$SaleItemsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get promotionDiscountPiasters => $composableBuilder(
+    column: $table.promotionDiscountPiasters,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get lineTotal =>
       $composableBuilder(column: $table.lineTotal, builder: (column) => column);
 
@@ -22114,6 +23729,7 @@ class $$SaleItemsTableTableManager
                 Value<int> priceSnapshot = const Value.absent(),
                 Value<int> costSnapshot = const Value.absent(),
                 Value<int> lineDiscount = const Value.absent(),
+                Value<int> promotionDiscountPiasters = const Value.absent(),
                 Value<int> lineTotal = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -22129,6 +23745,7 @@ class $$SaleItemsTableTableManager
                 priceSnapshot: priceSnapshot,
                 costSnapshot: costSnapshot,
                 lineDiscount: lineDiscount,
+                promotionDiscountPiasters: promotionDiscountPiasters,
                 lineTotal: lineTotal,
                 createdAt: createdAt,
                 rowid: rowid,
@@ -22146,6 +23763,7 @@ class $$SaleItemsTableTableManager
                 required int priceSnapshot,
                 required int costSnapshot,
                 Value<int> lineDiscount = const Value.absent(),
+                Value<int> promotionDiscountPiasters = const Value.absent(),
                 required int lineTotal,
                 required DateTime createdAt,
                 Value<int> rowid = const Value.absent(),
@@ -22161,6 +23779,7 @@ class $$SaleItemsTableTableManager
                 priceSnapshot: priceSnapshot,
                 costSnapshot: costSnapshot,
                 lineDiscount: lineDiscount,
+                promotionDiscountPiasters: promotionDiscountPiasters,
                 lineTotal: lineTotal,
                 createdAt: createdAt,
                 rowid: rowid,
@@ -29971,6 +31590,738 @@ typedef $$SalePaymentsTableProcessedTableManager =
       SalePayment,
       PrefetchHooks Function()
     >;
+typedef $$PromotionsTableCreateCompanionBuilder =
+    PromotionsCompanion Function({
+      required String id,
+      required String branchId,
+      required String name,
+      Value<String?> description,
+      required String type,
+      required String scope,
+      Value<String?> targetId,
+      Value<int?> valueBp,
+      Value<int?> valuePiasters,
+      Value<int> minQuantity,
+      required DateTime startsAt,
+      required DateTime endsAt,
+      Value<bool> isActive,
+      Value<int> priority,
+      required String createdBy,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+typedef $$PromotionsTableUpdateCompanionBuilder =
+    PromotionsCompanion Function({
+      Value<String> id,
+      Value<String> branchId,
+      Value<String> name,
+      Value<String?> description,
+      Value<String> type,
+      Value<String> scope,
+      Value<String?> targetId,
+      Value<int?> valueBp,
+      Value<int?> valuePiasters,
+      Value<int> minQuantity,
+      Value<DateTime> startsAt,
+      Value<DateTime> endsAt,
+      Value<bool> isActive,
+      Value<int> priority,
+      Value<String> createdBy,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+
+class $$PromotionsTableFilterComposer
+    extends Composer<_$AppDatabase, $PromotionsTable> {
+  $$PromotionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get scope => $composableBuilder(
+    column: $table.scope,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get targetId => $composableBuilder(
+    column: $table.targetId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get valueBp => $composableBuilder(
+    column: $table.valueBp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get valuePiasters => $composableBuilder(
+    column: $table.valuePiasters,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get minQuantity => $composableBuilder(
+    column: $table.minQuantity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startsAt => $composableBuilder(
+    column: $table.startsAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get endsAt => $composableBuilder(
+    column: $table.endsAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get priority => $composableBuilder(
+    column: $table.priority,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get createdBy => $composableBuilder(
+    column: $table.createdBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PromotionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PromotionsTable> {
+  $$PromotionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get scope => $composableBuilder(
+    column: $table.scope,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get targetId => $composableBuilder(
+    column: $table.targetId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get valueBp => $composableBuilder(
+    column: $table.valueBp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get valuePiasters => $composableBuilder(
+    column: $table.valuePiasters,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get minQuantity => $composableBuilder(
+    column: $table.minQuantity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startsAt => $composableBuilder(
+    column: $table.startsAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get endsAt => $composableBuilder(
+    column: $table.endsAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get priority => $composableBuilder(
+    column: $table.priority,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get createdBy => $composableBuilder(
+    column: $table.createdBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PromotionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PromotionsTable> {
+  $$PromotionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get scope =>
+      $composableBuilder(column: $table.scope, builder: (column) => column);
+
+  GeneratedColumn<String> get targetId =>
+      $composableBuilder(column: $table.targetId, builder: (column) => column);
+
+  GeneratedColumn<int> get valueBp =>
+      $composableBuilder(column: $table.valueBp, builder: (column) => column);
+
+  GeneratedColumn<int> get valuePiasters => $composableBuilder(
+    column: $table.valuePiasters,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get minQuantity => $composableBuilder(
+    column: $table.minQuantity,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get startsAt =>
+      $composableBuilder(column: $table.startsAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get endsAt =>
+      $composableBuilder(column: $table.endsAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<int> get priority =>
+      $composableBuilder(column: $table.priority, builder: (column) => column);
+
+  GeneratedColumn<String> get createdBy =>
+      $composableBuilder(column: $table.createdBy, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+}
+
+class $$PromotionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PromotionsTable,
+          Promotion,
+          $$PromotionsTableFilterComposer,
+          $$PromotionsTableOrderingComposer,
+          $$PromotionsTableAnnotationComposer,
+          $$PromotionsTableCreateCompanionBuilder,
+          $$PromotionsTableUpdateCompanionBuilder,
+          (
+            Promotion,
+            BaseReferences<_$AppDatabase, $PromotionsTable, Promotion>,
+          ),
+          Promotion,
+          PrefetchHooks Function()
+        > {
+  $$PromotionsTableTableManager(_$AppDatabase db, $PromotionsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PromotionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PromotionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PromotionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> branchId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<String> scope = const Value.absent(),
+                Value<String?> targetId = const Value.absent(),
+                Value<int?> valueBp = const Value.absent(),
+                Value<int?> valuePiasters = const Value.absent(),
+                Value<int> minQuantity = const Value.absent(),
+                Value<DateTime> startsAt = const Value.absent(),
+                Value<DateTime> endsAt = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<int> priority = const Value.absent(),
+                Value<String> createdBy = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PromotionsCompanion(
+                id: id,
+                branchId: branchId,
+                name: name,
+                description: description,
+                type: type,
+                scope: scope,
+                targetId: targetId,
+                valueBp: valueBp,
+                valuePiasters: valuePiasters,
+                minQuantity: minQuantity,
+                startsAt: startsAt,
+                endsAt: endsAt,
+                isActive: isActive,
+                priority: priority,
+                createdBy: createdBy,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String branchId,
+                required String name,
+                Value<String?> description = const Value.absent(),
+                required String type,
+                required String scope,
+                Value<String?> targetId = const Value.absent(),
+                Value<int?> valueBp = const Value.absent(),
+                Value<int?> valuePiasters = const Value.absent(),
+                Value<int> minQuantity = const Value.absent(),
+                required DateTime startsAt,
+                required DateTime endsAt,
+                Value<bool> isActive = const Value.absent(),
+                Value<int> priority = const Value.absent(),
+                required String createdBy,
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PromotionsCompanion.insert(
+                id: id,
+                branchId: branchId,
+                name: name,
+                description: description,
+                type: type,
+                scope: scope,
+                targetId: targetId,
+                valueBp: valueBp,
+                valuePiasters: valuePiasters,
+                minQuantity: minQuantity,
+                startsAt: startsAt,
+                endsAt: endsAt,
+                isActive: isActive,
+                priority: priority,
+                createdBy: createdBy,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PromotionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PromotionsTable,
+      Promotion,
+      $$PromotionsTableFilterComposer,
+      $$PromotionsTableOrderingComposer,
+      $$PromotionsTableAnnotationComposer,
+      $$PromotionsTableCreateCompanionBuilder,
+      $$PromotionsTableUpdateCompanionBuilder,
+      (Promotion, BaseReferences<_$AppDatabase, $PromotionsTable, Promotion>),
+      Promotion,
+      PrefetchHooks Function()
+    >;
+typedef $$PromotionApplicationsTableCreateCompanionBuilder =
+    PromotionApplicationsCompanion Function({
+      required String id,
+      required String branchId,
+      required String promotionId,
+      required String saleId,
+      required String saleItemId,
+      required int discountPiasters,
+      required DateTime createdAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+typedef $$PromotionApplicationsTableUpdateCompanionBuilder =
+    PromotionApplicationsCompanion Function({
+      Value<String> id,
+      Value<String> branchId,
+      Value<String> promotionId,
+      Value<String> saleId,
+      Value<String> saleItemId,
+      Value<int> discountPiasters,
+      Value<DateTime> createdAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+
+class $$PromotionApplicationsTableFilterComposer
+    extends Composer<_$AppDatabase, $PromotionApplicationsTable> {
+  $$PromotionApplicationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get promotionId => $composableBuilder(
+    column: $table.promotionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get saleId => $composableBuilder(
+    column: $table.saleId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get saleItemId => $composableBuilder(
+    column: $table.saleItemId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get discountPiasters => $composableBuilder(
+    column: $table.discountPiasters,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PromotionApplicationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PromotionApplicationsTable> {
+  $$PromotionApplicationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get promotionId => $composableBuilder(
+    column: $table.promotionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get saleId => $composableBuilder(
+    column: $table.saleId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get saleItemId => $composableBuilder(
+    column: $table.saleItemId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get discountPiasters => $composableBuilder(
+    column: $table.discountPiasters,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PromotionApplicationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PromotionApplicationsTable> {
+  $$PromotionApplicationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<String> get promotionId => $composableBuilder(
+    column: $table.promotionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get saleId =>
+      $composableBuilder(column: $table.saleId, builder: (column) => column);
+
+  GeneratedColumn<String> get saleItemId => $composableBuilder(
+    column: $table.saleItemId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get discountPiasters => $composableBuilder(
+    column: $table.discountPiasters,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+}
+
+class $$PromotionApplicationsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PromotionApplicationsTable,
+          PromotionApplication,
+          $$PromotionApplicationsTableFilterComposer,
+          $$PromotionApplicationsTableOrderingComposer,
+          $$PromotionApplicationsTableAnnotationComposer,
+          $$PromotionApplicationsTableCreateCompanionBuilder,
+          $$PromotionApplicationsTableUpdateCompanionBuilder,
+          (
+            PromotionApplication,
+            BaseReferences<
+              _$AppDatabase,
+              $PromotionApplicationsTable,
+              PromotionApplication
+            >,
+          ),
+          PromotionApplication,
+          PrefetchHooks Function()
+        > {
+  $$PromotionApplicationsTableTableManager(
+    _$AppDatabase db,
+    $PromotionApplicationsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PromotionApplicationsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$PromotionApplicationsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$PromotionApplicationsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> branchId = const Value.absent(),
+                Value<String> promotionId = const Value.absent(),
+                Value<String> saleId = const Value.absent(),
+                Value<String> saleItemId = const Value.absent(),
+                Value<int> discountPiasters = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PromotionApplicationsCompanion(
+                id: id,
+                branchId: branchId,
+                promotionId: promotionId,
+                saleId: saleId,
+                saleItemId: saleItemId,
+                discountPiasters: discountPiasters,
+                createdAt: createdAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String branchId,
+                required String promotionId,
+                required String saleId,
+                required String saleItemId,
+                required int discountPiasters,
+                required DateTime createdAt,
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PromotionApplicationsCompanion.insert(
+                id: id,
+                branchId: branchId,
+                promotionId: promotionId,
+                saleId: saleId,
+                saleItemId: saleItemId,
+                discountPiasters: discountPiasters,
+                createdAt: createdAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PromotionApplicationsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PromotionApplicationsTable,
+      PromotionApplication,
+      $$PromotionApplicationsTableFilterComposer,
+      $$PromotionApplicationsTableOrderingComposer,
+      $$PromotionApplicationsTableAnnotationComposer,
+      $$PromotionApplicationsTableCreateCompanionBuilder,
+      $$PromotionApplicationsTableUpdateCompanionBuilder,
+      (
+        PromotionApplication,
+        BaseReferences<
+          _$AppDatabase,
+          $PromotionApplicationsTable,
+          PromotionApplication
+        >,
+      ),
+      PromotionApplication,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -30035,4 +32386,8 @@ class $AppDatabaseManager {
       $$CashMovementsTableTableManager(_db, _db.cashMovements);
   $$SalePaymentsTableTableManager get salePayments =>
       $$SalePaymentsTableTableManager(_db, _db.salePayments);
+  $$PromotionsTableTableManager get promotions =>
+      $$PromotionsTableTableManager(_db, _db.promotions);
+  $$PromotionApplicationsTableTableManager get promotionApplications =>
+      $$PromotionApplicationsTableTableManager(_db, _db.promotionApplications);
 }

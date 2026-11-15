@@ -15,8 +15,8 @@ void main() {
       await db.close();
     });
 
-    test('schemaVersion must be 8', () {
-      expect(db.schemaVersion, equals(8));
+    test('schemaVersion must be 9', () {
+      expect(db.schemaVersion, equals(9));
     });
 
     test('Insert and query goods_receipts and goods_receipt_items in schema v5', () async {
@@ -364,6 +364,110 @@ void main() {
       expect(earnRate?.value, equals('10'));
       expect(redeemRate?.value, equals('10'));
       expect(maxPercent?.value, equals('30'));
+    });
+
+    test('Insert and query promotions in schema v9', () async {
+      final now = DateTime.now();
+      final starts = now.subtract(const Duration(days: 1));
+      final ends = now.add(const Duration(days: 10));
+
+      await db.into(db.promotions).insert(
+        PromotionsCompanion.insert(
+          id: 'promo-v9-1',
+          branchId: 'branch-main',
+          name: 'عرض الصيف',
+          type: 'percent',
+          scope: 'all',
+          valueBp: const drift.Value(1000),
+          startsAt: starts,
+          endsAt: ends,
+          createdBy: 'admin',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      final row = await (db.select(db.promotions)
+            ..where((p) => p.id.equals('promo-v9-1')))
+          .getSingle();
+      expect(row.name, equals('عرض الصيف'));
+      expect(row.type, equals('percent'));
+      expect(row.valueBp, equals(1000));
+      expect(row.minQuantity, equals(1));
+      expect(row.isActive, isTrue);
+    });
+
+    test('Insert and query promotion_applications in schema v9', () async {
+      final now = DateTime.now();
+
+      await db.into(db.promotionApplications).insert(
+        PromotionApplicationsCompanion.insert(
+          id: 'app-v9-1',
+          branchId: 'branch-main',
+          promotionId: 'promo-v9-1',
+          saleId: 'sale-101',
+          saleItemId: 'item-101',
+          discountPiasters: 1500,
+          createdAt: now,
+        ),
+      );
+
+      final row = await (db.select(db.promotionApplications)
+            ..where((a) => a.id.equals('app-v9-1')))
+          .getSingle();
+      expect(row.discountPiasters, equals(1500));
+      expect(row.promotionId, equals('promo-v9-1'));
+    });
+
+    test('Verify sale_items has promotion_discount_piasters in schema v9', () async {
+      final cols = await db.customSelect('PRAGMA table_info("sale_items")').get();
+      final colNames = cols.map((c) => (c.data['name'] as String).toLowerCase()).toSet();
+      expect(colNames.contains('promotion_discount_piasters'), isTrue);
+    });
+
+    test('Verify promotions CHECK constraints', () async {
+      final now = DateTime.now();
+
+      // CHECK: ends_at > starts_at fails if ends_at <= starts_at
+      expect(
+        () async => await db.into(db.promotions).insert(
+          PromotionsCompanion.insert(
+            id: 'promo-err-1',
+            branchId: 'branch-main',
+            name: 'Invalid Dates',
+            type: 'percent',
+            scope: 'all',
+            valueBp: const drift.Value(500),
+            startsAt: now,
+            endsAt: now.subtract(const Duration(hours: 1)),
+            createdBy: 'admin',
+            createdAt: now,
+            updatedAt: now,
+          ),
+        ),
+        throwsA(anything),
+      );
+
+      // CHECK: scope != 'all' requires target_id
+      expect(
+        () async => await db.into(db.promotions).insert(
+          PromotionsCompanion.insert(
+            id: 'promo-err-2',
+            branchId: 'branch-main',
+            name: 'Missing Target',
+            type: 'percent',
+            scope: 'product',
+            targetId: const drift.Value(null),
+            valueBp: const drift.Value(500),
+            startsAt: now,
+            endsAt: now.add(const Duration(days: 1)),
+            createdBy: 'admin',
+            createdAt: now,
+            updatedAt: now,
+          ),
+        ),
+        throwsA(anything),
+      );
     });
   });
 }

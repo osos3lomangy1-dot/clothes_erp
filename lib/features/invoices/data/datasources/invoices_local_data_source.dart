@@ -86,6 +86,7 @@ class InvoicesLocalDataSourceImpl implements InvoicesLocalDataSource {
         qty: it.qty,
         price: it.priceSnapshot,
         lineDiscount: it.lineDiscount,
+        promotionDiscount: it.promotionDiscountPiasters,
         lineTotal: it.lineTotal,
       ));
     }
@@ -145,6 +146,7 @@ class InvoicesLocalDataSourceImpl implements InvoicesLocalDataSource {
               qty: it.qty,
               price: it.priceSnapshot,
               lineDiscount: it.lineDiscount,
+              promotionDiscount: it.promotionDiscountPiasters,
               lineTotal: it.lineTotal,
             ))
         .toList();
@@ -197,6 +199,7 @@ class InvoicesLocalDataSourceImpl implements InvoicesLocalDataSource {
               qty: it.qty,
               price: it.priceSnapshot,
               lineDiscount: it.lineDiscount,
+              promotionDiscount: it.promotionDiscountPiasters,
               lineTotal: it.lineTotal,
             ))
         .toList();

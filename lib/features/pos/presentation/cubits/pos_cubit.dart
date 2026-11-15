@@ -12,6 +12,9 @@ import '../../../categories/domain/entities/category_entity.dart';
 import '../../../categories/domain/repositories/category_repository.dart';
 import '../../../products/domain/repositories/product_repository.dart';
 import '../../../customers/domain/entities/customer_entity.dart';
+import '../../../promotions/domain/entities/promotion.dart';
+import '../../../promotions/domain/repositories/promotions_repository.dart';
+import '../../../promotions/domain/services/promotion_engine.dart';
 
 class PosState {
   final List<VariantEntity> filteredVariants;
@@ -22,6 +25,8 @@ class PosState {
   final int subtotal;
   final int total;
   final bool isProcessing;
+  final PromotionEvaluationResult? promotionResult;
+  final int promotionDiscountPiasters;
 
   const PosState({
     this.filteredVariants = const [],
@@ -32,6 +37,8 @@ class PosState {
     this.subtotal = 0,
     this.total = 0,
     this.isProcessing = false,
+    this.promotionResult,
+    this.promotionDiscountPiasters = 0,
   });
 
   PosState copyWith({
@@ -44,6 +51,8 @@ class PosState {
     int? subtotal,
     int? total,
     bool? isProcessing,
+    PromotionEvaluationResult? promotionResult,
+    int? promotionDiscountPiasters,
   }) {
     return PosState(
       filteredVariants: filteredVariants ?? this.filteredVariants,
@@ -54,6 +63,9 @@ class PosState {
       subtotal: subtotal ?? this.subtotal,
       total: total ?? this.total,
       isProcessing: isProcessing ?? this.isProcessing,
+      promotionResult: promotionResult ?? this.promotionResult,
+      promotionDiscountPiasters:
+          promotionDiscountPiasters ?? this.promotionDiscountPiasters,
     );
   }
 }
@@ -72,6 +84,8 @@ class PosLoaded extends PosState {
     super.subtotal,
     super.total,
     super.isProcessing,
+    super.promotionResult,
+    super.promotionDiscountPiasters,
   });
 }
 
@@ -87,11 +101,14 @@ class PosCubit extends Cubit<PosState> {
   final CategoryRepository _categoryRepository;
   final ProductRepository _productRepository;
   final PosRepository _posRepository;
+  final PromotionsRepository? _promotionsRepository;
 
   List<VariantEntity> _allVariants = [];
   Map<String, String> _productCategoryMap = {};
   Map<String, String> _productNameMap = {};
   Map<String, String> _categoryNameMap = {};
+  List<Promotion> _activePromotions = [];
+  Map<String, Set<String>> _categoryDescendants = {};
   String _currentSearchQuery = '';
   String _currentSelectedCategoryId = 'All';
   StreamSubscription? _variantsSubscription;
@@ -101,8 +118,19 @@ class PosCubit extends Cubit<PosState> {
     this._variantRepository,
     this._categoryRepository,
     this._productRepository,
-    this._posRepository,
-  ) : super(const PosState());
+    this._posRepository, [
+    this._promotionsRepository,
+  ]) : super(const PosState());
+
+  List<Promotion> get activePromotions => List.unmodifiable(_activePromotions);
+
+  Future<void> reloadPromotions([DateTime? now]) async {
+    if (_promotionsRepository != null) {
+      final res = await _promotionsRepository.getActivePromotions(now: now ?? DateTime.now());
+      _activePromotions = res.getOrElse(() => []);
+    }
+    _updateCart(state, state.cart);
+  }
 
   Future<void> init() async {
     emit(const PosLoading());
@@ -115,6 +143,12 @@ class PosCubit extends Cubit<PosState> {
       _productCategoryMap = {for (final p in products) p.id: p.categoryId};
       _productNameMap = {for (final p in products) p.id: p.name};
       _categoryNameMap = {for (final c in categories) c.id: c.name};
+      _categoryDescendants = {for (final c in categories) c.id: {c.id}};
+
+      if (_promotionsRepository != null) {
+        final promoRes = await _promotionsRepository.getActivePromotions(now: DateTime.now());
+        _activePromotions = promoRes.getOrElse(() => []);
+      }
 
       _variantsSubscription?.cancel();
       _variantsSubscription = _variantRepository.watchAllVariants().listen(
@@ -268,6 +302,8 @@ class PosCubit extends Cubit<PosState> {
     } else {
       final newItem = SaleItemEntity(
         variantId: variant.id,
+        productId: variant.productId,
+        categoryId: _productCategoryMap[variant.productId],
         productName: variant.productName,
         size: variant.size,
         color: variant.color,
@@ -381,14 +417,21 @@ class PosCubit extends Cubit<PosState> {
 
   void clearCart() {
     final state = this.state;
-    emit(state.copyWith(cart: const [], subtotal: 0, total: 0));
+    emit(state.copyWith(
+      cart: const [],
+      subtotal: 0,
+      total: 0,
+      promotionResult: null,
+      promotionDiscountPiasters: 0,
+    ));
   }
 
   void assignCustomer(CustomerEntity? customer) {
-    emit(state.copyWith(
+    final next = state.copyWith(
       customer: customer,
       clearCustomer: customer == null,
-    ));
+    );
+    _updateCart(next, next.cart);
   }
 
   void changePaymentMethod(String method) {}
@@ -437,6 +480,8 @@ class PosCubit extends Cubit<PosState> {
             ? 'installment'
             : (effectiveSplits.length > 1 ? 'split' : effectiveSplits.first.method),
         splits: effectiveSplits,
+        promotionResult: state.promotionResult,
+        promotionDiscount: state.promotionDiscountPiasters,
       );
       final result = await _createSaleUseCase(sale);
       final success = result.isRight();
@@ -454,6 +499,8 @@ class PosCubit extends Cubit<PosState> {
           subtotal: 0,
           total: 0,
           isProcessing: false,
+          promotionResult: null,
+          promotionDiscountPiasters: 0,
         ));
       } else {
         emit(state.copyWith(isProcessing: false));
@@ -466,8 +513,55 @@ class PosCubit extends Cubit<PosState> {
   }
 
   void _updateCart(PosState state, List<SaleItemEntity> newCart) {
-    final subtotal = newCart.fold(0, (sum, item) => sum + item.total);
-    emit(state.copyWith(cart: newCart, subtotal: subtotal, total: subtotal));
+    if (newCart.isEmpty) {
+      emit(state.copyWith(
+        cart: const [],
+        subtotal: 0,
+        total: 0,
+        promotionResult: null,
+        promotionDiscountPiasters: 0,
+      ));
+      return;
+    }
+
+    final customerPercent = state.customer?.discountPercent;
+    final evalResult = PromotionEngine.apply(
+      cart: newCart,
+      activePromotions: _activePromotions,
+      customerDiscountPercent: customerPercent,
+      categoryDescendants: _categoryDescendants,
+      now: DateTime.now(),
+    );
+
+    final updatedCart = <SaleItemEntity>[];
+    for (int i = 0; i < newCart.length; i++) {
+      final item = newCart[i];
+      final lineResult = evalResult.lineResults[i];
+      final promoDiscount = lineResult.promotionDiscountPiasters;
+      updatedCart.add(item.copyWith(promotionDiscount: promoDiscount));
+    }
+
+    final subtotal = updatedCart.fold<int>(
+      0,
+      (sum, item) => sum + (item.isReturn ? 0 : item.price * item.quantity),
+    );
+    final totalPromo = evalResult.totalPromotionDiscountPiasters;
+    final totalCustomer = evalResult.totalCustomerDiscountPiasters;
+    final manualItemDiscounts = updatedCart.fold<int>(
+      0,
+      (sum, item) => sum + (item.isReturn ? 0 : item.discount),
+    );
+
+    final computedTotal = subtotal - manualItemDiscounts - totalPromo - totalCustomer;
+    final finalTotal = computedTotal < 0 ? 0 : computedTotal;
+
+    emit(state.copyWith(
+      cart: updatedCart,
+      subtotal: subtotal,
+      total: finalTotal,
+      promotionResult: evalResult,
+      promotionDiscountPiasters: totalPromo,
+    ));
   }
 
   @override

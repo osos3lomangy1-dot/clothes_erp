@@ -202,6 +202,16 @@ class ReceiptPdfService {
                     pw.Text('${Money(invoice.subtotal).toDisplay()} ج.م', style: const pw.TextStyle(fontSize: 9)),
                   ],
                 ),
+                if (invoice.totalPromotionDiscount > 0) ...[
+                  pw.SizedBox(height: 2),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('خصم العروض:', style: const pw.TextStyle(fontSize: 9, color: PdfColors.green700)),
+                      pw.Text('-${Money(invoice.totalPromotionDiscount).toDisplay()} ج.م', style: const pw.TextStyle(fontSize: 9, color: PdfColors.green700)),
+                    ],
+                  ),
+                ],
                 if (invoice.discountAmount > 0) ...[
                   pw.SizedBox(height: 2),
                   pw.Row(

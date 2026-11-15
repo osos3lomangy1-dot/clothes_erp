@@ -37,6 +37,7 @@ class InvoiceDetailsEntity extends Equatable {
   });
 
   int get totalItemsCount => items.fold<int>(0, (sum, i) => sum + i.qty);
+  int get totalPromotionDiscount => items.fold<int>(0, (sum, i) => sum + i.promotionDiscount);
 
   @override
   List<Object?> get props => [

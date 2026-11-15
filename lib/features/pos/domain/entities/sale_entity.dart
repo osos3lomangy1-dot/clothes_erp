@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../../promotions/domain/entities/promotion.dart';
 import 'payment_split.dart';
 import 'sale_item_entity.dart';
 
@@ -15,6 +16,8 @@ class SaleEntity extends Equatable {
   final String? customerId;
   final String syncStatus;
   final List<PaymentSplit>? splits;
+  final PromotionEvaluationResult? promotionResult;
+  final int promotionDiscount;
 
   const SaleEntity({
     required this.id,
@@ -29,6 +32,8 @@ class SaleEntity extends Equatable {
     this.customerId,
     this.syncStatus = 'synced',
     this.splits,
+    this.promotionResult,
+    this.promotionDiscount = 0,
   });
 
   @override
@@ -45,5 +50,7 @@ class SaleEntity extends Equatable {
         customerId,
         syncStatus,
         splits,
+        promotionResult,
+        promotionDiscount,
       ];
 }

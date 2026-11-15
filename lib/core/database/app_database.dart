@@ -4,6 +4,7 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/common.dart';
+import 'tables/promotions.dart';
 
 part 'app_database.g.dart';
 
@@ -126,6 +127,8 @@ class SaleItems extends Table {
   IntColumn get priceSnapshot => integer()();
   IntColumn get costSnapshot => integer()();
   IntColumn get lineDiscount => integer().withDefault(const Constant(0))();
+  IntColumn get promotionDiscountPiasters =>
+      integer().withDefault(const Constant(0))();
   IntColumn get lineTotal => integer()();
   DateTimeColumn get createdAt => dateTime()();
 
@@ -230,7 +233,11 @@ class Expenses extends Table {
   IntColumn get amount => integer()();
   TextColumn get kind => text()
       .withDefault(const Constant('operating'))
-      .check(const CustomExpression<bool>("kind IN ('operating', 'supplier_payment')"))();
+      .check(
+        const CustomExpression<bool>(
+          "kind IN ('operating', 'supplier_payment')",
+        ),
+      )();
   TextColumn get note => text().nullable()();
   TextColumn get userId => text()();
   DateTimeColumn get expenseDate => dateTime()();
@@ -442,7 +449,9 @@ class GoodsReceipts extends Table {
   TextColumn get branchId => text()();
   TextColumn get cashierId => text()();
   DateTimeColumn get receivedAt => dateTime()();
-  TextColumn get status => text().withDefault(const Constant('pending'))(); // pending, invoiced, cancelled
+  TextColumn get status => text().withDefault(
+    const Constant('pending'),
+  )(); // pending, invoiced, cancelled
   IntColumn get totalItems => integer().withDefault(const Constant(0))();
   TextColumn get notes => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
@@ -469,7 +478,8 @@ class InstallmentPlans extends Table {
   TextColumn get name => text()();
   TextColumn get description => text().nullable()();
   IntColumn get durationMonths => integer()();
-  IntColumn get downPaymentPiasters => integer().withDefault(const Constant(0))();
+  IntColumn get downPaymentPiasters =>
+      integer().withDefault(const Constant(0))();
   IntColumn get interestBp => integer().withDefault(const Constant(0))();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   DateTimeColumn get createdAt => dateTime()();
@@ -494,7 +504,8 @@ class CustomerInstallments extends Table {
   TextColumn get customerId => text()();
   TextColumn get planId => text().nullable()();
   IntColumn get totalPiasters => integer()();
-  IntColumn get downPaymentPiasters => integer().withDefault(const Constant(0))();
+  IntColumn get downPaymentPiasters =>
+      integer().withDefault(const Constant(0))();
   IntColumn get principalPiasters => integer()();
   IntColumn get interestBp => integer()();
   IntColumn get monthlyAmountPiasters => integer()();
@@ -569,29 +580,29 @@ class CashMovements extends Table {
   @override
   List<String> get customConstraints => const [
     "CHECK (type IN ("
-    "'sale','refund',"
-    "'purchase_payment','supplier_payment',"
-    "'expense','deposit','withdrawal',"
-    "'installment_down','installment_payment',"
-    "'purchase_reversal','supplier_payment_reversal','expense_reversal'"
-    "))",
+        "'sale','refund',"
+        "'purchase_payment','supplier_payment',"
+        "'expense','deposit','withdrawal',"
+        "'installment_down','installment_payment',"
+        "'purchase_reversal','supplier_payment_reversal','expense_reversal'"
+        "))",
     "CHECK (method IN ('cash','card','transfer'))",
     "CHECK (direction IN ('in','out'))",
     "CHECK (amount_piasters > 0)",
     "CHECK ("
-    "  (type = 'sale' AND direction = 'in') OR "
-    "  (type = 'refund' AND direction = 'out') OR "
-    "  (type = 'purchase_payment' AND direction = 'out') OR "
-    "  (type = 'supplier_payment' AND direction = 'out') OR "
-    "  (type = 'expense' AND direction = 'out') OR "
-    "  (type = 'deposit' AND direction = 'in') OR "
-    "  (type = 'withdrawal' AND direction = 'out') OR "
-    "  (type = 'installment_down' AND direction = 'in') OR "
-    "  (type = 'installment_payment' AND direction = 'in') OR "
-    "  (type = 'purchase_reversal' AND direction = 'in') OR "
-    "  (type = 'supplier_payment_reversal' AND direction = 'in') OR "
-    "  (type = 'expense_reversal' AND direction = 'in')"
-    ")",
+        "  (type = 'sale' AND direction = 'in') OR "
+        "  (type = 'refund' AND direction = 'out') OR "
+        "  (type = 'purchase_payment' AND direction = 'out') OR "
+        "  (type = 'supplier_payment' AND direction = 'out') OR "
+        "  (type = 'expense' AND direction = 'out') OR "
+        "  (type = 'deposit' AND direction = 'in') OR "
+        "  (type = 'withdrawal' AND direction = 'out') OR "
+        "  (type = 'installment_down' AND direction = 'in') OR "
+        "  (type = 'installment_payment' AND direction = 'in') OR "
+        "  (type = 'purchase_reversal' AND direction = 'in') OR "
+        "  (type = 'supplier_payment_reversal' AND direction = 'in') OR "
+        "  (type = 'expense_reversal' AND direction = 'in')"
+        ")",
   ];
 }
 
@@ -692,13 +703,15 @@ QueryExecutor _openConnection() {
     InstallmentPayments,
     CashMovements,
     SalePayments,
+    Promotions,
+    PromotionApplications,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @visibleForTesting
   Future<void> migrateToV6(Migrator m) async {
@@ -962,6 +975,33 @@ class AppDatabase extends _$AppDatabase {
     ''');
   }
 
+  @visibleForTesting
+  Future<void> migrateToV9(Migrator m) async {
+    final promoTables = await customSelect(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='promotions'",
+    ).get();
+    if (promoTables.isEmpty) {
+      await m.createTable(promotions);
+    }
+
+    final appTables = await customSelect(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='promotion_applications'",
+    ).get();
+    if (appTables.isEmpty) {
+      await m.createTable(promotionApplications);
+    }
+
+    final saleItemCols = await customSelect(
+      'PRAGMA table_info("sale_items")',
+    ).get();
+    final cols = saleItemCols
+        .map((r) => (r.data['name'] as String).toLowerCase())
+        .toSet();
+    if (!cols.contains('promotion_discount_piasters')) {
+      await m.addColumn(saleItems, saleItems.promotionDiscountPiasters);
+    }
+  }
+
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (Migrator m) async {
@@ -1048,6 +1088,10 @@ class AppDatabase extends _$AppDatabase {
       if (from < 8 && to >= 8) {
         await migrateToV8(m);
       }
+
+      if (from < 9 && to >= 9) {
+        await migrateToV9(m);
+      }
     },
     beforeOpen: (details) async {
       Future<void> addColumnIfNotExists(
@@ -1088,10 +1132,18 @@ class AppDatabase extends _$AppDatabase {
       await createTableIfNotExists('goods_receipts', goodsReceipts);
       await createTableIfNotExists('goods_receipt_items', goodsReceiptItems);
       await createTableIfNotExists('installment_plans', installmentPlans);
-      await createTableIfNotExists('customer_installments', customerInstallments);
+      await createTableIfNotExists(
+        'customer_installments',
+        customerInstallments,
+      );
       await createTableIfNotExists('installment_payments', installmentPayments);
       await createTableIfNotExists('cash_movements', cashMovements);
       await createTableIfNotExists('sale_payments', salePayments);
+      await createTableIfNotExists('promotions', promotions);
+      await createTableIfNotExists(
+        'promotion_applications',
+        promotionApplications,
+      );
 
       await addColumnIfNotExists(
         'product_variants',
@@ -1118,14 +1170,20 @@ class AppDatabase extends _$AppDatabase {
         'kind',
         "TEXT NOT NULL DEFAULT 'operating' CHECK (kind IN ('operating', 'supplier_payment'))",
       );
+      await addColumnIfNotExists(
+        'sale_items',
+        'promotion_discount_piasters',
+        'INTEGER NOT NULL DEFAULT 0',
+      );
     },
   );
 }
 
 Future<String?> getMigrationOpenShiftBannerMessage(AppDatabase db) async {
-  final row = await (db.select(db.appMeta)
-        ..where((t) => t.key.equals('migration_v7_open_shift_id')))
-      .getSingleOrNull();
+  final row =
+      await (db.select(db.appMeta)
+            ..where((t) => t.key.equals('migration_v7_open_shift_id')))
+          .getSingleOrNull();
   if (row == null || row.value.isEmpty) return null;
   return 'وردية ${row.value} كانت مفتوحة أثناء ترقية قاعدة البيانات. راجع حركاتها قبل الإغلاق.';
 }

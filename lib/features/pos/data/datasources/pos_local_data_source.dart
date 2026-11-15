@@ -5,6 +5,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/database/branch_provider.dart';
 import '../../../../core/database/tx_writer.dart';
 import '../../../../features/inventory/data/datasources/inventory_local_data_source.dart';
+import '../../../../features/promotions/domain/entities/promotion.dart';
 import '../../domain/entities/payment_split.dart';
 
 @lazySingleton
@@ -49,6 +50,7 @@ class PosLocalDataSource {
     String? paymentMethod,
     List<PaymentSplit>? splits,
     String? saleId,
+    PromotionEvaluationResult? promotionResult,
   }) async {
     final now = DateTime.now();
     final branchId = await _branchId();
@@ -101,30 +103,66 @@ class PosLocalDataSource {
           createdAt: now,
           updatedAt: now,
         ));
-        for (final item in items) {
+        final saleItemIds = <String>[];
+        for (int i = 0; i < items.length; i++) {
+          final item = items[i];
+          final sItemId = _uuid.v4();
+          saleItemIds.add(sItemId);
+
+          final promoDiscount = (item['promotionDiscount'] as num?)?.toInt() ?? 0;
+          final lineDiscount = (item['discount'] as num?)?.toInt() ?? 0;
+          final price = item['price'] as int;
+          final qty = item['qty'] as int;
+          final calculatedLineTotal = (price * qty) - lineDiscount - promoDiscount;
+          final lineTotal = calculatedLineTotal < 0 ? 0 : calculatedLineTotal;
+
           await _db.into(_db.saleItems).insert(SaleItemsCompanion.insert(
-            id: _uuid.v4(),
+            id: sItemId,
             branchId: branchId,
             saleId: effectiveSaleId,
             variantId: item['variantId'] as String,
             productName: item['name'] as String,
             color: item['color'] as String,
             size: item['size'] as String,
-            qty: item['qty'] as int,
-            priceSnapshot: item['price'] as int,
+            qty: qty,
+            priceSnapshot: price,
             costSnapshot: item['cost'] as int,
-            lineTotal: (item['price'] as int) * (item['qty'] as int),
+            lineDiscount: Value(lineDiscount),
+            promotionDiscountPiasters: Value(promoDiscount),
+            lineTotal: lineTotal,
             createdAt: now,
           ));
           await _inventory.applyStockMovement(
             variantId: item['variantId'] as String,
-            qtyDelta: -(item['qty'] as int),
+            qtyDelta: -qty,
             type: StockMovementType.sale,
             reason: 'sale',
             userId: cashierId,
             refType: 'sale',
             refId: effectiveSaleId,
           );
+        }
+
+        // Record promotion applications if applicable
+        if (promotionResult != null) {
+          for (int i = 0; i < saleItemIds.length && i < promotionResult.lineResults.length; i++) {
+            final lineRes = promotionResult.lineResults[i];
+            final applied = lineRes.appliedPromotion;
+            final promoDisc = lineRes.promotionDiscountPiasters;
+            if (applied != null && promoDisc > 0) {
+              await _db.into(_db.promotionApplications).insert(
+                PromotionApplicationsCompanion.insert(
+                  id: _uuid.v4(),
+                  branchId: branchId,
+                  promotionId: applied.id,
+                  saleId: effectiveSaleId,
+                  saleItemId: saleItemIds[i],
+                  discountPiasters: promoDisc,
+                  createdAt: now,
+                ),
+              );
+            }
+          }
         }
 
         // For non-installment sales, write sale_payments and cash_movements (sale)

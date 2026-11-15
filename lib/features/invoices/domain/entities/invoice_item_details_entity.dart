@@ -9,6 +9,7 @@ class InvoiceItemDetailsEntity extends Equatable {
   final int qty;
   final int price; // in piasters
   final int lineDiscount; // in piasters
+  final int promotionDiscount; // in piasters
   final int lineTotal; // in piasters
 
   const InvoiceItemDetailsEntity({
@@ -20,6 +21,7 @@ class InvoiceItemDetailsEntity extends Equatable {
     required this.qty,
     required this.price,
     this.lineDiscount = 0,
+    this.promotionDiscount = 0,
     required this.lineTotal,
   });
 
@@ -33,6 +35,7 @@ class InvoiceItemDetailsEntity extends Equatable {
         qty,
         price,
         lineDiscount,
+        promotionDiscount,
         lineTotal,
       ];
 }

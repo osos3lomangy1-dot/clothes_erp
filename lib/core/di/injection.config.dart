@@ -193,6 +193,14 @@ import 'package:clothes_erp/features/products/presentation/cubits/product_cubit.
     as _i137;
 import 'package:clothes_erp/features/products/presentation/cubits/product_form_cubit.dart'
     as _i548;
+import 'package:clothes_erp/features/promotions/data/datasources/promotions_local_data_source.dart'
+    as _i152;
+import 'package:clothes_erp/features/promotions/data/repositories/promotions_repository_impl.dart'
+    as _i675;
+import 'package:clothes_erp/features/promotions/domain/repositories/promotions_repository.dart'
+    as _i813;
+import 'package:clothes_erp/features/promotions/presentation/cubits/promotions_cubit.dart'
+    as _i112;
 import 'package:clothes_erp/features/purchases/data/datasources/purchases_local_data_source.dart'
     as _i245;
 import 'package:clothes_erp/features/purchases/data/repositories/purchases_repository_impl.dart'
@@ -213,6 +221,8 @@ import 'package:clothes_erp/features/reports/domain/usecases/get_sales_report_us
     as _i957;
 import 'package:clothes_erp/features/reports/presentation/cubits/installments_report_cubit.dart'
     as _i545;
+import 'package:clothes_erp/features/reports/presentation/cubits/promotions_report_cubit.dart'
+    as _i608;
 import 'package:clothes_erp/features/reports/presentation/cubits/reports_cubit.dart'
     as _i119;
 import 'package:clothes_erp/features/returns/data/datasources/returns_local_data_source.dart'
@@ -269,6 +279,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i303.InventoryRemoteDataSource>(
       () => _i303.InventoryRemoteDataSourceImpl(),
+    );
+    gh.lazySingleton<_i152.PromotionsLocalDataSource>(
+      () => _i152.PromotionsLocalDataSourceImpl(gh<_i110.AppDatabase>()),
     );
     gh.lazySingleton<_i517.DashboardLocalDataSource>(
       () => _i517.DashboardLocalDataSourceImpl(gh<_i110.AppDatabase>()),
@@ -348,6 +361,13 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i731.SettingsCubit>(
       () => _i731.SettingsCubit(gh<_i206.FeatureGate>()),
     );
+    gh.lazySingleton<_i813.PromotionsRepository>(
+      () => _i675.PromotionsRepositoryImpl(
+        gh<_i152.PromotionsLocalDataSource>(),
+        gh<_i206.FeatureGate>(),
+        gh<_i254.BranchProvider>(),
+      ),
+    );
     gh.factory<_i774.DashboardCubit>(
       () => _i774.DashboardCubit(gh<_i1040.GetDashboardStatsUseCase>()),
     );
@@ -423,6 +443,12 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i254.BranchProvider>(),
         gh<_i874.TxWriter>(),
       ),
+    );
+    gh.factory<_i112.PromotionsCubit>(
+      () => _i112.PromotionsCubit(gh<_i813.PromotionsRepository>()),
+    );
+    gh.factory<_i608.PromotionsReportCubit>(
+      () => _i608.PromotionsReportCubit(gh<_i813.PromotionsRepository>()),
     );
     gh.factory<_i528.GoodsReceiptCubit>(
       () => _i528.GoodsReceiptCubit(gh<_i1019.InventoryLocalDataSource>()),
@@ -606,6 +632,16 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i206.FeatureGate>(),
       ),
     );
+    gh.factory<_i403.PosCubit>(
+      () => _i403.PosCubit(
+        gh<_i747.CreateSaleUseCase>(),
+        gh<_i77.VariantRepository>(),
+        gh<_i687.CategoryRepository>(),
+        gh<_i758.ProductRepository>(),
+        gh<_i862.PosRepository>(),
+        gh<_i813.PromotionsRepository>(),
+      ),
+    );
     gh.factory<_i361.EmployeeFormCubit>(
       () => _i361.EmployeeFormCubit(gh<_i980.AddEmployeeUseCase>()),
     );
@@ -662,15 +698,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i1043.CustomerCubit>(
       () => _i1043.CustomerCubit(gh<_i610.CustomerRepository>()),
-    );
-    gh.factory<_i403.PosCubit>(
-      () => _i403.PosCubit(
-        gh<_i747.CreateSaleUseCase>(),
-        gh<_i77.VariantRepository>(),
-        gh<_i687.CategoryRepository>(),
-        gh<_i758.ProductRepository>(),
-        gh<_i862.PosRepository>(),
-      ),
     );
     gh.lazySingleton<_i828.GetRecentSalesUseCase>(
       () => _i828.GetRecentSalesUseCase(gh<_i681.ReturnsRepository>()),

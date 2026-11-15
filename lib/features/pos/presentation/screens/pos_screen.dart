@@ -2174,6 +2174,40 @@ class _CartPanelState extends State<_CartPanel> {
                       ),
                       const SizedBox(height: 6),
 
+                      // Promotions Discount
+                      if (state.promotionDiscountPiasters > 0) ...[
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.local_offer, size: 14, color: AppColors.primary),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'خصم العروض',
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Text(
+                              '- ${Money(state.promotionDiscountPiasters).toDisplay()} ج.م',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                      ],
+
                       // Discount with % and ج.م toggle
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2751,6 +2785,33 @@ class _CartItemTileState extends State<_CartItemTile> {
                         ),
                       ),
                     ),
+                    if (item.promotionDiscount > 0) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.green.shade200),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.local_offer, size: 10, color: Colors.green.shade700),
+                            const SizedBox(width: 2),
+                            Text(
+                              'عرض: -${Money(item.promotionDiscount).toDisplay()}',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ],
