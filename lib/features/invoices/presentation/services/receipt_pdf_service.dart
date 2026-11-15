@@ -10,7 +10,16 @@ import '../../domain/entities/invoice_details_entity.dart';
 
 class ReceiptPdfService {
   static Future<pw.Font> _loadArabicFont() async {
-    // 1. Try Windows system font (instant offline fallback)
+    // 1. Try local project asset Cairo (works 100% offline everywhere: Windows, Linux CI, macOS)
+    try {
+      final localFont = File('assets/fonts/static/Cairo-Regular.ttf');
+      if (await localFont.exists()) {
+        final bytes = await localFont.readAsBytes();
+        return pw.Font.ttf(bytes.buffer.asByteData());
+      }
+    } catch (_) {}
+
+    // 2. Try Windows system font (instant offline fallback)
     try {
       final winArial = File('C:\\Windows\\Fonts\\arial.ttf');
       if (await winArial.exists()) {
@@ -19,15 +28,20 @@ class ReceiptPdfService {
       }
     } catch (_) {}
 
-    // 2. Try Google Fonts Cairo
-    try {
-      return await PdfGoogleFonts.cairoRegular();
-    } catch (_) {
-      return pw.Font.helvetica();
-    }
+    return pw.Font.helvetica();
   }
 
   static Future<pw.Font> _loadArabicBoldFont() async {
+    // 1. Try local project asset Cairo Bold
+    try {
+      final localFont = File('assets/fonts/static/Cairo-Bold.ttf');
+      if (await localFont.exists()) {
+        final bytes = await localFont.readAsBytes();
+        return pw.Font.ttf(bytes.buffer.asByteData());
+      }
+    } catch (_) {}
+
+    // 2. Try Windows system font
     try {
       final winArialBd = File('C:\\Windows\\Fonts\\arialbd.ttf');
       if (await winArialBd.exists()) {
@@ -36,11 +50,7 @@ class ReceiptPdfService {
       }
     } catch (_) {}
 
-    try {
-      return await PdfGoogleFonts.cairoBold();
-    } catch (_) {
-      return pw.Font.helveticaBold();
-    }
+    return pw.Font.helveticaBold();
   }
 
   static Future<Uint8List> generateReceiptPdf(
