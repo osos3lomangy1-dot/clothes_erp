@@ -20982,6 +20982,478 @@ class PromotionApplicationsCompanion
   }
 }
 
+class $PromotionTargetsTable extends PromotionTargets
+    with TableInfo<$PromotionTargetsTable, PromotionTarget> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PromotionTargetsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _promotionIdMeta = const VerificationMeta(
+    'promotionId',
+  );
+  @override
+  late final GeneratedColumn<String> promotionId = GeneratedColumn<String>(
+    'promotion_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _targetTypeMeta = const VerificationMeta(
+    'targetType',
+  );
+  @override
+  late final GeneratedColumn<String> targetType = GeneratedColumn<String>(
+    'target_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _targetIdMeta = const VerificationMeta(
+    'targetId',
+  );
+  @override
+  late final GeneratedColumn<String> targetId = GeneratedColumn<String>(
+    'target_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    branchId,
+    promotionId,
+    targetType,
+    targetId,
+    createdAt,
+    deletedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'promotion_targets';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PromotionTarget> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_branchIdMeta);
+    }
+    if (data.containsKey('promotion_id')) {
+      context.handle(
+        _promotionIdMeta,
+        promotionId.isAcceptableOrUnknown(
+          data['promotion_id']!,
+          _promotionIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_promotionIdMeta);
+    }
+    if (data.containsKey('target_type')) {
+      context.handle(
+        _targetTypeMeta,
+        targetType.isAcceptableOrUnknown(data['target_type']!, _targetTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_targetTypeMeta);
+    }
+    if (data.containsKey('target_id')) {
+      context.handle(
+        _targetIdMeta,
+        targetId.isAcceptableOrUnknown(data['target_id']!, _targetIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_targetIdMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PromotionTarget map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PromotionTarget(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      )!,
+      promotionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}promotion_id'],
+      )!,
+      targetType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_type'],
+      )!,
+      targetId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_id'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+    );
+  }
+
+  @override
+  $PromotionTargetsTable createAlias(String alias) {
+    return $PromotionTargetsTable(attachedDatabase, alias);
+  }
+}
+
+class PromotionTarget extends DataClass implements Insertable<PromotionTarget> {
+  final String id;
+  final String branchId;
+  final String promotionId;
+  final String targetType;
+  final String targetId;
+  final DateTime createdAt;
+  final DateTime? deletedAt;
+  const PromotionTarget({
+    required this.id,
+    required this.branchId,
+    required this.promotionId,
+    required this.targetType,
+    required this.targetId,
+    required this.createdAt,
+    this.deletedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['branch_id'] = Variable<String>(branchId);
+    map['promotion_id'] = Variable<String>(promotionId);
+    map['target_type'] = Variable<String>(targetType);
+    map['target_id'] = Variable<String>(targetId);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    return map;
+  }
+
+  PromotionTargetsCompanion toCompanion(bool nullToAbsent) {
+    return PromotionTargetsCompanion(
+      id: Value(id),
+      branchId: Value(branchId),
+      promotionId: Value(promotionId),
+      targetType: Value(targetType),
+      targetId: Value(targetId),
+      createdAt: Value(createdAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory PromotionTarget.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PromotionTarget(
+      id: serializer.fromJson<String>(json['id']),
+      branchId: serializer.fromJson<String>(json['branchId']),
+      promotionId: serializer.fromJson<String>(json['promotionId']),
+      targetType: serializer.fromJson<String>(json['targetType']),
+      targetId: serializer.fromJson<String>(json['targetId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'branchId': serializer.toJson<String>(branchId),
+      'promotionId': serializer.toJson<String>(promotionId),
+      'targetType': serializer.toJson<String>(targetType),
+      'targetId': serializer.toJson<String>(targetId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+    };
+  }
+
+  PromotionTarget copyWith({
+    String? id,
+    String? branchId,
+    String? promotionId,
+    String? targetType,
+    String? targetId,
+    DateTime? createdAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+  }) => PromotionTarget(
+    id: id ?? this.id,
+    branchId: branchId ?? this.branchId,
+    promotionId: promotionId ?? this.promotionId,
+    targetType: targetType ?? this.targetType,
+    targetId: targetId ?? this.targetId,
+    createdAt: createdAt ?? this.createdAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+  );
+  PromotionTarget copyWithCompanion(PromotionTargetsCompanion data) {
+    return PromotionTarget(
+      id: data.id.present ? data.id.value : this.id,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      promotionId: data.promotionId.present
+          ? data.promotionId.value
+          : this.promotionId,
+      targetType: data.targetType.present
+          ? data.targetType.value
+          : this.targetType,
+      targetId: data.targetId.present ? data.targetId.value : this.targetId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PromotionTarget(')
+          ..write('id: $id, ')
+          ..write('branchId: $branchId, ')
+          ..write('promotionId: $promotionId, ')
+          ..write('targetType: $targetType, ')
+          ..write('targetId: $targetId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    branchId,
+    promotionId,
+    targetType,
+    targetId,
+    createdAt,
+    deletedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PromotionTarget &&
+          other.id == this.id &&
+          other.branchId == this.branchId &&
+          other.promotionId == this.promotionId &&
+          other.targetType == this.targetType &&
+          other.targetId == this.targetId &&
+          other.createdAt == this.createdAt &&
+          other.deletedAt == this.deletedAt);
+}
+
+class PromotionTargetsCompanion extends UpdateCompanion<PromotionTarget> {
+  final Value<String> id;
+  final Value<String> branchId;
+  final Value<String> promotionId;
+  final Value<String> targetType;
+  final Value<String> targetId;
+  final Value<DateTime> createdAt;
+  final Value<DateTime?> deletedAt;
+  final Value<int> rowid;
+  const PromotionTargetsCompanion({
+    this.id = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.promotionId = const Value.absent(),
+    this.targetType = const Value.absent(),
+    this.targetId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PromotionTargetsCompanion.insert({
+    required String id,
+    required String branchId,
+    required String promotionId,
+    required String targetType,
+    required String targetId,
+    required DateTime createdAt,
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       branchId = Value(branchId),
+       promotionId = Value(promotionId),
+       targetType = Value(targetType),
+       targetId = Value(targetId),
+       createdAt = Value(createdAt);
+  static Insertable<PromotionTarget> custom({
+    Expression<String>? id,
+    Expression<String>? branchId,
+    Expression<String>? promotionId,
+    Expression<String>? targetType,
+    Expression<String>? targetId,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (branchId != null) 'branch_id': branchId,
+      if (promotionId != null) 'promotion_id': promotionId,
+      if (targetType != null) 'target_type': targetType,
+      if (targetId != null) 'target_id': targetId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PromotionTargetsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? branchId,
+    Value<String>? promotionId,
+    Value<String>? targetType,
+    Value<String>? targetId,
+    Value<DateTime>? createdAt,
+    Value<DateTime?>? deletedAt,
+    Value<int>? rowid,
+  }) {
+    return PromotionTargetsCompanion(
+      id: id ?? this.id,
+      branchId: branchId ?? this.branchId,
+      promotionId: promotionId ?? this.promotionId,
+      targetType: targetType ?? this.targetType,
+      targetId: targetId ?? this.targetId,
+      createdAt: createdAt ?? this.createdAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
+    }
+    if (promotionId.present) {
+      map['promotion_id'] = Variable<String>(promotionId.value);
+    }
+    if (targetType.present) {
+      map['target_type'] = Variable<String>(targetType.value);
+    }
+    if (targetId.present) {
+      map['target_id'] = Variable<String>(targetId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PromotionTargetsCompanion(')
+          ..write('id: $id, ')
+          ..write('branchId: $branchId, ')
+          ..write('promotionId: $promotionId, ')
+          ..write('targetType: $targetType, ')
+          ..write('targetId: $targetId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -21028,6 +21500,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PromotionsTable promotions = $PromotionsTable(this);
   late final $PromotionApplicationsTable promotionApplications =
       $PromotionApplicationsTable(this);
+  late final $PromotionTargetsTable promotionTargets = $PromotionTargetsTable(
+    this,
+  );
   late final Index idxInventoryLogsVariantIdCreatedAt = Index(
     'idx_inventory_logs_variantId_createdAt',
     'CREATE INDEX idx_inventory_logs_variantId_createdAt ON inventory_logs (variant_id, created_at)',
@@ -21073,6 +21548,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     salePayments,
     promotions,
     promotionApplications,
+    promotionTargets,
     idxInventoryLogsVariantIdCreatedAt,
     idxSyncQueueStatusCreatedAt,
   ];
@@ -32322,6 +32798,254 @@ typedef $$PromotionApplicationsTableProcessedTableManager =
       PromotionApplication,
       PrefetchHooks Function()
     >;
+typedef $$PromotionTargetsTableCreateCompanionBuilder =
+    PromotionTargetsCompanion Function({
+      required String id,
+      required String branchId,
+      required String promotionId,
+      required String targetType,
+      required String targetId,
+      required DateTime createdAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+typedef $$PromotionTargetsTableUpdateCompanionBuilder =
+    PromotionTargetsCompanion Function({
+      Value<String> id,
+      Value<String> branchId,
+      Value<String> promotionId,
+      Value<String> targetType,
+      Value<String> targetId,
+      Value<DateTime> createdAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+
+class $$PromotionTargetsTableFilterComposer
+    extends Composer<_$AppDatabase, $PromotionTargetsTable> {
+  $$PromotionTargetsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get promotionId => $composableBuilder(
+    column: $table.promotionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get targetType => $composableBuilder(
+    column: $table.targetType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get targetId => $composableBuilder(
+    column: $table.targetId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PromotionTargetsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PromotionTargetsTable> {
+  $$PromotionTargetsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get promotionId => $composableBuilder(
+    column: $table.promotionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get targetType => $composableBuilder(
+    column: $table.targetType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get targetId => $composableBuilder(
+    column: $table.targetId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PromotionTargetsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PromotionTargetsTable> {
+  $$PromotionTargetsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<String> get promotionId => $composableBuilder(
+    column: $table.promotionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get targetType => $composableBuilder(
+    column: $table.targetType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get targetId =>
+      $composableBuilder(column: $table.targetId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+}
+
+class $$PromotionTargetsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PromotionTargetsTable,
+          PromotionTarget,
+          $$PromotionTargetsTableFilterComposer,
+          $$PromotionTargetsTableOrderingComposer,
+          $$PromotionTargetsTableAnnotationComposer,
+          $$PromotionTargetsTableCreateCompanionBuilder,
+          $$PromotionTargetsTableUpdateCompanionBuilder,
+          (
+            PromotionTarget,
+            BaseReferences<
+              _$AppDatabase,
+              $PromotionTargetsTable,
+              PromotionTarget
+            >,
+          ),
+          PromotionTarget,
+          PrefetchHooks Function()
+        > {
+  $$PromotionTargetsTableTableManager(
+    _$AppDatabase db,
+    $PromotionTargetsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PromotionTargetsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PromotionTargetsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PromotionTargetsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> branchId = const Value.absent(),
+                Value<String> promotionId = const Value.absent(),
+                Value<String> targetType = const Value.absent(),
+                Value<String> targetId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PromotionTargetsCompanion(
+                id: id,
+                branchId: branchId,
+                promotionId: promotionId,
+                targetType: targetType,
+                targetId: targetId,
+                createdAt: createdAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String branchId,
+                required String promotionId,
+                required String targetType,
+                required String targetId,
+                required DateTime createdAt,
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PromotionTargetsCompanion.insert(
+                id: id,
+                branchId: branchId,
+                promotionId: promotionId,
+                targetType: targetType,
+                targetId: targetId,
+                createdAt: createdAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PromotionTargetsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PromotionTargetsTable,
+      PromotionTarget,
+      $$PromotionTargetsTableFilterComposer,
+      $$PromotionTargetsTableOrderingComposer,
+      $$PromotionTargetsTableAnnotationComposer,
+      $$PromotionTargetsTableCreateCompanionBuilder,
+      $$PromotionTargetsTableUpdateCompanionBuilder,
+      (
+        PromotionTarget,
+        BaseReferences<_$AppDatabase, $PromotionTargetsTable, PromotionTarget>,
+      ),
+      PromotionTarget,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -32390,4 +33114,6 @@ class $AppDatabaseManager {
       $$PromotionsTableTableManager(_db, _db.promotions);
   $$PromotionApplicationsTableTableManager get promotionApplications =>
       $$PromotionApplicationsTableTableManager(_db, _db.promotionApplications);
+  $$PromotionTargetsTableTableManager get promotionTargets =>
+      $$PromotionTargetsTableTableManager(_db, _db.promotionTargets);
 }

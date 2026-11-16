@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:injectable/injectable.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../domain/entities/promotion.dart' as domain;
@@ -30,10 +31,20 @@ abstract class PromotionsLocalDataSource {
 @LazySingleton(as: PromotionsLocalDataSource)
 class PromotionsLocalDataSourceImpl implements PromotionsLocalDataSource {
   final AppDatabase _db;
+  final _uuid = const Uuid();
 
   PromotionsLocalDataSourceImpl(this._db);
 
-  domain.Promotion _mapRowToEntity(Promotion row) {
+  domain.Promotion _mapRowToEntity(
+    Promotion row, {
+    List<String> targetIds = const [],
+  }) {
+    final effectiveTargetIds = targetIds.isNotEmpty
+        ? targetIds
+        : (row.targetId != null && row.targetId!.isNotEmpty
+            ? [row.targetId!]
+            : const <String>[]);
+
     return domain.Promotion(
       id: row.id,
       branchId: row.branchId,
@@ -41,7 +52,9 @@ class PromotionsLocalDataSourceImpl implements PromotionsLocalDataSource {
       description: row.description,
       type: row.type,
       scope: row.scope,
-      targetId: row.targetId,
+      targetIds: effectiveTargetIds,
+      targetId: row.targetId ??
+          (effectiveTargetIds.isNotEmpty ? effectiveTargetIds.first : null),
       valueBp: row.valueBp,
       valuePiasters: row.valuePiasters,
       minQuantity: row.minQuantity,
@@ -57,6 +70,9 @@ class PromotionsLocalDataSourceImpl implements PromotionsLocalDataSource {
   }
 
   PromotionsCompanion _mapEntityToCompanion(domain.Promotion entity) {
+    final effectiveTargetId = entity.targetId ??
+        (entity.targetIds.isNotEmpty ? entity.targetIds.first : null);
+
     return PromotionsCompanion(
       id: Value(entity.id),
       branchId: Value(entity.branchId),
@@ -64,7 +80,7 @@ class PromotionsLocalDataSourceImpl implements PromotionsLocalDataSource {
       description: Value(entity.description),
       type: Value(entity.type),
       scope: Value(entity.scope),
-      targetId: Value(entity.targetId),
+      targetId: Value(effectiveTargetId),
       valueBp: Value(entity.valueBp),
       valuePiasters: Value(entity.valuePiasters),
       minQuantity: Value(entity.minQuantity),
@@ -94,6 +110,21 @@ class PromotionsLocalDataSourceImpl implements PromotionsLocalDataSource {
     );
   }
 
+  Future<Map<String, List<String>>> _fetchTargetsForPromotions(
+    List<String> promotionIds,
+  ) async {
+    if (promotionIds.isEmpty) return {};
+    final targets = await (_db.select(_db.promotionTargets)
+          ..where((t) => t.promotionId.isIn(promotionIds) & t.deletedAt.isNull()))
+        .get();
+
+    final result = <String, List<String>>{};
+    for (final t in targets) {
+      result.putIfAbsent(t.promotionId, () => []).add(t.targetId);
+    }
+    return result;
+  }
+
   @override
   Future<List<domain.Promotion>> getActivePromotions({
     required String branchId,
@@ -114,7 +145,14 @@ class PromotionsLocalDataSourceImpl implements PromotionsLocalDataSource {
         (p) => OrderingTerm.asc(p.id),
       ]);
     final rows = await query.get();
-    return rows.map(_mapRowToEntity).toList();
+    if (rows.isEmpty) return [];
+
+    final targetsMap =
+        await _fetchTargetsForPromotions(rows.map((r) => r.id).toList());
+    return rows
+        .map((r) =>
+            _mapRowToEntity(r, targetIds: targetsMap[r.id] ?? const []))
+        .toList();
   }
 
   @override
@@ -133,7 +171,14 @@ class PromotionsLocalDataSourceImpl implements PromotionsLocalDataSource {
         (p) => OrderingTerm.desc(p.createdAt),
       ]);
     final rows = await query.get();
-    return rows.map(_mapRowToEntity).toList();
+    if (rows.isEmpty) return [];
+
+    final targetsMap =
+        await _fetchTargetsForPromotions(rows.map((r) => r.id).toList());
+    return rows
+        .map((r) =>
+            _mapRowToEntity(r, targetIds: targetsMap[r.id] ?? const []))
+        .toList();
   }
 
   @override
@@ -141,17 +186,66 @@ class PromotionsLocalDataSourceImpl implements PromotionsLocalDataSource {
     final row = await (_db.select(
       _db.promotions,
     )..where((p) => p.id.equals(id) & p.deletedAt.isNull())).getSingleOrNull();
-    return row == null ? null : _mapRowToEntity(row);
+    if (row == null) return null;
+
+    final targets = await (_db.select(_db.promotionTargets)
+          ..where((t) => t.promotionId.equals(id) & t.deletedAt.isNull()))
+        .get();
+
+    return _mapRowToEntity(row,
+        targetIds: targets.map((t) => t.targetId).toList());
   }
 
   @override
   Future<void> createPromotion(domain.Promotion promotion) async {
-    await _db.into(_db.promotions).insert(_mapEntityToCompanion(promotion));
+    final now = DateTime.now();
+    await _db.transaction(() async {
+      await _db.into(_db.promotions).insert(_mapEntityToCompanion(promotion));
+
+      for (final tid in promotion.targetIds) {
+        await _db.into(_db.promotionTargets).insert(
+              PromotionTargetsCompanion.insert(
+                id: _uuid.v4(),
+                branchId: promotion.branchId,
+                promotionId: promotion.id,
+                targetType: promotion.scope,
+                targetId: tid,
+                createdAt: now,
+              ),
+            );
+      }
+    });
   }
 
   @override
   Future<void> updatePromotion(domain.Promotion promotion) async {
-    await _db.update(_db.promotions).replace(_mapEntityToCompanion(promotion));
+    final now = DateTime.now();
+    await _db.transaction(() async {
+      await _db
+          .update(_db.promotions)
+          .replace(_mapEntityToCompanion(promotion));
+
+      // Soft-delete old targets
+      await (_db.update(_db.promotionTargets)
+            ..where((t) => t.promotionId.equals(promotion.id)))
+          .write(PromotionTargetsCompanion(
+        deletedAt: Value(now),
+      ));
+
+      // Insert new targets
+      for (final tid in promotion.targetIds) {
+        await _db.into(_db.promotionTargets).insert(
+              PromotionTargetsCompanion.insert(
+                id: _uuid.v4(),
+                branchId: promotion.branchId,
+                promotionId: promotion.id,
+                targetType: promotion.scope,
+                targetId: tid,
+                createdAt: now,
+              ),
+            );
+      }
+    });
   }
 
   @override
@@ -167,13 +261,21 @@ class PromotionsLocalDataSourceImpl implements PromotionsLocalDataSource {
   @override
   Future<void> deletePromotion(String id) async {
     final now = DateTime.now();
-    await (_db.update(_db.promotions)..where((p) => p.id.equals(id))).write(
-      PromotionsCompanion(
-        isActive: const Value(false),
-        updatedAt: Value(now),
+    await _db.transaction(() async {
+      await (_db.update(_db.promotions)..where((p) => p.id.equals(id))).write(
+        PromotionsCompanion(
+          isActive: const Value(false),
+          updatedAt: Value(now),
+          deletedAt: Value(now),
+        ),
+      );
+
+      await (_db.update(_db.promotionTargets)
+            ..where((t) => t.promotionId.equals(id)))
+          .write(PromotionTargetsCompanion(
         deletedAt: Value(now),
-      ),
-    );
+      ));
+    });
   }
 
   @override

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/common.dart';
 import 'tables/promotions.dart';
+import 'tables/promotion_targets.dart';
 
 part 'app_database.g.dart';
 
@@ -705,13 +706,14 @@ QueryExecutor _openConnection() {
     SalePayments,
     Promotions,
     PromotionApplications,
+    PromotionTargets,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @visibleForTesting
   Future<void> migrateToV6(Migrator m) async {
@@ -1002,6 +1004,37 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
+  @visibleForTesting
+  Future<void> migrateToV10(Migrator m) async {
+    final targetsTables = await customSelect(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='promotion_targets'",
+    ).get();
+    if (targetsTables.isEmpty) {
+      await m.createTable(promotionTargets);
+    }
+
+    await customStatement('''
+      INSERT INTO promotion_targets
+        (id, branch_id, promotion_id, target_type, target_id, created_at)
+      SELECT
+        lower(hex(randomblob(16))),
+        p.branch_id,
+        p.id,
+        p.scope,
+        p.target_id,
+        p.created_at
+      FROM promotions p
+      WHERE p.target_id IS NOT NULL
+        AND p.scope IN ('product', 'category')
+        AND p.deleted_at IS NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM promotion_targets pt
+          WHERE pt.promotion_id = p.id
+            AND pt.target_id = p.target_id
+        );
+    ''');
+  }
+
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (Migrator m) async {
@@ -1091,6 +1124,10 @@ class AppDatabase extends _$AppDatabase {
 
       if (from < 9 && to >= 9) {
         await migrateToV9(m);
+      }
+
+      if (from < 10 && to >= 10) {
+        await migrateToV10(m);
       }
     },
     beforeOpen: (details) async {

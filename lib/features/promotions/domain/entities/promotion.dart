@@ -7,7 +7,8 @@ class Promotion extends Equatable {
   final String? description;
   final String type; // 'percent' | 'fixed'
   final String scope; // 'product' | 'category' | 'all'
-  final String? targetId;
+  final List<String> targetIds; // NEW: list of product OR category IDs
+  final String? targetId; // DEPRECATED: kept for backward compat
   final int? valueBp; // basis points (1000 = 10%)
   final int? valuePiasters; // fixed discount per piece in piasters
   final int minQuantity;
@@ -27,6 +28,7 @@ class Promotion extends Equatable {
     this.description,
     required this.type,
     required this.scope,
+    this.targetIds = const [],
     this.targetId,
     this.valueBp,
     this.valuePiasters,
@@ -47,6 +49,14 @@ class Promotion extends Equatable {
         (time.isBefore(endsAt) || time.isAtSameMomentAs(endsAt));
   }
 
+  bool appliesToProduct(String variantId) =>
+      scope == 'product' &&
+      (targetIds.contains(variantId) || targetId == variantId);
+
+  bool appliesToCategory(String categoryId) =>
+      scope == 'category' &&
+      (targetIds.contains(categoryId) || targetId == categoryId);
+
   Promotion copyWith({
     String? id,
     String? branchId,
@@ -54,6 +64,7 @@ class Promotion extends Equatable {
     String? description,
     String? type,
     String? scope,
+    List<String>? targetIds,
     String? targetId,
     int? valueBp,
     int? valuePiasters,
@@ -74,6 +85,7 @@ class Promotion extends Equatable {
       description: description ?? this.description,
       type: type ?? this.type,
       scope: scope ?? this.scope,
+      targetIds: targetIds ?? this.targetIds,
       targetId: targetId ?? this.targetId,
       valueBp: valueBp ?? this.valueBp,
       valuePiasters: valuePiasters ?? this.valuePiasters,
@@ -97,6 +109,7 @@ class Promotion extends Equatable {
         description,
         type,
         scope,
+        targetIds,
         targetId,
         valueBp,
         valuePiasters,
