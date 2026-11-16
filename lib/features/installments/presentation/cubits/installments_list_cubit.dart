@@ -5,6 +5,7 @@ import 'package:injectable/injectable.dart';
 
 import '../../../customers/domain/repositories/customer_repository.dart';
 import '../../domain/entities/customer_installment_entity.dart';
+import '../../domain/entities/customer_installments_summary.dart';
 import '../../domain/facades/installments_facade.dart';
 
 enum InstallmentsListStatus { initial, loading, success, error }
@@ -13,6 +14,8 @@ class InstallmentsListState extends Equatable {
   final InstallmentsListStatus status;
   final List<CustomerInstallmentEntity> allContracts;
   final List<CustomerInstallmentEntity> contracts;
+  final List<CustomerInstallmentsSummary> allGrouped;
+  final List<CustomerInstallmentsSummary> groupedByCustomer;
   final Map<String, String> customerNames;
   final String filter; // 'all', 'active', 'completed', 'overdue', 'cancelled'
   final String searchQuery;
@@ -22,6 +25,8 @@ class InstallmentsListState extends Equatable {
     this.status = InstallmentsListStatus.initial,
     this.allContracts = const [],
     this.contracts = const [],
+    this.allGrouped = const [],
+    this.groupedByCustomer = const [],
     this.customerNames = const {},
     this.filter = 'all',
     this.searchQuery = '',
@@ -32,6 +37,8 @@ class InstallmentsListState extends Equatable {
     InstallmentsListStatus? status,
     List<CustomerInstallmentEntity>? allContracts,
     List<CustomerInstallmentEntity>? contracts,
+    List<CustomerInstallmentsSummary>? allGrouped,
+    List<CustomerInstallmentsSummary>? groupedByCustomer,
     Map<String, String>? customerNames,
     String? filter,
     String? searchQuery,
@@ -41,6 +48,8 @@ class InstallmentsListState extends Equatable {
       status: status ?? this.status,
       allContracts: allContracts ?? this.allContracts,
       contracts: contracts ?? this.contracts,
+      allGrouped: allGrouped ?? this.allGrouped,
+      groupedByCustomer: groupedByCustomer ?? this.groupedByCustomer,
       customerNames: customerNames ?? this.customerNames,
       filter: filter ?? this.filter,
       searchQuery: searchQuery ?? this.searchQuery,
@@ -53,6 +62,8 @@ class InstallmentsListState extends Equatable {
         status,
         allContracts,
         contracts,
+        allGrouped,
+        groupedByCustomer,
         customerNames,
         filter,
         searchQuery,
@@ -82,6 +93,10 @@ class InstallmentsListCubit extends Cubit<InstallmentsListState> {
   Future<void> loadContracts() async {
     emit(state.copyWith(status: InstallmentsListStatus.loading));
 
+    final now = DateTime.now();
+    final groupedRes = await _facade.getGroupedByCustomer(now: now);
+    final groups = groupedRes.getOrElse(() => []);
+
     // Fetch customers to map customerId to name
     final customersRes = await _customerRepo.getCustomers();
     final customerMap = <String, String>{};
@@ -101,42 +116,71 @@ class InstallmentsListCubit extends Cubit<InstallmentsListState> {
         errorMessage: failure.message,
       )),
       (contracts) {
-        final filtered = _applyFilters(
+        final filteredContracts = _applyFilters(
           contracts,
           state.searchQuery,
           state.filter,
           customerMap,
         );
+        final filteredGroups = _applyGroupFilters(
+          groups,
+          state.searchQuery,
+          state.filter,
+        );
         emit(state.copyWith(
           status: InstallmentsListStatus.success,
           allContracts: contracts,
-          contracts: filtered,
+          contracts: filteredContracts,
+          allGrouped: groups,
+          groupedByCustomer: filteredGroups,
           customerNames: customerMap,
         ));
       },
     );
   }
 
+  Future<void> loadGrouped() async {
+    await loadContracts();
+  }
+
   void setFilter(String status) {
-    final filtered = _applyFilters(
+    final filteredContracts = _applyFilters(
       state.allContracts,
       state.searchQuery,
       status,
       state.customerNames,
     );
-    emit(state.copyWith(filter: status, contracts: filtered));
+    final filteredGroups = _applyGroupFilters(
+      state.allGrouped,
+      state.searchQuery,
+      status,
+    );
+    emit(state.copyWith(
+      filter: status,
+      contracts: filteredContracts,
+      groupedByCustomer: filteredGroups,
+    ));
   }
 
   void setSearchQuery(String query) {
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-      final filtered = _applyFilters(
+      final filteredContracts = _applyFilters(
         state.allContracts,
         query,
         state.filter,
         state.customerNames,
       );
-      emit(state.copyWith(searchQuery: query, contracts: filtered));
+      final filteredGroups = _applyGroupFilters(
+        state.allGrouped,
+        query,
+        state.filter,
+      );
+      emit(state.copyWith(
+        searchQuery: query,
+        contracts: filteredContracts,
+        groupedByCustomer: filteredGroups,
+      ));
     });
   }
 
@@ -169,5 +213,34 @@ class InstallmentsListCubit extends Cubit<InstallmentsListState> {
 
     return result;
   }
-}
 
+  List<CustomerInstallmentsSummary> _applyGroupFilters(
+    List<CustomerInstallmentsSummary> list,
+    String query,
+    String filter,
+  ) {
+    var result = list;
+    final now = DateTime.now();
+
+    // 1. Status Filter
+    if (filter != 'all') {
+      result = result.where((summary) {
+        return summary.contracts.any((c) => c.statusAt(now) == filter);
+      }).toList();
+    }
+
+    // 2. Search Query (Customer name or customer ID or contract ID)
+    final q = query.trim().toLowerCase();
+    if (q.isNotEmpty) {
+      result = result.where((summary) {
+        final name = summary.customerName.toLowerCase();
+        final id = summary.customerId.toLowerCase();
+        final matchesContractId =
+            summary.contracts.any((c) => c.id.toLowerCase().contains(q));
+        return name.contains(q) || id.contains(q) || matchesContractId;
+      }).toList();
+    }
+
+    return result;
+  }
+}

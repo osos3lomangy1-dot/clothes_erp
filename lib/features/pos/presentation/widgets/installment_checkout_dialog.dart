@@ -1,9 +1,14 @@
+import 'package:dartz/dartz.dart' hide State;
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/money.dart';
+import '../../../customers/domain/entities/customer_entity.dart';
 import '../../../installments/data/services/manager_pin_service.dart';
+import '../../../installments/domain/entities/customer_installments_summary.dart';
 import '../../../installments/domain/entities/installment_plan_entity.dart';
+import '../../../installments/domain/facades/installments_facade.dart';
 import '../../../installments/domain/services/installment_calculator.dart';
 
 class InstallmentCheckoutConfig {
@@ -28,12 +33,14 @@ class InstallmentCheckoutDialog extends StatefulWidget {
   final List<InstallmentPlanEntity> plans;
   final int totalPiasters;
   final bool pinRequired;
+  final CustomerEntity? customer;
 
   const InstallmentCheckoutDialog({
     super.key,
     required this.plans,
     required this.totalPiasters,
     required this.pinRequired,
+    this.customer,
   });
 
   @override
@@ -198,6 +205,48 @@ class _InstallmentCheckoutDialogState extends State<InstallmentCheckoutDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Customer Existing Obligations Alert
+              if (widget.customer != null) ...[
+                FutureBuilder<Either<Failure, List<CustomerInstallmentsSummary>>>(
+                  future: getIt<InstallmentsFacade>().getGroupedByCustomer(now: DateTime.now()),
+                  builder: (context, snapshot) {
+                    final summaries = snapshot.data?.getOrElse(() => []) ?? [];
+                    final customerSummary = summaries
+                        .where((s) => s.customerId == widget.customer!.id)
+                        .firstOrNull;
+                    if (customerSummary == null) return const SizedBox.shrink();
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.amber.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_outline_rounded, color: Colors.amber.shade800),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'العميل لديه ${customerSummary.contractsCount} عقد/عقود نشطة\n'
+                              'متبقي: ${Money(customerSummary.totalRemainingPiasters).toDisplay()} ج.م | '
+                              'قسط شهري: ${Money(customerSummary.totalMonthlyAmountPiasters).toDisplay()} ج.م',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.amber.shade900,
+                                fontFamily: 'Cairo',
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
+
               // Plan selector
               DropdownButtonFormField<InstallmentPlanEntity>(
                 initialValue: _selectedPlan,

@@ -1681,6 +1681,7 @@ class _CartPanelState extends State<_CartPanel> {
         plans: activePlans,
         totalPiasters: totalPiasters,
         pinRequired: pinRequired,
+        customer: customer,
       ),
     );
     if (config == null || !mounted) return;

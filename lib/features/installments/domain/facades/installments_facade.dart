@@ -3,6 +3,7 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../pos/domain/entities/payment_split.dart';
 import '../entities/customer_installment_entity.dart';
+import '../entities/customer_installments_summary.dart';
 import '../entities/installment_payment_entity.dart';
 import '../entities/installment_plan_entity.dart';
 import '../entities/installment_schedule_entry.dart';
@@ -42,6 +43,9 @@ abstract class InstallmentsFacade {
     String? status,
     DateTime? fromDate,
     DateTime? toDate,
+  });
+  Future<Either<Failure, List<CustomerInstallmentsSummary>>> getGroupedByCustomer({
+    required DateTime now,
   });
   Future<Either<Failure, List<CustomerInstallmentEntity>>> listOverdueContracts();
   Future<Either<Failure, Unit>> cancelContract({

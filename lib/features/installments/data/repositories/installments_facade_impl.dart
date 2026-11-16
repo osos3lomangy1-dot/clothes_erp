@@ -14,6 +14,7 @@ import '../../../auth/data/datasources/auth_local_data_source.dart';
 import '../../../pos/domain/entities/payment_split.dart';
 import '../services/manager_pin_service.dart';
 import '../../domain/entities/customer_installment_entity.dart';
+import '../../domain/entities/customer_installments_summary.dart';
 import '../../domain/entities/installment_payment_entity.dart';
 import '../../domain/entities/installment_plan_entity.dart';
 import '../../domain/entities/installment_schedule_entry.dart';
@@ -538,6 +539,59 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
       .where((c) => c.statusAt(now) == 'overdue')
       .toList();
     return Right(overdue);
+  }
+
+  @override
+  Future<Either<Failure, List<CustomerInstallmentsSummary>>> getGroupedByCustomer({
+    required DateTime now,
+  }) async {
+    try {
+      final allRows = await (_db.select(_db.customerInstallments)
+            ..where((c) => c.deletedAt.isNull()))
+          .get();
+
+      final allEntities = allRows.map(_mapContract).toList();
+      final activeOrOverdue = allEntities.where((c) {
+        final status = c.statusAt(now);
+        return status == 'active' || status == 'overdue';
+      }).toList();
+
+      if (activeOrOverdue.isEmpty) return const Right([]);
+
+      final byCustomer = <String, List<CustomerInstallmentEntity>>{};
+      for (final c in activeOrOverdue) {
+        byCustomer.putIfAbsent(c.customerId, () => []).add(c);
+      }
+
+      final customerIds = byCustomer.keys.toList();
+      final customerRows = await (_db.select(_db.customers)
+            ..where((c) => c.id.isIn(customerIds)))
+          .get();
+      final nameMap = {for (final c in customerRows) c.id: c.name};
+
+      final summaries = byCustomer.entries.map((entry) {
+        final contracts = entry.value;
+        final totalRemaining = contracts.fold<int>(0, (s, c) => s + c.remainingPiasters);
+        final totalMonthly = contracts.fold<int>(0, (s, c) => s + c.monthlyAmountPiasters);
+        final fallbackName = entry.key.length > 8
+            ? 'عميل ${entry.key.substring(0, 8)}'
+            : 'عميل ${entry.key}';
+
+        return CustomerInstallmentsSummary(
+          customerId: entry.key,
+          customerName: nameMap[entry.key] ?? fallbackName,
+          contractsCount: contracts.length,
+          totalRemainingPiasters: totalRemaining,
+          totalMonthlyAmountPiasters: totalMonthly,
+          currentMonthDuePiasters: totalMonthly,
+          contracts: contracts,
+        );
+      }).toList();
+
+      return Right(summaries);
+    } catch (e) {
+      return Left(CacheFailure(e.toString()));
+    }
   }
 
   @override
