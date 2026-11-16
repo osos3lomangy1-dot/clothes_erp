@@ -145,12 +145,17 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
       currentUserId = authState.user.name;
     }
 
+    final purchaseRemaining = purchase != null
+        ? (purchase.totalAmount - purchase.paidAmount)
+        : null;
+
     showDialog(
       context: context,
       builder: (_) => SupplierPaymentDialog(
         supplier: supplier,
         purchaseId: purchase?.id,
         purchaseInvoiceNumber: purchase?.invoiceNumber,
+        purchaseRemaining: purchaseRemaining,
         onSave: ({
           required int amount,
           required DateTime paymentDate,

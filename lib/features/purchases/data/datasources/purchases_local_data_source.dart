@@ -300,6 +300,10 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
       totalAmount += (it.qty * it.costPrice);
     }
 
+    if (paidAmount > totalAmount) {
+      throw Exception('المبلغ المدفوع ($paidAmount قرش) أكبر من إجمالي الفاتورة ($totalAmount قرش)');
+    }
+
     // 2. Determine payment status
     String paymentStatus;
     if (paidAmount >= totalAmount) {
@@ -309,8 +313,6 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
     } else {
       paymentStatus = 'unpaid';
     }
-
-    final remainingDebt = totalAmount - paidAmount;
 
     // 3. Execute atomic transaction
     await _db.transaction(() async {
@@ -400,26 +402,7 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
         );
       }
 
-      // C. Update Supplier balance (shop owes supplier)
-      if (remainingDebt > 0) {
-        final supplier = await (_db.select(_db.suppliers)
-              ..where((s) => s.id.equals(supplierId)))
-            .getSingleOrNull();
-
-        if (supplier != null) {
-          final newBalance = supplier.balance + remainingDebt;
-          await (_db.update(_db.suppliers)
-                ..where((s) => s.id.equals(supplierId)))
-              .write(
-            SuppliersCompanion(
-              balance: Value(newBalance),
-              updatedAt: Value(now),
-            ),
-          );
-        }
-      }
-
-      // D. If advance payment was made, record it
+      // C. If advance payment was made, record it
       if (paidAmount > 0) {
         final paymentId = _uuid.v4();
         await _db.into(_db.supplierPayments).insert(
@@ -456,6 +439,9 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
               ),
             );
       }
+
+      // D. Recompute Supplier balance (source of truth: SUM(purchases) - SUM(payments))
+      await _recomputeSupplierBalance(supplierId);
 
       // Queue sync
       await _queueSync('purchases', purchaseId, 'insert', branchId);
@@ -541,29 +527,49 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
             ),
           );
 
-      // 2. Reduce supplier debt balance
-      final supplier = await (_db.select(_db.suppliers)
-            ..where((s) => s.id.equals(supplierId)))
-          .getSingleOrNull();
+      // 2. If purchaseId is null, FIFO-allocate across open invoices (oldest first)
+      if (purchaseId == null) {
+        int remaining = amount;
 
-      if (supplier != null) {
-        final newBalance = supplier.balance - amount;
-        await (_db.update(_db.suppliers)..where((s) => s.id.equals(supplierId)))
-            .write(
-          SuppliersCompanion(
-            balance: Value(newBalance),
+        final openInvoices = await (_db.select(_db.purchases)
+              ..where((p) =>
+                  p.supplierId.equals(supplierId) &
+                  p.deletedAt.isNull() &
+                  p.paidAmount.isSmallerThan(p.totalAmount))
+              ..orderBy([
+                (p) => OrderingTerm.asc(p.purchaseDate),
+                (p) => OrderingTerm.asc(p.createdAt),
+              ]))
+            .get();
+
+        for (final invoice in openInvoices) {
+          if (remaining <= 0) break;
+
+          final invoiceRemaining = invoice.totalAmount - invoice.paidAmount;
+          final allocate = remaining < invoiceRemaining ? remaining : invoiceRemaining;
+          final newPaid = invoice.paidAmount + allocate;
+          final newStatus = newPaid >= invoice.totalAmount ? 'paid' : 'partial';
+
+          await (_db.update(_db.purchases)..where((p) => p.id.equals(invoice.id)))
+              .write(PurchasesCompanion(
+            paidAmount: Value(newPaid),
+            paymentStatus: Value(newStatus),
             updatedAt: Value(now),
-          ),
-        );
-      }
+          ));
 
-      // 3. If tied to a specific purchase, update purchase paidAmount & status
-      if (purchaseId != null) {
+          remaining -= allocate;
+        }
+      } else {
+        // 3. If tied to a specific purchase, update that purchase paidAmount & status
         final purchase = await (_db.select(_db.purchases)
               ..where((p) => p.id.equals(purchaseId)))
             .getSingleOrNull();
 
         if (purchase != null) {
+          final invoiceRemaining = purchase.totalAmount - purchase.paidAmount;
+          if (amount > invoiceRemaining) {
+            throw Exception('المبلغ المدفوع ($amount قرش) أكبر من المتبقي على الفاتورة ($invoiceRemaining قرش)');
+          }
           final newPaid = purchase.paidAmount + amount;
           final newStatus = newPaid >= purchase.totalAmount ? 'paid' : 'partial';
 
@@ -577,6 +583,9 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
           );
         }
       }
+
+      // 4. Recompute supplier balance (single source of truth: SUM(purchases) - SUM(payments))
+      await _recomputeSupplierBalance(supplierId);
 
       // 4. Phase 2: Log in cash_movements instead of expenses
       final nowSec = now.millisecondsSinceEpoch ~/ 1000;
@@ -684,6 +693,26 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
             updatedAt: now,
           ),
         );
+  }
+
+  Future<void> _recomputeSupplierBalance(String supplierId) async {
+    final purchasesRows = await (_db.select(_db.purchases)
+          ..where((p) => p.supplierId.equals(supplierId) & p.deletedAt.isNull()))
+        .get();
+    final purchasesTotal = purchasesRows.fold<int>(0, (sum, p) => sum + p.totalAmount);
+
+    final paymentsRows = await (_db.select(_db.supplierPayments)
+          ..where((p) => p.supplierId.equals(supplierId)))
+        .get();
+    final paymentsTotal = paymentsRows.fold<int>(0, (sum, p) => sum + p.amount);
+
+    final newBalance = purchasesTotal - paymentsTotal;
+
+    await (_db.update(_db.suppliers)..where((s) => s.id.equals(supplierId)))
+        .write(SuppliersCompanion(
+      balance: Value(newBalance),
+      updatedAt: Value(DateTime.now()),
+    ));
   }
 }
 

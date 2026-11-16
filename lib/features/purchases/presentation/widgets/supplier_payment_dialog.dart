@@ -6,6 +6,7 @@ class SupplierPaymentDialog extends StatefulWidget {
   final SupplierEntity supplier;
   final String? purchaseId;
   final String? purchaseInvoiceNumber;
+  final int? purchaseRemaining;
   final Function({
     required int amount,
     required DateTime paymentDate,
@@ -19,6 +20,7 @@ class SupplierPaymentDialog extends StatefulWidget {
     required this.supplier,
     this.purchaseId,
     this.purchaseInvoiceNumber,
+    this.purchaseRemaining,
     required this.onSave,
   });
 
@@ -125,8 +127,8 @@ class _SupplierPaymentDialogState extends State<SupplierPaymentDialog> {
                 if (widget.purchaseInvoiceNumber != null) ...[
                   const SizedBox(height: 8),
                   Text(
-                    'مرتبطة بفاتورة شراء: #${widget.purchaseInvoiceNumber}',
-                    style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12),
+                    'مرتبطة بفاتورة شراء: #${widget.purchaseInvoiceNumber}${widget.purchaseRemaining != null ? ' (المتبقي: ${(widget.purchaseRemaining! / 100.0).toStringAsFixed(2)} ج.م)' : ''}',
+                    style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12),
                   ),
                 ],
                 const SizedBox(height: 16),
@@ -142,6 +144,15 @@ class _SupplierPaymentDialogState extends State<SupplierPaymentDialog> {
                     if (v == null || v.trim().isEmpty) return 'يرجى إدخال المبلغ';
                     final val = double.tryParse(v.trim());
                     if (val == null || val <= 0) return 'المبلغ يجب أن يكون أكبر من صفر';
+                    final piasters = (val * 100).round();
+                    final maxAllowed = widget.purchaseRemaining ?? widget.supplier.balance;
+                    if (maxAllowed <= 0) {
+                      return 'لا توجد مديونية مستحقة للسداد';
+                    }
+                    if (piasters > maxAllowed) {
+                      final maxPounds = (maxAllowed / 100.0).toStringAsFixed(2);
+                      return 'المبلغ ($val ج.م) أكبر من المتبقي المستحق ($maxPounds ج.م)';
+                    }
                     return null;
                   },
                 ),
