@@ -7,6 +7,18 @@ import '../../../../core/database/tx_writer.dart';
 
 import 'package:flutter/foundation.dart' hide Category;
 
+class ProductWithVariants {
+  final Product product;
+  final String categoryName;
+  final List<ProductVariant> variants;
+
+  ProductWithVariants({
+    required this.product,
+    required this.categoryName,
+    required this.variants,
+  });
+}
+
 @lazySingleton
 class ProductLocalDataSource {
   final AppDatabase _db;
@@ -27,6 +39,60 @@ class ProductLocalDataSource {
 
   Stream<List<Product>> watchAllProducts() {
     return (_db.select(_db.products)..where((t) => t.deletedAt.isNull())).watch();
+  }
+
+  Stream<List<ProductWithVariants>> watchAllProductsWithVariants() {
+    final query = _db.select(_db.products).join([
+      leftOuterJoin(
+        _db.productVariants,
+        _db.productVariants.productId.equalsExp(_db.products.id) &
+            _db.productVariants.deletedAt.isNull(),
+      ),
+      leftOuterJoin(
+        _db.categories,
+        _db.categories.id.equalsExp(_db.products.categoryId),
+      ),
+    ])..where(_db.products.deletedAt.isNull());
+
+    return query.watch().map((rows) => _groupProductsWithVariants(rows));
+  }
+
+  Future<List<ProductWithVariants>> getProductsWithVariants() async {
+    final query = _db.select(_db.products).join([
+      leftOuterJoin(
+        _db.productVariants,
+        _db.productVariants.productId.equalsExp(_db.products.id) &
+            _db.productVariants.deletedAt.isNull(),
+      ),
+      leftOuterJoin(
+        _db.categories,
+        _db.categories.id.equalsExp(_db.products.categoryId),
+      ),
+    ])..where(_db.products.deletedAt.isNull());
+
+    final rows = await query.get();
+    return _groupProductsWithVariants(rows);
+  }
+
+  List<ProductWithVariants> _groupProductsWithVariants(List<TypedResult> rows) {
+    final map = <String, ProductWithVariants>{};
+    for (final row in rows) {
+      final product = row.readTable(_db.products);
+      final variant = row.readTableOrNull(_db.productVariants);
+      final category = row.readTableOrNull(_db.categories);
+
+      final existing = map[product.id];
+      if (existing == null) {
+        map[product.id] = ProductWithVariants(
+          product: product,
+          categoryName: category?.name ?? '',
+          variants: [?variant],
+        );
+      } else if (variant != null) {
+        existing.variants.add(variant);
+      }
+    }
+    return map.values.toList();
   }
 
   Stream<List<Product>> watchActiveProducts() {

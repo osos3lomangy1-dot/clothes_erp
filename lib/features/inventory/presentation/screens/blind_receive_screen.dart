@@ -197,7 +197,7 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
                 children: [
                   TextField(
                     decoration: InputDecoration(
-                      hintText: 'ابحث باسم المنتج، كود SKU، المقاس، أو اللون...',
+                      hintText: 'ابحث بالاسم أو الكود أو الباركود...',
                       prefixIcon: const Icon(Icons.search_rounded),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

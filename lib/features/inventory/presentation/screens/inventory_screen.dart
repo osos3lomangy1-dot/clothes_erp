@@ -150,7 +150,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   child: TextField(
                     controller: _searchController,
                     decoration: InputDecoration(
-                      hintText: 'ابحث عن صنف بالاسم أو الكود (SKU)...',
+                      hintText: 'ابحث بالاسم أو الكود أو الباركود...',
                       prefixIcon: const Icon(
                         Icons.search,
                         color: AppColors.primary,

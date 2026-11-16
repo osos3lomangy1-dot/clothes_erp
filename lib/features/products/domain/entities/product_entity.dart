@@ -1,5 +1,24 @@
 import 'package:equatable/equatable.dart';
 
+class VariantSummary extends Equatable {
+  final String id;
+  final String sku; // serves as barcode/SKU/productCode
+  final String color;
+  final String size;
+  final int quantity;
+
+  const VariantSummary({
+    required this.id,
+    required this.sku,
+    required this.color,
+    required this.size,
+    required this.quantity,
+  });
+
+  @override
+  List<Object?> get props => [id, sku, color, size, quantity];
+}
+
 class ProductEntity extends Equatable {
   final String id;
   final String name;
@@ -10,6 +29,7 @@ class ProductEntity extends Equatable {
   final DateTime createdAt;
   final int minStock;
   final bool isActive;
+  final List<VariantSummary> variants;
 
   const ProductEntity({
     required this.id,
@@ -21,8 +41,20 @@ class ProductEntity extends Equatable {
     required this.createdAt,
     this.minStock = 5,
     this.isActive = true,
+    this.variants = const [],
   });
 
   @override
-  List<Object?> get props => [id, name, description, categoryId, categoryName,         images, createdAt, minStock, isActive];
+  List<Object?> get props => [
+        id,
+        name,
+        description,
+        categoryId,
+        categoryName,
+        images,
+        createdAt,
+        minStock,
+        isActive,
+        variants,
+      ];
 }

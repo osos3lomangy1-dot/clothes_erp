@@ -14,6 +14,7 @@ import '../../../categories/presentation/cubits/category_state.dart';
 import '../../../categories/presentation/screens/category_form_screen.dart';
 import '../../../product_variants/presentation/screens/variant_list_screen.dart';
 import '../../domain/entities/product_entity.dart';
+import '../../domain/services/product_search_filter.dart';
 import '../cubits/product_cubit.dart';
 import '../cubits/product_state.dart';
 import 'product_form_screen.dart';
@@ -267,20 +268,9 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
   List<ProductEntity> _filterProducts(List<ProductEntity> products) {
     return products.where((p) {
       if (_selectedCategoryId != null && _selectedCategoryId!.isNotEmpty) {
-        final matchesId = p.categoryId == _selectedCategoryId;
-        final matchesName = p.categoryName == _selectedCategoryName;
-        if (!matchesId && !matchesName) return false;
+        if (p.categoryId != _selectedCategoryId) return false;
       }
-      if (_searchQuery.trim().isNotEmpty) {
-        final q = _searchQuery.trim().toLowerCase();
-        final name = p.name.toLowerCase();
-        final cat = p.categoryName.toLowerCase();
-        final desc = p.description.toLowerCase();
-        if (!name.contains(q) && !cat.contains(q) && !desc.contains(q)) {
-          return false;
-        }
-      }
-      return true;
+      return ProductSearchFilter.matches(p, _searchQuery);
     }).toList();
   }
 
@@ -709,7 +699,7 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                   decoration: InputDecoration(
                     hintText: _selectedCategoryName != null
                         ? 'البحث داخل قسم "$_selectedCategoryName"...'
-                        : 'ابحث باسم المنتج، الوصف، أو الكود...',
+                        : 'ابحث بالاسم أو الكود أو الباركود...',
                     prefixIcon: const Icon(Icons.search, color: AppColors.primary),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(

@@ -14,16 +14,23 @@ class ProductRepositoryImpl implements ProductRepository {
   @override
   Future<Either<Failure, List<ProductEntity>>> getProducts() async {
     try {
-      final rows = await _localDataSource.getProducts();
+      final rows = await _localDataSource.getProductsWithVariants();
       final entities = rows.map((r) => ProductEntity(
-        id: r.id,
-        name: r.name,
-        description: r.description ?? '',
-        categoryId: r.categoryId,
-        categoryName: '',
-        createdAt: r.createdAt,
-        minStock: r.minStock,
-        isActive: r.isActive,
+        id: r.product.id,
+        name: r.product.name,
+        description: r.product.description ?? '',
+        categoryId: r.product.categoryId,
+        categoryName: r.categoryName,
+        createdAt: r.product.createdAt,
+        minStock: r.product.minStock,
+        isActive: r.product.isActive,
+        variants: r.variants.map((v) => VariantSummary(
+          id: v.id,
+          sku: v.sku,
+          color: v.color,
+          size: v.size,
+          quantity: v.quantity,
+        )).toList(),
       )).toList();
       return Right(entities);
     } catch (e) {
@@ -34,16 +41,23 @@ class ProductRepositoryImpl implements ProductRepository {
   @override
   Stream<Either<Failure, List<ProductEntity>>> watchAllProducts() async* {
     try {
-      await for (final rows in _localDataSource.watchAllProducts()) {
+      await for (final rows in _localDataSource.watchAllProductsWithVariants()) {
         final entities = rows.map((r) => ProductEntity(
-          id: r.id,
-          name: r.name,
-          description: r.description ?? '',
-          categoryId: r.categoryId,
-          categoryName: '',
-          createdAt: r.createdAt,
-          minStock: r.minStock,
-          isActive: r.isActive,
+          id: r.product.id,
+          name: r.product.name,
+          description: r.product.description ?? '',
+          categoryId: r.product.categoryId,
+          categoryName: r.categoryName,
+          createdAt: r.product.createdAt,
+          minStock: r.product.minStock,
+          isActive: r.product.isActive,
+          variants: r.variants.map((v) => VariantSummary(
+            id: v.id,
+            sku: v.sku,
+            color: v.color,
+            size: v.size,
+            quantity: v.quantity,
+          )).toList(),
         )).toList();
         yield Right(entities);
       }
