@@ -216,6 +216,20 @@ class ShiftLocalDataSourceImpl implements ShiftLocalDataSource {
       expectedCash = shiftRow.openingBalance + cashSales - cashReturns - cashExpenses;
     }
 
+    final cashInstallments = movements
+        .where((m) =>
+            m.method == 'cash' &&
+            (m.type == 'installment_payment' || m.type == 'installment_down') &&
+            m.direction == 'in')
+        .fold<int>(0, (s, m) => s + m.amountPiasters);
+
+    final cardInstallments = movements
+        .where((m) =>
+            m.method == 'card' &&
+            (m.type == 'installment_payment' || m.type == 'installment_down') &&
+            m.direction == 'in')
+        .fold<int>(0, (s, m) => s + m.amountPiasters);
+
     return ShiftSummaryEntity(
       shift: shiftEntity,
       cashSales: effectiveCashSales,
@@ -223,6 +237,8 @@ class ShiftLocalDataSourceImpl implements ShiftLocalDataSource {
       otherSales: otherSales,
       cashReturns: cashReturns,
       cashExpenses: cashExpenses,
+      cashInstallments: cashInstallments,
+      cardInstallments: cardInstallments,
       totalSalesCount: sales.length,
       expectedCashInDrawer: expectedCash,
     );

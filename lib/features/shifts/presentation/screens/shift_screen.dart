@@ -323,55 +323,119 @@ class _ShiftView extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: _metricBox(
-                    'الرصيد الافتتاحي (الفكة)',
-                    '${Money(shift.openingBalance).toDisplay()} ج.م',
-                    Icons.account_balance_wallet_rounded,
-                    Colors.blue.shade700,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _metricBox(
-                    'مبيعات نقدية (كاش)',
-                    '${Money(summary?.cashSales ?? 0).toDisplay()} ج.م',
-                    Icons.monetization_on_rounded,
-                    Colors.green.shade700,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _metricBox(
-                    'مبيعات فيزا وإلكتروني',
-                    '${Money(summary?.cardSales ?? 0).toDisplay()} ج.م',
-                    Icons.credit_card_rounded,
-                    Colors.purple.shade700,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _metricBox(
-                    'مصروفات / مرتجعات',
-                    '${Money((summary?.cashExpenses ?? 0) + (summary?.cashReturns ?? 0)).toDisplay()} ج.م',
-                    Icons.outbox_rounded,
-                    AppColors.error,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _metricBox(
-                    'المتوقع حالياً بالدرج',
-                    '${Money(summary?.expectedCashInDrawer ?? shift.openingBalance).toDisplay()} ج.م',
-                    Icons.point_of_sale_rounded,
-                    AppColors.primary,
-                    isHighlight: true,
-                  ),
-                ),
-              ],
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final cardOpening = _metricBox(
+                  'الرصيد الافتتاحي (الفكة)',
+                  '${Money(shift.openingBalance).toDisplay()} ج.م',
+                  Icons.account_balance_wallet_rounded,
+                  Colors.blue.shade700,
+                );
+                final cardCashSales = _metricBox(
+                  'مبيعات نقدية (كاش)',
+                  '${Money(summary?.cashSales ?? 0).toDisplay()} ج.م',
+                  Icons.monetization_on_rounded,
+                  Colors.green.shade700,
+                );
+                final cardCardSales = _metricBox(
+                  'مبيعات فيزا وإلكتروني',
+                  '${Money(summary?.cardSales ?? 0).toDisplay()} ج.م',
+                  Icons.credit_card_rounded,
+                  Colors.purple.shade700,
+                );
+                final cardInstallments = _metricBox(
+                  'أقساط محصلة',
+                  '${Money(summary?.totalInstallments ?? 0).toDisplay()} ج.م',
+                  Icons.payments_rounded,
+                  Colors.teal.shade700,
+                  subtitle: (summary?.cardInstallments ?? 0) > 0
+                      ? 'كاش: ${Money(summary?.cashInstallments ?? 0).toDisplay()} ج.م'
+                      : null,
+                );
+                final cardExpenses = _metricBox(
+                  'مصروفات / مرتجعات',
+                  '${Money((summary?.cashExpenses ?? 0) + (summary?.cashReturns ?? 0)).toDisplay()} ج.م',
+                  Icons.outbox_rounded,
+                  AppColors.error,
+                );
+                final cardExpected = _metricBox(
+                  'المتوقع حالياً بالدرج',
+                  '${Money(summary?.expectedCashInDrawer ?? shift.openingBalance).toDisplay()} ج.م',
+                  Icons.point_of_sale_rounded,
+                  AppColors.primary,
+                  isHighlight: true,
+                );
+
+                if (constraints.maxWidth < 960) {
+                  return Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(child: cardOpening),
+                          const SizedBox(width: 12),
+                          Expanded(child: cardCashSales),
+                          const SizedBox(width: 12),
+                          Expanded(child: cardCardSales),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(child: cardInstallments),
+                          const SizedBox(width: 12),
+                          Expanded(child: cardExpenses),
+                          const SizedBox(width: 12),
+                          Expanded(child: cardExpected),
+                        ],
+                      ),
+                    ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    Expanded(child: cardOpening),
+                    const SizedBox(width: 12),
+                    Expanded(child: cardCashSales),
+                    const SizedBox(width: 12),
+                    Expanded(child: cardCardSales),
+                    const SizedBox(width: 12),
+                    Expanded(child: cardInstallments),
+                    const SizedBox(width: 12),
+                    Expanded(child: cardExpenses),
+                    const SizedBox(width: 12),
+                    Expanded(child: cardExpected),
+                  ],
+                );
+              },
             ),
+            if ((summary?.totalInstallments ?? 0) > 0) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.teal.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.teal.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle_rounded, color: Colors.teal.shade700, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'تم تحصيل أقساط خلال هذه الوردية بقيمة ${Money(summary!.totalInstallments).toDisplay()} ج.م (كاش بالدرج: ${Money(summary.cashInstallments).toDisplay()} ج.م${summary.cardInstallments > 0 ? ' | فيزا: ${Money(summary.cardInstallments).toDisplay()} ج.م' : ''})',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.teal.shade900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -425,9 +489,9 @@ class _ShiftView extends StatelessWidget {
     );
   }
 
-  Widget _metricBox(String title, String value, IconData icon, Color color, {bool isHighlight = false}) {
+  Widget _metricBox(String title, String value, IconData icon, Color color, {bool isHighlight = false, String? subtitle}) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       decoration: BoxDecoration(
         color: isHighlight ? color.withValues(alpha: 0.08) : Colors.grey.shade50,
         borderRadius: BorderRadius.circular(12),
@@ -453,11 +517,19 @@ class _ShiftView extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 15,
               fontWeight: FontWeight.bold,
               color: isHighlight ? color : AppColors.onSurface,
             ),
           ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: TextStyle(fontSize: 10, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ],
       ),
     );

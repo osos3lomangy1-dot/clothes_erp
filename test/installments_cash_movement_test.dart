@@ -211,6 +211,8 @@ void main() {
       final summary = await shiftDs.getShiftSummary(shift.id);
       // Expected cash in drawer must be 500 opening + 1000 installment cash = 1500 EGP (150,000 piasters)
       expect(summary.expectedCashInDrawer, 150000);
+      expect(summary.cashInstallments, 100000);
+      expect(summary.totalInstallments, 100000);
 
       // 5. Close shift with counted 1500 EGP -> difference = 0
       final closed = await shiftDs.closeShift(

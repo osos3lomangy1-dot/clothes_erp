@@ -185,6 +185,10 @@ class _CloseShiftDialogState extends State<CloseShiftDialog> {
                       _rowDetail('الرصيد الافتتاحي (الفكة):', '${Money(widget.summary.shift.openingBalance).toDisplay()} ج.م'),
                       const Divider(height: 14),
                       _rowDetail('مبيعات نقدية (كاش):', '+${Money(widget.summary.cashSales).toDisplay()} ج.م', color: Colors.green.shade700),
+                      if (widget.summary.cashInstallments > 0) ...[
+                        const Divider(height: 14),
+                        _rowDetail('أقساط محصلة (كاش):', '+${Money(widget.summary.cashInstallments).toDisplay()} ج.م', color: Colors.teal.shade700),
+                      ],
                       if (widget.summary.cashReturns > 0) ...[
                         const Divider(height: 14),
                         _rowDetail('مرتجعات نقدية:', '-${Money(widget.summary.cashReturns).toDisplay()} ج.م', color: Colors.orange.shade800),
@@ -203,6 +207,10 @@ class _CloseShiftDialogState extends State<CloseShiftDialog> {
                       if (widget.summary.cardSales > 0) ...[
                         const SizedBox(height: 8),
                         _rowDetail('مبيعات الفيزا / الإلكترونية (غير كاش):', '${Money(widget.summary.cardSales).toDisplay()} ج.م', color: Colors.grey.shade600),
+                      ],
+                      if (widget.summary.cardInstallments > 0) ...[
+                        const SizedBox(height: 8),
+                        _rowDetail('أقساط بالفيزا / إلكتروني (غير كاش):', '${Money(widget.summary.cardInstallments).toDisplay()} ج.م', color: Colors.grey.shade600),
                       ],
                     ],
                   ),

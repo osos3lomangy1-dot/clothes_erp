@@ -238,5 +238,54 @@ void main() {
       final enabledState = await dataSource.isShiftsEnabled();
       expect(enabledState, isTrue);
     });
+
+    test('getShiftSummary aggregates cash and card installment collections accurately', () async {
+      final branchId = await branchProvider.getBranchId();
+      final shift = await dataSource.openShift(
+        openingBalance: 10000, // 100 EGP
+        cashierId: 'c1',
+        cashierName: 'كاشير',
+      );
+
+      final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+      // 1. Insert cash installment payment
+      await db.into(db.cashMovements).insert(
+        CashMovementsCompanion.insert(
+          id: 'cm-inst-1',
+          branchId: branchId,
+          shiftId: Value(shift.id),
+          type: 'installment_payment',
+          method: 'cash',
+          direction: 'in',
+          amountPiasters: 25000, // 250 EGP
+          createdAt: nowSec,
+          updatedAt: nowSec,
+        ),
+      );
+
+      // 2. Insert card installment down payment
+      await db.into(db.cashMovements).insert(
+        CashMovementsCompanion.insert(
+          id: 'cm-inst-2',
+          branchId: branchId,
+          shiftId: Value(shift.id),
+          type: 'installment_down',
+          method: 'card',
+          direction: 'in',
+          amountPiasters: 15000, // 150 EGP
+          createdAt: nowSec,
+          updatedAt: nowSec,
+        ),
+      );
+
+      final summary = await dataSource.getShiftSummary(shift.id);
+
+      expect(summary.cashInstallments, 25000);
+      expect(summary.cardInstallments, 15000);
+      expect(summary.totalInstallments, 40000);
+      // Expected cash in drawer: 100 (opening) + 250 (cash installment) = 350 EGP (35,000 piasters)
+      expect(summary.expectedCashInDrawer, 35000);
+    });
   });
 }

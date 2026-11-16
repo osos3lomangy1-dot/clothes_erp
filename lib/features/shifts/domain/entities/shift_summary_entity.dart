@@ -8,8 +8,10 @@ class ShiftSummaryEntity extends Equatable {
   final int otherSales; // in piasters
   final int cashReturns; // in piasters
   final int cashExpenses; // in piasters
+  final int cashInstallments; // in piasters (collected in cash during this shift)
+  final int cardInstallments; // in piasters (collected by card during this shift)
   final int totalSalesCount;
-  final int expectedCashInDrawer; // in piasters: openingBalance + cashSales - cashReturns - cashExpenses
+  final int expectedCashInDrawer; // in piasters: openingBalance + cashSales + cashInstallments - cashReturns - cashExpenses
 
   const ShiftSummaryEntity({
     required this.shift,
@@ -18,11 +20,14 @@ class ShiftSummaryEntity extends Equatable {
     required this.otherSales,
     required this.cashReturns,
     required this.cashExpenses,
+    this.cashInstallments = 0,
+    this.cardInstallments = 0,
     required this.totalSalesCount,
     required this.expectedCashInDrawer,
   });
 
   int get totalRevenue => cashSales + cardSales + otherSales;
+  int get totalInstallments => cashInstallments + cardInstallments;
 
   @override
   List<Object?> get props => [
@@ -32,6 +37,8 @@ class ShiftSummaryEntity extends Equatable {
         otherSales,
         cashReturns,
         cashExpenses,
+        cashInstallments,
+        cardInstallments,
         totalSalesCount,
         expectedCashInDrawer,
       ];
