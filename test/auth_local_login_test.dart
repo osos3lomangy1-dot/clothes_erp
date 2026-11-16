@@ -157,6 +157,41 @@ void main() {
       await authRepo.logout();
       expect(await localDataSource.getCachedUser(), isNull);
     });
+
+    test('Login with non-existent user returns AuthFailure and is not auto-registered', () async {
+      final result = await authRepo.login('unknown_random_user', 'any_pass_123');
+
+      expect(result.isLeft(), true);
+      result.fold(
+        (failure) => expect(failure.message, contains('اسم المستخدم أو كلمة المرور غير صحيحة')),
+        (_) => fail('Non-existent user should not be able to log in'),
+      );
+    });
+
+    test('Login with wrong password does not allow 123456 bypass for other accounts', () async {
+      final now = DateTime.now();
+      await db.into(db.users).insert(
+        UsersCompanion.insert(
+          id: 'emp-secret',
+          branchId: 'branch-1',
+          username: 'secret_user',
+          displayName: 'موظف بكلمة مرور خاصة',
+          role: 'cashier',
+          passwordHash: 'hash_secret_pass_999',
+          passwordSalt: 'salt123',
+          isActive: const drift.Value(true),
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      final result = await authRepo.login('secret_user', '123456');
+      expect(result.isLeft(), true);
+      result.fold(
+        (failure) => expect(failure.message, contains('كلمة المرور غير صحيحة')),
+        (_) => fail('Should not allow 123456 bypass'),
+      );
+    });
   });
 
   group('Migration Idempotence Tests (Duplicate Column Protection)', () {

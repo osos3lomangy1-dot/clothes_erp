@@ -50,12 +50,11 @@ class AuthRepositoryImpl implements AuthRepository {
         final isMatch = localUser.passwordHash == expectedHash ||
             localUser.passwordHash == cleanPass ||
             (localUser.passwordHash == 'admin123' &&
-                (cleanPass == 'admin' || cleanPass == 'admin123' || cleanPass == '123456')) ||
+                (cleanPass == 'admin' || cleanPass == 'admin123')) ||
             (localUser.passwordHash == '123456' &&
                 (cleanPass == '123456' || cleanPass == 'cashier')) ||
             (localUser.passwordHash == 'hash_admin123' &&
-                (cleanPass == 'admin' || cleanPass == 'admin123' || cleanPass == '123456')) ||
-            cleanPass == '123456';
+                (cleanPass == 'admin' || cleanPass == 'admin123'));
 
         if (isMatch) {
           final userModel = UserModel(
@@ -164,40 +163,9 @@ class AuthRepositoryImpl implements AuthRepository {
         return Right(defaultCashier);
       }
 
-      // 3. Fallback to Firebase Remote Auth if offline local user not found
+      // Fallback to Firebase Remote Auth if offline local user not found
       if (!kEnableFirebase) {
-        Logging.info('🛡️ [Safe Mode] Auto-registering mock user "$cleanInput" in local Drift DB');
-        final now = DateTime.now();
-        final safeUserId = 'mock_${cleanInput.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}';
-        final safeDisplayName = cleanInput.contains('@') ? cleanInput.split('@').first : cleanInput;
-
-        await _db.into(_db.users).insert(
-          UsersCompanion.insert(
-            id: safeUserId,
-            branchId: 'branch-1',
-            username: cleanInput,
-            displayName: safeDisplayName,
-            role: 'admin',
-            passwordHash: cleanPass,
-            passwordSalt: 'safe_mode',
-            isActive: const Value(true),
-            createdAt: now,
-            updatedAt: now,
-          ),
-          mode: InsertMode.insertOrReplace,
-        );
-
-        final mockUser = UserModel(
-          id: safeUserId,
-          name: safeDisplayName,
-          email: cleanInput,
-          role: 'admin',
-          isActive: true,
-          createdAt: now,
-        );
-        await _localDataSource.cacheUser(mockUser);
-        _authController.add(mockUser);
-        return Right(mockUser);
+        return const Left(AuthFailure('اسم المستخدم أو كلمة المرور غير صحيحة'));
       }
 
       try {
