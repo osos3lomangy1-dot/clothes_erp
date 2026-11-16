@@ -402,11 +402,7 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
 
           if (downPaymentPiasters > 0) {
             final nowSec = now.millisecondsSinceEpoch ~/ 1000;
-            final activeShift = await (_db.select(_db.shifts)
-                  ..where((s) => s.closedAt.isNull() & s.deletedAt.isNull())
-                  ..orderBy([(s) => OrderingTerm.desc(s.openedAt)])
-                  ..limit(1))
-                .getSingleOrNull();
+            final activeShift = await _getActiveShift();
 
             final splits = (downPaymentSplits != null && downPaymentSplits.isNotEmpty)
                 ? downPaymentSplits
@@ -702,6 +698,8 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
     final user = await _auth.getCachedUser();
     final userId = user?.id ?? 'unknown';
     final now = DateTime.now();
+    final nowSec = now.millisecondsSinceEpoch ~/ 1000;
+    final activeShift = await _getActiveShift();
 
     final newRemaining = contract.remainingPiasters - amountPiasters;
     final newStatus = newRemaining == 0 ? 'completed' : contract.status;
@@ -745,6 +743,22 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
             updatedAt: Value(now),
           ),
         );
+
+        await _db.into(_db.cashMovements).insert(
+          CashMovementsCompanion.insert(
+            id: const Uuid().v4(),
+            branchId: branchId,
+            shiftId: Value(activeShift?.id),
+            type: 'installment_payment',
+            method: paymentMethod,
+            direction: 'in',
+            amountPiasters: amountPiasters,
+            referenceId: Value(contractId),
+            notes: Value(notes ?? 'سداد قسط ($paymentMethod)'),
+            createdAt: nowSec,
+            updatedAt: nowSec,
+          ),
+        );
       },
       branchId: branchId,
       entity: 'installment_payments',
@@ -759,6 +773,8 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
         'amountPiasters': amountPiasters,
         'newRemaining': newRemaining,
         'newStatus': newStatus,
+        'paymentMethod': paymentMethod,
+        'shiftId': activeShift?.id,
       }),
     );
 
@@ -884,4 +900,12 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
         updatedAt: row.updatedAt,
         deletedAt: row.deletedAt,
       );
+
+  Future<Shift?> _getActiveShift() async {
+    return await (_db.select(_db.shifts)
+          ..where((s) => s.closedAt.isNull() & s.deletedAt.isNull())
+          ..orderBy([(s) => OrderingTerm.desc(s.openedAt)])
+          ..limit(1))
+        .getSingleOrNull();
+  }
 }
