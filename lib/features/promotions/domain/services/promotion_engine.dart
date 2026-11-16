@@ -18,6 +18,7 @@ class PromotionEngine {
     required List<Promotion> activePromotions,
     int? customerDiscountPercent,
     DateTime? now,
+    @Deprecated('Unused if categories are flat or pre-resolved in targetIds')
     Map<String, Set<String>>? categoryDescendants,
   }) {
     final evalTime = now ?? DateTime.now();
@@ -52,7 +53,7 @@ class PromotionEngine {
       final candidates = <_PromoCandidate>[];
 
       for (final promo in effectivePromotions) {
-        if (!_isScopeMatch(promo, line, categoryDescendants)) {
+        if (!_matchesTarget(promo, line, categoryDescendants)) {
           continue;
         }
 
@@ -147,38 +148,37 @@ class PromotionEngine {
     );
   }
 
-  static bool _isScopeMatch(
-    Promotion promo,
-    SaleItemEntity item,
+  static bool _matchesTarget(
+    Promotion p,
+    SaleItemEntity line, [
     Map<String, Set<String>>? categoryDescendants,
-  ) {
-    switch (promo.scope) {
-      case 'all':
-        return true;
+  ]) {
+    if (p.scope == 'all') return true;
 
+    // Backward compat: prefer targetIds; fall back to targetId if empty.
+    final effectiveTargets = p.targetIds.isNotEmpty
+        ? p.targetIds
+        : (p.targetId != null && p.targetId!.isNotEmpty
+            ? <String>[p.targetId!]
+            : const <String>[]);
+
+    if (effectiveTargets.isEmpty) return false;
+
+    switch (p.scope) {
       case 'product':
-        // Correction 9: targetId guard
-        if (promo.targetId == null || promo.targetId!.isEmpty) {
-          return false;
-        }
-        return item.productId == promo.targetId ||
-            item.variantId == promo.targetId;
+        return effectiveTargets.contains(line.productId) ||
+            effectiveTargets.contains(line.variantId);
 
       case 'category':
-        // Correction 9: targetId guard
-        if (promo.targetId == null || promo.targetId!.isEmpty) {
-          return false;
-        }
-        if (item.categoryId == null) {
-          return false;
-        }
-        if (item.categoryId == promo.targetId) {
-          return true;
-        }
+        final cid = line.categoryId;
+        if (cid == null) return false;
+        if (effectiveTargets.contains(cid)) return true;
         if (categoryDescendants != null) {
-          final descendants = categoryDescendants[promo.targetId];
-          if (descendants != null && descendants.contains(item.categoryId)) {
-            return true;
+          for (final tid in effectiveTargets) {
+            final descendants = categoryDescendants[tid];
+            if (descendants != null && descendants.contains(cid)) {
+              return true;
+            }
           }
         }
         return false;
@@ -187,6 +187,8 @@ class PromotionEngine {
         return false;
     }
   }
+
+
 
   static int _calculatePromoDiscount(
     Promotion promo,

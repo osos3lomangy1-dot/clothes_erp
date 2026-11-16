@@ -12,6 +12,7 @@ void main() {
     String name = 'Test Promo',
     String type = 'percent',
     String scope = 'all',
+    List<String> targetIds = const [],
     String? targetId,
     int? valueBp,
     int? valuePiasters,
@@ -28,6 +29,7 @@ void main() {
       name: name,
       type: type,
       scope: scope,
+      targetIds: targetIds,
       targetId: targetId,
       valueBp: valueBp,
       valuePiasters: valuePiasters,
@@ -610,6 +612,130 @@ void main() {
 
       expect(result.lineResults[0].discountPiasters, 0);
       expect(result.lineResults[0].hasPromotion, isFalse);
+    });
+  });
+
+  group('Multi-select targetIds', () {
+    test('1. matches when variantId in targetIds', () {
+      final promo = createPromo(
+        scope: 'product',
+        targetIds: ['v1', 'v2'],
+        targetId: null,
+        valueBp: 2000,
+      );
+      final line = createItem(variantId: 'v2', price: 10000, quantity: 1);
+
+      final result = PromotionEngine.apply(
+        cart: [line],
+        activePromotions: [promo],
+        now: baseTime,
+      );
+
+      expect(result.lineResults.first.discountPiasters, 2000);
+      expect(result.lineResults.first.hasPromotion, isTrue);
+    });
+
+    test('2. does not match when variantId not in targetIds', () {
+      final promo = createPromo(
+        scope: 'product',
+        targetIds: ['v1', 'v2'],
+        targetId: null,
+        valueBp: 2000,
+      );
+      final line = createItem(variantId: 'v3', price: 10000, quantity: 1);
+
+      final result = PromotionEngine.apply(
+        cart: [line],
+        activePromotions: [promo],
+        now: baseTime,
+      );
+
+      expect(result.lineResults.first.discountPiasters, 0);
+      expect(result.lineResults.first.hasPromotion, isFalse);
+    });
+
+    test('3. matches category when categoryId in targetIds', () {
+      final promo = createPromo(
+        scope: 'category',
+        targetIds: ['c1', 'c2'],
+        targetId: null,
+        valueBp: 2000,
+      );
+      final line = createItem(categoryId: 'c2', price: 10000, quantity: 1);
+
+      final result = PromotionEngine.apply(
+        cart: [line],
+        activePromotions: [promo],
+        now: baseTime,
+      );
+
+      expect(result.lineResults.first.discountPiasters, 2000);
+      expect(result.lineResults.first.hasPromotion, isTrue);
+    });
+
+    test('4. backward compat: empty targetIds falls back to targetId', () {
+      final promo = createPromo(
+        scope: 'product',
+        targetIds: const [],
+        targetId: 'v1',
+        valueBp: 2000,
+      );
+      final line = createItem(variantId: 'v1', price: 10000, quantity: 1);
+
+      final result = PromotionEngine.apply(
+        cart: [line],
+        activePromotions: [promo],
+        now: baseTime,
+      );
+
+      expect(result.lineResults.first.discountPiasters, 2000);
+      expect(result.lineResults.first.hasPromotion, isTrue);
+    });
+
+    test('5. backward compat: targetIds wins when both present', () {
+      final promo = createPromo(
+        scope: 'product',
+        targetIds: ['v2'],
+        targetId: 'v1',
+        valueBp: 2000,
+      );
+      final lineV1 = createItem(variantId: 'v1', price: 10000, quantity: 1);
+      final lineV2 = createItem(variantId: 'v2', price: 10000, quantity: 1);
+
+      // lineV1 should NOT match because targetIds is ['v2']
+      final result1 = PromotionEngine.apply(
+        cart: [lineV1],
+        activePromotions: [promo],
+        now: baseTime,
+      );
+      expect(result1.lineResults.first.discountPiasters, 0);
+
+      // lineV2 SHOULD match because targetIds is ['v2']
+      final result2 = PromotionEngine.apply(
+        cart: [lineV2],
+        activePromotions: [promo],
+        now: baseTime,
+      );
+      expect(result2.lineResults.first.discountPiasters, 2000);
+    });
+
+    test('6. empty targetIds and empty targetId -> no match', () {
+      final promo = createPromo(
+        scope: 'product',
+        targetIds: const [],
+        targetId: null,
+        valueBp: 2000,
+      );
+      final line = createItem(variantId: 'v1', price: 10000, quantity: 1);
+
+      final result = PromotionEngine.apply(
+        cart: [line],
+        activePromotions: [promo],
+        now: baseTime,
+      );
+
+      expect(result.lineResults.first.discountPiasters, 0);
+      expect(result.lineResults.first.hasPromotion, isFalse);
     });
   });
 }
