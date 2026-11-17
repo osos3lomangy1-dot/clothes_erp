@@ -1,46 +1,52 @@
-# Clothes ERP — Phases Roadmap
+# Clothes ERP — Detailed Phases Roadmap
 
-## Completed Phases
+## ✅ All Core & Production Phases Completed (100%)
 
-### Phase 0: Stabilization
-Audited the existing codebase (Bloc/Cubit, go_router, get_it + injectable, dartz). Identified architecture gaps, unused dependencies, missing features, and RBAC deficiencies. Established the hybrid Product/Variant schema, single-branch strategy, and online-first with offline persistence.
+### Phase 0: Stabilization & Architecture Audit
+Audited codebase (`flutter_bloc`, `get_it + injectable`, `dartz`, Clean Architecture). Established Product/Variant hybrid schema and offline-first strategy.
 
-### Phase 1a: Auth Stabilization
-Fixed the unsafe `user as UserModel` cast in `auth_repository_impl.dart`. Normalized exception → Failure mapping across auth data sources and repository. Enabled Firestore offline persistence with a static guard. Fixed `authStateChanges()` stream to never throw (broad catch, return null on failure).
+### Phase 1: Offline-First SQLite (Drift) & Core Safety
+Built Drift `AppDatabase` with idempotent versioned migrations, `TxWriter` atomic transaction wrapper (`sync_queue` + `audit_logs`), integer-piaster `Money` value object, `FeatureGate`, and local RBAC auth.
 
-### Phase 1b-1: Exception Mapping (Categories + Products)
-Applied the same exception → Failure mapping pattern to `category_remote_data_source`, `category_repository_impl`, `product_remote_data_source`, and `product_repository_impl`. Standardized `ServerException` → `ServerFailure` in all repos.
+### Phase 2: Catalog, Variants & Duplicate Prevention
+- Categories, Products, and Color/Size Variant Matrix on Drift.
+- **Barcode Label Printing:** Thermal roll (50×30mm, 38×25mm) and A4 multi-label PDF printing (`f18ef12`).
+- **Duplicate Prevention & Arabic Similarity Warning:** Real-time `ArabicTextHelper` normalization, live warning chips while typing, confirmation dialog on similar names, and strict UI + Cubit + DB duplicate rejection (`a8cf1eb`).
 
-### Phase 1b-2/1b-3: Exception Mapping (Variants, Employees, Inventory, POS)
-Extended the pattern to 8 more files: variant, employee, inventory, and POS data sources and repositories. All data sources now throw `ServerException` instead of raw `Exception`. All repos now use `on ServerException catch` before generic `catch`.
+### Phase 3: Inventory & Single Quantity Path
+- Auditable `applyStockMovement` path and full `inventory_logs` viewer with filtering and low-stock notifications.
 
-### Phase 1.5: Security Rules
-Created `firestore.rules` with role-based access control. Admin (full CRUD), Manager (read/write inventory + employees), Cashier (POS + read-only). Deny by default. `isActive` check enforced on every request. Deployed to Firebase.
+### Phase 4: POS Core, Split Payments & Hardware Scanner
+- Complete POS checkout with Color/Size picker, Split Payments (`cash`, `card`, `wallet`), Customer Returns, Thermal Receipts.
+- **Hardware Barcode Scanner Global Listener:** Seamless USB/Bluetooth HID barcode scanning with automatic cart insertion (`46c0fb9`).
 
-### Phase 2: Schema Alignment
-Aligned Product and Variant models to the hybrid schema. Product (catalog): `id, name, description, categoryId, categoryName, images, barcode, createdAt`. Variant (SKU): `id, productId, productCode, color, size, quantity, costPrice, salePrice, minStock, barcode, createdAt`. Confirmed `paymentMethod` field already exists in `SaleModel`.
+### Phase 5: Purchases, Suppliers & Purchase Returns
+- Purchase invoices, goods receipt cycle, supplier FIFO payment allocation.
+- **Supplier Purchase Returns:** Stock deduction, `inventory_logs`, supplier balance reconciliation, and cash drawer refund sync (`befbd51`).
 
-### Phase 3: POS Core
-Built the complete POS feature: domain entities (`SaleEntity`, `SaleItemEntity`), `CreateSaleUseCase`, repository with Firestore `WriteBatch` (sale creation + variant quantity decrement + inventory_logs), `PosCubit` with cart management, `PosScreen` with split layout (search + cart), payment method dropdown, checkout with loading state. Added `/pos` route and "Open POS" buttons on both dashboards.
+### Phase 6: Shifts & Cash Drawer Integrity
+- `cash_movements` ledger linked to `shiftId` across sales, returns, expenses, supplier payments, and installments.
+- Shift open/close reconciliation and Shift Installments Display (`abde249`).
 
-## Upcoming Phases
+### Phase 7: Installments & Bulk FIFO Quick Payment
+- Installment plans, contracts, schedule calculator, overdue detection, Manager PIN protection, grouped customer summary view.
+- **Bulk Customer Installment Payment (FIFO):** Quick payment field next to customer name with automatic FIFO contract allocation, debt cap validation, PIN verification, and drawer sync (`f767d26`).
 
-### Phase 4: Dashboard & Reports
-- Dashboard screens with real data (sales summary, low-stock alerts, recent transactions).
-- Reports: sales by payment method, by date range, by cashier. Inventory reports. Employee attendance reports.
+### Phase 8: Promotions Engine
+- Product/Category targeted promotions, percentage/fixed discounts, BOGO, POS auto-evaluation, receipt display, and promotion reports.
 
-### Phase 5: Inventory Logs & Stock Management
-- Inventory adjustment UI (add/remove stock with reason).
-- Full inventory_logs viewer with filtering by date, type, product.
-- Low-stock notifications.
+### Phase 9: Executive Dashboard, HR & Reports
+- **Executive Dashboard Upgrade:** Real-time revenue, net profit, installment collections, low-stock alerts, and top products (`c32c277`).
+- Employees, payroll/advances/bonuses, expenses, and PDF/CSV reports.
 
-### Phase 6: Customers, Returns & Expenses
-- Customer management (CRUD, purchase history, loyalty points).
-- Sales returns (reverse sale, restore stock, refund method).
-- Expenses tracking (amount, type, payment method, date).
+### Phase 10: Comprehensive Verification & Documentation
+- **474 automated tests passing** (`flutter test`).
+- **0 static analysis issues** (`flutter analyze`).
+- Full documentation sync across all `.md` files.
 
-### Phase 7: Reports & Analytics
-- Sales reports (daily, weekly, monthly, by payment method, by cashier).
-- Inventory reports (stock levels, turnover, low stock).
-- Employee reports (attendance, sales performance).
-- Export to PDF/CSV.
+---
+
+## Optional Future Roadmap (Post-v1.0)
+- Cloud sync engine consuming `sync_queue` across multiple branches.
+- Held/parked POS carts.
+- Automated customer SMS/WhatsApp installment reminders.

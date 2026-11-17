@@ -1,25 +1,24 @@
-# Clothing Store ERP — Project Overview
+# Orkeed Clothes ERP — Project Overview
 
 ## Project Name
-Clothing Store ERP (clothes_erp)
+Orkeed Clothes ERP (`clothes_erp`)
 
 ## Business Goal
-An offline-first Point-of-Sale and inventory management system for a clothing store.
-The app must work fully without internet: cashiers sell, stock is deducted, and all
-writes are queued for later cloud sync.
+A production-grade, offline-first Point-of-Sale (POS), Inventory, Installments, Purchases, and Accounting ERP system built specifically for clothing retail stores. The application works 100% offline with local SQLite persistence via Drift, atomic transaction guarantees (`TxWriter`), comprehensive audit logging, and sync queue support.
 
 ## Tech Stack
-- Flutter (Windows desktop target)
-- Drift (local SQLite, offline-first)
-- Bloc/Cubit for state management
-- GetIt + Injectable for dependency injection
-- dartz Either<Failure, T> for functional error handling
-- Material 3 with a Purple theme (0xFF673AB7)
+- **Framework:** Flutter (Windows Desktop primary target, RTL Arabic UI with Cairo font)
+- **Database:** Drift (local SQLite, offline-first, versioned migrations)
+- **State Management:** Bloc / Cubit (`flutter_bloc`)
+- **Dependency Injection:** GetIt + Injectable
+- **Functional Error Handling:** `dartz` (`Either<Failure, T>`)
+- **Printing & Barcodes:** `pdf`, `printing`, `barcode` (thermal roll 50×30mm, 38×25mm, A4 label sheets, thermal receipts)
+- **Design System:** Material 3 with Purple primary theme (`#673AB7`)
 
-## Transition from Firebase to Drift
-The app originally used Firebase Auth + Firestore. Due to platform issues (Firestore
-channel 400 on Web, Auth "non-platform thread" on Windows) and the offline-first
-requirement, the data layer was migrated to Drift. Auth and some legacy screens still
-touch Firebase, but Products, Variants, Categories, Inventory, and POS are fully on
-Drift. Returns, Reports, Customers, and Employees are pending migration.
-EOF
+## Completed Full Drift Migration
+All operational modules have been fully migrated to Drift (local SQLite) with zero reliance on Firebase for core operations:
+- **Catalog & Inventory:** Categories, Products (with Arabic duplicate prevention & real-time similarity warnings), Product Variants (Color/Size matrix), Inventory Logs (`applyStockMovement`), Barcode Label Printing.
+- **POS & Sales:** Hardware Barcode Scanner Listener, Split Payments, Installment Sales, Promotions Engine, Returns & Exchanges, Thermal Receipts.
+- **Installments:** Grouped Customer View, Individual & Bulk FIFO Quick Payments, Manager PIN Protection, Overdue Tracking, Shift Cash Drawer Sync.
+- **Purchases & Suppliers:** Purchase Invoices, Goods Receipt, Supplier FIFO Payments, Supplier Purchase Returns with stock & drawer reconciliation.
+- **Finance & HR:** Executive Dashboard, Shift Management & Drawer Reconciliation (`cash_movements`), Expenses, Employees, Payroll/Advances/Bonuses, Audit Logs, Feature Gates, and RBAC.
