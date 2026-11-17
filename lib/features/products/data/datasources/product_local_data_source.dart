@@ -168,12 +168,38 @@ class ProductLocalDataSource {
       }
     }
 
+    // Validate SKU uniqueness within batch and against existing active variants
+    final seenBatchSkus = <String>{};
+    final activeVariants = await (_db.select(_db.productVariants)
+          ..where((v) => v.deletedAt.isNull()))
+        .get();
+    final existingSkusLower =
+        activeVariants.map((v) => v.sku.trim().toLowerCase()).toSet();
+
+    for (final v in variants) {
+      final cleanSku = v.sku.trim();
+      if (cleanSku.isEmpty) {
+        throw Exception('كود المنتج (SKU) مطلوب لكل مقاس');
+      }
+      final lower = cleanSku.toLowerCase();
+      if (!seenBatchSkus.add(lower)) {
+        throw Exception(
+          'عفواً، الكود ("$cleanSku") مكرر أكثر من مرة داخل جدول المقاسات.',
+        );
+      }
+      if (existingSkusLower.contains(lower)) {
+        throw Exception(
+          'عفواً، الكود ("$cleanSku") مسجل بالفعل في النظام لصنف آخر. لا يمكن تكرار الأكواد.',
+        );
+      }
+    }
+
     await _tx.write(
       writeFn: () async {
         await _db.into(_db.products).insert(ProductsCompanion.insert(
           id: id,
           branchId: branchId,
-          name: name,
+          name: name.trim(),
           categoryId: categoryId,
           description: Value(description),
           minStock: Value(minStock),
@@ -187,7 +213,7 @@ class ProductLocalDataSource {
             id: variantId,
             branchId: branchId,
             productId: id,
-            sku: v.sku,
+            sku: v.sku.trim(),
             color: v.color,
             size: v.size,
             costPrice: v.costPrice,

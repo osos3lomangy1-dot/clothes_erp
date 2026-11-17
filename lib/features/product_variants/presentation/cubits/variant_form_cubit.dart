@@ -1,5 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import '../../../../core/di/injection.dart';
+import '../../data/datasources/variant_local_data_source.dart';
 import '../../domain/entities/variant_entity.dart';
 import '../../domain/usecases/add_variant_usecase.dart';
 import '../../domain/usecases/update_variant_usecase.dart';
@@ -9,13 +11,31 @@ import 'variant_form_state.dart';
 class VariantFormCubit extends Cubit<VariantFormState> {
   final AddVariantUseCase _addVariantUseCase;
   final UpdateVariantUseCase _updateVariantUseCase;
+  final VariantLocalDataSource? _variantLocalDataSource;
 
   VariantFormCubit(
     this._addVariantUseCase,
-    this._updateVariantUseCase,
-  ) : super(const VariantFormState());
+    this._updateVariantUseCase, {
+    @ignoreParam VariantLocalDataSource? variantLocalDataSource,
+  })  : _variantLocalDataSource = variantLocalDataSource,
+        super(const VariantFormState());
 
-  void init(VariantEntity? variant) {
+  Future<void> init(VariantEntity? variant) async {
+    Set<String> existingSkus = const {};
+    try {
+      final ds = _variantLocalDataSource ??
+          (getIt.isRegistered<VariantLocalDataSource>()
+              ? getIt<VariantLocalDataSource>()
+              : null);
+      if (ds != null) {
+        final all = await ds.getAllVariants();
+        existingSkus = all
+            .where((v) => variant == null || v.id != variant.id)
+            .map((v) => v.sku.trim().toLowerCase())
+            .toSet();
+      }
+    } catch (_) {}
+
     if (variant != null) {
       emit(state.copyWith(
         productCode: variant.productCode,
@@ -27,11 +47,20 @@ class VariantFormCubit extends Cubit<VariantFormState> {
         wholesalePrice: variant.wholesalePrice,
         minStock: variant.minStock,
         isEdit: true,
+        existingSkus: existingSkus,
+        hasDuplicateSku: false,
       ));
+    } else {
+      emit(state.copyWith(existingSkus: existingSkus));
     }
   }
 
-  void onProductCodeChanged(String value) => emit(state.copyWith(productCode: value));
+  void onProductCodeChanged(String value) {
+    final cleanLower = value.trim().toLowerCase();
+    final isDup = cleanLower.isNotEmpty && state.existingSkus.contains(cleanLower);
+    emit(state.copyWith(productCode: value, hasDuplicateSku: isDup));
+  }
+
   void onColorChanged(String value) => emit(state.copyWith(color: value));
   void onSizeChanged(String value) => emit(state.copyWith(size: value));
   void onQuantityChanged(int value) => emit(state.copyWith(quantity: value));
@@ -41,10 +70,20 @@ class VariantFormCubit extends Cubit<VariantFormState> {
   void onMinStockChanged(int value) => emit(state.copyWith(minStock: value));
 
   Future<void> submit({required String? id, required String productId}) async {
-    if (state.productCode.isEmpty || state.color.isEmpty || state.size.isEmpty) {
+    final cleanCode = state.productCode.trim();
+    if (cleanCode.isEmpty || state.color.trim().isEmpty || state.size.trim().isEmpty) {
       emit(state.copyWith(
         status: VariantFormStatus.error,
         errorMessage: 'يرجى إدخال كود الصنف واللون والمقاس',
+      ));
+      return;
+    }
+
+    if (state.hasDuplicateSku || state.existingSkus.contains(cleanCode.toLowerCase())) {
+      emit(state.copyWith(
+        status: VariantFormStatus.error,
+        hasDuplicateSku: true,
+        errorMessage: 'عفواً، الكود ("$cleanCode") مسجل بالفعل لصنف آخر. لا يمكن تكرار الأكواد.',
       ));
       return;
     }
@@ -54,7 +93,7 @@ class VariantFormCubit extends Cubit<VariantFormState> {
     final variant = VariantEntity(
       id: id ?? '',
       productId: productId,
-      productCode: state.productCode,
+      productCode: cleanCode,
       color: state.color,
       size: state.size,
       quantity: state.quantity,

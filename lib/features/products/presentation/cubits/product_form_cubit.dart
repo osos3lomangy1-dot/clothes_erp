@@ -1,7 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import '../../../../core/di/injection.dart';
 import '../../../../core/utils/arabic_text_helper.dart';
 import '../../../categories/domain/usecases/get_categories_usecase.dart';
+import '../../../product_variants/data/datasources/variant_local_data_source.dart';
 import '../../data/datasources/product_local_data_source.dart';
 import '../../domain/entities/product_entity.dart';
 import '../../domain/repositories/product_repository.dart';
@@ -15,19 +17,37 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   final UpdateProductUseCase _updateProductUseCase;
   final GetCategoriesUseCase _getCategoriesUseCase;
   final ProductRepository _productRepository;
+  final VariantLocalDataSource? _variantLocalDataSource;
 
   ProductFormCubit(
     this._addProductUseCase,
     this._updateProductUseCase,
     this._getCategoriesUseCase,
-    this._productRepository,
-  ) : super(const ProductFormState());
+    this._productRepository, {
+    @ignoreParam VariantLocalDataSource? variantLocalDataSource,
+  })  : _variantLocalDataSource = variantLocalDataSource,
+        super(const ProductFormState());
+
+  Future<Set<String>> _loadExistingSkus() async {
+    try {
+      final ds = _variantLocalDataSource ??
+          (getIt.isRegistered<VariantLocalDataSource>()
+              ? getIt<VariantLocalDataSource>()
+              : null);
+      if (ds == null) return const {};
+      final variants = await ds.getAllVariants();
+      return variants.map((v) => v.sku.trim().toLowerCase()).toSet();
+    } catch (_) {
+      return const {};
+    }
+  }
 
   Future<void> init(ProductEntity? product) async {
     emit(state.copyWith(status: ProductFormStatus.loading));
 
     final categoriesResult = await _getCategoriesUseCase();
     final productsResult = await _productRepository.getProducts();
+    final existingSkus = await _loadExistingSkus();
 
     final existingProducts = productsResult.getOrElse(() => []);
 
@@ -45,6 +65,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             categoryName: product.categoryName,
             categories: categories,
             existingProducts: existingProducts,
+            existingSkus: existingSkus,
             isEdit: true,
             editingProductId: product.id,
             status: ProductFormStatus.initial,
@@ -53,6 +74,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           emit(state.copyWith(
             categories: categories,
             existingProducts: existingProducts,
+            existingSkus: existingSkus,
             status: ProductFormStatus.initial,
           ));
         }
@@ -186,6 +208,35 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             'عفواً، يوجد منتج مسجل بالفعل بهذا الاسم ("${duplicate.name}"). لا يمكن تكرار إضافة المنتج.',
       ));
       return;
+    }
+
+    if (!state.isEdit) {
+      final seenSkus = <String>{};
+      for (final v in variants) {
+        final cleanSku = v.sku.trim();
+        final lower = cleanSku.toLowerCase();
+        if (cleanSku.isEmpty) {
+          emit(state.copyWith(
+            status: ProductFormStatus.error,
+            errorMessage: 'كود المنتج (SKU) مطلوب لكل مقاس',
+          ));
+          return;
+        }
+        if (!seenSkus.add(lower)) {
+          emit(state.copyWith(
+            status: ProductFormStatus.error,
+            errorMessage: 'عفواً، الكود ("$cleanSku") مكرر أكثر من مرة داخل جدول المقاسات.',
+          ));
+          return;
+        }
+        if (state.existingSkus.contains(lower)) {
+          emit(state.copyWith(
+            status: ProductFormStatus.error,
+            errorMessage: 'عفواً، الكود ("$cleanSku") مسجل بالفعل في النظام لصنف آخر. لا يمكن تكرار الأكواد.',
+          ));
+          return;
+        }
+      }
     }
 
     emit(state.copyWith(status: ProductFormStatus.loading));

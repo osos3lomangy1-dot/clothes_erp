@@ -72,10 +72,40 @@ class VariantFormScreen extends StatelessWidget {
                             decoration: InputDecoration(
                               labelText: 'كود المنتج / الباركود (SKU)',
                               hintText: 'مثال: TSH-BLK-M',
+                              errorText: state.hasDuplicateSku
+                                  ? 'هذا الكود مسجل بالفعل لصنف آخر. لا يمكن تكرار الأكواد.'
+                                  : null,
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                             ),
                             onChanged: (value) => context.read<VariantFormCubit>().onProductCodeChanged(value),
                           ),
+                          if (state.hasDuplicateSku) ...[
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.red.shade300),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.error_outline, color: Colors.red.shade800, size: 18),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'عفواً، الكود ("${state.productCode.trim()}") مستخدم بالفعل لصنف آخر ولا يمكن تكراره.',
+                                      style: TextStyle(
+                                        color: Colors.red.shade900,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 16),
                           Row(
                             children: [

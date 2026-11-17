@@ -14,6 +14,8 @@ class VariantFormState extends Equatable {
   final VariantFormStatus status;
   final String? errorMessage;
   final bool isEdit;
+  final Set<String> existingSkus;
+  final bool hasDuplicateSku;
 
   const VariantFormState({
     this.productCode = '',
@@ -27,6 +29,8 @@ class VariantFormState extends Equatable {
     this.status = VariantFormStatus.initial,
     this.errorMessage,
     this.isEdit = false,
+    this.existingSkus = const {},
+    this.hasDuplicateSku = false,
   });
 
   VariantFormState copyWith({
@@ -41,6 +45,8 @@ class VariantFormState extends Equatable {
     VariantFormStatus? status,
     String? errorMessage,
     bool? isEdit,
+    Set<String>? existingSkus,
+    bool? hasDuplicateSku,
   }) {
     return VariantFormState(
       productCode: productCode ?? this.productCode,
@@ -54,6 +60,8 @@ class VariantFormState extends Equatable {
       status: status ?? this.status,
       errorMessage: errorMessage,
       isEdit: isEdit ?? this.isEdit,
+      existingSkus: existingSkus ?? this.existingSkus,
+      hasDuplicateSku: hasDuplicateSku ?? this.hasDuplicateSku,
     );
   }
 
@@ -70,5 +78,7 @@ class VariantFormState extends Equatable {
         status,
         errorMessage,
         isEdit,
+        existingSkus,
+        hasDuplicateSku,
       ];
 }

@@ -47,18 +47,37 @@ class VariantLocalDataSource {
         .getSingleOrNull();
   }
 
+  Future<void> _assertSkuUnique(String sku, {String? excludeVariantId}) async {
+    final clean = sku.trim();
+    if (clean.isEmpty) {
+      throw Exception('كود المنتج (SKU) مطلوب');
+    }
+    final cleanLower = clean.toLowerCase();
+    final activeVariants = await (_db.select(_db.productVariants)
+          ..where((t) => t.deletedAt.isNull()))
+        .get();
+    for (final v in activeVariants) {
+      if (excludeVariantId != null && v.id == excludeVariantId) continue;
+      if (v.sku.trim().toLowerCase() == cleanLower) {
+        throw Exception(
+          'عفواً، الكود ("$clean") مسجل بالفعل لصنف آخر. لا يمكن تكرار الأكواد.',
+        );
+      }
+    }
+  }
+
   Future<String> autoGenerateSku(String productName, String color, String size) async {
     final p = productName.isNotEmpty ? productName.substring(0, 1).toUpperCase() : 'P';
     final c = color.isNotEmpty ? color.substring(0, 1).toUpperCase() : 'C';
     final s = size.isNotEmpty ? size.substring(0, 1).toUpperCase() : 'S';
     final base = '$p$c$s';
+    final activeVariants = await (_db.select(_db.productVariants)
+          ..where((t) => t.deletedAt.isNull()))
+        .get();
+    final existingSkus = activeVariants.map((v) => v.sku.trim().toLowerCase()).toSet();
     String sku = base;
     int suffix = 1;
-    while (true) {
-      final existing = await (_db.select(_db.productVariants)
-            ..where((t) => t.sku.equals(sku) & t.deletedAt.isNull()))
-          .get();
-      if (existing.isEmpty) break;
+    while (existingSkus.contains(sku.toLowerCase())) {
       sku = '$base$suffix';
       suffix++;
     }
@@ -75,6 +94,9 @@ class VariantLocalDataSource {
     int wholesalePrice = 0,
     int quantity = 0,
   }) async {
+    final cleanSku = sku.trim();
+    await _assertSkuUnique(cleanSku);
+
     final now = DateTime.now();
     final id = _uuid.v4();
     final branchId = await _branchId();
@@ -84,7 +106,7 @@ class VariantLocalDataSource {
           id: id,
           branchId: branchId,
           productId: productId,
-          sku: sku,
+          sku: cleanSku,
           color: color,
           size: size,
           quantity: const Value(0),
@@ -137,6 +159,11 @@ class VariantLocalDataSource {
     final existing = await (_db.select(_db.productVariants)..where((t) => t.id.equals(id))).getSingleOrNull();
     if (existing == null) throw Exception('المقاس غير موجود');
 
+    final cleanSku = sku?.trim();
+    if (cleanSku != null) {
+      await _assertSkuUnique(cleanSku, excludeVariantId: id);
+    }
+
     final qtyDelta = quantity != null ? (quantity - existing.quantity) : 0;
     final oldValue = 'qty:${existing.quantity},cost:${existing.costPrice},sell:${existing.sellPrice},wholesale:${existing.wholesalePrice}';
     final newValue = 'qty:${quantity ?? existing.quantity},cost:${costPrice ?? existing.costPrice},sell:${sellPrice ?? existing.sellPrice},wholesale:${wholesalePrice ?? existing.wholesalePrice}';
@@ -149,7 +176,7 @@ class VariantLocalDataSource {
             sellPrice: sellPrice != null ? Value(sellPrice) : const Value.absent(),
             wholesalePrice: wholesalePrice != null ? Value(wholesalePrice) : const Value.absent(),
             quantity: quantity != null ? Value(quantity) : const Value.absent(),
-            sku: sku != null ? Value(sku) : const Value.absent(),
+            sku: cleanSku != null ? Value(cleanSku) : const Value.absent(),
             color: color != null ? Value(color) : const Value.absent(),
             size: size != null ? Value(size) : const Value.absent(),
             updatedAt: Value(now),

@@ -203,6 +203,22 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
     });
   }
 
+  String? _skuErrorForRow(int idx, ProductFormState state) {
+    final sku = _rows[idx].skuCtrl.text.trim();
+    if (sku.isEmpty) return null;
+    final lower = sku.toLowerCase();
+    if (state.existingSkus.contains(lower)) {
+      return 'الكود مسجل مسبقاً';
+    }
+    for (int j = 0; j < _rows.length; j++) {
+      if (j == idx) continue;
+      if (_rows[j].skuCtrl.text.trim().toLowerCase() == lower) {
+        return 'الكود مكرر بالجدول';
+      }
+    }
+    return null;
+  }
+
   Future<void> _handleSubmit(BuildContext context, ProductFormState state) async {
     setState(() => _validationError = null);
 
@@ -280,6 +296,7 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
     }
 
     final List<VariantInput> variants = [];
+    final Set<String> seenSkus = {};
     for (int i = 0; i < _rows.length; i++) {
       final r = _rows[i];
       final size = r.sizeCtrl.text.trim();
@@ -291,6 +308,18 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
 
       if (size.isEmpty || color.isEmpty || sku.isEmpty) {
         setState(() => _validationError = 'السطر رقم ${i + 1}: المقاس واللون والكود حقول مطلوبة');
+        return;
+      }
+
+      final skuLower = sku.toLowerCase();
+      if (state.existingSkus.contains(skuLower)) {
+        setState(() => _validationError =
+            'السطر رقم ${i + 1}: عفواً، الكود ("$sku") مسجل بالفعل في النظام لصنف آخر. لا يمكن تكرار الأكواد.');
+        return;
+      }
+      if (!seenSkus.add(skuLower)) {
+        setState(() => _validationError =
+            'السطر رقم ${i + 1}: عفواً، الكود ("$sku") مكرر أكثر من مرة داخل جدول المقاسات.');
         return;
       }
 
@@ -355,7 +384,7 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                         color: AppColors.surfaceContainer,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.add_business_rounded, color: AppColors.primary, size: 24),
+                      child: Icon(Icons.add_business_rounded, color: AppColors.primary, size: 24),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -401,7 +430,7 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Row(
+                              Row(
                                 children: [
                                   Icon(Icons.info_outline, color: AppColors.primary, size: 20),
                                   SizedBox(width: 8),
@@ -518,7 +547,7 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                             visualDensity: VisualDensity.compact,
                                             backgroundColor: Colors.white,
                                             side: BorderSide(color: Colors.amber.shade300),
-                                            avatar: const Icon(Icons.checkroom, size: 14, color: AppColors.primary),
+                                            avatar: Icon(Icons.checkroom, size: 14, color: AppColors.primary),
                                             label: Text(
                                               '${p.name} (${p.categoryName})',
                                               style: const TextStyle(fontSize: 11),
@@ -566,7 +595,7 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    const Row(
+                                    Row(
                                       children: [
                                         Icon(Icons.table_chart_outlined, color: AppColors.primary, size: 20),
                                         SizedBox(width: 8),
@@ -618,7 +647,7 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                       ),
                                       child: Row(
                                         children: [
-                                          const Icon(Icons.tune, size: 18, color: AppColors.primary),
+                                          Icon(Icons.tune, size: 18, color: AppColors.primary),
                                           const SizedBox(width: 8),
                                           const Text('تطبيق موحد:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                                           const SizedBox(width: 12),
@@ -769,14 +798,27 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                               const SizedBox(width: 8),
                                               Expanded(
                                                 flex: 3,
-                                                child: TextFormField(
-                                                  controller: r.skuCtrl,
-                                                  decoration: const InputDecoration(
-                                                    isDense: true,
-                                                    hintText: 'الكود / SKU',
-                                                    border: OutlineInputBorder(),
-                                                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                                  ),
+                                                child: Builder(
+                                                  builder: (_) {
+                                                    final skuErr = _skuErrorForRow(idx, state);
+                                                    return TextFormField(
+                                                      controller: r.skuCtrl,
+                                                      onChanged: (_) => setState(() {}),
+                                                      decoration: InputDecoration(
+                                                        isDense: true,
+                                                        hintText: 'الكود / SKU',
+                                                        errorText: skuErr,
+                                                        errorStyle: const TextStyle(fontSize: 10, height: 1.1),
+                                                        border: const OutlineInputBorder(),
+                                                        focusedBorder: skuErr != null
+                                                            ? const OutlineInputBorder(
+                                                                borderSide: BorderSide(color: Colors.red, width: 1.5),
+                                                              )
+                                                            : null,
+                                                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                                      ),
+                                                    );
+                                                  },
                                                 ),
                                               ),
                                               if (!isCashier) ...[

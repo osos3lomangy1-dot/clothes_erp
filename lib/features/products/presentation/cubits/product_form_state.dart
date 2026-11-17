@@ -17,6 +17,7 @@ class ProductFormState extends Equatable {
   final List<ProductEntity> existingProducts;
   final List<ProductEntity> similarProducts;
   final ProductEntity? exactDuplicateProduct;
+  final Set<String> existingSkus;
 
   const ProductFormState({
     this.name = '',
@@ -31,10 +32,16 @@ class ProductFormState extends Equatable {
     this.existingProducts = const [],
     this.similarProducts = const [],
     this.exactDuplicateProduct,
+    this.existingSkus = const {},
   });
 
   bool get hasDuplicate => exactDuplicateProduct != null;
   bool get hasSimilar => similarProducts.isNotEmpty;
+
+  bool isSkuExisting(String sku) {
+    final clean = sku.trim().toLowerCase();
+    return clean.isNotEmpty && existingSkus.contains(clean);
+  }
 
   ProductFormState copyWith({
     String? name,
@@ -50,6 +57,7 @@ class ProductFormState extends Equatable {
     List<ProductEntity>? similarProducts,
     ProductEntity? exactDuplicateProduct,
     bool clearExactDuplicate = false,
+    Set<String>? existingSkus,
   }) {
     return ProductFormState(
       name: name ?? this.name,
@@ -64,6 +72,7 @@ class ProductFormState extends Equatable {
       existingProducts: existingProducts ?? this.existingProducts,
       similarProducts: similarProducts ?? this.similarProducts,
       exactDuplicateProduct: clearExactDuplicate ? null : (exactDuplicateProduct ?? this.exactDuplicateProduct),
+      existingSkus: existingSkus ?? this.existingSkus,
     );
   }
 
@@ -81,5 +90,6 @@ class ProductFormState extends Equatable {
         existingProducts,
         similarProducts,
         exactDuplicateProduct,
+        existingSkus,
       ];
 }
