@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/money.dart';
+import '../../../barcode_printing/domain/models/barcode_label_item.dart';
+import '../../../barcode_printing/presentation/dialogs/barcode_print_dialog.dart';
 import '../../../products/domain/entities/product_entity.dart';
 import '../../data/datasources/variant_local_data_source.dart';
 import '../../domain/entities/variant_entity.dart';
@@ -219,7 +221,42 @@ class VariantListScreen extends StatelessWidget {
               ),
               actions: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.qr_code_2_rounded, color: Colors.white, size: 18),
+                    label: const Text('طباعة الباركود 🏷️', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal.shade700,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onPressed: () {
+                      final state = context.read<VariantCubit>().state;
+                      if (state is VariantLoaded && state.variants.isNotEmpty) {
+                        showDialog(
+                          context: context,
+                          builder: (_) => BarcodePrintDialog(
+                            title: 'طباعة باركود: ${product.name}',
+                            initialItems: state.variants.map((v) => BarcodeLabelItem(
+                              variantId: v.id,
+                              productName: product.name,
+                              sku: v.productCode,
+                              color: v.color,
+                              size: v.size,
+                              salePricePiasters: v.salePrice,
+                              copies: v.quantity > 0 ? v.quantity : 1,
+                            )).toList(),
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('لا توجد مقاسات مسجلة لهذا المنتج للطباعة')),
+                        );
+                      }
+                    },
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
                   child: ElevatedButton.icon(
                     icon: const Icon(Icons.add, color: Colors.white, size: 18),
                     label: const Text('إضافة مقاس', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -364,6 +401,29 @@ class VariantListScreen extends StatelessWidget {
                                   ),
                                 ],
                               ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.qr_code_2_rounded, size: 20, color: Colors.blueGrey),
+                              tooltip: 'طباعة ملصق الباركود لهذا المقاس',
+                              onPressed: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (_) => BarcodePrintDialog(
+                                    title: 'طباعة باركود: ${product.name} (${variant.color} - ${variant.size})',
+                                    initialItems: [
+                                      BarcodeLabelItem(
+                                        variantId: variant.id,
+                                        productName: product.name,
+                                        sku: variant.productCode,
+                                        color: variant.color,
+                                        size: variant.size,
+                                        salePricePiasters: variant.salePrice,
+                                        copies: variant.quantity > 0 ? variant.quantity : 1,
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
                             ),
                             IconButton(
                               icon: const Icon(Icons.tune_rounded, size: 20, color: Colors.teal),

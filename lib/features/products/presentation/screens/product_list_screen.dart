@@ -8,10 +8,13 @@ import '../../../../core/di/injection.dart';
 import '../../../../core/services/excel_service.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
+import '../../../barcode_printing/domain/models/barcode_label_item.dart';
+import '../../../barcode_printing/presentation/dialogs/barcode_print_dialog.dart';
 import '../../../categories/domain/entities/category_entity.dart';
 import '../../../categories/presentation/cubits/category_cubit.dart';
 import '../../../categories/presentation/cubits/category_state.dart';
 import '../../../categories/presentation/screens/category_form_screen.dart';
+import '../../../product_variants/data/datasources/variant_local_data_source.dart';
 import '../../../product_variants/presentation/screens/variant_list_screen.dart';
 import '../../domain/entities/product_entity.dart';
 import '../../domain/services/product_search_filter.dart';
@@ -940,6 +943,35 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                 },
               ),
               const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.qr_code_2_rounded, size: 20, color: Colors.teal),
+                tooltip: 'طباعة ملصقات الباركود',
+                onPressed: () async {
+                  final variants = await getIt<VariantLocalDataSource>().getVariants(product.id);
+                  if (!context.mounted) return;
+                  if (variants.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('لا توجد مقاسات مسجلة لهذا المنتج للطباعة')),
+                    );
+                    return;
+                  }
+                  showDialog(
+                    context: context,
+                    builder: (_) => BarcodePrintDialog(
+                      title: 'طباعة باركود: ${product.name}',
+                      initialItems: variants.map((v) => BarcodeLabelItem(
+                        variantId: v.id,
+                        productName: product.name,
+                        sku: v.sku,
+                        color: v.color,
+                        size: v.size,
+                        salePricePiasters: v.sellPrice,
+                        copies: v.quantity > 0 ? v.quantity : 1,
+                      )).toList(),
+                    ),
+                  );
+                },
+              ),
               TextButton.icon(
                 icon: const Icon(Icons.edit_outlined, size: 16),
                 label: const Text('تعديل', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),

@@ -6,6 +6,8 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
+import '../../../barcode_printing/domain/models/barcode_label_item.dart';
+import '../../../barcode_printing/presentation/dialogs/barcode_print_dialog.dart';
 import '../../../products/presentation/screens/product_form_screen.dart';
 import '../../data/datasources/inventory_local_data_source.dart';
 import '../cubits/goods_receipt_cubit.dart';
@@ -272,6 +274,30 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
     }
   }
 
+  Future<void> _openPrintShipmentBarcodesDialog() async {
+    if (_lines.isEmpty) return;
+    final db = getIt<AppDatabase>();
+    final variantIds = _lines.map((l) => l.variantId).toList();
+    final variants = await (db.select(db.productVariants)..where((v) => v.id.isIn(variantIds))).get();
+    final priceMap = {for (final v in variants) v.id: v.sellPrice};
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (_) => BarcodePrintDialog(
+        title: 'طباعة باركودات الشحنة المستلمة',
+        initialItems: _lines.map((l) => BarcodeLabelItem(
+          variantId: l.variantId,
+          productName: l.productName,
+          sku: l.sku,
+          color: l.color,
+          size: l.size,
+          salePricePiasters: priceMap[l.variantId] ?? 0,
+          copies: l.quantity,
+        )).toList(),
+      ),
+    );
+  }
+
   Future<void> _saveReceipt() async {
     if (_lines.isEmpty) {
       _showToast('يرجى إضافة صنف واحد على الأقل للشحنة', isError: true);
@@ -371,7 +397,20 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
             label: const Text('إضافة صنف جديد كلياً', style: TextStyle(fontWeight: FontWeight.bold)),
             onPressed: _openQuickAddVariantDialog,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
+          if (_lines.isNotEmpty) ...[
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal.shade700,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              icon: const Icon(Icons.qr_code_2_rounded, color: Colors.white, size: 18),
+              label: Text('طباعة ملصقات الباركود (${_lines.length})', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              onPressed: _openPrintShipmentBarcodesDialog,
+            ),
+            const SizedBox(width: 8),
+          ],
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green.shade700,
