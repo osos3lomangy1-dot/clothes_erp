@@ -9,12 +9,14 @@ import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../../inventory/domain/entities/goods_receipt_entity.dart';
 import '../../../inventory/presentation/cubits/goods_receipt_cubit.dart';
 import '../../../inventory/presentation/cubits/goods_receipt_state.dart';
+import '../../data/datasources/purchases_local_data_source.dart';
 import '../../domain/entities/purchase_entity.dart';
 import '../../domain/entities/supplier_entity.dart';
 import '../cubits/purchases_cubit.dart';
 import '../cubits/purchases_state.dart';
 import '../cubits/suppliers_cubit.dart';
 import '../cubits/suppliers_state.dart';
+import '../dialogs/create_purchase_return_dialog.dart';
 import '../widgets/supplier_form_dialog.dart';
 import '../widgets/supplier_payment_dialog.dart';
 import 'create_purchase_screen.dart';
@@ -59,7 +61,7 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -178,6 +180,39 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
           if (payment != null && mounted) {
             context.read<PurchasesCubit>().loadPurchases();
             _showToast('تم تسجيل سداد الدفعة وخصمها من الرصيد بنجاح');
+          }
+        },
+      ),
+    );
+  }
+
+  void _openCreatePurchaseReturn(PurchaseEntity purchase) {
+    final authState = context.read<AuthCubit>().state;
+    String currentUserId = 'system';
+    if (authState is AuthAuthenticated) {
+      currentUserId = authState.user.name;
+    }
+
+    showDialog(
+      context: context,
+      builder: (_) => CreatePurchaseReturnDialog(
+        purchase: purchase,
+        onConfirm: ({
+          required List<PurchaseReturnItemDraft> items,
+          required String refundType,
+          String? reason,
+        }) async {
+          final ret = await context.read<PurchasesCubit>().createPurchaseReturn(
+            supplierId: purchase.supplierId,
+            purchaseId: purchase.id,
+            items: items,
+            refundType: refundType,
+            reason: reason,
+            userId: currentUserId,
+          );
+          if (ret != null && mounted) {
+            context.read<SuppliersCubit>().loadSuppliers();
+            _showToast('تم تسجيل مرتجع المشتريات وتحديث المخزون والحسابات بنجاح!');
           }
         },
       ),
@@ -307,6 +342,10 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
                 icon: Icon(Icons.business_rounded),
                 text: 'سجل الموردين والمديونيات',
               ),
+              Tab(
+                icon: Icon(Icons.assignment_return_rounded),
+                text: 'مرتجعات المشتريات',
+              ),
             ],
           ),
         ),
@@ -322,6 +361,7 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
                   _buildPurchasesTab(),
                   _buildPendingReceiptsTab(),
                   _buildSuppliersTab(),
+                  _buildReturnsTab(),
                 ],
               ),
             ),
@@ -338,6 +378,7 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
             final totalPurchases = pState.totalPurchasesAmount / 100.0;
             final totalPaid = pState.totalPaidAmount / 100.0;
             final totalDebt = sState.totalSuppliersDebt / 100.0;
+            final totalReturns = pState.totalReturnsAmount / 100.0;
 
             return Container(
               margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -370,6 +411,16 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
                       icon: Icons.warning_amber_rounded,
                       color: totalDebt > 0 ? Colors.red.shade700 : Colors.grey.shade700,
                       bgColor: totalDebt > 0 ? Colors.red.shade50 : Colors.grey.shade100,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _summaryCard(
+                      title: 'إجمالي المرتجعات',
+                      value: '${totalReturns.toStringAsFixed(2)} ج.م',
+                      icon: Icons.assignment_return_rounded,
+                      color: Colors.orange.shade800,
+                      bgColor: Colors.orange.shade50,
                     ),
                   ),
                 ],
@@ -734,35 +785,48 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
                   const Divider(height: 16),
                   Text('ملاحظات: ${p.notes}', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
                 ],
-                if (p.remainingAmount > 0) ...[
-                  const SizedBox(height: 12),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green.shade700,
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.orange.shade800,
+                        side: BorderSide(color: Colors.orange.shade300),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      icon: const Icon(Icons.payment_rounded, size: 16, color: Colors.white),
-                      label: const Text('سداد دفعة من هذه الفاتورة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      onPressed: () {
-                        final suppliers = context.read<SuppliersCubit>().state.suppliers;
-                        final sup = suppliers.firstWhere(
-                          (s) => s.id == p.supplierId,
-                          orElse: () => SupplierEntity(
-                            id: p.supplierId,
-                            branchId: p.branchId,
-                            name: p.supplierName ?? 'مورد',
-                            balance: p.remainingAmount,
-                            createdAt: DateTime.now(),
-                            updatedAt: DateTime.now(),
-                          ),
-                        );
-                        _openPaymentDialog(sup, purchase: p);
-                      },
+                      icon: const Icon(Icons.assignment_return_rounded, size: 16),
+                      label: const Text('إرجاع أصناف (مرتجع مشتريات) ↩️', style: TextStyle(fontWeight: FontWeight.bold)),
+                      onPressed: () => _openCreatePurchaseReturn(p),
                     ),
-                  ),
-                ],
+                    if (p.remainingAmount > 0) ...[
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.shade700,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        icon: const Icon(Icons.payment_rounded, size: 16, color: Colors.white),
+                        label: const Text('سداد دفعة من هذه الفاتورة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        onPressed: () {
+                          final suppliers = context.read<SuppliersCubit>().state.suppliers;
+                          final sup = suppliers.firstWhere(
+                            (s) => s.id == p.supplierId,
+                            orElse: () => SupplierEntity(
+                              id: p.supplierId,
+                              branchId: p.branchId,
+                              name: p.supplierName ?? 'مورد',
+                              balance: p.remainingAmount,
+                              createdAt: DateTime.now(),
+                              updatedAt: DateTime.now(),
+                            ),
+                          );
+                          _openPaymentDialog(sup, purchase: p);
+                        },
+                      ),
+                    ],
+                  ],
+                ),
               ],
             ),
           ),
@@ -954,6 +1018,150 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
           ],
         ),
       ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // TAB 4: PURCHASE RETURNS
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Widget _buildReturnsTab() {
+    return BlocBuilder<PurchasesCubit, PurchasesState>(
+      builder: (context, state) {
+        if (state.returns.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.assignment_return_outlined, size: 64, color: Colors.grey.shade400),
+                const SizedBox(height: 12),
+                const Text(
+                  'لا توجد مرتجعات مشتريات مسجلة حتى الآن',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'يمكنك إرجاع أصناف لمورد من خلال فتح الفاتورة والضغط على "إرجاع أصناف (مرتجع مشتريات)"',
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.all(20),
+          itemCount: state.returns.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 12),
+          itemBuilder: (context, idx) {
+            final ret = state.returns[idx];
+            final isCash = ret.isCashRefund;
+
+            return Card(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              elevation: 1,
+              child: ExpansionTile(
+                shape: const Border(),
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: isCash ? Colors.green.shade50 : Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    isCash ? Icons.payments_rounded : Icons.account_balance_wallet_rounded,
+                    color: isCash ? Colors.green.shade800 : Colors.orange.shade800,
+                  ),
+                ),
+                title: Row(
+                  children: [
+                    Text(
+                      'مرتجع #${ret.id.substring(0, 8)}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: isCash ? Colors.green.shade100 : Colors.orange.shade100,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        isCash ? 'استرداد نقدي فوري بالدرج' : 'خصم من مديونية المورد',
+                        style: TextStyle(
+                          color: isCash ? Colors.green.shade900 : Colors.orange.shade900,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      ret.formattedTotalAmount,
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.orange.shade900),
+                    ),
+                  ],
+                ),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Row(
+                    children: [
+                      Icon(Icons.person_outline_rounded, size: 15, color: Colors.grey.shade600),
+                      const SizedBox(width: 4),
+                      Text(ret.supplierName ?? 'مورد', style: TextStyle(color: Colors.grey.shade800, fontSize: 12)),
+                      if (ret.purchaseInvoiceNumber != null && ret.purchaseInvoiceNumber!.isNotEmpty) ...[
+                        const SizedBox(width: 12),
+                        Icon(Icons.receipt_outlined, size: 14, color: Colors.grey.shade600),
+                        const SizedBox(width: 4),
+                        Text('فاتورة #${ret.purchaseInvoiceNumber}', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
+                      ],
+                      const SizedBox(width: 12),
+                      Icon(Icons.calendar_today_outlined, size: 13, color: Colors.grey.shade600),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${ret.createdAt.year}/${ret.createdAt.month.toString().padLeft(2, '0')}/${ret.createdAt.day.toString().padLeft(2, '0')}',
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(color: Colors.grey.shade50),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('الأصناف المرتجعة للمورد:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        const SizedBox(height: 8),
+                        ...ret.items.map((it) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 3),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.circle, size: 6, color: Colors.orange),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text('${it.productName} (${it.variantInfo}) - كود: ${it.sku}'),
+                              ),
+                              Text('${it.qty} قطعة × ${it.formattedCostPrice} = ${it.formattedTotalCost}'),
+                            ],
+                          ),
+                        )),
+                        if (ret.reason != null && ret.reason!.isNotEmpty) ...[
+                          const Divider(height: 16),
+                          Text('سبب الإرجاع: ${ret.reason}', style: TextStyle(color: Colors.grey.shade800, fontSize: 12, fontStyle: FontStyle.italic)),
+                        ],
+                        const SizedBox(height: 4),
+                        Text('سُجل بواسطة: ${ret.createdBy}', style: TextStyle(color: Colors.grey.shade600, fontSize: 11)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

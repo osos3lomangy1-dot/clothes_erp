@@ -5,6 +5,7 @@ import '../../../../core/errors/failures.dart';
 import '../../../../core/features/feature_gate.dart';
 import '../../../auth/data/datasources/auth_local_data_source.dart';
 import '../../domain/entities/purchase_entity.dart';
+import '../../domain/entities/purchase_return_entity.dart';
 import '../../domain/entities/supplier_entity.dart';
 import '../../domain/entities/supplier_payment_entity.dart';
 import '../../domain/repositories/purchases_repository.dart';
@@ -210,6 +211,55 @@ class PurchasesRepositoryImpl implements PurchasesRepository {
       return Right(list);
     } catch (e) {
       return Left(CacheFailure('فشل جلب دفعات المورد: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, PurchaseReturnEntity>> createPurchaseReturn({
+    required String supplierId,
+    String? purchaseId,
+    required List<PurchaseReturnItemDraft> items,
+    required String refundType,
+    String? reason,
+    required String userId,
+  }) async {
+    if (!await _isAuthorizedAdmin()) {
+      return const Left(AuthFailure(_unauthorizedMsg));
+    }
+    try {
+      if (!await _featureGate.isEnabled(FeatureKeys.purchases)) {
+        return const Left(CacheFailure('ميزة المشتريات غير مفعّلة'));
+      }
+      final entity = await _localDataSource.createPurchaseReturn(
+        supplierId: supplierId,
+        purchaseId: purchaseId,
+        items: items,
+        refundType: refundType,
+        reason: reason,
+        userId: userId,
+      );
+      return Right(entity);
+    } catch (e) {
+      return Left(CacheFailure('فشل إنشاء مرتجع المشتريات: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<PurchaseReturnEntity>>> getPurchaseReturns({
+    String? supplierId,
+    String? purchaseId,
+  }) async {
+    if (!await _isAuthorizedAdmin()) {
+      return const Left(AuthFailure(_unauthorizedMsg));
+    }
+    try {
+      final list = await _localDataSource.getPurchaseReturns(
+        supplierId: supplierId,
+        purchaseId: purchaseId,
+      );
+      return Right(list);
+    } catch (e) {
+      return Left(CacheFailure('فشل جلب مرتجعات المشتريات: $e'));
     }
   }
 }

@@ -5,6 +5,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/database/branch_provider.dart';
 import '../../domain/entities/purchase_entity.dart';
 import '../../domain/entities/purchase_item_entity.dart';
+import '../../domain/entities/purchase_return_entity.dart';
 import '../../domain/entities/supplier_entity.dart';
 import '../../domain/entities/supplier_payment_entity.dart';
 
@@ -15,6 +16,24 @@ class PurchaseItemDraft {
 
   const PurchaseItemDraft({
     required this.variantId,
+    required this.qty,
+    required this.costPrice,
+  });
+}
+
+class PurchaseReturnItemDraft {
+  final String variantId;
+  final String productName;
+  final String variantInfo;
+  final String sku;
+  final int qty;
+  final int costPrice; // in piasters
+
+  const PurchaseReturnItemDraft({
+    required this.variantId,
+    required this.productName,
+    required this.variantInfo,
+    required this.sku,
     required this.qty,
     required this.costPrice,
   });
@@ -65,6 +84,20 @@ abstract class PurchasesLocalDataSource {
     required String userId,
   });
   Future<List<SupplierPaymentEntity>> getSupplierPayments({String? supplierId, String? purchaseId});
+
+  // Purchase Returns
+  Future<PurchaseReturnEntity> createPurchaseReturn({
+    required String supplierId,
+    String? purchaseId,
+    required List<PurchaseReturnItemDraft> items,
+    required String refundType, // 'credit' or 'cash'
+    String? reason,
+    required String userId,
+  });
+  Future<List<PurchaseReturnEntity>> getPurchaseReturns({
+    String? supplierId,
+    String? purchaseId,
+  });
 }
 
 @LazySingleton(as: PurchasesLocalDataSource)
@@ -695,6 +728,36 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
         );
   }
 
+  Future<void> _ensureReturnTables() async {
+    await _db.customStatement('''
+      CREATE TABLE IF NOT EXISTS purchase_returns (
+        id TEXT NOT NULL PRIMARY KEY,
+        branch_id TEXT NOT NULL,
+        purchase_id TEXT,
+        supplier_id TEXT NOT NULL,
+        total_amount INTEGER NOT NULL,
+        refund_type TEXT NOT NULL,
+        reason TEXT,
+        created_by TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+    ''');
+    await _db.customStatement('''
+      CREATE TABLE IF NOT EXISTS purchase_return_items (
+        id TEXT NOT NULL PRIMARY KEY,
+        return_id TEXT NOT NULL,
+        variant_id TEXT NOT NULL,
+        product_name TEXT NOT NULL,
+        variant_info TEXT NOT NULL,
+        sku TEXT NOT NULL,
+        qty INTEGER NOT NULL,
+        cost_price INTEGER NOT NULL,
+        total_cost INTEGER NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+    ''');
+  }
+
   Future<void> _recomputeSupplierBalance(String supplierId) async {
     final purchasesRows = await (_db.select(_db.purchases)
           ..where((p) => p.supplierId.equals(supplierId) & p.deletedAt.isNull()))
@@ -706,13 +769,247 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
         .get();
     final paymentsTotal = paymentsRows.fold<int>(0, (sum, p) => sum + p.amount);
 
-    final newBalance = purchasesTotal - paymentsTotal;
+    await _ensureReturnTables();
+    final creditReturnsResult = await _db.customSelect(
+      "SELECT COALESCE(SUM(total_amount), 0) AS total FROM purchase_returns WHERE supplier_id = ? AND refund_type = 'credit'",
+      variables: [Variable.withString(supplierId)],
+    ).getSingle();
+    final creditReturnsTotal = creditReturnsResult.read<int>('total');
+
+    final newBalance = purchasesTotal - paymentsTotal - creditReturnsTotal;
 
     await (_db.update(_db.suppliers)..where((s) => s.id.equals(supplierId)))
         .write(SuppliersCompanion(
       balance: Value(newBalance),
       updatedAt: Value(DateTime.now()),
     ));
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // PURCHASE RETURNS (مرتجعات المشتريات للموردين)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  @override
+  Future<PurchaseReturnEntity> createPurchaseReturn({
+    required String supplierId,
+    String? purchaseId,
+    required List<PurchaseReturnItemDraft> items,
+    required String refundType,
+    String? reason,
+    required String userId,
+  }) async {
+    if (items.isEmpty) {
+      throw Exception('لا يمكن إنشاء مرتجع مشتريات بدون أصناف');
+    }
+    if (refundType != 'credit' && refundType != 'cash') {
+      throw Exception('نوع تسوية المرتجع غير صالح (يجب أن يكون رصيد credit أو نقدي cash)');
+    }
+
+    await _ensureReturnTables();
+    final branchId = await _branchId();
+    final now = DateTime.now();
+    final nowMs = now.millisecondsSinceEpoch;
+    final nowSec = nowMs ~/ 1000;
+    final returnId = _uuid.v4();
+
+    // 1. Verify stock availability for all items before executing transaction
+    for (final it in items) {
+      if (it.qty <= 0) {
+        throw Exception('الكمية المرتجعة يجب أن تكون أكبر من الصفر');
+      }
+      final variant = await (_db.select(_db.productVariants)
+            ..where((v) => v.id.equals(it.variantId)))
+          .getSingleOrNull();
+
+      if (variant == null) {
+        throw Exception('الصنف غير موجود بالمخزن: ${it.productName}');
+      }
+      if (variant.quantity < it.qty) {
+        throw Exception(
+          'الكمية المتوفرة في المخزن من (${it.productName} - ${it.variantInfo}) هي ${variant.quantity} فقط، لا يمكن إرجاع ${it.qty} قطعة للمورد',
+        );
+      }
+    }
+
+    // 2. Calculate total
+    int totalAmount = 0;
+    for (final it in items) {
+      totalAmount += (it.qty * it.costPrice);
+    }
+
+    // 3. Atomic Transaction
+    await _db.transaction(() async {
+      // A. Insert into purchase_returns
+      await _db.customStatement('''
+        INSERT INTO purchase_returns
+          (id, branch_id, purchase_id, supplier_id, total_amount, refund_type, reason, created_by, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ''', [
+        returnId,
+        branchId,
+        purchaseId,
+        supplierId,
+        totalAmount,
+        refundType,
+        reason,
+        userId,
+        nowMs,
+      ]);
+
+      // B. Insert items, deduct variant quantities & record inventory logs
+      for (final it in items) {
+        final itemId = _uuid.v4();
+        final lineTotal = it.qty * it.costPrice;
+
+        await _db.customStatement('''
+          INSERT INTO purchase_return_items
+            (id, return_id, variant_id, product_name, variant_info, sku, qty, cost_price, total_cost, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', [
+          itemId,
+          returnId,
+          it.variantId,
+          it.productName,
+          it.variantInfo,
+          it.sku,
+          it.qty,
+          it.costPrice,
+          lineTotal,
+          nowMs,
+        ]);
+
+        // Deduct from stock
+        final variant = await (_db.select(_db.productVariants)
+              ..where((v) => v.id.equals(it.variantId)))
+            .getSingle();
+
+        final newQty = variant.quantity - it.qty;
+        await (_db.update(_db.productVariants)..where((v) => v.id.equals(it.variantId))).write(
+          ProductVariantsCompanion(
+            quantity: Value(newQty),
+            updatedAt: Value(now),
+          ),
+        );
+
+        // Record Inventory Log
+        await _db.into(_db.inventoryLogs).insert(
+          InventoryLogsCompanion.insert(
+            id: _uuid.v4(),
+            branchId: branchId,
+            variantId: it.variantId,
+            type: 'out',
+            qtyDelta: -it.qty,
+            refType: 'purchase_return',
+            refId: Value(returnId),
+            reason: Value(reason?.trim().isNotEmpty == true
+                ? 'مرتجع مشتريات للمورد: ${reason!.trim()}'
+                : 'مرتجع مشتريات للمورد'),
+            userId: userId,
+            createdAt: now,
+          ),
+        );
+      }
+
+      // C. If cash refund, record cash movement into cash drawer
+      if (refundType == 'cash') {
+        final activeShift = await (_db.select(_db.shifts)..where((s) => s.closedAt.isNull())).getSingleOrNull();
+
+        await _db.into(_db.cashMovements).insert(
+          CashMovementsCompanion.insert(
+            id: _uuid.v4(),
+            branchId: branchId,
+            shiftId: Value(activeShift?.id),
+            type: 'purchase_reversal',
+            method: 'cash',
+            direction: 'in',
+            amountPiasters: totalAmount,
+            referenceId: Value(returnId),
+            notes: Value(reason?.trim().isNotEmpty == true
+                ? 'استرداد نقدي لمرتجع مشتريات: ${reason!.trim()}'
+                : 'استرداد نقدي لمرتجع مشتريات للمورد'),
+            createdAt: nowSec,
+            updatedAt: nowSec,
+          ),
+        );
+      }
+
+      // D. Recompute Supplier Balance
+      await _recomputeSupplierBalance(supplierId);
+
+      // E. Queue sync
+      await _queueSync('purchase_returns', returnId, 'insert', branchId);
+    });
+
+    final createdList = await getPurchaseReturns(supplierId: supplierId);
+    return createdList.firstWhere((r) => r.id == returnId);
+  }
+
+  @override
+  Future<List<PurchaseReturnEntity>> getPurchaseReturns({
+    String? supplierId,
+    String? purchaseId,
+  }) async {
+    await _ensureReturnTables();
+
+    var sql = 'SELECT * FROM purchase_returns WHERE 1=1';
+    final vars = <Variable>[];
+
+    if (supplierId != null && supplierId.isNotEmpty) {
+      sql += ' AND supplier_id = ?';
+      vars.add(Variable.withString(supplierId));
+    }
+    if (purchaseId != null && purchaseId.isNotEmpty) {
+      sql += ' AND purchase_id = ?';
+      vars.add(Variable.withString(purchaseId));
+    }
+
+    sql += ' ORDER BY created_at DESC';
+
+    final rows = await _db.customSelect(sql, variables: vars).get();
+
+    final result = <PurchaseReturnEntity>[];
+    for (final r in rows) {
+      final sId = r.read<String>('supplier_id');
+      final pId = r.readNullable<String>('purchase_id');
+      final supplier = await getSupplierById(sId);
+      final purchase = pId != null ? await getPurchaseById(pId) : null;
+      final retId = r.read<String>('id');
+
+      final itemRows = await _db.customSelect(
+        'SELECT * FROM purchase_return_items WHERE return_id = ? ORDER BY created_at ASC',
+        variables: [Variable.withString(retId)],
+      ).get();
+
+      final items = itemRows.map((ir) => PurchaseReturnItemEntity(
+        id: ir.read<String>('id'),
+        returnId: ir.read<String>('return_id'),
+        variantId: ir.read<String>('variant_id'),
+        productName: ir.read<String>('product_name'),
+        variantInfo: ir.read<String>('variant_info'),
+        sku: ir.read<String>('sku'),
+        qty: ir.read<int>('qty'),
+        costPrice: ir.read<int>('cost_price'),
+        totalCost: ir.read<int>('total_cost'),
+        createdAt: DateTime.fromMillisecondsSinceEpoch(ir.read<int>('created_at')),
+      )).toList();
+
+      result.add(PurchaseReturnEntity(
+        id: retId,
+        branchId: r.read<String>('branch_id'),
+        purchaseId: pId,
+        purchaseInvoiceNumber: purchase?.invoiceNumber,
+        supplierId: sId,
+        supplierName: supplier?.name,
+        totalAmount: r.read<int>('total_amount'),
+        refundType: r.read<String>('refund_type'),
+        reason: r.readNullable<String>('reason'),
+        createdBy: r.read<String>('created_by'),
+        createdAt: DateTime.fromMillisecondsSinceEpoch(r.read<int>('created_at')),
+        items: items,
+      ));
+    }
+
+    return result;
   }
 }
 

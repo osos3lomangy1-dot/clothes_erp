@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/errors/failures.dart';
 import '../../data/datasources/purchases_local_data_source.dart';
 import '../entities/purchase_entity.dart';
+import '../entities/purchase_return_entity.dart';
 import '../entities/supplier_entity.dart';
 import '../entities/supplier_payment_entity.dart';
 
@@ -51,6 +52,20 @@ abstract class PurchasesRepository {
     required String userId,
   });
   Future<Either<Failure, List<SupplierPaymentEntity>>> getSupplierPayments({
+    String? supplierId,
+    String? purchaseId,
+  });
+
+  // Purchase Returns
+  Future<Either<Failure, PurchaseReturnEntity>> createPurchaseReturn({
+    required String supplierId,
+    String? purchaseId,
+    required List<PurchaseReturnItemDraft> items,
+    required String refundType, // 'credit' or 'cash'
+    String? reason,
+    required String userId,
+  });
+  Future<Either<Failure, List<PurchaseReturnEntity>>> getPurchaseReturns({
     String? supplierId,
     String? purchaseId,
   });

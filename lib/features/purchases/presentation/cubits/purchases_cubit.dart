@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import '../../data/datasources/purchases_local_data_source.dart';
 import '../../domain/entities/purchase_entity.dart';
+import '../../domain/entities/purchase_return_entity.dart';
 import '../../domain/repositories/purchases_repository.dart';
 import 'purchases_state.dart';
 
@@ -26,15 +27,37 @@ class PurchasesCubit extends Cubit<PurchasesState> {
       paymentStatus: paymentStatus,
     );
 
+    final returnsResult = await _repository.getPurchaseReturns(
+      supplierId: supplierId,
+    );
+    final returns = returnsResult.getOrElse(() => state.returns);
+
     result.fold(
       (failure) => emit(state.copyWith(
         status: PurchasesStatus.error,
         errorMessage: failure.message,
+        returns: returns,
       )),
       (purchases) => emit(state.copyWith(
         status: PurchasesStatus.loaded,
         purchases: purchases,
+        returns: returns,
       )),
+    );
+  }
+
+  Future<void> loadReturns({
+    String? supplierId,
+    String? purchaseId,
+  }) async {
+    final result = await _repository.getPurchaseReturns(
+      supplierId: supplierId,
+      purchaseId: purchaseId,
+    );
+
+    result.fold(
+      (failure) => null,
+      (returns) => emit(state.copyWith(returns: returns)),
     );
   }
 
@@ -79,5 +102,48 @@ class PurchasesCubit extends Cubit<PurchasesState> {
       },
     );
   }
-}
 
+  Future<PurchaseReturnEntity?> createPurchaseReturn({
+    required String supplierId,
+    String? purchaseId,
+    required List<PurchaseReturnItemDraft> items,
+    required String refundType,
+    String? reason,
+    required String userId,
+  }) async {
+    emit(state.copyWith(status: PurchasesStatus.loading));
+
+    final result = await _repository.createPurchaseReturn(
+      supplierId: supplierId,
+      purchaseId: purchaseId,
+      items: items,
+      refundType: refundType,
+      reason: reason,
+      userId: userId,
+    );
+
+    return result.fold(
+      (failure) {
+        emit(state.copyWith(
+          status: PurchasesStatus.error,
+          errorMessage: failure.message,
+        ));
+        return null;
+      },
+      (newReturn) async {
+        final updatedPurchasesResult = await _repository.getPurchases(
+          supplierId: state.selectedSupplierId,
+          paymentStatus: state.selectedPaymentStatus,
+        );
+
+        final updatedList = [newReturn, ...state.returns];
+        emit(state.copyWith(
+          status: PurchasesStatus.loaded,
+          returns: updatedList,
+          purchases: updatedPurchasesResult.getOrElse(() => state.purchases),
+        ));
+        return newReturn;
+      },
+    );
+  }
+}
