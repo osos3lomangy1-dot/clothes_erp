@@ -891,3 +891,4 @@ class _StocktakeScreenState extends State<StocktakeScreen> {
     );
   }
 }
+

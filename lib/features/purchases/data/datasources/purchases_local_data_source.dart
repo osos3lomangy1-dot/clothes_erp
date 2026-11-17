@@ -59,7 +59,10 @@ abstract class PurchasesLocalDataSource {
   Future<void> deleteSupplier(String id);
 
   // Purchases
-  Future<List<PurchaseEntity>> getPurchases({String? supplierId, String? paymentStatus});
+  Future<List<PurchaseEntity>> getPurchases({
+    String? supplierId,
+    String? paymentStatus,
+  });
   Future<PurchaseEntity?> getPurchaseById(String id);
   Future<PurchaseEntity> createPurchaseInvoice({
     required String supplierId,
@@ -83,7 +86,10 @@ abstract class PurchasesLocalDataSource {
     String? notes,
     required String userId,
   });
-  Future<List<SupplierPaymentEntity>> getSupplierPayments({String? supplierId, String? purchaseId});
+  Future<List<SupplierPaymentEntity>> getSupplierPayments({
+    String? supplierId,
+    String? purchaseId,
+  });
 
   // Purchase Returns
   Future<PurchaseReturnEntity> createPurchaseReturn({
@@ -116,19 +122,20 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
 
   @override
   Future<List<SupplierEntity>> getSuppliers() async {
-    final rows = await (_db.select(_db.suppliers)
-          ..where((s) => s.deletedAt.isNull())
-          ..orderBy([(s) => OrderingTerm.asc(s.name)]))
-        .get();
+    final rows =
+        await (_db.select(_db.suppliers)
+              ..where((s) => s.deletedAt.isNull())
+              ..orderBy([(s) => OrderingTerm.asc(s.name)]))
+            .get();
 
     return rows.map(_mapSupplier).toList();
   }
 
   @override
   Future<SupplierEntity?> getSupplierById(String id) async {
-    final row = await (_db.select(_db.suppliers)
-          ..where((s) => s.id.equals(id) & s.deletedAt.isNull()))
-        .getSingleOrNull();
+    final row = await (_db.select(
+      _db.suppliers,
+    )..where((s) => s.id.equals(id) & s.deletedAt.isNull())).getSingleOrNull();
 
     return row != null ? _mapSupplier(row) : null;
   }
@@ -144,7 +151,9 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
     final now = DateTime.now();
     final id = _uuid.v4();
 
-    await _db.into(_db.suppliers).insert(
+    await _db
+        .into(_db.suppliers)
+        .insert(
           SuppliersCompanion.insert(
             id: id,
             branchId: branchId,
@@ -206,10 +215,7 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
     final branchId = await _branchId();
 
     await (_db.update(_db.suppliers)..where((s) => s.id.equals(id))).write(
-      SuppliersCompanion(
-        deletedAt: Value(now),
-        updatedAt: Value(now),
-      ),
+      SuppliersCompanion(deletedAt: Value(now), updatedAt: Value(now)),
     );
 
     await _queueSync('suppliers', id, 'delete', branchId);
@@ -256,23 +262,25 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
       final supplier = await getSupplierById(row.supplierId);
       final items = await _getItemsForPurchase(row.id);
 
-      result.add(PurchaseEntity(
-        id: row.id,
-        branchId: row.branchId,
-        supplierId: row.supplierId,
-        supplierName: supplier?.name,
-        invoiceNumber: row.invoiceNumber,
-        purchaseDate: row.purchaseDate,
-        totalAmount: row.totalAmount,
-        paidAmount: row.paidAmount,
-        status: row.status,
-        paymentStatus: row.paymentStatus,
-        notes: row.notes,
-        items: items,
-        createdAt: row.createdAt,
-        updatedAt: row.updatedAt,
-        deletedAt: row.deletedAt,
-      ));
+      result.add(
+        PurchaseEntity(
+          id: row.id,
+          branchId: row.branchId,
+          supplierId: row.supplierId,
+          supplierName: supplier?.name,
+          invoiceNumber: row.invoiceNumber,
+          purchaseDate: row.purchaseDate,
+          totalAmount: row.totalAmount,
+          paidAmount: row.paidAmount,
+          status: row.status,
+          paymentStatus: row.paymentStatus,
+          notes: row.notes,
+          items: items,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+          deletedAt: row.deletedAt,
+        ),
+      );
     }
 
     return result;
@@ -280,9 +288,9 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
 
   @override
   Future<PurchaseEntity?> getPurchaseById(String id) async {
-    final row = await (_db.select(_db.purchases)
-          ..where((p) => p.id.equals(id) & p.deletedAt.isNull()))
-        .getSingleOrNull();
+    final row = await (_db.select(
+      _db.purchases,
+    )..where((p) => p.id.equals(id) & p.deletedAt.isNull())).getSingleOrNull();
 
     if (row == null) return null;
 
@@ -334,7 +342,9 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
     }
 
     if (paidAmount > totalAmount) {
-      throw Exception('المبلغ المدفوع ($paidAmount قرش) أكبر من إجمالي الفاتورة ($totalAmount قرش)');
+      throw Exception(
+        'المبلغ المدفوع ($paidAmount قرش) أكبر من إجمالي الفاتورة ($totalAmount قرش)',
+      );
     }
 
     // 2. Determine payment status
@@ -350,7 +360,9 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
     // 3. Execute atomic transaction
     await _db.transaction(() async {
       // A. Insert Purchase
-      await _db.into(_db.purchases).insert(
+      await _db
+          .into(_db.purchases)
+          .insert(
             PurchasesCompanion.insert(
               id: purchaseId,
               branchId: branchId,
@@ -372,7 +384,9 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
         final itemId = _uuid.v4();
         final lineTotal = it.qty * it.costPrice;
 
-        await _db.into(_db.purchaseItems).insert(
+        await _db
+            .into(_db.purchaseItems)
+            .insert(
               PurchaseItemsCompanion.insert(
                 id: itemId,
                 purchaseId: purchaseId,
@@ -385,17 +399,20 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
             );
 
         // Always update variant costPrice in product_variants
-        final variant = await (_db.select(_db.productVariants)
-              ..where((v) => v.id.equals(it.variantId)))
-            .getSingleOrNull();
+        final variant = await (_db.select(
+          _db.productVariants,
+        )..where((v) => v.id.equals(it.variantId))).getSingleOrNull();
 
         if (variant != null) {
-          final shouldIncreaseStock = (goodsReceiptId == null || goodsReceiptId.trim().isEmpty);
-          final newQty = shouldIncreaseStock ? (variant.quantity + it.qty) : variant.quantity;
+          final shouldIncreaseStock =
+              (goodsReceiptId == null || goodsReceiptId.trim().isEmpty);
+          final newQty = shouldIncreaseStock
+              ? (variant.quantity + it.qty)
+              : variant.quantity;
 
-          await (_db.update(_db.productVariants)
-                ..where((v) => v.id.equals(it.variantId)))
-              .write(
+          await (_db.update(
+            _db.productVariants,
+          )..where((v) => v.id.equals(it.variantId))).write(
             ProductVariantsCompanion(
               quantity: Value(newQty),
               costPrice: Value(it.costPrice),
@@ -405,7 +422,9 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
 
           if (shouldIncreaseStock) {
             // Write inventory log only if we increased stock
-            await _db.into(_db.inventoryLogs).insert(
+            await _db
+                .into(_db.inventoryLogs)
+                .insert(
                   InventoryLogsCompanion.insert(
                     id: _uuid.v4(),
                     branchId: branchId,
@@ -425,9 +444,9 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
 
       // If linked to goodsReceiptId, mark GoodsReceipt status as 'invoiced'
       if (goodsReceiptId != null && goodsReceiptId.trim().isNotEmpty) {
-        await (_db.update(_db.goodsReceipts)
-              ..where((g) => g.id.equals(goodsReceiptId.trim())))
-            .write(
+        await (_db.update(
+          _db.goodsReceipts,
+        )..where((g) => g.id.equals(goodsReceiptId.trim()))).write(
           GoodsReceiptsCompanion(
             status: const Value('invoiced'),
             updatedAt: Value(now),
@@ -438,7 +457,9 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
       // C. If advance payment was made, record it
       if (paidAmount > 0) {
         final paymentId = _uuid.v4();
-        await _db.into(_db.supplierPayments).insert(
+        await _db
+            .into(_db.supplierPayments)
+            .insert(
               SupplierPaymentsCompanion.insert(
                 id: paymentId,
                 branchId: branchId,
@@ -456,7 +477,9 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
 
         // Phase 2: Record in cash_movements instead of expenses
         final nowSec = now.millisecondsSinceEpoch ~/ 1000;
-        await _db.into(_db.cashMovements).insert(
+        await _db
+            .into(_db.cashMovements)
+            .insert(
               CashMovementsCompanion.insert(
                 id: _uuid.v4(),
                 branchId: branchId,
@@ -484,7 +507,9 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
     return created!;
   }
 
-  Future<List<PurchaseItemEntity>> _getItemsForPurchase(String purchaseId) async {
+  Future<List<PurchaseItemEntity>> _getItemsForPurchase(
+    String purchaseId,
+  ) async {
     final query = _db.select(_db.purchaseItems).join([
       innerJoin(
         _db.productVariants,
@@ -544,7 +569,9 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
 
     await _db.transaction(() async {
       // 1. Insert payment
-      await _db.into(_db.supplierPayments).insert(
+      await _db
+          .into(_db.supplierPayments)
+          .insert(
             SupplierPaymentsCompanion.insert(
               id: paymentId,
               branchId: branchId,
@@ -564,50 +591,63 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
       if (purchaseId == null) {
         int remaining = amount;
 
-        final openInvoices = await (_db.select(_db.purchases)
-              ..where((p) =>
-                  p.supplierId.equals(supplierId) &
-                  p.deletedAt.isNull() &
-                  p.paidAmount.isSmallerThan(p.totalAmount))
-              ..orderBy([
-                (p) => OrderingTerm.asc(p.purchaseDate),
-                (p) => OrderingTerm.asc(p.createdAt),
-              ]))
-            .get();
+        final openInvoices =
+            await (_db.select(_db.purchases)
+                  ..where(
+                    (p) =>
+                        p.supplierId.equals(supplierId) &
+                        p.deletedAt.isNull() &
+                        p.paidAmount.isSmallerThan(p.totalAmount),
+                  )
+                  ..orderBy([
+                    (p) => OrderingTerm.asc(p.purchaseDate),
+                    (p) => OrderingTerm.asc(p.createdAt),
+                  ]))
+                .get();
 
         for (final invoice in openInvoices) {
           if (remaining <= 0) break;
 
           final invoiceRemaining = invoice.totalAmount - invoice.paidAmount;
-          final allocate = remaining < invoiceRemaining ? remaining : invoiceRemaining;
+          final allocate = remaining < invoiceRemaining
+              ? remaining
+              : invoiceRemaining;
           final newPaid = invoice.paidAmount + allocate;
           final newStatus = newPaid >= invoice.totalAmount ? 'paid' : 'partial';
 
-          await (_db.update(_db.purchases)..where((p) => p.id.equals(invoice.id)))
-              .write(PurchasesCompanion(
-            paidAmount: Value(newPaid),
-            paymentStatus: Value(newStatus),
-            updatedAt: Value(now),
-          ));
+          await (_db.update(
+            _db.purchases,
+          )..where((p) => p.id.equals(invoice.id))).write(
+            PurchasesCompanion(
+              paidAmount: Value(newPaid),
+              paymentStatus: Value(newStatus),
+              updatedAt: Value(now),
+            ),
+          );
 
           remaining -= allocate;
         }
       } else {
         // 3. If tied to a specific purchase, update that purchase paidAmount & status
-        final purchase = await (_db.select(_db.purchases)
-              ..where((p) => p.id.equals(purchaseId)))
-            .getSingleOrNull();
+        final purchase = await (_db.select(
+          _db.purchases,
+        )..where((p) => p.id.equals(purchaseId))).getSingleOrNull();
 
         if (purchase != null) {
           final invoiceRemaining = purchase.totalAmount - purchase.paidAmount;
           if (amount > invoiceRemaining) {
-            throw Exception('المبلغ المدفوع ($amount قرش) أكبر من المتبقي على الفاتورة ($invoiceRemaining قرش)');
+            throw Exception(
+              'المبلغ المدفوع ($amount قرش) أكبر من المتبقي على الفاتورة ($invoiceRemaining قرش)',
+            );
           }
           final newPaid = purchase.paidAmount + amount;
-          final newStatus = newPaid >= purchase.totalAmount ? 'paid' : 'partial';
+          final newStatus = newPaid >= purchase.totalAmount
+              ? 'paid'
+              : 'partial';
 
-          await (_db.update(_db.purchases)..where((p) => p.id.equals(purchaseId)))
-              .write(
+          await (_db.update(
+            _db.purchases,
+          )..where((p) => p.id.equals(purchaseId))).write(
             PurchasesCompanion(
               paidAmount: Value(newPaid),
               paymentStatus: Value(newStatus),
@@ -625,7 +665,9 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
       final mMethod = paymentMethod.toLowerCase() == 'card'
           ? 'card'
           : (paymentMethod.toLowerCase() == 'transfer' ? 'transfer' : 'cash');
-      await _db.into(_db.cashMovements).insert(
+      await _db
+          .into(_db.cashMovements)
+          .insert(
             CashMovementsCompanion.insert(
               id: _uuid.v4(),
               branchId: branchId,
@@ -646,7 +688,9 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
     });
 
     final supplier = await getSupplierById(supplierId);
-    final purchase = purchaseId != null ? await getPurchaseById(purchaseId) : null;
+    final purchase = purchaseId != null
+        ? await getPurchaseById(purchaseId)
+        : null;
 
     return SupplierPaymentEntity(
       id: paymentId,
@@ -685,23 +729,27 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
     final result = <SupplierPaymentEntity>[];
     for (final r in rows) {
       final supplier = await getSupplierById(r.supplierId);
-      final purchase = r.purchaseId != null ? await getPurchaseById(r.purchaseId!) : null;
+      final purchase = r.purchaseId != null
+          ? await getPurchaseById(r.purchaseId!)
+          : null;
 
-      result.add(SupplierPaymentEntity(
-        id: r.id,
-        branchId: r.branchId,
-        supplierId: r.supplierId,
-        supplierName: supplier?.name,
-        purchaseId: r.purchaseId,
-        purchaseInvoiceNumber: purchase?.invoiceNumber,
-        amount: r.amount,
-        paymentDate: r.paymentDate,
-        paymentMethod: r.paymentMethod,
-        referenceNumber: r.referenceNumber,
-        notes: r.notes,
-        createdBy: r.createdBy,
-        createdAt: r.createdAt,
-      ));
+      result.add(
+        SupplierPaymentEntity(
+          id: r.id,
+          branchId: r.branchId,
+          supplierId: r.supplierId,
+          supplierName: supplier?.name,
+          purchaseId: r.purchaseId,
+          purchaseInvoiceNumber: purchase?.invoiceNumber,
+          amount: r.amount,
+          paymentDate: r.paymentDate,
+          paymentMethod: r.paymentMethod,
+          referenceNumber: r.referenceNumber,
+          notes: r.notes,
+          createdBy: r.createdBy,
+          createdAt: r.createdAt,
+        ),
+      );
     }
 
     return result;
@@ -714,7 +762,9 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
     String branchId,
   ) async {
     final now = DateTime.now();
-    await _db.into(_db.syncQueue).insert(
+    await _db
+        .into(_db.syncQueue)
+        .insert(
           SyncQueueCompanion.insert(
             id: _uuid.v4(),
             branchId: branchId,
@@ -759,30 +809,40 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
   }
 
   Future<void> _recomputeSupplierBalance(String supplierId) async {
-    final purchasesRows = await (_db.select(_db.purchases)
-          ..where((p) => p.supplierId.equals(supplierId) & p.deletedAt.isNull()))
-        .get();
-    final purchasesTotal = purchasesRows.fold<int>(0, (sum, p) => sum + p.totalAmount);
+    final purchasesRows =
+        await (_db.select(_db.purchases)..where(
+              (p) => p.supplierId.equals(supplierId) & p.deletedAt.isNull(),
+            ))
+            .get();
+    final purchasesTotal = purchasesRows.fold<int>(
+      0,
+      (sum, p) => sum + p.totalAmount,
+    );
 
-    final paymentsRows = await (_db.select(_db.supplierPayments)
-          ..where((p) => p.supplierId.equals(supplierId)))
-        .get();
+    final paymentsRows = await (_db.select(
+      _db.supplierPayments,
+    )..where((p) => p.supplierId.equals(supplierId))).get();
     final paymentsTotal = paymentsRows.fold<int>(0, (sum, p) => sum + p.amount);
 
     await _ensureReturnTables();
-    final creditReturnsResult = await _db.customSelect(
-      "SELECT COALESCE(SUM(total_amount), 0) AS total FROM purchase_returns WHERE supplier_id = ? AND refund_type = 'credit'",
-      variables: [Variable.withString(supplierId)],
-    ).getSingle();
+    final creditReturnsResult = await _db
+        .customSelect(
+          "SELECT COALESCE(SUM(total_amount), 0) AS total FROM purchase_returns WHERE supplier_id = ? AND refund_type = 'credit'",
+          variables: [Variable.withString(supplierId)],
+        )
+        .getSingle();
     final creditReturnsTotal = creditReturnsResult.read<int>('total');
 
     final newBalance = purchasesTotal - paymentsTotal - creditReturnsTotal;
 
-    await (_db.update(_db.suppliers)..where((s) => s.id.equals(supplierId)))
-        .write(SuppliersCompanion(
-      balance: Value(newBalance),
-      updatedAt: Value(DateTime.now()),
-    ));
+    await (_db.update(
+      _db.suppliers,
+    )..where((s) => s.id.equals(supplierId))).write(
+      SuppliersCompanion(
+        balance: Value(newBalance),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -802,7 +862,9 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
       throw Exception('لا يمكن إنشاء مرتجع مشتريات بدون أصناف');
     }
     if (refundType != 'credit' && refundType != 'cash') {
-      throw Exception('نوع تسوية المرتجع غير صالح (يجب أن يكون رصيد credit أو نقدي cash)');
+      throw Exception(
+        'نوع تسوية المرتجع غير صالح (يجب أن يكون رصيد credit أو نقدي cash)',
+      );
     }
 
     await _ensureReturnTables();
@@ -817,9 +879,9 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
       if (it.qty <= 0) {
         throw Exception('الكمية المرتجعة يجب أن تكون أكبر من الصفر');
       }
-      final variant = await (_db.select(_db.productVariants)
-            ..where((v) => v.id.equals(it.variantId)))
-          .getSingleOrNull();
+      final variant = await (_db.select(
+        _db.productVariants,
+      )..where((v) => v.id.equals(it.variantId))).getSingleOrNull();
 
       if (variant == null) {
         throw Exception('الصنف غير موجود بالمخزن: ${it.productName}');
@@ -840,51 +902,59 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
     // 3. Atomic Transaction
     await _db.transaction(() async {
       // A. Insert into purchase_returns
-      await _db.customStatement('''
+      await _db.customStatement(
+        '''
         INSERT INTO purchase_returns
           (id, branch_id, purchase_id, supplier_id, total_amount, refund_type, reason, created_by, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ''', [
-        returnId,
-        branchId,
-        purchaseId,
-        supplierId,
-        totalAmount,
-        refundType,
-        reason,
-        userId,
-        nowMs,
-      ]);
+      ''',
+        [
+          returnId,
+          branchId,
+          purchaseId,
+          supplierId,
+          totalAmount,
+          refundType,
+          reason,
+          userId,
+          nowMs,
+        ],
+      );
 
       // B. Insert items, deduct variant quantities & record inventory logs
       for (final it in items) {
         final itemId = _uuid.v4();
         final lineTotal = it.qty * it.costPrice;
 
-        await _db.customStatement('''
+        await _db.customStatement(
+          '''
           INSERT INTO purchase_return_items
             (id, return_id, variant_id, product_name, variant_info, sku, qty, cost_price, total_cost, created_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', [
-          itemId,
-          returnId,
-          it.variantId,
-          it.productName,
-          it.variantInfo,
-          it.sku,
-          it.qty,
-          it.costPrice,
-          lineTotal,
-          nowMs,
-        ]);
+        ''',
+          [
+            itemId,
+            returnId,
+            it.variantId,
+            it.productName,
+            it.variantInfo,
+            it.sku,
+            it.qty,
+            it.costPrice,
+            lineTotal,
+            nowMs,
+          ],
+        );
 
         // Deduct from stock
-        final variant = await (_db.select(_db.productVariants)
-              ..where((v) => v.id.equals(it.variantId)))
-            .getSingle();
+        final variant = await (_db.select(
+          _db.productVariants,
+        )..where((v) => v.id.equals(it.variantId))).getSingle();
 
         final newQty = variant.quantity - it.qty;
-        await (_db.update(_db.productVariants)..where((v) => v.id.equals(it.variantId))).write(
+        await (_db.update(
+          _db.productVariants,
+        )..where((v) => v.id.equals(it.variantId))).write(
           ProductVariantsCompanion(
             quantity: Value(newQty),
             updatedAt: Value(now),
@@ -892,45 +962,55 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
         );
 
         // Record Inventory Log
-        await _db.into(_db.inventoryLogs).insert(
-          InventoryLogsCompanion.insert(
-            id: _uuid.v4(),
-            branchId: branchId,
-            variantId: it.variantId,
-            type: 'out',
-            qtyDelta: -it.qty,
-            refType: 'purchase_return',
-            refId: Value(returnId),
-            reason: Value(reason?.trim().isNotEmpty == true
-                ? 'مرتجع مشتريات للمورد: ${reason!.trim()}'
-                : 'مرتجع مشتريات للمورد'),
-            userId: userId,
-            createdAt: now,
-          ),
-        );
+        await _db
+            .into(_db.inventoryLogs)
+            .insert(
+              InventoryLogsCompanion.insert(
+                id: _uuid.v4(),
+                branchId: branchId,
+                variantId: it.variantId,
+                type: 'out',
+                qtyDelta: -it.qty,
+                refType: 'purchase_return',
+                refId: Value(returnId),
+                reason: Value(
+                  reason?.trim().isNotEmpty == true
+                      ? 'مرتجع مشتريات للمورد: ${reason!.trim()}'
+                      : 'مرتجع مشتريات للمورد',
+                ),
+                userId: userId,
+                createdAt: now,
+              ),
+            );
       }
 
       // C. If cash refund, record cash movement into cash drawer
       if (refundType == 'cash') {
-        final activeShift = await (_db.select(_db.shifts)..where((s) => s.closedAt.isNull())).getSingleOrNull();
+        final activeShift = await (_db.select(
+          _db.shifts,
+        )..where((s) => s.closedAt.isNull())).getSingleOrNull();
 
-        await _db.into(_db.cashMovements).insert(
-          CashMovementsCompanion.insert(
-            id: _uuid.v4(),
-            branchId: branchId,
-            shiftId: Value(activeShift?.id),
-            type: 'purchase_reversal',
-            method: 'cash',
-            direction: 'in',
-            amountPiasters: totalAmount,
-            referenceId: Value(returnId),
-            notes: Value(reason?.trim().isNotEmpty == true
-                ? 'استرداد نقدي لمرتجع مشتريات: ${reason!.trim()}'
-                : 'استرداد نقدي لمرتجع مشتريات للمورد'),
-            createdAt: nowSec,
-            updatedAt: nowSec,
-          ),
-        );
+        await _db
+            .into(_db.cashMovements)
+            .insert(
+              CashMovementsCompanion.insert(
+                id: _uuid.v4(),
+                branchId: branchId,
+                shiftId: Value(activeShift?.id),
+                type: 'purchase_reversal',
+                method: 'cash',
+                direction: 'in',
+                amountPiasters: totalAmount,
+                referenceId: Value(returnId),
+                notes: Value(
+                  reason?.trim().isNotEmpty == true
+                      ? 'استرداد نقدي لمرتجع مشتريات: ${reason!.trim()}'
+                      : 'استرداد نقدي لمرتجع مشتريات للمورد',
+                ),
+                createdAt: nowSec,
+                updatedAt: nowSec,
+              ),
+            );
       }
 
       // D. Recompute Supplier Balance
@@ -975,41 +1055,52 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
       final purchase = pId != null ? await getPurchaseById(pId) : null;
       final retId = r.read<String>('id');
 
-      final itemRows = await _db.customSelect(
-        'SELECT * FROM purchase_return_items WHERE return_id = ? ORDER BY created_at ASC',
-        variables: [Variable.withString(retId)],
-      ).get();
+      final itemRows = await _db
+          .customSelect(
+            'SELECT * FROM purchase_return_items WHERE return_id = ? ORDER BY created_at ASC',
+            variables: [Variable.withString(retId)],
+          )
+          .get();
 
-      final items = itemRows.map((ir) => PurchaseReturnItemEntity(
-        id: ir.read<String>('id'),
-        returnId: ir.read<String>('return_id'),
-        variantId: ir.read<String>('variant_id'),
-        productName: ir.read<String>('product_name'),
-        variantInfo: ir.read<String>('variant_info'),
-        sku: ir.read<String>('sku'),
-        qty: ir.read<int>('qty'),
-        costPrice: ir.read<int>('cost_price'),
-        totalCost: ir.read<int>('total_cost'),
-        createdAt: DateTime.fromMillisecondsSinceEpoch(ir.read<int>('created_at')),
-      )).toList();
+      final items = itemRows
+          .map(
+            (ir) => PurchaseReturnItemEntity(
+              id: ir.read<String>('id'),
+              returnId: ir.read<String>('return_id'),
+              variantId: ir.read<String>('variant_id'),
+              productName: ir.read<String>('product_name'),
+              variantInfo: ir.read<String>('variant_info'),
+              sku: ir.read<String>('sku'),
+              qty: ir.read<int>('qty'),
+              costPrice: ir.read<int>('cost_price'),
+              totalCost: ir.read<int>('total_cost'),
+              createdAt: DateTime.fromMillisecondsSinceEpoch(
+                ir.read<int>('created_at'),
+              ),
+            ),
+          )
+          .toList();
 
-      result.add(PurchaseReturnEntity(
-        id: retId,
-        branchId: r.read<String>('branch_id'),
-        purchaseId: pId,
-        purchaseInvoiceNumber: purchase?.invoiceNumber,
-        supplierId: sId,
-        supplierName: supplier?.name,
-        totalAmount: r.read<int>('total_amount'),
-        refundType: r.read<String>('refund_type'),
-        reason: r.readNullable<String>('reason'),
-        createdBy: r.read<String>('created_by'),
-        createdAt: DateTime.fromMillisecondsSinceEpoch(r.read<int>('created_at')),
-        items: items,
-      ));
+      result.add(
+        PurchaseReturnEntity(
+          id: retId,
+          branchId: r.read<String>('branch_id'),
+          purchaseId: pId,
+          purchaseInvoiceNumber: purchase?.invoiceNumber,
+          supplierId: sId,
+          supplierName: supplier?.name,
+          totalAmount: r.read<int>('total_amount'),
+          refundType: r.read<String>('refund_type'),
+          reason: r.readNullable<String>('reason'),
+          createdBy: r.read<String>('created_by'),
+          createdAt: DateTime.fromMillisecondsSinceEpoch(
+            r.read<int>('created_at'),
+          ),
+          items: items,
+        ),
+      );
     }
 
     return result;
   }
 }
-

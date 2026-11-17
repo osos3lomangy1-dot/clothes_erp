@@ -49,14 +49,14 @@ class SettingsState extends Equatable {
 
   @override
   List<Object?> get props => [
-        features,
-        cashEnabled,
-        cardEnabled,
-        installmentPaymentEnabled,
-        cloudSyncEnabled,
-        isLoading,
-        error,
-      ];
+    features,
+    cashEnabled,
+    cardEnabled,
+    installmentPaymentEnabled,
+    cloudSyncEnabled,
+    isLoading,
+    error,
+  ];
 }
 
 @injectable
@@ -68,12 +68,15 @@ class SettingsCubit extends Cubit<SettingsState> {
   StreamSubscription<String?>? _installmentSub;
   StreamSubscription<String?>? _cloudSyncSub;
 
-  SettingsCubit(this._featureGate) : super(const SettingsState(isLoading: true));
+  SettingsCubit(this._featureGate)
+    : super(const SettingsState(isLoading: true));
 
   void start() {
     _sub?.cancel();
     _sub = _featureGate.watchFeatures().listen((features) {
-      emit(state.copyWith(features: features, isLoading: false, clearError: true));
+      emit(
+        state.copyWith(features: features, isLoading: false, clearError: true),
+      );
     });
     _cashSub?.cancel();
     _cashSub = _featureGate.watchMeta('payment.cash').listen((v) {
@@ -119,7 +122,11 @@ class SettingsCubit extends Cubit<SettingsState> {
     }
   }
 
-  Future<String?> setPaymentMethod(String methodKey, bool enabled, String userId) async {
+  Future<String?> setPaymentMethod(
+    String methodKey,
+    bool enabled,
+    String userId,
+  ) async {
     try {
       final cash = methodKey == 'payment.cash' ? enabled : state.cashEnabled;
       final card = methodKey == 'payment.card' ? enabled : state.cardEnabled;
@@ -129,7 +136,11 @@ class SettingsCubit extends Cubit<SettingsState> {
       if (!cash && !card && !inst) {
         return 'يجب تفعيل طريقة دفع واحدة على الأقل';
       }
-      await _featureGate.setMeta(methodKey, enabled ? '1' : '0', userId: userId);
+      await _featureGate.setMeta(
+        methodKey,
+        enabled ? '1' : '0',
+        userId: userId,
+      );
       return null;
     } catch (e) {
       final msg = e.toString().replaceAll('Exception: ', '');
