@@ -73,7 +73,7 @@ class _SystemSettingsView extends StatelessWidget {
               _sectionTitle('هوية النظام والألوان (الاسم والمظهر)'),
               _BrandingSettingsCard(userId: _userId(context)),
               const SizedBox(height: 20),
-              _sectionTitle('الميزات (Features)'),
+              _sectionTitle('الميزات'),
               Card(
                 child: Column(
                   children: [
@@ -98,7 +98,7 @@ class _SystemSettingsView extends StatelessWidget {
                 child: Column(
                   children: [
                     SwitchListTile(
-                      title: const Text('نقدي (Cash)'),
+                      title: const Text('نقدي'),
                       value: state.cashEnabled,
                       onChanged: (v) async {
                         final err = await context
@@ -120,7 +120,7 @@ class _SystemSettingsView extends StatelessWidget {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      title: const Text('بطاقة (Card)'),
+                      title: const Text('بطاقة / فيزا'),
                       value: state.cardEnabled,
                       onChanged: (v) async {
                         final err = await context
@@ -144,7 +144,7 @@ class _SystemSettingsView extends StatelessWidget {
                       const Divider(height: 1),
                       SwitchListTile(
                         key: const Key('payment_installment_toggle'),
-                        title: const Text('تقسيط (Installment)'),
+                        title: const Text('تقسيط'),
                         value: state.installmentPaymentEnabled,
                         onChanged: (v) async {
                           final err = await context
@@ -604,7 +604,7 @@ class _BrandingSettingsCardState extends State<_BrandingSettingsCard> {
                     key: const Key('branding_primary_hex_field'),
                     controller: _primaryHexCtrl,
                     decoration: InputDecoration(
-                      labelText: 'كود اللون الأساسي (Hex)',
+                      labelText: 'كود اللون الأساسي',
                       hintText: '#340588',
                       prefixIcon: Padding(
                         padding: const EdgeInsets.all(10),
@@ -629,7 +629,7 @@ class _BrandingSettingsCardState extends State<_BrandingSettingsCard> {
                     key: const Key('branding_secondary_hex_field'),
                     controller: _secondaryHexCtrl,
                     decoration: InputDecoration(
-                      labelText: 'كود اللون الثانوي (Hex)',
+                      labelText: 'كود اللون الثانوي',
                       hintText: '#4B2A9E',
                       prefixIcon: Padding(
                         padding: const EdgeInsets.all(10),

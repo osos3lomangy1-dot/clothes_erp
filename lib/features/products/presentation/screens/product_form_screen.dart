@@ -723,11 +723,11 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                       child: Row(
                                         children: [
                                           const SizedBox(width: 28, child: Text('#', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
-                                          const Expanded(flex: 2, child: Text('المقاس (Size)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                                          const Expanded(flex: 2, child: Text('المقاس', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
                                           const SizedBox(width: 8),
-                                          const Expanded(flex: 2, child: Text('اللون (Color)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                                          const Expanded(flex: 2, child: Text('اللون', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
                                           const SizedBox(width: 8),
-                                          const Expanded(flex: 3, child: Text('كود الصنف / SKU', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                                          const Expanded(flex: 3, child: Text('كود الصنف', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
                                           if (!isCashier) ...[
                                             const SizedBox(width: 8),
                                             const Expanded(flex: 2, child: Text('التكلفة (ج.م)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
@@ -806,7 +806,7 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                                       onChanged: (_) => setState(() {}),
                                                       decoration: InputDecoration(
                                                         isDense: true,
-                                                        hintText: 'الكود / SKU',
+                                                        hintText: 'كود الصنف',
                                                         errorText: skuErr,
                                                         errorStyle: const TextStyle(fontSize: 10, height: 1.1),
                                                         border: const OutlineInputBorder(),

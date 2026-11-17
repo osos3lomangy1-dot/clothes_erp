@@ -116,7 +116,7 @@ class _InstallmentsListViewState extends State<_InstallmentsListView> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                  'إنشاء عقود التقسيط متاح عبر شاشة نقطة البيع (POS) وقريباً هنا'),
+                  'إنشاء عقود التقسيط متاح عبر شاشة نقطة البيع وقريباً هنا'),
             ),
           );
         },
@@ -398,7 +398,7 @@ class _CustomerInstallmentsCardState extends State<CustomerInstallmentsCard> {
             children: [
               Icon(Icons.bolt, color: Colors.green, size: 24),
               SizedBox(width: 8),
-              Text('تأكيد السداد المجمع (FIFO)'),
+              Text('تأكيد السداد المجمع'),
             ],
           ),
           content: Text(
@@ -455,7 +455,7 @@ class _CustomerInstallmentsCardState extends State<CustomerInstallmentsCard> {
                   const Icon(Icons.check_circle, color: Colors.white),
                   const SizedBox(width: 8),
                   Text(
-                    'تم بنجاح سداد $amountPounds ج.م وتوزيعها على ${bulkResult.affectedContractsCount} عقد/عقود بنظام FIFO',
+                    'تم بنجاح سداد $amountPounds ج.م وتوزيعها على ${bulkResult.affectedContractsCount} عقد/عقود بنظام الأقدم فالأحدث',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ],
@@ -486,84 +486,94 @@ class _CustomerInstallmentsCardState extends State<CustomerInstallmentsCard> {
       {required bool isFullWidth}) {
     if (s.totalRemainingPiasters <= 0) return const SizedBox.shrink();
 
-    final content = Row(
-      mainAxisSize: isFullWidth ? MainAxisSize.max : MainAxisSize.min,
-      children: [
-        Expanded(
-          child: SizedBox(
-            height: 38,
-            child: TextField(
-              controller: _amountController,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-              decoration: InputDecoration(
-                hintText: 'مبلغ سداد مجمع...',
-                hintStyle:
-                    TextStyle(fontSize: 11, color: Colors.grey.shade500),
-                suffixText: 'ج.م',
-                suffixStyle:
-                    const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                isDense: true,
-                filled: true,
-                fillColor: Colors.grey.shade50,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
+    final content = Container(
+      height: 40,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: Center(
+              child: TextField(
+                controller: _amountController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                textAlignVertical: TextAlignVertical.center,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.onSurface,
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
+                decoration: InputDecoration(
+                  hintText: 'مبلغ السداد',
+                  hintStyle:
+                      TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                  suffixText: 'ج.م',
+                  suffixStyle: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade600,
+                  ),
+                  filled: false,
+                  isCollapsed: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide:
-                      BorderSide(color: AppColors.primary, width: 1.5),
-                ),
+                onSubmitted: (_) => _handleBulkPayment(s),
               ),
-              onSubmitted: (_) => _handleBulkPayment(s),
             ),
           ),
-        ),
-        const SizedBox(width: 6),
-        ElevatedButton(
-          onPressed: _isSubmitting ? null : () => _handleBulkPayment(s),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green.shade700,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            minimumSize: const Size(0, 38),
-            visualDensity: VisualDensity.compact,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-          child: _isSubmitting
-              ? const SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white),
-                )
-              : const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.bolt, size: 16),
-                    SizedBox(width: 2),
-                    Text('سداد ⚡',
-                        style: TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.bold)),
-                  ],
+          Material(
+            color: Colors.green.shade700,
+            child: InkWell(
+              onTap: _isSubmitting ? null : () => _handleBulkPayment(s),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Center(
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 15,
+                          height: 15,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.payments_rounded,
+                                size: 16, color: Colors.white),
+                            SizedBox(width: 5),
+                            Text(
+                              'سداد سريع',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
                 ),
-        ),
-      ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
 
     if (isFullWidth) {
       return content;
     } else {
       return SizedBox(
-        width: 240,
+        width: 260,
         child: content,
       );
     }
@@ -854,7 +864,7 @@ class _BulkPaymentPinDialogState extends State<_BulkPaymentPinDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'سيتم سداد ${widget.amountPounds} ج.م للعميل "${widget.customerName}" وتوزيعها بنظام الأقدم فالأحدث (FIFO).',
+            'سيتم سداد ${widget.amountPounds} ج.م للعميل "${widget.customerName}" وتوزيعها بنظام الأقدم فالأحدث.',
             style: const TextStyle(fontSize: 13),
           ),
           const SizedBox(height: 12),

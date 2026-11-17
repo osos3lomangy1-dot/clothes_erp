@@ -848,7 +848,7 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
                           controller: _searchCtrl,
                           decoration: InputDecoration(
                             hintText:
-                                'ابحث باسم المنتج، الكود (SKU)، اللون أو المقاس...',
+                                'ابحث باسم المنتج، الكود، اللون أو المقاس...',
                             prefixIcon: Icon(
                               Icons.search,
                               color: AppColors.primary,
@@ -1351,7 +1351,7 @@ class _QuickAddProductDialogState extends State<_QuickAddProductDialog> {
 
     final sku = _skuCtrl.text.trim();
     if (sku.isEmpty) {
-      setState(() => _errorMsg = 'يرجى إدخال كود الصنف (SKU)');
+      setState(() => _errorMsg = 'يرجى إدخال كود الصنف');
       return;
     }
 

@@ -1135,7 +1135,7 @@ class _ExcelImportOptionsDialogState extends State<_ExcelImportOptionsDialog> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('أصناف مكررة الكود (SKU)', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                              const Text('أصناف مكررة الكود', style: TextStyle(fontSize: 11, color: Colors.grey)),
                               Text('${conflicts.length} أصناف موجودة مسبقاً', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: conflicts.isNotEmpty ? Colors.amber.shade900 : Colors.grey.shade700)),
                             ],
                           ),

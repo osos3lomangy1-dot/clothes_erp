@@ -70,7 +70,7 @@ class VariantFormScreen extends StatelessWidget {
                           TextFormField(
                             initialValue: state.productCode,
                             decoration: InputDecoration(
-                              labelText: 'كود المنتج / الباركود (SKU)',
+                              labelText: 'كود المنتج / الباركود',
                               hintText: 'مثال: TSH-BLK-M',
                               errorText: state.hasDuplicateSku
                                   ? 'هذا الكود مسجل بالفعل لصنف آخر. لا يمكن تكرار الأكواد.'

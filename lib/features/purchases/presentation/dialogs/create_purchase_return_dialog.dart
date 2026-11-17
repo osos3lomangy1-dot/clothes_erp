@@ -392,7 +392,7 @@ class _CreatePurchaseReturnDialogState extends State<CreatePurchaseReturnDialog>
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text('استرداد نقدي فوري بالدرج (Cash)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                        Text('استرداد نقدي فوري بالدرج', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                                         Text('يسجل حركة استرداد بالوردية الحالية', style: TextStyle(fontSize: 10, color: Colors.grey)),
                                       ],
                                     ),

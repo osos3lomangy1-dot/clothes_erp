@@ -125,5 +125,53 @@ void main() {
     cubit.onTypeFilterChanged('all');
     expect(cubit.state.logs.length, 3);
   });
+
+  test('8. InventoryLogCubit matches return_ and purchase_return under return, in, and out filters', () async {
+    mockRepo.mockLogs = [
+      ...sampleLogs,
+      InventoryLogEntity(
+        id: '4',
+        productId: 'p4',
+        variantId: 'v4',
+        productName: 'قميص كتان',
+        variantSize: 'XL',
+        variantColor: 'بيج',
+        userName: 'أحمد محمود',
+        type: 'return_',
+        quantity: 2,
+        date: DateTime(2026, 1, 4),
+        userId: 'u1',
+      ),
+      InventoryLogEntity(
+        id: '5',
+        productId: 'p5',
+        variantId: 'v5',
+        productName: 'جاكيت جلد',
+        variantSize: 'L',
+        variantColor: 'بني',
+        userName: 'أحمد محمود',
+        type: 'purchase_return',
+        quantity: 1,
+        date: DateTime(2026, 1, 5),
+        userId: 'u1',
+      ),
+    ];
+
+    cubit = InventoryLogCubit(mockRepo);
+    await Future.delayed(const Duration(milliseconds: 50));
+
+    // 'return' filter matches return, return_, and purchase_return
+    cubit.onTypeFilterChanged('return');
+    expect(cubit.state.logs.length, 3);
+    expect(cubit.state.logs.map((l) => l.type), containsAll(['return', 'return_', 'purchase_return']));
+
+    // 'in' filter includes receive, return, return_
+    cubit.onTypeFilterChanged('in');
+    expect(cubit.state.logs.length, 3);
+
+    // 'out' filter includes sale and purchase_return
+    cubit.onTypeFilterChanged('out');
+    expect(cubit.state.logs.length, 2);
+  });
 }
 

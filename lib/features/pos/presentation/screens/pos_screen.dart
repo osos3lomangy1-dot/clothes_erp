@@ -207,7 +207,7 @@ class _PosViewState extends State<_PosView> {
                   const Icon(Icons.point_of_sale_rounded, color: Colors.white, size: 22),
                   const SizedBox(width: 8),
                   Text(
-                    'نقطة البيع (POS)',
+                    'نقطة البيع',
                     style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 18),
                   ),
                 ],
@@ -353,7 +353,7 @@ class _PosViewState extends State<_PosView> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
-          'نقطة البيع (POS)',
+          'نقطة البيع',
           style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white),
         ),
       ),
@@ -3360,8 +3360,8 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
                       ),
                       items: [
                         DropdownMenuItem(value: 'retail', child: Text('عميل عادي (قطاعي)', style: TextStyle(fontFamily: 'Cairo'))),
-                        DropdownMenuItem(value: 'wholesale', child: Text('تاجر جملة (Wholesale)', style: TextStyle(fontFamily: 'Cairo'))),
-                        DropdownMenuItem(value: 'vip', child: Text('عميل مميز (VIP)', style: TextStyle(fontFamily: 'Cairo'))),
+                        DropdownMenuItem(value: 'wholesale', child: Text('تاجر جملة', style: TextStyle(fontFamily: 'Cairo'))),
+                        DropdownMenuItem(value: 'vip', child: Text('عميل مميز', style: TextStyle(fontFamily: 'Cairo'))),
                       ],
                       onChanged: (val) {
                         if (val != null) setState(() => _customerType = val);

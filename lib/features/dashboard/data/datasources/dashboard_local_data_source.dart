@@ -95,6 +95,7 @@ class DashboardLocalDataSourceImpl implements DashboardLocalDataSource {
         id: v.id,
         productId: v.productId,
         productCode: v.sku,
+        productName: p.name,
         color: v.color,
         size: v.size,
         quantity: v.quantity,

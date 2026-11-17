@@ -100,9 +100,27 @@ class InventoryLogCubit extends Cubit<InventoryLogState> {
     // Type filter
     if (typeFilter != 'all') {
       if (typeFilter == 'in') {
-        result = result.where((l) => l.type == 'in' || l.type == 'receive' || l.type == 'return').toList();
+        result = result
+            .where((l) =>
+                l.type == 'in' ||
+                l.type == 'receive' ||
+                l.type == 'return' ||
+                l.type == 'return_')
+            .toList();
       } else if (typeFilter == 'out') {
-        result = result.where((l) => l.type == 'out' || l.type == 'sale').toList();
+        result = result
+            .where((l) =>
+                l.type == 'out' ||
+                l.type == 'sale' ||
+                l.type == 'purchase_return')
+            .toList();
+      } else if (typeFilter == 'return') {
+        result = result
+            .where((l) =>
+                l.type == 'return' ||
+                l.type == 'return_' ||
+                l.type == 'purchase_return')
+            .toList();
       } else {
         result = result.where((l) => l.type == typeFilter).toList();
       }

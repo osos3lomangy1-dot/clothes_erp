@@ -273,7 +273,7 @@ class _CustomerViewState extends State<_CustomerView> {
                                       border: Border.all(color: Colors.amber.shade200),
                                     ),
                                     child: Text(
-                                      'عميل مميز (VIP)',
+                                      'عميل مميز',
                                       style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
                                     ),
                                   ),

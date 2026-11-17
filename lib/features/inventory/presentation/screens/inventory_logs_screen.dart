@@ -244,7 +244,10 @@ class _InventoryLogCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isIn = log.type == 'in' || log.type == 'receive' || log.type == 'return';
+    final isIn = log.type == 'in' ||
+        log.type == 'receive' ||
+        log.type == 'return' ||
+        log.type == 'return_';
     final sign = isIn ? '+' : '-';
     final typeBadge = _getTypeBadge(log.type);
     final dateFormatted = DateFormat('yyyy/MM/dd • HH:mm').format(log.date);
@@ -392,11 +395,19 @@ class _InventoryLogCard extends StatelessWidget {
           icon: Icons.arrow_upward_rounded,
         );
       case 'return':
+      case 'return_':
         return _TypeBadge(
           label: 'مرتجع مبيعات',
           color: Colors.blue.shade700,
           backgroundColor: Colors.blue.shade50,
           icon: Icons.replay_rounded,
+        );
+      case 'purchase_return':
+        return _TypeBadge(
+          label: 'مرتجع مشتريات',
+          color: Colors.deepOrange.shade700,
+          backgroundColor: Colors.deepOrange.shade50,
+          icon: Icons.assignment_return_rounded,
         );
       case 'adjustment':
         return _TypeBadge(
@@ -404,6 +415,13 @@ class _InventoryLogCard extends StatelessWidget {
           color: Colors.orange.shade700,
           backgroundColor: Colors.orange.shade50,
           icon: Icons.tune_rounded,
+        );
+      case 'stocktake':
+        return _TypeBadge(
+          label: 'جرد مخزني',
+          color: Colors.purple.shade700,
+          backgroundColor: Colors.purple.shade50,
+          icon: Icons.fact_check_rounded,
         );
       default:
         return _TypeBadge(

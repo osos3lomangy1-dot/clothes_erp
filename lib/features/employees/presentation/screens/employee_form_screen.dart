@@ -100,11 +100,11 @@ class EmployeeFormView extends StatelessWidget {
                           items: const [
                             DropdownMenuItem(
                               value: 'admin',
-                              child: Text('مدير عام (Admin)'),
+                              child: Text('مدير عام'),
                             ),
                             DropdownMenuItem(
                               value: 'cashier',
-                              child: Text('كاشير (Cashier)'),
+                              child: Text('كاشير'),
                             ),
                           ],
                           onChanged: (value) {

@@ -220,7 +220,7 @@ class _CreatePurchaseScreenState extends State<CreatePurchaseScreen> {
                     TextField(
                       decoration: InputDecoration(
                         hintText:
-                            'ابحث باسم الموديل، كود الصنف (SKU)، أو اللون...',
+                            'ابحث باسم الموديل، كود الصنف، أو اللون...',
                         prefixIcon: const Icon(Icons.search_rounded),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),

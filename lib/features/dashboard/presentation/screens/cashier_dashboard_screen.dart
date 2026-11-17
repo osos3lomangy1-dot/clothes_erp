@@ -121,7 +121,7 @@ class _CashierDashboardScreenState extends State<CashierDashboardScreen> {
                           children: [
                             _NavCard(
                               icon: Icons.point_of_sale_rounded,
-                              title: 'شاشة البيع (POS)',
+                              title: 'شاشة البيع (الكاشير)',
                               subtitle: 'بدء عمليات البيع وإصدار الفواتير وتحصيل المدفوعات',
                               color: AppColors.primary,
                               onTap: () => Navigator.of(innerCtx, rootNavigator: true).push(
