@@ -189,7 +189,7 @@ class _InstallmentCheckoutDialogState extends State<InstallmentCheckoutDialog> {
               color: AppColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.payments_rounded, color: AppColors.primary, size: 22),
+            child: Icon(Icons.payments_rounded, color: AppColors.primary, size: 22),
           ),
           const SizedBox(width: 10),
           Text(

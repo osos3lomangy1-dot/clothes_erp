@@ -185,7 +185,7 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
 
           return AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: const Row(
+            title: Row(
               children: [
                 Icon(Icons.inventory_2_outlined, color: AppColors.primary),
                 SizedBox(width: 8),
@@ -221,7 +221,7 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
                               return ListTile(
                                 leading: CircleAvatar(
                                   backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                                  child: const Icon(Icons.checkroom_rounded, color: AppColors.primary),
+                                  child: Icon(Icons.checkroom_rounded, color: AppColors.primary),
                                 ),
                                 title: Text(p.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                                 subtitle: Text('المقاس: ${v.size} | اللون: ${v.color} | SKU: ${v.sku}'),
@@ -393,7 +393,7 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
             style: OutlinedButton.styleFrom(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            icon: const Icon(Icons.add_box_rounded, color: AppColors.primary, size: 18),
+            icon: Icon(Icons.add_box_rounded, color: AppColors.primary, size: 18),
             label: const Text('إضافة صنف جديد كلياً', style: TextStyle(fontWeight: FontWeight.bold)),
             onPressed: _openQuickAddVariantDialog,
           ),
@@ -461,7 +461,7 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
                       decoration: InputDecoration(
                         labelText: 'مسح بالباركود (Scanner)',
                         hintText: 'امسح باركود القطعة واضغط Enter...',
-                        prefixIcon: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary),
+                        prefixIcon: Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       ),
@@ -587,7 +587,7 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
                                             IconButton(
-                                              icon: const Icon(Icons.remove_circle_outline, color: AppColors.primary, size: 22),
+                                              icon: Icon(Icons.remove_circle_outline, color: AppColors.primary, size: 22),
                                               onPressed: () {
                                                 setState(() {
                                                   if (line.quantity > 1) {
@@ -611,7 +611,7 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
                                               ),
                                             ),
                                             IconButton(
-                                              icon: const Icon(Icons.add_circle_outline, color: AppColors.primary, size: 22),
+                                              icon: Icon(Icons.add_circle_outline, color: AppColors.primary, size: 22),
                                               onPressed: () {
                                                 setState(() {
                                                   line.quantity++;

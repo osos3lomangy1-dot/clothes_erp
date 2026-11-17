@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/constants/app_colors.dart';
 import 'core/di/injection.dart';
+import 'core/features/feature_gate.dart';
 import 'core/services/crash_logger_service.dart';
+import 'core/theme/app_branding.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/logging.dart';
 import 'features/auth/presentation/cubits/auth_cubit.dart';
@@ -141,6 +143,7 @@ void main() async {
   // See Phase 0 decision + TD for full removal.
   Logging.info('🛡️ [Safe Mode] Running without Firebase');
   await configureDependencies();
+  await AppBranding.loadFromFeatureGate(getIt<FeatureGate>());
 
   runApp(
     MultiBlocProvider(
@@ -155,35 +158,43 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: MaterialApp(
-        title: 'أوركييييد',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
-        navigatorObservers: [CrashRouteObserver()],
-        builder: (context, child) {
-          return Directionality(
-            textDirection: TextDirection.rtl,
-            child: child ?? const SizedBox.shrink(),
-          );
-        },
-        home: BlocBuilder<AuthCubit, AuthState>(
-          buildWhen: (previous, current) =>
-              previous.runtimeType != current.runtimeType ||
-              (current is AuthAuthenticated &&
-                  previous is AuthAuthenticated &&
-                  previous.user.role != current.user.role),
-          builder: (context, state) {
-            if (state is AuthAuthenticated) {
-              return state.user.role == 'admin'
-                  ? const AdminDashboardScreen()
-                  : const CashierDashboardScreen();
-            }
-            return const LoginScreen();
-          },
-        ),
-      ),
+    return ValueListenableBuilder<AppBrandingConfig>(
+      valueListenable: AppBranding.notifier,
+      builder: (context, branding, _) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: MaterialApp(
+            title: branding.appName,
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.build(
+              primary: branding.primaryColor,
+              secondary: branding.secondaryColor,
+            ),
+            navigatorObservers: [CrashRouteObserver()],
+            builder: (context, child) {
+              return Directionality(
+                textDirection: TextDirection.rtl,
+                child: child ?? const SizedBox.shrink(),
+              );
+            },
+            home: BlocBuilder<AuthCubit, AuthState>(
+              buildWhen: (previous, current) =>
+                  previous.runtimeType != current.runtimeType ||
+                  (current is AuthAuthenticated &&
+                      previous is AuthAuthenticated &&
+                      previous.user.role != current.user.role),
+              builder: (context, state) {
+                if (state is AuthAuthenticated) {
+                  return state.user.role == 'admin'
+                      ? const AdminDashboardScreen()
+                      : const CashierDashboardScreen();
+                }
+                return const LoginScreen();
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 }

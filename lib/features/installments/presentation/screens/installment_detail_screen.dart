@@ -215,7 +215,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.person_rounded,
                   color: AppColors.primary,
                   size: 28,
@@ -279,7 +279,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                     value: progress,
                     minHeight: 8,
                     backgroundColor: Colors.grey.shade200,
-                    valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
                   ),
                 ),
               ],
@@ -631,7 +631,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                       color: AppColors.primary.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.table_chart_rounded, color: AppColors.primary, size: 20),
+                    child: Icon(Icons.table_chart_rounded, color: AppColors.primary, size: 20),
                   ),
                   const SizedBox(width: 10),
                   Text(

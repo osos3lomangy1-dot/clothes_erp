@@ -8,6 +8,7 @@ import '../di/injection.dart';
 import '../features/feature_gate.dart';
 import '../services/crash_logger_service.dart';
 import '../services/rest_sync_service.dart';
+import '../theme/app_branding.dart';
 import '../../features/auth/presentation/cubits/auth_cubit.dart';
 import '../../features/auth/presentation/cubits/auth_state.dart';
 import '../../features/crash_logs/presentation/screens/crash_logs_screen.dart';
@@ -40,8 +41,10 @@ class MainLayout extends StatefulWidget {
 }
 
 class _MainLayoutState extends State<MainLayout> {
+  final GlobalKey<NavigatorState> _contentNavKey = GlobalKey<NavigatorState>();
   bool _isCollapsed = false;
   bool _isSyncing = false;
+  String _activeTitle = 'لوحة التحكم';
   late Widget _currentScreen;
   StreamSubscription<bool>? _syncSubscription;
 
@@ -104,8 +107,12 @@ class _MainLayoutState extends State<MainLayout> {
   @override
   void didUpdateWidget(covariant MainLayout oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.child != widget.child) {
+    if (oldWidget.currentRoute != widget.currentRoute) {
       _currentScreen = widget.child;
+      _contentNavKey.currentState?.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => widget.child),
+        (route) => false,
+      );
     }
   }
 
@@ -124,41 +131,44 @@ class _MainLayoutState extends State<MainLayout> {
   @override
   Widget build(BuildContext context) {
     final featureGate = getIt<FeatureGate>();
-    return Scaffold(
-      body: Row(
-        children: [
-          SizedBox(
-            width: _isCollapsed ? 80 : 250,
-            child: Material(
-              color: AppColors.primary,
-              child: Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    child: Row(
-                      mainAxisAlignment: _isCollapsed ? MainAxisAlignment.center : MainAxisAlignment.spaceBetween,
-                      children: [
-                        if (!_isCollapsed) ...[
-                          const Expanded(
-                            child: Row(
-                              children: [
-                                Icon(Icons.storefront_rounded, color: Colors.white, size: 24),
-                                SizedBox(width: 10),
-                                Flexible(
-                                  child: Text(
-                                    'نظام الملابس',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
+    return ValueListenableBuilder<AppBrandingConfig>(
+      valueListenable: AppBranding.notifier,
+      builder: (context, branding, _) {
+        return Scaffold(
+          body: Row(
+            children: [
+              SizedBox(
+                width: _isCollapsed ? 80 : 250,
+                child: Material(
+                  color: branding.primaryColor,
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        child: Row(
+                          mainAxisAlignment: _isCollapsed ? MainAxisAlignment.center : MainAxisAlignment.spaceBetween,
+                          children: [
+                            if (!_isCollapsed) ...[
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.storefront_rounded, color: Colors.white, size: 24),
+                                    const SizedBox(width: 10),
+                                    Flexible(
+                                      child: Text(
+                                        branding.appName,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                     ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          ),
-                        ],
+                              ),
+                            ],
                         IconButton(
                           icon: Icon(_isCollapsed ? Icons.menu_rounded : Icons.menu_open_rounded, color: Colors.white),
                           tooltip: _isCollapsed ? 'توسيع القائمة' : 'طي القائمة',
@@ -231,9 +241,24 @@ class _MainLayoutState extends State<MainLayout> {
               ),
             ),
           ),
-          Expanded(child: Container(color: Colors.white, child: _currentScreen)),
+          Expanded(
+            child: ClipRect(
+              child: Container(
+                color: Colors.white,
+                child: Navigator(
+                  key: _contentNavKey,
+                  onGenerateRoute: (settings) => MaterialPageRoute(
+                    settings: settings,
+                    builder: (_) => _currentScreen,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
+    );
+      },
     );
   }
 
@@ -359,17 +384,18 @@ class _MainLayoutState extends State<MainLayout> {
   }
 
   Widget _navItem(IconData icon, String title, Widget? screen, {bool isPos = false, VoidCallback? onTapOverride}) {
+    final isSelected = !isPos && _activeTitle == title;
     return Material(
-      color: Colors.transparent,
+      color: isSelected ? Colors.white.withValues(alpha: 0.16) : Colors.transparent,
       child: ListTile(
         leading: Icon(icon, color: Colors.white),
         title: _isCollapsed
             ? null
             : Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
                   fontSize: 14,
                 ),
               ),
@@ -379,9 +405,18 @@ class _MainLayoutState extends State<MainLayout> {
           if (onTapOverride != null) {
             onTapOverride();
           } else if (isPos) {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const PosScreen()));
+            Navigator.of(context, rootNavigator: true).push(
+              MaterialPageRoute(builder: (_) => const PosScreen()),
+            );
           } else if (screen != null) {
-            setState(() => _currentScreen = screen);
+            setState(() {
+              _activeTitle = title;
+              _currentScreen = screen;
+            });
+            _contentNavKey.currentState?.pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => screen),
+              (route) => false,
+            );
           }
         },
       ),

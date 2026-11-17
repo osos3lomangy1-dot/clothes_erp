@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/app_branding.dart';
 import '../cubits/auth_cubit.dart';
 import '../cubits/auth_state.dart';
 import '../cubits/login_form_cubit.dart';
@@ -168,7 +169,7 @@ class _LoginViewState extends State<_LoginView> {
                           color: AppColors.primary.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.storefront_rounded,
                           size: 54,
                           color: AppColors.primary,
@@ -176,7 +177,7 @@ class _LoginViewState extends State<_LoginView> {
                       ),
                       const SizedBox(height: 20),
                       Text(
-                        'مرحبا بك في اوركييد',
+                        'مرحباً بك في ${AppBranding.current.appName}',
                         style: theme.textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: AppColors.onSurface,
@@ -203,7 +204,7 @@ class _LoginViewState extends State<_LoginView> {
                             decoration: InputDecoration(
                               labelText: 'اسم المستخدم أو البريد الإلكتروني',
                               hintText: 'مثال: admin أو كود الموظف',
-                              prefixIcon: const Icon(
+                              prefixIcon: Icon(
                                 Icons.person_outline_rounded,
                                 color: AppColors.primary,
                               ),
@@ -228,7 +229,7 @@ class _LoginViewState extends State<_LoginView> {
                             obscureText: true,
                             decoration: InputDecoration(
                               labelText: 'كلمة المرور',
-                              prefixIcon: const Icon(
+                              prefixIcon: Icon(
                                 Icons.lock_outlined,
                                 color: AppColors.primary,
                               ),
@@ -294,7 +295,7 @@ class _LoginViewState extends State<_LoginView> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Row(
+                              Row(
                                 children: [
                                   Icon(
                                     Icons.vpn_key_outlined,
@@ -336,7 +337,7 @@ class _LoginViewState extends State<_LoginView> {
                                         cubit.onPasswordChanged('admin123');
                                         cubit.submit();
                                       },
-                                      icon: const Icon(
+                                      icon: Icon(
                                         Icons.admin_panel_settings_rounded,
                                         size: 16,
                                         color: AppColors.primary,
@@ -395,7 +396,7 @@ class _LoginViewState extends State<_LoginView> {
                       ],
                       const SizedBox(height: 24),
                       Text(
-                        '© 2026 جميع الحقوق محفوظة - نظام الملابس المتكامل',
+                        '© 2026 جميع الحقوق محفوظة - ${AppBranding.current.appName}',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: Colors.grey.shade500,
                         ),

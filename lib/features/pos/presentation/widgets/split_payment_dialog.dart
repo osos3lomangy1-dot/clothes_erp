@@ -121,7 +121,7 @@ class _SplitPaymentDialogState extends State<SplitPaymentDialog> {
                       color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.call_split_rounded, color: AppColors.primary, size: 24),
+                    child: Icon(Icons.call_split_rounded, color: AppColors.primary, size: 24),
                   ),
                   const SizedBox(width: 12),
                   Text(

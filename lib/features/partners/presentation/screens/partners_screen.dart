@@ -78,7 +78,7 @@ class _PartnersScreenState extends State<PartnersScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: Row(
               children: [
-                const Icon(Icons.handshake_rounded, color: AppColors.primary),
+                Icon(Icons.handshake_rounded, color: AppColors.primary),
                 const SizedBox(width: 8),
                 Text(
                   isEdit ? 'تعديل بيانات الشريك' : 'إضافة شريك جديد وحساب نسبته',
@@ -171,7 +171,7 @@ class _PartnersScreenState extends State<PartnersScreen> {
                             hintText: 'مثال: 100000',
                             suffixText: 'ج.م',
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                            prefixIcon: const Icon(Icons.monetization_on_outlined, color: AppColors.primary),
+                            prefixIcon: Icon(Icons.monetization_on_outlined, color: AppColors.primary),
                           ),
                           validator: (val) {
                             if (val == null || val.trim().isEmpty) return 'يرجى إدخال مبلغ رأس المال';
@@ -522,7 +522,7 @@ class _PartnersScreenState extends State<PartnersScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Row(
             children: [
-              const Icon(Icons.payments_rounded, color: AppColors.primary),
+              Icon(Icons.payments_rounded, color: AppColors.primary),
               const SizedBox(width: 8),
               Text('صرف أرباح / مسحوبات: ${partner.name}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             ],
@@ -593,7 +593,7 @@ class _PartnersScreenState extends State<PartnersScreen> {
                       labelText: 'المبلغ المنصرف (ج.م) *',
                       suffixText: 'ج.م',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      prefixIcon: const Icon(Icons.attach_money_rounded, color: AppColors.primary),
+                      prefixIcon: Icon(Icons.attach_money_rounded, color: AppColors.primary),
                     ),
                     validator: (val) {
                       if (val == null || val.trim().isEmpty) return 'يرجى إدخال المبلغ';
@@ -664,7 +664,7 @@ class _PartnersScreenState extends State<PartnersScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            const Icon(Icons.history_rounded, color: AppColors.primary),
+            Icon(Icons.history_rounded, color: AppColors.primary),
             const SizedBox(width: 8),
             Text('سجل مسحوبات: ${partner.name}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           ],
@@ -721,7 +721,7 @@ class _PartnersScreenState extends State<PartnersScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
+        title: Row(
           children: [
             Icon(Icons.auto_mode_rounded, color: AppColors.primary),
             SizedBox(width: 8),
@@ -865,7 +865,7 @@ class _PartnersScreenState extends State<PartnersScreen> {
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.date_range_rounded, color: AppColors.primary, size: 20),
+                                  Icon(Icons.date_range_rounded, color: AppColors.primary, size: 20),
                                   const SizedBox(width: 8),
                                   Text(
                                     _dateRange != null
@@ -881,7 +881,7 @@ class _PartnersScreenState extends State<PartnersScreen> {
                           OutlinedButton.icon(
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.primary,
-                              side: const BorderSide(color: AppColors.primary),
+                              side: BorderSide(color: AppColors.primary),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
                             onPressed: () async {
@@ -971,7 +971,7 @@ class _PartnersScreenState extends State<PartnersScreen> {
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.pie_chart_outline_rounded, color: AppColors.primary, size: 20),
+                            Icon(Icons.pie_chart_outline_rounded, color: AppColors.primary, size: 20),
                             const SizedBox(width: 8),
                             Text(
                               'إجمالي رأس المال المسجل: ${Money(state.totalCapital).toDisplay()} ج.م',
@@ -1086,7 +1086,7 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                                 backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                                                 child: Text(
                                                   partner.name.isNotEmpty ? partner.name[0] : 'ش',
-                                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primary),
+                                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primary),
                                                 ),
                                               ),
                                               const SizedBox(width: 14),
@@ -1109,7 +1109,7 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                                           ),
                                                           child: Text(
                                                             partner.typeLabel,
-                                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppColors.primary),
+                                                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppColors.primary),
                                                           ),
                                                         ),
                                                         Container(
@@ -1159,7 +1159,7 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                                 ),
                                               ),
                                               IconButton(
-                                                icon: const Icon(Icons.edit_outlined, color: AppColors.primary),
+                                                icon: Icon(Icons.edit_outlined, color: AppColors.primary),
                                                 tooltip: 'تعديل الشريك',
                                                 onPressed: () => _openPartnerDialog(
                                                   context,
@@ -1236,11 +1236,11 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                                   child: Column(
                                                     crossAxisAlignment: CrossAxisAlignment.start,
                                                     children: [
-                                                      const Text('صافي المستحق غير المصروف', style: TextStyle(fontSize: 10, color: AppColors.primary)),
+                                                      Text('صافي المستحق غير المصروف', style: TextStyle(fontSize: 10, color: AppColors.primary)),
                                                       const SizedBox(height: 2),
                                                       Text(
                                                         '${Money(remainingProfitToPayout).toDisplay()} ج.م',
-                                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary),
+                                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary),
                                                       ),
                                                     ],
                                                   ),

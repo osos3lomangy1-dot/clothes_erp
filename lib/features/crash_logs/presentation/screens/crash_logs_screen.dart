@@ -256,7 +256,7 @@ class _CrashLogsScreenState extends State<CrashLogsScreen> {
                 controller: _searchCtrl,
                 decoration: InputDecoration(
                   hintText: 'البحث في سجلات الأعطال (الرسالة، الشاشة، التوقيت)...',
-                  prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primary),
+                  prefixIcon: Icon(Icons.search_rounded, color: AppColors.primary),
                   suffixIcon: _searchCtrl.text.isNotEmpty
                       ? IconButton(
                           icon: const Icon(Icons.clear, size: 18),

@@ -246,7 +246,7 @@ class CashierPayrollCard extends StatelessWidget {
                       ),
                       child: Text(
                         emp.role == 'cashier' ? 'كاشير' : (emp.role == 'manager' ? 'مدير' : 'مسؤول'),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: AppColors.primary,
@@ -310,7 +310,7 @@ class CashierPayrollCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 6),
                   child: Text(
                     summary.monthArabicName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
                       color: AppColors.primary,
@@ -505,14 +505,14 @@ class CashierPayrollCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'صافي المستحق حالياً',
                   style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '${Money(summary.netDue).toDisplay()} ج.م',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: AppColors.primary,
@@ -611,7 +611,7 @@ class CashierPayrollCard extends StatelessWidget {
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.primary,
-              side: const BorderSide(color: AppColors.primary),
+              side: BorderSide(color: AppColors.primary),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             icon: const Icon(Icons.receipt_long_rounded, size: 18),
@@ -686,7 +686,7 @@ class CashierPayrollCard extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            const Icon(Icons.receipt_long_rounded, color: AppColors.primary),
+            Icon(Icons.receipt_long_rounded, color: AppColors.primary),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -802,7 +802,7 @@ class CashierPayrollCard extends StatelessWidget {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Row(
             children: [
-              const Icon(Icons.edit_note_rounded, color: AppColors.primary),
+              Icon(Icons.edit_note_rounded, color: AppColors.primary),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -827,7 +827,7 @@ class CashierPayrollCard extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.person_rounded, size: 18, color: AppColors.primary),
+                        Icon(Icons.person_rounded, size: 18, color: AppColors.primary),
                         const SizedBox(width: 6),
                         Text(
                           'الموظف: ${summary.employee.displayName}',
@@ -843,7 +843,7 @@ class CashierPayrollCard extends StatelessWidget {
                     decoration: InputDecoration(
                       labelText: 'المبلغ بالج.م *',
                       suffixText: 'ج.م',
-                      prefixIcon: const Icon(Icons.attach_money_rounded, color: AppColors.primary),
+                      prefixIcon: Icon(Icons.attach_money_rounded, color: AppColors.primary),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                     validator: (val) {
@@ -859,7 +859,7 @@ class CashierPayrollCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                       side: BorderSide(color: Colors.grey.shade300),
                     ),
-                    leading: const Icon(Icons.calendar_today_rounded, color: AppColors.primary),
+                    leading: Icon(Icons.calendar_today_rounded, color: AppColors.primary),
                     title: const Text('تاريخ المعاملة', style: TextStyle(fontSize: 12, color: Colors.grey)),
                     subtitle: Text(
                       '${txDate.year}-${txDate.month.toString().padLeft(2, '0')}-${txDate.day.toString().padLeft(2, '0')}',

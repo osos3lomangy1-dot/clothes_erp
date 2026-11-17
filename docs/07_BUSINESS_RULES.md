@@ -15,6 +15,10 @@
   - **Exact / Normalized Duplicate:** Strictly **BLOCKED** from saving at all three layers (`ProductFormScreen`, `ProductFormCubit`, and `ProductLocalDataSource.createProduct`, `createProductWithVariants`, `updateProduct`). Editing a product ignores its own ID during duplicate checks.
   - **Real-Time Similarity Warning:** While typing a product name, any existing products matching by substring or word overlap (`ArabicTextHelper.isSimilar`) are immediately displayed as warning chips under the name field.
   - **Accidental Save Protection:** If similar products exist when clicking Save, an explicit confirmation dialog intercepts the save listing the similar products so accidental duplicate creation is prevented.
+- **Duplicate SKU / Code Prevention (Strict UI + Cubit + DB Enforcement):**
+  - Variant SKUs are compared case-insensitively and trimmed (`sku.trim().toLowerCase()`).
+  - Duplicate SKUs are blocked in real-time inside `ProductFormScreen` (both within the variants table and against existing active DB SKUs) and `VariantFormScreen`, as well as enforced at the database layer in `ProductLocalDataSource.createProductWithVariants`, `VariantLocalDataSource.createVariant`, and `VariantLocalDataSource.updateVariant`.
+  - Soft-deleted variants free their SKU for reuse.
 
 ## 2. POS, Hardware Scanner & Payments
 - Checkout creates `Sale` + `SaleItems` + `SalePayments` + `CashMovements` in one atomic transaction.

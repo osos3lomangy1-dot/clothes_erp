@@ -32,7 +32,7 @@ class InvoiceDetailsDialog extends StatelessWidget {
                       color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.receipt_long_rounded, color: AppColors.primary, size: 24),
+                    child: Icon(Icons.receipt_long_rounded, color: AppColors.primary, size: 24),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -108,7 +108,7 @@ class InvoiceDetailsDialog extends StatelessWidget {
                         ),
                         trailing: Text(
                           '${Money(item.lineTotal).toDisplay()} ج.م',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary),
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary),
                         ),
                       );
                     },

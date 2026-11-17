@@ -48,7 +48,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       builder: (dialogCtx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Row(
+          title: Row(
             children: [
               Icon(Icons.add_card_rounded, color: AppColors.primary),
               SizedBox(width: 8),
@@ -67,7 +67,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       initialValue: isCustomCategory ? addCustomKey : selectedCategory,
                       items: [
                         ...currentCategories.map((c) => DropdownMenuItem(value: c, child: Text(c))),
-                        const DropdownMenuItem(
+                        DropdownMenuItem(
                           value: addCustomKey,
                           child: Row(
                             children: [
@@ -106,7 +106,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                         decoration: InputDecoration(
                           labelText: 'اسم بند المصروف الجديد *',
                           hintText: 'مثال: دعاية وتسويق، إكراميات، شحن سريع...',
-                          prefixIcon: const Icon(Icons.category_rounded, color: AppColors.primary),
+                          prefixIcon: Icon(Icons.category_rounded, color: AppColors.primary),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                         validator: (val) {
@@ -125,7 +125,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                         labelText: 'المبلغ بالج.م *',
                         hintText: 'مثال: 150.00',
                         suffixText: 'ج.م',
-                        prefixIcon: const Icon(Icons.monetization_on_outlined, color: AppColors.primary),
+                        prefixIcon: Icon(Icons.monetization_on_outlined, color: AppColors.primary),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                       validator: (val) {
@@ -141,7 +141,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                         borderRadius: BorderRadius.circular(10),
                         side: BorderSide(color: Colors.grey.shade300),
                       ),
-                      leading: const Icon(Icons.calendar_today_rounded, color: AppColors.primary),
+                      leading: Icon(Icons.calendar_today_rounded, color: AppColors.primary),
                       title: const Text('تاريخ المصروف', style: TextStyle(fontSize: 12, color: Colors.grey)),
                       subtitle: Text(
                         '${expenseDate.year}-${expenseDate.month.toString().padLeft(2, '0')}-${expenseDate.day.toString().padLeft(2, '0')}',
@@ -354,7 +354,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.date_range_rounded, color: AppColors.primary, size: 20),
+                                  Icon(Icons.date_range_rounded, color: AppColors.primary, size: 20),
                                   const SizedBox(width: 8),
                                   Text(
                                     _dateRange != null
@@ -370,7 +370,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           OutlinedButton.icon(
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.primary,
-                              side: const BorderSide(color: AppColors.primary),
+                              side: BorderSide(color: AppColors.primary),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
                             onPressed: () async {
@@ -517,7 +517,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                   color: AppColors.primary.withValues(alpha: 0.1),
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(Icons.receipt_long_rounded, color: AppColors.primary, size: 24),
+                                child: Icon(Icons.receipt_long_rounded, color: AppColors.primary, size: 24),
                               ),
                               const SizedBox(width: 14),
                               Column(
@@ -527,7 +527,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                   const SizedBox(height: 4),
                                   Text(
                                     '${state.expenses.length} مصروف',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: AppColors.primary),
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: AppColors.primary),
                                   ),
                                 ],
                               ),
@@ -576,7 +576,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                         color: AppColors.primary.withValues(alpha: 0.1),
                                         borderRadius: BorderRadius.circular(10),
                                       ),
-                                      child: const Icon(Icons.payments_outlined, color: AppColors.primary),
+                                      child: Icon(Icons.payments_outlined, color: AppColors.primary),
                                     ),
                                     title: Row(
                                       children: [

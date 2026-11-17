@@ -60,7 +60,7 @@ class _ReturnScreenState extends State<ReturnScreen> {
                 ),
               ],
             ),
-            bottom: const TabBar(
+            bottom: TabBar(
               labelColor: AppColors.primary,
               unselectedLabelColor: Colors.grey,
               indicatorColor: AppColors.primary,
@@ -129,7 +129,7 @@ class _ReturnScreenState extends State<ReturnScreen> {
                   decoration: InputDecoration(
                     labelText: 'ابحث برقم الفاتورة (مثال: #S101 أو المعرف)...',
                     border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.search, color: AppColors.primary),
+                    prefixIcon: Icon(Icons.search, color: AppColors.primary),
                     suffixIcon: _searchCtrl.text.isNotEmpty
                         ? IconButton(
                             icon: const Icon(Icons.clear, size: 18),
@@ -260,7 +260,7 @@ class _ReturnScreenState extends State<ReturnScreen> {
                       color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.receipt_rounded, color: AppColors.primary),
+                    child: Icon(Icons.receipt_rounded, color: AppColors.primary),
                   ),
                   title: Text(
                     'فاتورة #${sale.id.length > 8 ? sale.id.substring(0, 8) : sale.id} • الإجمالي: ${Money(sale.total).toDisplay()} ج.م',
@@ -270,7 +270,7 @@ class _ReturnScreenState extends State<ReturnScreen> {
                     'التاريخ: $dateStr • طريقة الدفع: ${sale.paymentMethod}',
                     style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                   ),
-                  trailing: const Icon(Icons.chevron_left_rounded, color: AppColors.primary),
+                  trailing: Icon(Icons.chevron_left_rounded, color: AppColors.primary),
                   onTap: () => context.read<ReturnsCubit>().selectSale(sale),
                 ),
               );
@@ -315,7 +315,7 @@ class _ReturnScreenState extends State<ReturnScreen> {
                 ),
                 Text(
                   'الإجمالي الأصلي: ${Money(sale.total).toDisplay()} ج.م',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary),
                 ),
               ],
             ),
@@ -383,12 +383,12 @@ class _ReturnScreenState extends State<ReturnScreen> {
                     Row(
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.remove_circle_outline, color: AppColors.primary),
+                          icon: Icon(Icons.remove_circle_outline, color: AppColors.primary),
                           onPressed: item.qty > 0 ? () => context.read<ReturnsCubit>().updateItemQty(item.variantId, item.qty - 1) : null,
                         ),
                         Text('${item.qty}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                         IconButton(
-                          icon: const Icon(Icons.add_circle_outline, color: AppColors.primary),
+                          icon: Icon(Icons.add_circle_outline, color: AppColors.primary),
                           onPressed: item.qty < item.maxQty ? () => context.read<ReturnsCubit>().updateItemQty(item.variantId, item.qty + 1) : null,
                         ),
                       ],
@@ -399,7 +399,7 @@ class _ReturnScreenState extends State<ReturnScreen> {
                       child: Text(
                         '${Money(item.lineTotal).toDisplay()} ج.م',
                         textAlign: TextAlign.left,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.primary),
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.primary),
                       ),
                     ),
                   ],
@@ -422,7 +422,7 @@ class _ReturnScreenState extends State<ReturnScreen> {
                       const Text('إجمالي المبلغ المسترد (يخصم من الدرج):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                       Text(
                         '${Money(state.totalRefund).toDisplay()} ج.م',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: AppColors.primary),
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: AppColors.primary),
                       ),
                     ],
                   ),

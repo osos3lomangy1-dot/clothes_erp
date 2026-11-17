@@ -151,7 +151,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     controller: _searchController,
                     decoration: InputDecoration(
                       hintText: 'ابحث بالاسم أو الكود أو الباركود...',
-                      prefixIcon: const Icon(
+                      prefixIcon: Icon(
                         Icons.search,
                         color: AppColors.primary,
                       ),
@@ -769,7 +769,7 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
                       color: AppColors.surfaceContainer,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.add_shopping_cart,
                       color: AppColors.primary,
                       size: 28,
@@ -849,7 +849,7 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
                           decoration: InputDecoration(
                             hintText:
                                 'ابحث باسم المنتج، الكود (SKU)، اللون أو المقاس...',
-                            prefixIcon: const Icon(
+                            prefixIcon: Icon(
                               Icons.search,
                               color: AppColors.primary,
                             ),
@@ -885,7 +885,7 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
                             ),
                             child: Column(
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.inventory_2_outlined,
                                   size: 36,
                                   color: AppColors.primary,
@@ -969,7 +969,7 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
                                     ),
                                     child: Text(
                                       'الرصيد: ${item.quantity}',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 12,
                                         color: AppColors.primary,
@@ -999,7 +999,7 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
                           ),
                           child: Row(
                             children: [
-                              const CircleAvatar(
+                              CircleAvatar(
                                 backgroundColor: AppColors.primary,
                                 foregroundColor: Colors.white,
                                 child: Icon(Icons.check),
@@ -1027,7 +1027,7 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
                                     const SizedBox(height: 4),
                                     Text(
                                       'الرصيد الحالي بالمحل: ${_selectedDetail!.quantity} قطعة',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
                                         color: AppColors.primary,
@@ -1074,14 +1074,14 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
                               controller: _qtyCtrl,
                               keyboardType: TextInputType.number,
                               textAlign: TextAlign.center,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.primary,
                               ),
                               decoration: InputDecoration(
                                 hintText: 'الكمية',
-                                prefixIcon: const Icon(
+                                prefixIcon: Icon(
                                   Icons.add_box_outlined,
                                   color: AppColors.primary,
                                 ),
@@ -1123,7 +1123,7 @@ class _ReceiveStockDialogState extends State<_ReceiveStockDialog> {
                         decoration: InputDecoration(
                           hintText:
                               'مثال: شركة النصر للملابس - فاتورة توريد #4512',
-                          prefixIcon: const Icon(
+                          prefixIcon: Icon(
                             Icons.receipt_long_outlined,
                             color: AppColors.primary,
                           ),
@@ -1418,7 +1418,7 @@ class _QuickAddProductDialogState extends State<_QuickAddProductDialog> {
                       color: AppColors.surfaceContainer,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.add_box,
                       color: AppColors.primary,
                       size: 24,

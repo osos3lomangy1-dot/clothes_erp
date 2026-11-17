@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/app_branding.dart';
 import '../../../../core/utils/money.dart';
 import '../../domain/models/barcode_label_item.dart';
 import '../../services/barcode_label_service.dart';
@@ -21,7 +22,7 @@ class BarcodePrintDialog extends StatefulWidget {
 class _BarcodePrintDialogState extends State<BarcodePrintDialog> {
   late List<BarcodeLabelItem> _items;
   BarcodeLabelSize _selectedSize = BarcodeLabelSize.roll50x30;
-  final TextEditingController _storeNameCtrl = TextEditingController(text: 'أوركيد للملابس');
+  final TextEditingController _storeNameCtrl = TextEditingController(text: AppBranding.current.appName);
   bool _showStoreName = true;
   bool _showPrice = true;
   bool _showColorAndSize = true;
@@ -107,7 +108,7 @@ class _BarcodePrintDialogState extends State<BarcodePrintDialog> {
                       color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.qr_code_2_rounded, color: AppColors.primary, size: 24),
+                    child: Icon(Icons.qr_code_2_rounded, color: AppColors.primary, size: 24),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -231,7 +232,7 @@ class _BarcodePrintDialogState extends State<BarcodePrintDialog> {
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: Colors.grey.shade300),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.format_list_numbered_rounded, size: 16, color: AppColors.primary),
@@ -307,7 +308,7 @@ class _BarcodePrintDialogState extends State<BarcodePrintDialog> {
                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.add_circle_outline, size: 20, color: AppColors.primary),
+                                  icon: Icon(Icons.add_circle_outline, size: 20, color: AppColors.primary),
                                   onPressed: () => _updateCopies(index, item.copies + 1),
                                 ),
                               ],
@@ -333,7 +334,7 @@ class _BarcodePrintDialogState extends State<BarcodePrintDialog> {
                     ),
                     child: Text(
                       'إجمالي الملصقات: $_totalCopies ملصق',
-                      style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 14),
+                      style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 14),
                     ),
                   ),
                   const Spacer(),

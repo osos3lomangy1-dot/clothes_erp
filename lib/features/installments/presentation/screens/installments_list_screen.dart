@@ -95,7 +95,7 @@ class _InstallmentsListViewState extends State<_InstallmentsListView> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.list_alt_rounded, color: AppColors.primary),
+            icon: Icon(Icons.list_alt_rounded, color: AppColors.primary),
             tooltip: 'خطط التقسيط',
             onPressed: () {
               Navigator.of(context).push(
@@ -520,7 +520,7 @@ class _CustomerInstallmentsCardState extends State<CustomerInstallmentsCard> {
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide:
-                      const BorderSide(color: AppColors.primary, width: 1.5),
+                      BorderSide(color: AppColors.primary, width: 1.5),
                 ),
               ),
               onSubmitted: (_) => _handleBulkPayment(s),
@@ -716,7 +716,7 @@ class _CustomerInstallmentsCardState extends State<CustomerInstallmentsCard> {
                       : contract.id;
                   return ListTile(
                     dense: true,
-                    leading: const Icon(Icons.receipt_long_rounded,
+                    leading: Icon(Icons.receipt_long_rounded,
                         size: 20, color: AppColors.primary),
                     title: Text('عقد #$shortId',
                         style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -842,7 +842,7 @@ class _BulkPaymentPinDialogState extends State<_BulkPaymentPinDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Row(
+      title: Row(
         children: [
           Icon(Icons.lock_outline_rounded, color: AppColors.primary),
           SizedBox(width: 8),

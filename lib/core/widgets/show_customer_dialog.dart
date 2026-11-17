@@ -27,7 +27,7 @@ void showCustomerDialog(BuildContext context, {CustomerEntity? customer}) {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Row(
             children: [
-              const Icon(Icons.person_pin_rounded, color: AppColors.primary),
+              Icon(Icons.person_pin_rounded, color: AppColors.primary),
               const SizedBox(width: 8),
               Text(
                 isEditing ? 'تعديل بيانات العميل والمزايا' : 'إضافة عميل جديد',

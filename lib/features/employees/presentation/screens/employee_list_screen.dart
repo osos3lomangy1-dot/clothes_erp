@@ -339,7 +339,7 @@ class _EmployeeListViewState extends State<EmployeeListView> {
                     controller: _searchCtrl,
                     decoration: InputDecoration(
                       hintText: 'بحث بالاسم الكامل أو اسم المستخدم...',
-                      prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primary),
+                      prefixIcon: Icon(Icons.search_rounded, color: AppColors.primary),
                       suffixIcon: _searchCtrl.text.isNotEmpty
                           ? IconButton(
                               icon: const Icon(Icons.clear_rounded, size: 18),
@@ -531,7 +531,7 @@ class _EmployeeListViewState extends State<EmployeeListView> {
                                     onPressed: () => CashierProfileDialog.show(context, employeeId: employee.id),
                                   ),
                                   IconButton(
-                                    icon: const Icon(Icons.edit_outlined, color: AppColors.primary),
+                                    icon: Icon(Icons.edit_outlined, color: AppColors.primary),
                                     tooltip: 'تعديل بيانات الموظف',
                                     onPressed: () => _openEmployeeDialog(context, employee: employee),
                                   ),

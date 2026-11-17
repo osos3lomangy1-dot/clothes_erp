@@ -68,25 +68,27 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
             ],
           ),
           actions: [
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            Builder(
+              builder: (innerCtx) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  ),
+                  icon: const Icon(Icons.analytics_rounded, color: Colors.white, size: 18),
+                  label: const Text(
+                    'التقرير المالي الشامل',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  onPressed: () {
+                    Navigator.of(innerCtx).push(
+                      MaterialPageRoute(builder: (_) => const ReportsScreen()),
+                    );
+                  },
                 ),
-                icon: const Icon(Icons.analytics_rounded, color: Colors.white, size: 18),
-                label: const Text(
-                  'التقرير المالي الشامل',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const ReportsScreen()),
-                  );
-                },
               ),
             ),
             IconButton(
@@ -96,7 +98,7 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
                 forceCheck: true,
                 showNoUpdateToast: true,
               ),
-              icon: const Icon(Icons.system_update_rounded, color: AppColors.primary),
+              icon: Icon(Icons.system_update_rounded, color: AppColors.primary),
             ),
             IconButton(
               tooltip: 'تسجيل الخروج',

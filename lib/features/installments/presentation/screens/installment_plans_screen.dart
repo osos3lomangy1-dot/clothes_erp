@@ -154,7 +154,7 @@ class _InstallmentPlansViewState extends State<_InstallmentPlansView> {
                       color: AppColors.primary.withValues(alpha: 0.08),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.playlist_add_rounded, size: 56, color: AppColors.primary),
+                    child: Icon(Icons.playlist_add_rounded, size: 56, color: AppColors.primary),
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -739,7 +739,7 @@ class _PlanCard extends StatelessWidget {
                   color: AppColors.primary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.event_repeat_rounded, color: AppColors.primary, size: 22),
+                child: Icon(Icons.event_repeat_rounded, color: AppColors.primary, size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(

@@ -111,7 +111,7 @@ class _CustomerViewState extends State<_CustomerView> {
                         controller: _searchCtrl,
                         decoration: InputDecoration(
                           hintText: 'البحث عن عميل بالاسم أو رقم الهاتف...',
-                          prefixIcon: const Icon(
+                          prefixIcon: Icon(
                             Icons.search,
                             color: AppColors.primary,
                           ),
@@ -348,7 +348,7 @@ class _CustomerViewState extends State<_CustomerView> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 IconButton(
-                                  icon: const Icon(
+                                  icon: Icon(
                                     Icons.edit_outlined,
                                     color: AppColors.primary,
                                   ),

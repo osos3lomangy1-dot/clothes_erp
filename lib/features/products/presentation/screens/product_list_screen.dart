@@ -210,7 +210,7 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+      builder: (_) => Center(child: CircularProgressIndicator(color: AppColors.primary)),
     );
 
     ExcelImportAnalysis analysis;
@@ -306,12 +306,12 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.download_rounded, color: AppColors.primary),
+            icon: Icon(Icons.download_rounded, color: AppColors.primary),
             tooltip: 'تصدير إكسيل',
             onPressed: () => _exportToExcel(context),
           ),
           IconButton(
-            icon: const Icon(Icons.upload_file_rounded, color: AppColors.primary),
+            icon: Icon(Icons.upload_file_rounded, color: AppColors.primary),
             tooltip: 'استيراد من إكسيل',
             onPressed: () => _importFromExcel(context),
           ),
@@ -405,7 +405,7 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.category_rounded, color: AppColors.primary, size: 20),
+                    Icon(Icons.category_rounded, color: AppColors.primary, size: 20),
                     const SizedBox(width: 8),
                     const Text(
                       'أقسام المتجر',
@@ -420,7 +420,7 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                       ),
                       child: Text(
                         '${categories.length}',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
                       ),
                     ),
                   ],
@@ -558,7 +558,7 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                   if (val == 'delete' && onDelete != null) onDelete();
                 },
                 itemBuilder: (ctx) => [
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'edit',
                     child: Row(
                       children: [
@@ -648,7 +648,7 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
           Padding(
             padding: const EdgeInsets.only(left: 6),
             child: ActionChip(
-              avatar: const Icon(Icons.add, size: 16, color: AppColors.primary),
+              avatar: Icon(Icons.add, size: 16, color: AppColors.primary),
               label: const Text('قسم جديد'),
               onPressed: () => _openAddCategoryDialog(context),
             ),
@@ -703,7 +703,7 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                     hintText: _selectedCategoryName != null
                         ? 'البحث داخل قسم "$_selectedCategoryName"...'
                         : 'ابحث بالاسم أو الكود أو الباركود...',
-                    prefixIcon: const Icon(Icons.search, color: AppColors.primary),
+                    prefixIcon: Icon(Icons.search, color: AppColors.primary),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
                             icon: const Icon(Icons.clear, size: 18),
@@ -732,11 +732,11 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.inventory_2_outlined, size: 18, color: AppColors.primary),
+                    Icon(Icons.inventory_2_outlined, size: 18, color: AppColors.primary),
                     const SizedBox(width: 6),
                     Text(
                       'المعروض: ${filtered.length}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                      style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
                     ),
                   ],
                 ),
@@ -929,7 +929,7 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                 label: const Text('المقاسات والألوان', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.primary,
-                  side: const BorderSide(color: AppColors.primary, width: 1.2),
+                  side: BorderSide(color: AppColors.primary, width: 1.2),
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
@@ -1074,7 +1074,7 @@ class _ExcelImportOptionsDialogState extends State<_ExcelImportOptionsDialog> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Row(
+                  Row(
                     children: [
                       Icon(Icons.upload_file_rounded, color: AppColors.primary, size: 26),
                       SizedBox(width: 10),
@@ -1273,7 +1273,7 @@ class _ExcelImportOptionsDialogState extends State<_ExcelImportOptionsDialog> {
                                   ),
                                   Text(
                                     'الإكسيل: كمية ${row.quantity} | بيع ${row.salePrice.toStringAsFixed(1)} ج.م',
-                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
                                   ),
                                 ],
                               ),

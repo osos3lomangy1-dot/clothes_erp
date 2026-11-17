@@ -531,7 +531,7 @@ class _InvoicesViewState extends State<_InvoicesView> {
                   ),
                   IconButton(
                     tooltip: 'طباعة فورية',
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.print_rounded,
                       color: AppColors.primary,
                       size: 20,

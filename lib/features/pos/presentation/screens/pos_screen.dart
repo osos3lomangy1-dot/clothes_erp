@@ -171,7 +171,7 @@ class _PosViewState extends State<_PosView> {
         final cashierName = authState is AuthAuthenticated ? authState.user.name : 'المدير';
 
         if (shiftState.status == ShiftStatus.loading && !shiftState.hasActiveShift) {
-          return const Scaffold(
+          return Scaffold(
             backgroundColor: AppColors.surface,
             body: Center(child: CircularProgressIndicator()),
           );
@@ -442,7 +442,7 @@ class _PosViewState extends State<_PosView> {
                         child: OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            side: const BorderSide(color: AppColors.primary, width: 1.5),
+                            side: BorderSide(color: AppColors.primary, width: 1.5),
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
                           onPressed: () {
@@ -465,7 +465,7 @@ class _PosViewState extends State<_PosView> {
                               ),
                             );
                           },
-                          icon: const Icon(Icons.lock_open_rounded, color: AppColors.primary, size: 20),
+                          icon: Icon(Icons.lock_open_rounded, color: AppColors.primary, size: 20),
                           label: Text(
                             'فتح وردية وتحديد رصيد الفكة',
                             style: TextStyle(fontFamily: 'Cairo', color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 15),
@@ -580,7 +580,7 @@ class _ProductPanelState extends State<_ProductPanel> {
               decoration: InputDecoration(
                 hintText: 'بحث بالاسم أو كود الصنف أو المقاس... [F2]',
                 hintStyle: TextStyle(fontFamily: 'Cairo', color: Colors.grey.shade500, fontSize: 13),
-                prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primary),
+                prefixIcon: Icon(Icons.search_rounded, color: AppColors.primary),
                 suffixIcon: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -639,21 +639,21 @@ class _ProductPanelState extends State<_ProductPanel> {
             try {
               final allSelected = state.selectedCategory == 'All';
               return SizedBox(
-                height: 44,
+                height: 36,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   children: [
                     _categoryChip(
                       label: 'الكل',
                       isSelected: allSelected,
                       onTap: () => context.read<PosCubit>().filterByCategory('All'),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     ...state.categories.map((cat) {
                       final isSelected = state.selectedCategory == cat.id;
                       return Padding(
-                        padding: const EdgeInsets.only(left: 8),
+                        padding: const EdgeInsets.only(left: 6),
                         child: _categoryChip(
                           label: cat.name,
                           isSelected: isSelected,
@@ -683,7 +683,7 @@ class _ProductPanelState extends State<_ProductPanel> {
             builder: (context, state) {
               try {
                 if (state is PosLoading) {
-                  return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+                  return Center(child: CircularProgressIndicator(color: AppColors.primary));
                 }
                 if (state is PosError) {
                   return Center(
@@ -732,12 +732,12 @@ class _ProductPanelState extends State<_ProductPanel> {
                 }
                 final posCubit = context.read<PosCubit>();
                 return GridView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    mainAxisSpacing: 14,
-                    crossAxisSpacing: 14,
-                    childAspectRatio: 0.84,
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 175,
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8,
+                    mainAxisExtent: 118,
                   ),
                   itemCount: state.filteredVariants.length,
                   itemBuilder: (context, index) {
@@ -832,7 +832,6 @@ class _ProductCard extends StatelessWidget {
     final posCubit = context.read<PosCubit>();
     final productName = posCubit.getProductName(variant.productId);
     final displayName = productName.isNotEmpty ? productName : variant.productCode;
-    final initialLetter = displayName.isNotEmpty ? displayName.substring(0, 1).toUpperCase() : 'P';
 
     return BlocBuilder<PosCubit, PosState>(
       buildWhen: (prev, curr) => prev.cart != curr.cart,
@@ -847,205 +846,219 @@ class _ProductCard extends StatelessWidget {
 
         return Opacity(
           opacity: isOut ? 0.55 : 1.0,
-          child: Container(
-            decoration: BoxDecoration(
-              color: isOut ? Colors.grey.shade100 : AppColors.surfaceContainerLowest,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: inCartQty > 0
-                    ? AppColors.primary
-                    : (isOut ? Colors.grey.shade300 : AppColors.outlineVariant.withValues(alpha: 0.6)),
-                width: inCartQty > 0 ? 2.0 : 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: inCartQty > 0
-                      ? AppColors.primary.withValues(alpha: 0.12)
-                      : Colors.black.withValues(alpha: 0.04),
-                  blurRadius: inCartQty > 0 ? 10 : 6,
-                  offset: const Offset(0, 3),
+          child: Material(
+            color: isOut ? Colors.grey.shade100 : AppColors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(10),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: isOut
+                  ? null
+                  : () {
+                      if (inCartQty < variant.quantity) {
+                        posCubit.addToCart(variant, 1);
+                      }
+                    },
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: inCartQty > 0
+                        ? AppColors.primary
+                        : (isOut
+                            ? Colors.grey.shade300
+                            : AppColors.outlineVariant.withValues(alpha: 0.7)),
+                    width: inCartQty > 0 ? 1.8 : 1.0,
+                  ),
                 ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Top Row: Avatar + Stock Pill + Variant Selector Button
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: categoryColor,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: categoryColor.withValues(alpha: 0.3),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Thin category color accent bar
+                    Container(height: 3, color: categoryColor),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // Row 1: Name + Stock badge + Variants button
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    displayName,
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12.5,
+                                      color: AppColors.onSurface,
+                                      height: 1.15,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                _buildStockPill(isOut, isLow, variant.quantity),
+                                if (!isOut) ...[
+                                  const SizedBox(width: 2),
+                                  InkWell(
+                                    onTap: () => _showVariantModal(context, variant),
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Tooltip(
+                                      message: 'المقاسات والألوان',
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(2),
+                                        child: Icon(
+                                          Icons.tune_rounded,
+                                          size: 14,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+
+                            // Row 2: Color • Size chip + SKU
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 5, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surfaceContainerLow,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    '${variant.color} • ${variant.size}',
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey.shade700,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    variant.sku,
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: 9.5,
+                                      color: Colors.grey.shade500,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            // Row 3: Price + Compact Add / Inline Stepper
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    '${Money(variant.salePrice).toDisplay()} ج.م',
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: AppColors.primary,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                if (inCartQty == 0)
+                                  Container(
+                                    height: 26,
+                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    decoration: BoxDecoration(
+                                      color: isOut
+                                          ? Colors.grey.shade300
+                                          : AppColors.primary,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.add_rounded,
+                                            size: 14, color: Colors.white),
+                                        SizedBox(width: 2),
+                                        Text(
+                                          'إضافة',
+                                          style: TextStyle(
+                                            fontFamily: 'Cairo',
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                else
+                                  Container(
+                                    height: 26,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        InkWell(
+                                          onTap: () => posCubit.decreaseQty(variant.id),
+                                          child: const Padding(
+                                            padding: EdgeInsets.symmetric(horizontal: 5),
+                                            child: Icon(Icons.remove_rounded,
+                                                color: Colors.white, size: 14),
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                                          child: Text(
+                                            '$inCartQty',
+                                            style: const TextStyle(
+                                              fontFamily: 'Cairo',
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 11.5,
+                                            ),
+                                          ),
+                                        ),
+                                        InkWell(
+                                          onTap: inCartQty >= variant.quantity
+                                              ? null
+                                              : () => posCubit.addToCart(variant, 1),
+                                          child: const Padding(
+                                            padding: EdgeInsets.symmetric(horizontal: 5),
+                                            child: Icon(Icons.add_rounded,
+                                                color: Colors.white, size: 14),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
                             ),
                           ],
                         ),
-                        child: Center(
-                          child: Text(
-                            initialLetter,
-                            style: TextStyle(fontFamily: 'Cairo', color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,),
-                          ),
-                        ),
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          _buildStockPill(isOut, isLow, variant.quantity),
-                          const SizedBox(height: 4),
-                          // Optional Button to explore other sizes/colors
-                          InkWell(
-                            onTap: isOut ? null : () => _showVariantModal(context, variant),
-                            borderRadius: BorderRadius.circular(6),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: AppColors.surfaceContainer,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.tune_rounded, size: 12, color: AppColors.primary),
-                                  const SizedBox(width: 3),
-                                  Text(
-                                    'المقاسات',
-                                    style: TextStyle(fontFamily: 'Cairo', fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.primary,),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-
-                  const Spacer(),
-
-                  // Product Title
-                  Text(
-                    displayName,
-                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: AppColors.onSurface,),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-
-                  const SizedBox(height: 2),
-
-                  // Variant Badges: Color + Size
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          '${variant.color} • ${variant.size}',
-                          style: TextStyle(fontFamily: 'Cairo', fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey.shade700,),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        variant.sku,
-                        style: TextStyle(fontFamily: 'Cairo', fontSize: 10, color: Colors.grey.shade500),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 6),
-
-                  // Price
-                  Text(
-                    '${Money(variant.salePrice).toDisplay()} ج.م',
-                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
-                      fontSize: 17,
-                      color: AppColors.primary,),
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  // Dynamic In-Card Action:
-                  // If not in cart -> Large "إضافة" button
-                  // If in cart -> Interactive Stepper [-] [X في السلة] [+]
-                  if (inCartQty == 0)
-                    SizedBox(
-                      width: double.infinity,
-                      height: 38,
-                      child: ElevatedButton.icon(
-                        onPressed: isOut
-                            ? null
-                            : () => posCubit.addToCart(variant, 1),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: EdgeInsets.zero,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                        icon: const Icon(Icons.add_shopping_cart_rounded, size: 16),
-                        label: Text(
-                          'إضافة للسلة',
-                          style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    )
-                  else
-                    Container(
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.remove_rounded, color: Colors.white, size: 16),
-                            onPressed: () => posCubit.decreaseQty(variant.id),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(minWidth: 32, minHeight: 38),
-                          ),
-                          Expanded(
-                            child: Text(
-                              '$inCartQty في السلة',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontFamily: 'Cairo', color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.add_rounded, color: Colors.white, size: 16),
-                            onPressed: inCartQty >= variant.quantity
-                                ? null
-                                : () => posCubit.addToCart(variant, 1),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(minWidth: 32, minHeight: 38),
-                          ),
-                        ],
                       ),
                     ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -1061,28 +1074,31 @@ class _ProductCard extends StatelessWidget {
     if (isOut) {
       bg = AppColors.errorContainer;
       text = AppColors.error;
-      label = 'نفذت الكمية';
+      label = 'نفذت';
     } else if (isLow) {
       bg = AppColors.warningContainer;
       text = AppColors.warning;
-      label = 'متبقي $qty';
+      label = '$qty';
     } else {
       bg = AppColors.successContainer;
       text = AppColors.success;
-      label = 'متوفر ($qty)';
+      label = '$qty';
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         label,
-        style: TextStyle(fontFamily: 'Cairo', fontSize: 10,
+        style: TextStyle(
+          fontFamily: 'Cairo',
+          fontSize: 9.5,
           fontWeight: FontWeight.bold,
-          color: text,),
+          color: text,
+        ),
       ),
     );
   }
@@ -2090,7 +2106,7 @@ class _CartPanelState extends State<_CartPanel> {
                               ),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.swap_horiz_rounded, size: 18, color: AppColors.primary),
+                              icon: Icon(Icons.swap_horiz_rounded, size: 18, color: AppColors.primary),
                               tooltip: 'تغيير العميل',
                               onPressed: () async {
                                 final selected = await showDialog<CustomerEntity>(
@@ -2232,7 +2248,7 @@ class _CartPanelState extends State<_CartPanel> {
                           children: [
                             Row(
                               children: [
-                                const Icon(Icons.local_offer, size: 14, color: AppColors.primary),
+                                Icon(Icons.local_offer, size: 14, color: AppColors.primary),
                                 const SizedBox(width: 4),
                                 Text(
                                   'خصم العروض',
@@ -2352,7 +2368,7 @@ class _CartPanelState extends State<_CartPanel> {
                       ),
                       const SizedBox(height: 8),
 
-                      // Payment Method Buttons: "نقدي (كاش)" and "بطاقة / فيزا"
+                      // Payment Method Buttons: crisp single-line uniform height
                       Row(
                         children: [
                           Expanded(
@@ -2371,17 +2387,20 @@ class _CartPanelState extends State<_CartPanel> {
                                       ? AppColors.primary
                                       : AppColors.outlineVariant,
                                 ),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 9),
+                                minimumSize: const Size(0, 38),
                               ),
-                              icon: const Icon(Icons.payments_outlined, size: 18),
-                              label: Text(
-                                'نقدي (كاش)',
-                                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 13),
+                              icon: const Icon(Icons.payments_outlined, size: 15),
+                              label: const Text(
+                                'كاش',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 11.5),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           Expanded(
                             child: ElevatedButton.icon(
                               onPressed: () => setState(() => _paymentMethod = 'card'),
@@ -2398,17 +2417,20 @@ class _CartPanelState extends State<_CartPanel> {
                                       ? AppColors.primary
                                       : AppColors.outlineVariant,
                                 ),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 9),
+                                minimumSize: const Size(0, 38),
                               ),
-                              icon: const Icon(Icons.credit_card_rounded, size: 18),
-                              label: Text(
-                                'بطاقة / فيزا',
-                                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 13),
+                              icon: const Icon(Icons.credit_card_rounded, size: 15),
+                              label: const Text(
+                                'فيزا',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 11.5),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           Expanded(
                             child: ElevatedButton.icon(
                               onPressed: () => setState(() => _paymentMethod = 'split'),
@@ -2425,18 +2447,21 @@ class _CartPanelState extends State<_CartPanel> {
                                       ? AppColors.primary
                                       : AppColors.outlineVariant,
                                 ),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 9),
+                                minimumSize: const Size(0, 38),
                               ),
-                              icon: const Icon(Icons.call_split_rounded, size: 18),
-                              label: Text(
-                                'دفع مجزأ',
-                                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 13),
+                              icon: const Icon(Icons.call_split_rounded, size: 15),
+                              label: const Text(
+                                'مجزأ',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 11.5),
                               ),
                             ),
                           ),
                           if (_installmentAvailable) ...[
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 6),
                             Expanded(
                               child: ElevatedButton.icon(
                                 onPressed: () => setState(() => _paymentMethod = 'installment'),
@@ -2453,12 +2478,17 @@ class _CartPanelState extends State<_CartPanel> {
                                         ? AppColors.primary
                                         : AppColors.outlineVariant,
                                   ),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 9),
+                                  minimumSize: const Size(0, 38),
                                 ),
-                                icon: const Icon(Icons.payments_rounded, size: 18),
-                                label: Text('تقسيط',
-                                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 13)),
+                                icon: const Icon(Icons.payments_rounded, size: 15),
+                                label: const Text(
+                                  'تقسيط',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 11.5),
+                                ),
                               ),
                             ),
                           ],
@@ -2689,7 +2719,7 @@ class _CartItemTileState extends State<_CartItemTile> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            const Icon(Icons.price_change_rounded, color: AppColors.primary),
+            Icon(Icons.price_change_rounded, color: AppColors.primary),
             const SizedBox(width: 8),
             Text(
               'تعديل سعر الصنف (سعر خاص / جملة)',
@@ -2831,7 +2861,7 @@ class _CartItemTileState extends State<_CartItemTile> {
                                 color: AppColors.primary,),
                             ),
                             const SizedBox(width: 2),
-                            const Icon(Icons.edit_outlined, size: 12, color: AppColors.primary),
+                            Icon(Icons.edit_outlined, size: 12, color: AppColors.primary),
                           ],
                         ),
                       ),
@@ -3140,7 +3170,7 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
                   decoration: InputDecoration(
                     hintText: 'ابحث بالاسم أو رقم الهاتف...',
                     hintStyle: TextStyle(fontFamily: 'Cairo', fontSize: 12),
-                    prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primary, size: 20),
+                    prefixIcon: Icon(Icons.search_rounded, color: AppColors.primary, size: 20),
                     suffixIcon: _searchCtrl.text.isNotEmpty
                         ? IconButton(
                             icon: const Icon(Icons.clear_rounded, size: 18),
@@ -3163,7 +3193,7 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
                 const SizedBox(height: 12),
                 Expanded(
                   child: _isLoading
-                      ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                      ? Center(child: CircularProgressIndicator(color: AppColors.primary))
                       : _filteredCustomers.isEmpty
                           ? Center(
                               child: Column(

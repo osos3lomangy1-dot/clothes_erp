@@ -466,7 +466,7 @@ class _CreatePurchaseScreenState extends State<CreatePurchaseScreen> {
       backgroundColor: AppColors.surface,
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.primary),
+          icon: Icon(Icons.arrow_back_rounded, color: AppColors.primary),
           tooltip: 'رجوع لقائمة المشتريات',
           onPressed: () {
             if (widget.onBack != null) {
@@ -594,7 +594,7 @@ class _CreatePurchaseScreenState extends State<CreatePurchaseScreen> {
                                           ),
                                         ),
                                       ),
-                                      icon: const Icon(
+                                      icon: Icon(
                                         Icons.person_add_rounded,
                                         color: AppColors.primary,
                                       ),

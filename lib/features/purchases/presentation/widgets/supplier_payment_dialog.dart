@@ -128,7 +128,7 @@ class _SupplierPaymentDialogState extends State<SupplierPaymentDialog> {
                   const SizedBox(height: 8),
                   Text(
                     'مرتبطة بفاتورة شراء: #${widget.purchaseInvoiceNumber}${widget.purchaseRemaining != null ? ' (المتبقي: ${(widget.purchaseRemaining! / 100.0).toStringAsFixed(2)} ج.م)' : ''}',
-                    style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12),
+                    style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12),
                   ),
                 ],
                 const SizedBox(height: 16),

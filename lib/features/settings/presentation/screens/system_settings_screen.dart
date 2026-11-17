@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/features/feature_gate.dart';
+import '../../../../core/theme/app_branding.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../../installments/data/services/manager_pin_service.dart';
@@ -69,6 +70,9 @@ class _SystemSettingsView extends StatelessWidget {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              _sectionTitle('هوية النظام والألوان (الاسم والمظهر)'),
+              _BrandingSettingsCard(userId: _userId(context)),
+              const SizedBox(height: 20),
               _sectionTitle('الميزات (Features)'),
               Card(
                 child: Column(
@@ -367,6 +371,364 @@ class _InstallmentSettingsSectionState
             child: const Text('حفظ'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _BrandingSettingsCard extends StatefulWidget {
+  final String userId;
+
+  const _BrandingSettingsCard({required this.userId});
+
+  @override
+  State<_BrandingSettingsCard> createState() => _BrandingSettingsCardState();
+}
+
+class _BrandingSettingsCardState extends State<_BrandingSettingsCard> {
+  late TextEditingController _nameCtrl;
+  late TextEditingController _primaryHexCtrl;
+  late TextEditingController _secondaryHexCtrl;
+  late Color _selectedPrimary;
+  late Color _selectedSecondary;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final cur = AppBranding.current;
+    _nameCtrl = TextEditingController(text: cur.appName);
+    _selectedPrimary = cur.primaryColor;
+    _selectedSecondary = cur.secondaryColor;
+    _primaryHexCtrl = TextEditingController(
+      text: '#${AppBranding.colorToHex(cur.primaryColor).substring(2)}',
+    );
+    _secondaryHexCtrl = TextEditingController(
+      text: '#${AppBranding.colorToHex(cur.secondaryColor).substring(2)}',
+    );
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _primaryHexCtrl.dispose();
+    _secondaryHexCtrl.dispose();
+    super.dispose();
+  }
+
+  void _selectPreset(AppColorPreset preset) {
+    setState(() {
+      _selectedPrimary = preset.primary;
+      _selectedSecondary = preset.secondary;
+      _primaryHexCtrl.text =
+          '#${AppBranding.colorToHex(preset.primary).substring(2)}';
+      _secondaryHexCtrl.text =
+          '#${AppBranding.colorToHex(preset.secondary).substring(2)}';
+    });
+  }
+
+  Future<void> _saveBranding() async {
+    final name = _nameCtrl.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('يرجى إدخال اسم النظام / المحل'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      await AppBranding.save(
+        getIt<FeatureGate>(),
+        appName: name,
+        primaryColor: _selectedPrimary,
+        secondaryColor: _selectedSecondary,
+        userId: widget.userId,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.green.shade800,
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 8),
+              Text(
+                'تم حفظ وتطبيق هوية وألوان "$name" بنجاح',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('حدث خطأ أثناء الحفظ: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _resetDefaults() async {
+    setState(() => _saving = true);
+    try {
+      await AppBranding.resetToDefaults(
+        getIt<FeatureGate>(),
+        userId: widget.userId,
+      );
+      if (!mounted) return;
+      final def = AppBrandingConfig.defaults;
+      setState(() {
+        _nameCtrl.text = def.appName;
+        _selectedPrimary = def.primaryColor;
+        _selectedSecondary = def.secondaryColor;
+        _primaryHexCtrl.text =
+            '#${AppBranding.colorToHex(def.primaryColor).substring(2)}';
+        _secondaryHexCtrl.text =
+            '#${AppBranding.colorToHex(def.secondaryColor).substring(2)}';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تم استعادة الاسم والألوان الافتراضية للنظام'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 1. System / Store Name
+            TextField(
+              key: const Key('branding_app_name_field'),
+              controller: _nameCtrl,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: 'اسم النظام / المحل',
+                hintText: 'مثال: سيستم مبيعات',
+                prefixIcon: Icon(Icons.storefront_rounded, color: _selectedPrimary),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // 2. Curated Theme Color Presets
+            const Text(
+              'اختر قالب ألوان النظام:',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: AppBranding.presets.map((preset) {
+                final isSelected =
+                    _selectedPrimary.toARGB32() == preset.primary.toARGB32() &&
+                        _selectedSecondary.toARGB32() == preset.secondary.toARGB32();
+                return InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () => _selectPreset(preset),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? preset.primary.withValues(alpha: 0.1)
+                          : Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isSelected ? preset.primary : Colors.grey.shade300,
+                        width: isSelected ? 2 : 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            color: preset.primary,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 1.5),
+                          ),
+                          child: isSelected
+                              ? const Icon(Icons.check, color: Colors.white, size: 14)
+                              : null,
+                        ),
+                        const SizedBox(width: 4),
+                        Container(
+                          width: 16,
+                          height: 16,
+                          decoration: BoxDecoration(
+                            color: preset.secondary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          preset.name,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight:
+                                isSelected ? FontWeight.bold : FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+
+            // 3. Custom Hex Color Inputs
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    key: const Key('branding_primary_hex_field'),
+                    controller: _primaryHexCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'كود اللون الأساسي (Hex)',
+                      hintText: '#340588',
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: CircleAvatar(
+                          radius: 10,
+                          backgroundColor: _selectedPrimary,
+                        ),
+                      ),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onChanged: (val) {
+                      final parsed = AppBranding.parseHexColor(val);
+                      if (parsed != null) {
+                        setState(() => _selectedPrimary = parsed);
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    key: const Key('branding_secondary_hex_field'),
+                    controller: _secondaryHexCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'كود اللون الثانوي (Hex)',
+                      hintText: '#4B2A9E',
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: CircleAvatar(
+                          radius: 10,
+                          backgroundColor: _selectedSecondary,
+                        ),
+                      ),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onChanged: (val) {
+                      final parsed = AppBranding.parseHexColor(val);
+                      if (parsed != null) {
+                        setState(() => _selectedSecondary = parsed);
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // 4. Live Preview Banner
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: _selectedPrimary,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.storefront_rounded, color: Colors.white, size: 22),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _nameCtrl.text.trim().isEmpty
+                          ? AppBrandingConfig.defaults.appName
+                          : _nameCtrl.text.trim(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: _selectedSecondary,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'معاينة المظهر',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // 5. Action Buttons
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 12,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _saving ? null : _resetDefaults,
+                  icon: const Icon(Icons.restore_rounded, size: 18),
+                  label: const Text('استعادة الافتراضي'),
+                ),
+                ElevatedButton.icon(
+                  key: const Key('branding_save_button'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _selectedPrimary,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: _saving ? null : _saveBranding,
+                  icon: _saving
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.palette_rounded, size: 18),
+                  label: const Text('حفظ وتطبيق الهوية والألوان'),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

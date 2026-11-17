@@ -104,7 +104,7 @@ class _OpenShiftDialogState extends State<OpenShiftDialog> {
                         color: AppColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.lock_open_rounded, color: AppColors.primary, size: 24),
+                      child: Icon(Icons.lock_open_rounded, color: AppColors.primary, size: 24),
                     ),
                     const SizedBox(width: 12),
                     Expanded(

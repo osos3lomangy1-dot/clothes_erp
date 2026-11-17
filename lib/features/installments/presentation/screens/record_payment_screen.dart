@@ -143,7 +143,7 @@ class _RecordPaymentViewState extends State<_RecordPaymentView> {
                           const SizedBox(height: 4),
                           Text(
                             '$remainingDisplay ج.م',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primary),
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primary),
                           ),
                         ],
                       ),

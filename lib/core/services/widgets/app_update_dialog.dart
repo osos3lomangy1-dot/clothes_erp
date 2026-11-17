@@ -180,7 +180,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                 width: 72,
                 height: 72,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
+                  gradient: LinearGradient(
                     colors: [AppColors.primary, AppColors.primaryContainer],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -226,7 +226,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _versionBadge('الإصدار الحالي', 'v$currentVersion', Colors.grey.shade200, Colors.grey.shade800),
-                    const Icon(Icons.arrow_forward_rounded, color: AppColors.primary, size: 20),
+                    Icon(Icons.arrow_forward_rounded, color: AppColors.primary, size: 20),
                     _versionBadge('الإصدار الجديد', 'v${updateInfo.latestVersion}', AppColors.successContainer, AppColors.success),
                   ],
                 ),

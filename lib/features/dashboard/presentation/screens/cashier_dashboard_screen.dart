@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/layout/main_layout.dart';
 import '../../../../core/services/app_update_service.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
@@ -36,14 +37,17 @@ class _CashierDashboardScreenState extends State<CashierDashboardScreen> {
     final user = authState is AuthAuthenticated ? authState.user : null;
     final cashierId = user?.id ?? '';
 
-    return Scaffold(
-      backgroundColor: AppColors.surface,
+    return MainLayout(
+      currentRoute: '/cashier-dashboard',
+      child: Builder(
+        builder: (innerCtx) => Scaffold(
+          backgroundColor: AppColors.surface,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         title: Row(
           children: [
-            const Icon(Icons.point_of_sale_rounded, color: AppColors.primary, size: 22),
+            Icon(Icons.point_of_sale_rounded, color: AppColors.primary, size: 22),
             const SizedBox(width: 8),
             Text(
               user != null ? 'لوحة تحكم الكاشير (${user.name})' : 'لوحة تحكم الكاشير',
@@ -63,7 +67,7 @@ class _CashierDashboardScreenState extends State<CashierDashboardScreen> {
               forceCheck: true,
               showNoUpdateToast: true,
             ),
-            icon: const Icon(
+            icon: Icon(
               Icons.system_update_rounded,
               color: AppColors.primary,
             ),
@@ -92,7 +96,7 @@ class _CashierDashboardScreenState extends State<CashierDashboardScreen> {
                         const SizedBox(height: 24),
 
                         // Section Title: Quick Actions & Navigation
-                        const Row(
+                        Row(
                           children: [
                             Icon(Icons.dashboard_customize_rounded, color: AppColors.primary, size: 20),
                             SizedBox(width: 8),
@@ -120,7 +124,7 @@ class _CashierDashboardScreenState extends State<CashierDashboardScreen> {
                               title: 'شاشة البيع (POS)',
                               subtitle: 'بدء عمليات البيع وإصدار الفواتير وتحصيل المدفوعات',
                               color: AppColors.primary,
-                              onTap: () => Navigator.of(context).push(
+                              onTap: () => Navigator.of(innerCtx, rootNavigator: true).push(
                                 MaterialPageRoute(
                                   builder: (context) => const PosScreen(),
                                 ),
@@ -131,7 +135,7 @@ class _CashierDashboardScreenState extends State<CashierDashboardScreen> {
                               title: 'استلام بضاعة',
                               subtitle: 'استلام شحنة جديدة وتحديث كميات المخزن فوراً',
                               color: Colors.teal.shade700,
-                              onTap: () => Navigator.of(context).push(
+                              onTap: () => Navigator.of(innerCtx).push(
                                 MaterialPageRoute(
                                   builder: (context) => const BlindReceiveScreen(),
                                 ),
@@ -142,7 +146,7 @@ class _CashierDashboardScreenState extends State<CashierDashboardScreen> {
                               title: 'الورديات وتصفية الدرج',
                               subtitle: 'فتح/إغلاق الوردية ومراجعة المبيعات النقدية',
                               color: Colors.deepPurple.shade700,
-                              onTap: () => Navigator.of(context).push(
+                              onTap: () => Navigator.of(innerCtx).push(
                                 MaterialPageRoute(
                                   builder: (context) => const ShiftScreen(),
                                 ),
@@ -156,6 +160,8 @@ class _CashierDashboardScreenState extends State<CashierDashboardScreen> {
                 ),
               ),
             ),
+        ),
+      ),
     );
   }
 }

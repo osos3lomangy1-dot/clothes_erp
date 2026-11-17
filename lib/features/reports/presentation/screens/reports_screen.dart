@@ -167,7 +167,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   }
                 },
                 itemBuilder: (ctx) => [
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'sales',
                     child: Row(
                       children: [
@@ -243,7 +243,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.date_range_rounded,
                           color: AppColors.primary,
                         ),
@@ -351,7 +351,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                       color: AppColors.primary.withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(10),
                                     ),
-                                    child: const Icon(Icons.analytics_rounded, color: AppColors.primary, size: 24),
+                                    child: Icon(Icons.analytics_rounded, color: AppColors.primary, size: 24),
                                   ),
                                   const SizedBox(width: 10),
                                   const Text(
@@ -498,7 +498,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                       ),
                                       trailing: Text(
                                         '${Money(e.value).toDisplay()} ج.م',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 16,
                                           color: AppColors.primary,

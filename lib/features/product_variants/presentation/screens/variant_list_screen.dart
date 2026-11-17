@@ -31,7 +31,7 @@ class VariantListScreen extends StatelessWidget {
 
           return AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: const Row(
+            title: Row(
               children: [
                 Icon(Icons.tune_rounded, color: AppColors.primary),
                 SizedBox(width: 8),
@@ -332,7 +332,7 @@ class VariantListScreen extends StatelessWidget {
                                   const Text('المقاس', style: TextStyle(fontSize: 10, color: Colors.grey)),
                                   Text(
                                     variant.size,
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary),
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary),
                                   ),
                                 ],
                               ),
@@ -380,7 +380,7 @@ class VariantListScreen extends StatelessWidget {
                                       const SizedBox(width: 12),
                                       Text(
                                         'قطاعي: ${Money(variant.salePrice).toDisplay()} ج.م',
-                                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
                                       ),
                                       if (variant.wholesalePrice > 0) ...[
                                         const SizedBox(width: 10),
@@ -431,7 +431,7 @@ class VariantListScreen extends StatelessWidget {
                               onPressed: () => _openStockAdjustmentDialog(context, variant),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.edit_outlined, size: 20, color: AppColors.primary),
+                              icon: Icon(Icons.edit_outlined, size: 20, color: AppColors.primary),
                               tooltip: 'تعديل المقاس والأسعار',
                               onPressed: () async {
                                 await Navigator.of(context).push(

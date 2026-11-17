@@ -72,7 +72,7 @@ class FinancialComparisonBarChart extends StatelessWidget {
                     color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.bar_chart_rounded, color: AppColors.primary, size: 22),
+                  child: Icon(Icons.bar_chart_rounded, color: AppColors.primary, size: 22),
                 ),
                 const SizedBox(width: 12),
                 const Text(

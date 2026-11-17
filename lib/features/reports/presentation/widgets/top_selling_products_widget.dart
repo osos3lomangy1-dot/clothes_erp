@@ -147,7 +147,7 @@ class TopSellingProductsWidget extends StatelessWidget {
                             children: [
                               Text(
                                 '${p.quantitySold} قطعة',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
                                   color: AppColors.primary,

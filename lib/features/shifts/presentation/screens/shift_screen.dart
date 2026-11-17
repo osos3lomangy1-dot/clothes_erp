@@ -212,7 +212,7 @@ class _ShiftView extends StatelessWidget {
                 // History Section
                 Row(
                   children: [
-                    const Icon(Icons.history_rounded, color: AppColors.primary, size: 22),
+                    Icon(Icons.history_rounded, color: AppColors.primary, size: 22),
                     const SizedBox(width: 8),
                     Text(
                       isAdmin ? 'سجل الورديات السابقة' : 'سجل وردياتي السابقة',

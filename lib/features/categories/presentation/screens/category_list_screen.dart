@@ -117,7 +117,7 @@ class CategoryListScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(10),
                             ),
                             alignment: Alignment.center,
-                            child: const Icon(Icons.category_rounded, color: AppColors.primary),
+                            child: Icon(Icons.category_rounded, color: AppColors.primary),
                           ),
                           title: Text(category.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                           subtitle: Text(
@@ -128,7 +128,7 @@ class CategoryListScreen extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
-                                icon: const Icon(Icons.edit_outlined, color: AppColors.primary),
+                                icon: Icon(Icons.edit_outlined, color: AppColors.primary),
                                 tooltip: 'تعديل التصنيف',
                                 onPressed: () async {
                                   await Navigator.of(context).push(

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import '../../../../core/theme/app_branding.dart';
 import '../../../../core/utils/money.dart';
 import '../../domain/entities/invoice_details_entity.dart';
 
@@ -55,11 +56,12 @@ class ReceiptPdfService {
 
   static Future<Uint8List> generateReceiptPdf(
     InvoiceDetailsEntity invoice, {
-    String storeName = ' أوركيد ',
+    String? storeName,
     String storePhone = '01000000000',
     String storeAddress = 'بني سويف  ',
     String returnPolicy = 'الاستبدال والاسترجاع خلال 14 يوماً بالفاتورة وأصل التكت',
   }) async {
+    final effectiveStoreName = storeName ?? AppBranding.current.appName;
     final doc = pw.Document();
     final font = await _loadArabicFont();
     final boldFont = await _loadArabicBoldFont();
@@ -85,7 +87,7 @@ class ReceiptPdfService {
               children: [
                 // Store Header
                 pw.Text(
-                  storeName,
+                  effectiveStoreName,
                   style: pw.TextStyle(font: boldFont, fontSize: 16, fontWeight: pw.FontWeight.bold),
                   textAlign: pw.TextAlign.center,
                 ),

@@ -317,7 +317,7 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
               style: OutlinedButton.styleFrom(
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
-              icon: const Icon(Icons.person_add_rounded, color: AppColors.primary, size: 18),
+              icon: Icon(Icons.person_add_rounded, color: AppColors.primary, size: 18),
               label: const Text('إضافة مورد', style: TextStyle(fontWeight: FontWeight.bold)),
               onPressed: _openAddSupplierDialog,
             ),
@@ -584,7 +584,7 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
                     children: r.items.map((it) {
                       return Chip(
                         backgroundColor: Colors.grey.shade100,
-                        avatar: const Icon(Icons.checkroom_rounded, size: 16, color: AppColors.primary),
+                        avatar: Icon(Icons.checkroom_rounded, size: 16, color: AppColors.primary),
                         label: Text(
                           '${it.productName ?? 'منتج'} (${it.size} - ${it.color}): ${it.quantity} قطع',
                           style: const TextStyle(fontSize: 12),
@@ -772,7 +772,7 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       child: Row(
                         children: [
-                          const Icon(Icons.circle, size: 6, color: AppColors.primary),
+                          Icon(Icons.circle, size: 6, color: AppColors.primary),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text('${it.productName ?? 'صنف'} (${it.color ?? ''} - ${it.size ?? ''}) - كود: ${it.sku ?? ''}'),
@@ -989,7 +989,7 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
                 const SizedBox(width: 6),
                 IconButton(
                   tooltip: 'تعديل',
-                  icon: const Icon(Icons.edit_outlined, size: 20, color: AppColors.primary),
+                  icon: Icon(Icons.edit_outlined, size: 20, color: AppColors.primary),
                   onPressed: () => _openEditSupplierDialog(s),
                 ),
                 IconButton(
