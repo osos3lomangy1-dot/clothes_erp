@@ -174,10 +174,44 @@ class _SystemSettingsView extends StatelessWidget {
                 const _InstallmentSettingsSection(),
               ],
               const SizedBox(height: 20),
+              _sectionTitle('المزامنة السحابية عبر الإنترنت'),
+              Card(
+                child: SwitchListTile(
+                  key: const Key('cloud_sync_toggle'),
+                  title: const Text('تفعيل المزامنة السحابية (اختياري)'),
+                  subtitle: const Text(
+                    'عند التعطيل يعمل النظام محلياً بالكامل بدون أي اتصال بالإنترنت، ويختفي زر المزامنة من القائمة الجانبية.',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  secondary: Icon(
+                    state.cloudSyncEnabled
+                        ? Icons.cloud_done_rounded
+                        : Icons.cloud_off_rounded,
+                    color: state.cloudSyncEnabled
+                        ? AppColors.primary
+                        : Colors.grey,
+                  ),
+                  value: state.cloudSyncEnabled,
+                  onChanged: (v) async {
+                    final err = await context
+                        .read<SettingsCubit>()
+                        .setCloudSyncEnabled(v, _userId(context));
+                    if (err != null && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(err),
+                          backgroundColor: AppColors.error,
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(height: 20),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 4),
                 child: Text(
-                  'كل تغيير يُسجَّل في سجل التدقيق (audit log).',
+                  'كل تغيير يُسجَّل في سجل التدقيق.',
                   style: TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ),

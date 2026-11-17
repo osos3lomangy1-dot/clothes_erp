@@ -122,6 +122,7 @@ class _InventoryLogsViewState extends State<_InventoryLogsView> {
                       {'key': 'receive', 'label': 'توريد'},
                       {'key': 'sale', 'label': 'بيع'},
                       {'key': 'return', 'label': 'مرتجع'},
+                      {'key': 'stocktake', 'label': 'جرد مخزني'},
                       {'key': 'adjustment', 'label': 'تسوية'},
                     ];
 

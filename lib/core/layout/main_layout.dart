@@ -19,6 +19,7 @@ import '../../features/installments/presentation/screens/installments_list_scree
 import '../../features/inventory/presentation/screens/blind_receive_screen.dart';
 import '../../features/inventory/presentation/screens/inventory_logs_screen.dart';
 import '../../features/inventory/presentation/screens/inventory_screen.dart';
+import '../../features/inventory/presentation/screens/stocktake_screen.dart';
 import '../../features/invoices/presentation/screens/invoices_screen.dart';
 import '../../features/partners/presentation/screens/partners_screen.dart';
 import '../../features/pos/presentation/screens/pos_screen.dart';
@@ -44,9 +45,11 @@ class _MainLayoutState extends State<MainLayout> {
   final GlobalKey<NavigatorState> _contentNavKey = GlobalKey<NavigatorState>();
   bool _isCollapsed = false;
   bool _isSyncing = false;
+  bool _cloudSyncEnabled = false;
   String _activeTitle = 'لوحة التحكم';
   late Widget _currentScreen;
   StreamSubscription<bool>? _syncSubscription;
+  StreamSubscription<String?>? _cloudSyncSub;
 
   @override
   void initState() {
@@ -54,7 +57,19 @@ class _MainLayoutState extends State<MainLayout> {
     _currentScreen = widget.child;
 
     final syncService = getIt<RestSyncService>();
-    syncService.startAutoSync(interval: const Duration(minutes: 5));
+    final featureGate = getIt<FeatureGate>();
+
+    _cloudSyncSub = featureGate.watchMeta('sync.cloud_enabled').listen((val) {
+      final enabled = val == '1' || val == 'true';
+      if (enabled) {
+        syncService.startAutoSync(interval: const Duration(minutes: 5));
+      } else {
+        syncService.stopAutoSync();
+      }
+      if (mounted && _cloudSyncEnabled != enabled) {
+        setState(() => _cloudSyncEnabled = enabled);
+      }
+    });
 
     _syncSubscription = syncService.isSyncingStream.listen((syncing) {
       if (mounted && _isSyncing != syncing) {
@@ -65,6 +80,7 @@ class _MainLayoutState extends State<MainLayout> {
 
   @override
   void dispose() {
+    _cloudSyncSub?.cancel();
     _syncSubscription?.cancel();
     getIt<RestSyncService>().stopAutoSync();
     super.dispose();
@@ -200,6 +216,8 @@ class _MainLayoutState extends State<MainLayout> {
                                   if (_featureEnabled(features, FeatureKeys.inventory)) ...[
                                     _navItem(Icons.inventory_2_rounded, 'المنتجات والتصنيفات', const ProductListScreen()),
                                     _navItem(Icons.warehouse_rounded, 'إدارة المخزون', const InventoryScreen()),
+                                    if (isAdmin)
+                                      _navItem(Icons.fact_check_rounded, 'الجرد المخزني', const StocktakeScreen()),
                                     _navItem(Icons.move_to_inbox_rounded, 'استلام بضاعة (شحنة جديدة)', const BlindReceiveScreen()),
                                   ],
                                   if (isAdmin &&
@@ -235,8 +253,10 @@ class _MainLayoutState extends State<MainLayout> {
                       },
                     ),
                   ),
-                  const Divider(color: Colors.white24, height: 1),
-                  _buildSyncSection(),
+                  if (_cloudSyncEnabled) ...[
+                    const Divider(color: Colors.white24, height: 1),
+                    _buildSyncSection(),
+                  ],
                 ],
               ),
             ),
@@ -409,6 +429,12 @@ class _MainLayoutState extends State<MainLayout> {
               MaterialPageRoute(builder: (_) => const PosScreen()),
             );
           } else if (screen != null) {
+            if (_activeTitle == title) {
+              if (_contentNavKey.currentState?.canPop() == true) {
+                _contentNavKey.currentState?.popUntil((route) => route.isFirst);
+              }
+              return;
+            }
             setState(() {
               _activeTitle = title;
               _currentScreen = screen;

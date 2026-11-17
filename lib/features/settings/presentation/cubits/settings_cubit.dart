@@ -11,6 +11,7 @@ class SettingsState extends Equatable {
   final bool cashEnabled;
   final bool cardEnabled;
   final bool installmentPaymentEnabled;
+  final bool cloudSyncEnabled;
   final bool isLoading;
   final String? error;
 
@@ -19,6 +20,7 @@ class SettingsState extends Equatable {
     this.cashEnabled = true,
     this.cardEnabled = true,
     this.installmentPaymentEnabled = false,
+    this.cloudSyncEnabled = false,
     this.isLoading = false,
     this.error,
   });
@@ -28,6 +30,7 @@ class SettingsState extends Equatable {
     bool? cashEnabled,
     bool? cardEnabled,
     bool? installmentPaymentEnabled,
+    bool? cloudSyncEnabled,
     bool? isLoading,
     String? error,
     bool clearError = false,
@@ -38,6 +41,7 @@ class SettingsState extends Equatable {
       cardEnabled: cardEnabled ?? this.cardEnabled,
       installmentPaymentEnabled:
           installmentPaymentEnabled ?? this.installmentPaymentEnabled,
+      cloudSyncEnabled: cloudSyncEnabled ?? this.cloudSyncEnabled,
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
     );
@@ -49,6 +53,7 @@ class SettingsState extends Equatable {
         cashEnabled,
         cardEnabled,
         installmentPaymentEnabled,
+        cloudSyncEnabled,
         isLoading,
         error,
       ];
@@ -61,6 +66,7 @@ class SettingsCubit extends Cubit<SettingsState> {
   StreamSubscription<String?>? _cashSub;
   StreamSubscription<String?>? _cardSub;
   StreamSubscription<String?>? _installmentSub;
+  StreamSubscription<String?>? _cloudSyncSub;
 
   SettingsCubit(this._featureGate) : super(const SettingsState(isLoading: true));
 
@@ -81,6 +87,25 @@ class SettingsCubit extends Cubit<SettingsState> {
     _installmentSub = _featureGate.watchMeta('payment.installment').listen((v) {
       emit(state.copyWith(installmentPaymentEnabled: v == '1'));
     });
+    _cloudSyncSub?.cancel();
+    _cloudSyncSub = _featureGate.watchMeta('sync.cloud_enabled').listen((v) {
+      emit(state.copyWith(cloudSyncEnabled: v == '1' || v == 'true'));
+    });
+  }
+
+  Future<String?> setCloudSyncEnabled(bool enabled, String userId) async {
+    try {
+      await _featureGate.setMeta(
+        'sync.cloud_enabled',
+        enabled ? '1' : '0',
+        userId: userId,
+      );
+      return null;
+    } catch (e) {
+      final msg = e.toString().replaceAll('Exception: ', '');
+      emit(state.copyWith(error: msg));
+      return msg;
+    }
   }
 
   Future<String?> toggleFeature(String key, bool enabled, String userId) async {
@@ -119,6 +144,7 @@ class SettingsCubit extends Cubit<SettingsState> {
     _cashSub?.cancel();
     _cardSub?.cancel();
     _installmentSub?.cancel();
+    _cloudSyncSub?.cancel();
     return super.close();
   }
 }

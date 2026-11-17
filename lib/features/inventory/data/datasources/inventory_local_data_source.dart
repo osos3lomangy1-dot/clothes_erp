@@ -449,6 +449,122 @@ class InventoryLocalDataSource {
       );
     }).toList();
   }
+
+  /// Commits a batch stocktake (inventory audit) atomically.
+  /// Only variants where [actualQuantity] differs from current DB quantity are adjusted.
+  Future<StocktakeCommitResult> commitStocktake({
+    required List<StocktakeAdjustmentItem> items,
+    required String userId,
+    String? notes,
+  }) async {
+    if (items.isEmpty) {
+      throw Exception('لا توجد أصناف لاعتماد الجرد');
+    }
+
+    for (final item in items) {
+      if (item.actualQuantity < 0) {
+        throw Exception('الكمية الفعلية لا يمكن أن تكون بالسالب');
+      }
+    }
+
+    final now = DateTime.now();
+    final branchId = await _branchId();
+    final stocktakeId = _uuid.v4();
+    final reasonText = (notes != null && notes.trim().isNotEmpty)
+        ? 'جرد مخزني: ${notes.trim()}'
+        : 'تسوية جرد مخزني';
+
+    int adjustedCount = 0;
+    int totalShortageUnits = 0;
+    int totalSurplusUnits = 0;
+    int netVarianceCostPiasters = 0;
+
+    await _tx.write(
+      writeFn: () async {
+        for (final item in items) {
+          final variant = await (_db.select(_db.productVariants)
+                ..where((t) => t.id.equals(item.variantId)))
+              .getSingleOrNull();
+          if (variant == null) continue;
+
+          final delta = item.actualQuantity - variant.quantity;
+          if (delta == 0) continue;
+
+          adjustedCount++;
+          if (delta < 0) {
+            totalShortageUnits += delta.abs();
+          } else {
+            totalSurplusUnits += delta;
+          }
+          netVarianceCostPiasters += delta * variant.costPrice;
+
+          await (_db.update(_db.productVariants)
+                ..where((t) => t.id.equals(item.variantId)))
+              .write(
+            ProductVariantsCompanion(
+              quantity: Value(item.actualQuantity),
+              updatedAt: Value(now),
+            ),
+          );
+
+          await _db.into(_db.inventoryLogs).insert(
+            InventoryLogsCompanion.insert(
+              id: _uuid.v4(),
+              branchId: branchId,
+              variantId: item.variantId,
+              type: StockMovementType.stocktake.name,
+              qtyDelta: delta,
+              reason: Value(reasonText),
+              refType: 'stocktake',
+              refId: Value(stocktakeId),
+              userId: userId,
+              createdAt: now,
+            ),
+          );
+        }
+      },
+      branchId: branchId,
+      entity: 'inventory',
+      entityId: stocktakeId,
+      operation: 'stocktake',
+      userId: userId,
+      auditAction: 'inventory_stocktake_committed',
+    );
+
+    return StocktakeCommitResult(
+      stocktakeId: stocktakeId,
+      adjustedCount: adjustedCount,
+      totalShortageUnits: totalShortageUnits,
+      totalSurplusUnits: totalSurplusUnits,
+      netVarianceCostPiasters: netVarianceCostPiasters,
+    );
+  }
+}
+
+class StocktakeAdjustmentItem {
+  final String variantId;
+  final int actualQuantity;
+
+  const StocktakeAdjustmentItem({
+    required this.variantId,
+    required this.actualQuantity,
+  });
+}
+
+class StocktakeCommitResult {
+  final String stocktakeId;
+  final int adjustedCount;
+  final int totalShortageUnits;
+  final int totalSurplusUnits;
+  final int netVarianceCostPiasters;
+
+  const StocktakeCommitResult({
+    required this.stocktakeId,
+    required this.adjustedCount,
+    required this.totalShortageUnits,
+    required this.totalSurplusUnits,
+    required this.netVarianceCostPiasters,
+  });
 }
 
 class InventoryItemDetail {
