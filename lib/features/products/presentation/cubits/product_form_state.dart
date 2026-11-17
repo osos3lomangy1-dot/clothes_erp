@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import '../../../categories/domain/entities/category_entity.dart';
+import '../../domain/entities/product_entity.dart';
 
 enum ProductFormStatus { initial, loading, success, error }
 
@@ -12,6 +13,10 @@ class ProductFormState extends Equatable {
   final ProductFormStatus status;
   final String? errorMessage;
   final bool isEdit;
+  final String? editingProductId;
+  final List<ProductEntity> existingProducts;
+  final List<ProductEntity> similarProducts;
+  final ProductEntity? exactDuplicateProduct;
 
   const ProductFormState({
     this.name = '',
@@ -22,7 +27,14 @@ class ProductFormState extends Equatable {
     this.status = ProductFormStatus.initial,
     this.errorMessage,
     this.isEdit = false,
+    this.editingProductId,
+    this.existingProducts = const [],
+    this.similarProducts = const [],
+    this.exactDuplicateProduct,
   });
+
+  bool get hasDuplicate => exactDuplicateProduct != null;
+  bool get hasSimilar => similarProducts.isNotEmpty;
 
   ProductFormState copyWith({
     String? name,
@@ -33,6 +45,11 @@ class ProductFormState extends Equatable {
     ProductFormStatus? status,
     String? errorMessage,
     bool? isEdit,
+    String? editingProductId,
+    List<ProductEntity>? existingProducts,
+    List<ProductEntity>? similarProducts,
+    ProductEntity? exactDuplicateProduct,
+    bool clearExactDuplicate = false,
   }) {
     return ProductFormState(
       name: name ?? this.name,
@@ -43,6 +60,10 @@ class ProductFormState extends Equatable {
       status: status ?? this.status,
       errorMessage: errorMessage,
       isEdit: isEdit ?? this.isEdit,
+      editingProductId: editingProductId ?? this.editingProductId,
+      existingProducts: existingProducts ?? this.existingProducts,
+      similarProducts: similarProducts ?? this.similarProducts,
+      exactDuplicateProduct: clearExactDuplicate ? null : (exactDuplicateProduct ?? this.exactDuplicateProduct),
     );
   }
 
@@ -56,5 +77,9 @@ class ProductFormState extends Equatable {
         status,
         errorMessage,
         isEdit,
+        editingProductId,
+        existingProducts,
+        similarProducts,
+        exactDuplicateProduct,
       ];
 }

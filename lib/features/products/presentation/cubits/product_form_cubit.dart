@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import '../../../../core/utils/arabic_text_helper.dart';
 import '../../../categories/domain/usecases/get_categories_usecase.dart';
 import '../../data/datasources/product_local_data_source.dart';
 import '../../domain/entities/product_entity.dart';
@@ -24,9 +25,12 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
   Future<void> init(ProductEntity? product) async {
     emit(state.copyWith(status: ProductFormStatus.loading));
-    
+
     final categoriesResult = await _getCategoriesUseCase();
-    
+    final productsResult = await _productRepository.getProducts();
+
+    final existingProducts = productsResult.getOrElse(() => []);
+
     categoriesResult.fold(
       (failure) => emit(state.copyWith(
         status: ProductFormStatus.error,
@@ -40,12 +44,15 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             categoryId: product.categoryId,
             categoryName: product.categoryName,
             categories: categories,
+            existingProducts: existingProducts,
             isEdit: true,
+            editingProductId: product.id,
             status: ProductFormStatus.initial,
           ));
         } else {
           emit(state.copyWith(
             categories: categories,
+            existingProducts: existingProducts,
             status: ProductFormStatus.initial,
           ));
         }
@@ -54,7 +61,28 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   }
 
   void onNameChanged(String value) {
-    emit(state.copyWith(name: value));
+    ProductEntity? exactMatch;
+    final List<ProductEntity> similar = [];
+
+    final cleanVal = value.trim();
+    if (cleanVal.isNotEmpty) {
+      for (final p in state.existingProducts) {
+        if (state.isEdit && p.id == state.editingProductId) continue;
+
+        if (ArabicTextHelper.isExactMatch(cleanVal, p.name)) {
+          exactMatch = p;
+        } else if (ArabicTextHelper.isSimilar(cleanVal, p.name)) {
+          similar.add(p);
+        }
+      }
+    }
+
+    emit(state.copyWith(
+      name: value,
+      exactDuplicateProduct: exactMatch,
+      similarProducts: similar,
+      clearExactDuplicate: exactMatch == null,
+    ));
   }
 
   void onDescriptionChanged(String value) {
@@ -66,10 +94,31 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   }
 
   Future<void> submit(String? id) async {
-    if (state.name.isEmpty || state.categoryId == null) {
+    if (state.name.trim().isEmpty || state.categoryId == null) {
       emit(state.copyWith(
         status: ProductFormStatus.error,
-        errorMessage: 'Name and Category are required',
+        errorMessage: 'اسم المنتج والتصنيف مطلوبان',
+      ));
+      return;
+    }
+
+    // Duplicate check
+    final cleanName = state.name.trim();
+    final duplicate = state.exactDuplicateProduct ??
+        state.existingProducts.cast<ProductEntity?>().firstWhere(
+              (p) =>
+                  p != null &&
+                  p.id != id &&
+                  ArabicTextHelper.isExactMatch(cleanName, p.name),
+              orElse: () => null,
+            );
+
+    if (duplicate != null) {
+      emit(state.copyWith(
+        status: ProductFormStatus.error,
+        exactDuplicateProduct: duplicate,
+        errorMessage:
+            'عفواً، يوجد منتج مسجل بالفعل بهذا الاسم ("${duplicate.name}"). لا يمكن تكرار إضافة المنتج.',
       ));
       return;
     }
@@ -78,7 +127,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
     final product = ProductEntity(
       id: id ?? '',
-      name: state.name,
+      name: cleanName,
       description: state.description,
       categoryId: state.categoryId!,
       categoryName: state.categoryName!,
@@ -118,11 +167,32 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       return;
     }
 
+    // Duplicate check
+    final cleanName = state.name.trim();
+    final duplicate = state.exactDuplicateProduct ??
+        state.existingProducts.cast<ProductEntity?>().firstWhere(
+              (p) =>
+                  p != null &&
+                  p.id != id &&
+                  ArabicTextHelper.isExactMatch(cleanName, p.name),
+              orElse: () => null,
+            );
+
+    if (duplicate != null) {
+      emit(state.copyWith(
+        status: ProductFormStatus.error,
+        exactDuplicateProduct: duplicate,
+        errorMessage:
+            'عفواً، يوجد منتج مسجل بالفعل بهذا الاسم ("${duplicate.name}"). لا يمكن تكرار إضافة المنتج.',
+      ));
+      return;
+    }
+
     emit(state.copyWith(status: ProductFormStatus.loading));
 
     final product = ProductEntity(
       id: id ?? '',
-      name: state.name.trim(),
+      name: cleanName,
       description: state.description,
       categoryId: state.categoryId!,
       categoryName: state.categoryName ?? '',
@@ -139,7 +209,8 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         (_) => emit(state.copyWith(status: ProductFormStatus.success)),
       );
     } else {
-      final result = await _productRepository.addProductWithVariants(product, variants);
+      final result =
+          await _productRepository.addProductWithVariants(product, variants);
       result.fold(
         (failure) => emit(state.copyWith(
           status: ProductFormStatus.error,

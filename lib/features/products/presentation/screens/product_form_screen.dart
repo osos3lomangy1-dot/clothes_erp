@@ -203,7 +203,7 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
     });
   }
 
-  void _handleSubmit(BuildContext context, ProductFormState state) {
+  Future<void> _handleSubmit(BuildContext context, ProductFormState state) async {
     setState(() => _validationError = null);
 
     if (state.name.trim().isEmpty) {
@@ -213,6 +213,60 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
     if (state.categoryId == null || state.categoryId!.isEmpty) {
       setState(() => _validationError = 'يرجى اختيار تصنيف للمنتج');
       return;
+    }
+
+    if (state.hasDuplicate) {
+      setState(() => _validationError =
+          'عفواً، يوجد منتج مسجل بالفعل بهذا الاسم ("${state.exactDuplicateProduct!.name}"). لا يمكن تكرار إضافة المنتج.');
+      return;
+    }
+
+    if (state.hasSimilar) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 24),
+              SizedBox(width: 8),
+              Text('تنبيه: تشابه مع منتجات مسجلة'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'تم رصد منتجات بأسم مشابهة مسجلة بالفعل في النظام:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              ...state.similarProducts.take(4).map((p) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2.0),
+                    child: Text('• ${p.name} (${p.categoryName})'),
+                  )),
+              const SizedBox(height: 12),
+              const Text(
+                'لتفادي تكرار المنتجات بالخطأ، هل أنت متأكد من رغبتك في حفظ هذا المنتج باسمه الحالي؟',
+                style: TextStyle(fontSize: 13, color: Colors.black87),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('إلغاء ومراجعة الاسم'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('تأكيد الحفظ'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+      if (!context.mounted) return;
     }
 
     if (state.isEdit) {
@@ -403,6 +457,79 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                   ),
                                 ],
                               ),
+                              if (state.hasDuplicate) ...[
+                                const SizedBox(height: 10),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade50,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.red.shade300),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.error_outline, color: Colors.red.shade800, size: 20),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'تنبيه: يوجد منتج مسجل بالفعل بهذا الاسم ("${state.exactDuplicateProduct!.name}") ضمن تصنيف "${state.exactDuplicateProduct!.categoryName}". لا يمكن تكرار إضافة المنتج.',
+                                          style: TextStyle(
+                                            color: Colors.red.shade900,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ] else if (state.hasSimilar) ...[
+                                const SizedBox(height: 10),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.shade50,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.amber.shade400),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(Icons.warning_amber_rounded, color: Colors.amber.shade900, size: 18),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            'منتجات مشابهة مسجلة مسبقاً (يرجى التأكد من عدم التكرار):',
+                                            style: TextStyle(
+                                              color: Colors.amber.shade900,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Wrap(
+                                        spacing: 6,
+                                        runSpacing: 4,
+                                        children: state.similarProducts.take(5).map((p) {
+                                          return Chip(
+                                            visualDensity: VisualDensity.compact,
+                                            backgroundColor: Colors.white,
+                                            side: BorderSide(color: Colors.amber.shade300),
+                                            avatar: const Icon(Icons.checkroom, size: 14, color: AppColors.primary),
+                                            label: Text(
+                                              '${p.name} (${p.categoryName})',
+                                              style: const TextStyle(fontSize: 11),
+                                            ),
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                               const SizedBox(height: 12),
                               TextFormField(
                                 initialValue: state.description,

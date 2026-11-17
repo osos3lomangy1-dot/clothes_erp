@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/database/branch_provider.dart';
 import '../../../../core/database/tx_writer.dart';
+import '../../../../core/utils/arabic_text_helper.dart';
 
 import 'package:flutter/foundation.dart' hide Category;
 
@@ -115,6 +116,16 @@ class ProductLocalDataSource {
     final now = DateTime.now();
     final id = _uuid.v4();
     final branchId = await _branchId();
+
+    final existingProducts = await (_db.select(_db.products)
+          ..where((p) => p.deletedAt.isNull()))
+        .get();
+    for (final p in existingProducts) {
+      if (ArabicTextHelper.isExactMatch(name, p.name)) {
+        throw Exception('يوجد منتج مسجل بالفعل بهذا الاسم ("${p.name}")');
+      }
+    }
+
     await _tx.write(
       writeFn: () async {
         await _db.into(_db.products).insert(ProductsCompanion.insert(
@@ -147,6 +158,15 @@ class ProductLocalDataSource {
     final now = DateTime.now();
     final id = _uuid.v4();
     final branchId = await _branchId();
+
+    final existingProducts = await (_db.select(_db.products)
+          ..where((p) => p.deletedAt.isNull()))
+        .get();
+    for (final p in existingProducts) {
+      if (ArabicTextHelper.isExactMatch(name, p.name)) {
+        throw Exception('يوجد منتج مسجل بالفعل بهذا الاسم ("${p.name}")');
+      }
+    }
 
     await _tx.write(
       writeFn: () async {
@@ -206,6 +226,18 @@ class ProductLocalDataSource {
   Future<void> updateProduct(String id, {String? name, String? description, int? minStock, bool? isActive}) async {
     final now = DateTime.now();
     final branchId = await _branchId();
+
+    if (name != null) {
+      final existingProducts = await (_db.select(_db.products)
+            ..where((p) => p.id.isNotValue(id) & p.deletedAt.isNull()))
+          .get();
+      for (final p in existingProducts) {
+        if (ArabicTextHelper.isExactMatch(name, p.name)) {
+          throw Exception('يوجد منتج آخر مسجل بالفعل بهذا الاسم ("${p.name}")');
+        }
+      }
+    }
+
     await _tx.write(
       writeFn: () async {
         await (_db.update(_db.products)..where((t) => t.id.equals(id))).write(
