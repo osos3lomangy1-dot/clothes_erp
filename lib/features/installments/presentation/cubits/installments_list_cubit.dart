@@ -3,7 +3,10 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 
+import 'package:dartz/dartz.dart';
+import '../../../../core/errors/failures.dart';
 import '../../../customers/domain/repositories/customer_repository.dart';
+import '../../domain/entities/bulk_installment_payment_result.dart';
 import '../../domain/entities/customer_installment_entity.dart';
 import '../../domain/entities/customer_installments_summary.dart';
 import '../../domain/facades/installments_facade.dart';
@@ -141,6 +144,26 @@ class InstallmentsListCubit extends Cubit<InstallmentsListState> {
 
   Future<void> loadGrouped() async {
     await loadContracts();
+  }
+
+  Future<Either<Failure, BulkInstallmentPaymentResult>> recordBulkCustomerPayment({
+    required String customerId,
+    required int amountPiasters,
+    required String paymentMethod,
+    required String pin,
+    String? notes,
+  }) async {
+    final res = await _facade.recordBulkCustomerPayment(
+      customerId: customerId,
+      amountPiasters: amountPiasters,
+      paymentMethod: paymentMethod,
+      pin: pin,
+      notes: notes,
+    );
+    if (res.isRight()) {
+      await loadContracts();
+    }
+    return res;
   }
 
   void setFilter(String status) {

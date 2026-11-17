@@ -4,6 +4,7 @@ import '../../../../core/errors/failures.dart';
 import '../../../pos/domain/entities/payment_split.dart';
 import '../entities/customer_installment_entity.dart';
 import '../entities/customer_installments_summary.dart';
+import '../entities/bulk_installment_payment_result.dart';
 import '../entities/installment_payment_entity.dart';
 import '../entities/installment_plan_entity.dart';
 import '../entities/installment_schedule_entry.dart';
@@ -56,6 +57,14 @@ abstract class InstallmentsFacade {
   // Payments
   Future<Either<Failure, InstallmentPaymentEntity>> recordPayment({
     required String contractId,
+    required int amountPiasters,
+    required String paymentMethod, // 'cash' | 'card'
+    String? receiptNumber,
+    String? notes,
+    required String pin,
+  });
+  Future<Either<Failure, BulkInstallmentPaymentResult>> recordBulkCustomerPayment({
+    required String customerId,
     required int amountPiasters,
     required String paymentMethod, // 'cash' | 'card'
     String? receiptNumber,

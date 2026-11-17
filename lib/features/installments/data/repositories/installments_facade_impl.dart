@@ -13,6 +13,7 @@ import '../../../../core/features/feature_gate.dart';
 import '../../../auth/data/datasources/auth_local_data_source.dart';
 import '../../../pos/domain/entities/payment_split.dart';
 import '../services/manager_pin_service.dart';
+import '../../domain/entities/bulk_installment_payment_result.dart';
 import '../../domain/entities/customer_installment_entity.dart';
 import '../../domain/entities/customer_installments_summary.dart';
 import '../../domain/entities/installment_payment_entity.dart';
@@ -779,6 +780,162 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
     );
 
     return Right(payment);
+  }
+
+  @override
+  Future<Either<Failure, BulkInstallmentPaymentResult>> recordBulkCustomerPayment({
+    required String customerId,
+    required int amountPiasters,
+    required String paymentMethod,
+    String? receiptNumber,
+    String? notes,
+    required String pin,
+  }) async {
+    if (!await _featureGate.isEnabled(FeatureKeys.installments)) {
+      return Left(FeatureDisabledFailure(FeatureKeys.installments));
+    }
+
+    final pinResult = await _pinService.verifyPin(pin: pin, operation: 'record_payment');
+    if (!pinResult.ok) {
+      return Left(AuthFailure(pinResult.error ?? 'الرقم السري للمدير غير صحيح'));
+    }
+
+    if (amountPiasters <= 0) {
+      return const Left(ServerFailure('مبلغ الدفعة يجب أن يكون أكبر من صفر'));
+    }
+    if (paymentMethod != 'cash' && paymentMethod != 'card') {
+      return const Left(ServerFailure('طريقة الدفع غير صالحة'));
+    }
+
+    final contracts = await (_db.select(_db.customerInstallments)
+          ..where((t) =>
+              t.customerId.equals(customerId) &
+              t.deletedAt.isNull() &
+              t.status.isNotIn(['completed', 'cancelled']) &
+              t.remainingPiasters.isBiggerThanValue(0))
+          ..orderBy([
+            (t) => OrderingTerm.asc(t.startDate),
+            (t) => OrderingTerm.asc(t.createdAt),
+          ]))
+        .get();
+
+    if (contracts.isEmpty) {
+      return const Left(ServerFailure('لا توجد عقود تقسيط نشطة أو مستحقة لهذا العميل'));
+    }
+
+    final totalRemaining = contracts.fold<int>(0, (sum, c) => sum + c.remainingPiasters);
+    if (amountPiasters > totalRemaining) {
+      return Left(ServerFailure(
+        'المبلغ المدخل (${amountPiasters ~/ 100} ج.م) يتجاوز إجمالي ديون وأقساط العميل (${totalRemaining ~/ 100} ج.م)',
+      ));
+    }
+
+    final branchId = await _branchProvider.getBranchId();
+    final user = await _auth.getCachedUser();
+    final userId = user?.id ?? 'unknown';
+    final now = DateTime.now();
+    final nowSec = now.millisecondsSinceEpoch ~/ 1000;
+    final activeShift = await _getActiveShift();
+
+    int remainingToAllocate = amountPiasters;
+    final List<InstallmentPaymentEntity> createdPayments = [];
+
+    await _txWriter.write(
+      writeFn: () async {
+        for (final contract in contracts) {
+          if (remainingToAllocate <= 0) break;
+
+          final payForThisContract = remainingToAllocate < contract.remainingPiasters
+              ? remainingToAllocate
+              : contract.remainingPiasters;
+          remainingToAllocate -= payForThisContract;
+
+          final paymentId = const Uuid().v4();
+          final newContractRemaining = contract.remainingPiasters - payForThisContract;
+          final newContractStatus = newContractRemaining == 0 ? 'completed' : contract.status;
+
+          final payment = InstallmentPaymentEntity(
+            id: paymentId,
+            branchId: branchId,
+            customerInstallmentId: contract.id,
+            amountPiasters: payForThisContract,
+            paymentMethod: paymentMethod,
+            paidAt: now,
+            receiptNumber: receiptNumber,
+            notes: notes ?? 'سداد قسط مجمع للعميل',
+            recordedBy: userId,
+            createdAt: now,
+            updatedAt: now,
+          );
+          createdPayments.add(payment);
+
+          // 1. Insert installment payment
+          await _db.into(_db.installmentPayments).insert(
+            InstallmentPaymentsCompanion.insert(
+              id: paymentId,
+              branchId: branchId,
+              customerInstallmentId: contract.id,
+              amountPiasters: payForThisContract,
+              paymentMethod: paymentMethod,
+              paidAt: now,
+              receiptNumber: Value(receiptNumber),
+              notes: Value(notes ?? 'سداد قسط مجمع للعميل'),
+              recordedBy: userId,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+          // 2. Update contract
+          await (_db.update(_db.customerInstallments)..where((t) => t.id.equals(contract.id))).write(
+            CustomerInstallmentsCompanion(
+              remainingPiasters: Value(newContractRemaining),
+              status: Value(newContractStatus),
+              updatedAt: Value(now),
+            ),
+          );
+
+          // 3. Insert cash movement in drawer
+          final shortContractId = contract.id.length > 8 ? contract.id.substring(0, 8) : contract.id;
+          await _db.into(_db.cashMovements).insert(
+            CashMovementsCompanion.insert(
+              id: const Uuid().v4(),
+              branchId: branchId,
+              shiftId: Value(activeShift?.id),
+              type: 'installment_payment',
+              method: paymentMethod,
+              direction: 'in',
+              amountPiasters: payForThisContract,
+              referenceId: Value(contract.id),
+              notes: Value(notes ?? 'سداد قسط مجمع (عقد #$shortContractId)'),
+              createdAt: nowSec,
+              updatedAt: nowSec,
+            ),
+          );
+        }
+      },
+      branchId: branchId,
+      entity: 'installment_payments',
+      entityId: customerId,
+      operation: 'create_bulk',
+      userId: userId,
+      oldValue: null,
+      newValue: '$amountPiasters',
+      auditAction: 'installment_bulk_payment_recorded',
+      payload: jsonEncode({
+        'customerId': customerId,
+        'totalAmountPiasters': amountPiasters,
+        'affectedContracts': createdPayments.length,
+        'shiftId': activeShift?.id,
+      }),
+    );
+
+    return Right(BulkInstallmentPaymentResult(
+      customerId: customerId,
+      totalAmountPiasters: amountPiasters,
+      affectedContractsCount: createdPayments.length,
+      payments: createdPayments,
+    ));
   }
 
   @override
