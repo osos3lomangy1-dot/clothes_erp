@@ -20,22 +20,12 @@ class VariantFormCubit extends Cubit<VariantFormState> {
   })  : _variantLocalDataSource = variantLocalDataSource,
         super(const VariantFormState());
 
-  Future<void> init(VariantEntity? variant) async {
-    Set<String> existingSkus = const {};
-    try {
-      final ds = _variantLocalDataSource ??
-          (getIt.isRegistered<VariantLocalDataSource>()
-              ? getIt<VariantLocalDataSource>()
-              : null);
-      if (ds != null) {
-        final all = await ds.getAllVariants();
-        existingSkus = all
-            .where((v) => variant == null || v.id != variant.id)
-            .map((v) => v.sku.trim().toLowerCase())
-            .toSet();
-      }
-    } catch (_) {}
-
+  Future<void> init(
+    VariantEntity? variant, {
+    String? productId,
+    String? productName,
+  }) async {
+    // 1. Synchronously emit existing variant fields FIRST so edit forms never appear empty
     if (variant != null) {
       emit(state.copyWith(
         productCode: variant.productCode,
@@ -47,12 +37,53 @@ class VariantFormCubit extends Cubit<VariantFormState> {
         wholesalePrice: variant.wholesalePrice,
         minStock: variant.minStock,
         isEdit: true,
-        existingSkus: existingSkus,
         hasDuplicateSku: false,
       ));
-    } else {
-      emit(state.copyWith(existingSkus: existingSkus));
     }
+
+    // 2. Load existing active SKUs (and sibling defaults when adding a new variant)
+    try {
+      final ds = _variantLocalDataSource ??
+          (getIt.isRegistered<VariantLocalDataSource>()
+              ? getIt<VariantLocalDataSource>()
+              : null);
+      if (ds != null) {
+        final all = await ds.getAllVariants();
+        final existingSkus = all
+            .where((v) => variant == null || v.id != variant.id)
+            .map((v) => v.sku.trim().toLowerCase())
+            .toSet();
+
+        if (variant != null) {
+          emit(state.copyWith(existingSkus: existingSkus));
+        } else {
+          // Pre-fill defaults from last sibling variant of the same product if available
+          final siblings = productId != null
+              ? all.where((v) => v.productId == productId).toList()
+              : const [];
+          if (siblings.isNotEmpty) {
+            final last = siblings.last;
+            final suggestedSku = await ds.autoGenerateSku(
+              productName ?? 'P',
+              last.color,
+              'N',
+            );
+            emit(state.copyWith(
+              productCode: suggestedSku,
+              color: last.color,
+              costPrice: last.costPrice,
+              salePrice: last.sellPrice,
+              wholesalePrice: last.wholesalePrice,
+              existingSkus: existingSkus,
+              prefilledFromSibling: true,
+              hasDuplicateSku: false,
+            ));
+          } else {
+            emit(state.copyWith(existingSkus: existingSkus));
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   void onProductCodeChanged(String value) {

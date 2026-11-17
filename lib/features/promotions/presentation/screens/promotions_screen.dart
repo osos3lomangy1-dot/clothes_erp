@@ -5,6 +5,8 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/features/feature_gate.dart';
 import '../../../../core/utils/money.dart';
+import '../../../categories/domain/repositories/category_repository.dart';
+import '../../../products/data/datasources/product_local_data_source.dart';
 import '../../domain/entities/promotion.dart';
 import '../cubits/promotions_cubit.dart';
 import '../widgets/promotion_form_dialog.dart';
@@ -30,11 +32,50 @@ class _PromotionsView extends StatefulWidget {
 
 class _PromotionsViewState extends State<_PromotionsView> {
   String _selectedFilter = 'all'; // 'all', 'active', 'inactive', 'expired'
+  Map<String, String> _productNames = const {};
+  Map<String, String> _categoryNames = const {};
 
   @override
   void initState() {
     super.initState();
     _checkAdminAccess();
+    _loadTargetNames();
+  }
+
+  Future<void> _loadTargetNames() async {
+    final prodNames = <String, String>{};
+    final catNames = <String, String>{};
+
+    try {
+      if (getIt.isRegistered<ProductLocalDataSource>()) {
+        final products =
+            await getIt<ProductLocalDataSource>().getProductsWithVariants();
+        for (final pwv in products) {
+          prodNames[pwv.product.id] = pwv.product.name;
+          for (final v in pwv.variants) {
+            prodNames[v.id] = '${pwv.product.name} (${v.color} - ${v.size})';
+          }
+        }
+      }
+    } catch (_) {}
+
+    try {
+      if (getIt.isRegistered<CategoryRepository>()) {
+        final catsRes = await getIt<CategoryRepository>().getCategories();
+        catsRes.fold((_) {}, (cats) {
+          for (final c in cats) {
+            catNames[c.id] = c.name;
+          }
+        });
+      }
+    } catch (_) {}
+
+    if (mounted) {
+      setState(() {
+        _productNames = prodNames;
+        _categoryNames = catNames;
+      });
+    }
   }
 
   void _checkAdminAccess() async {
@@ -157,6 +198,8 @@ class _PromotionsViewState extends State<_PromotionsView> {
                     final promo = filtered[index];
                     return _PromotionCard(
                       promotion: promo,
+                      productNames: _productNames,
+                      categoryNames: _categoryNames,
                       onEdit: () => _openFormDialog(context, existing: promo),
                       onToggleActive: () {
                         if (promo.isActive) {
@@ -202,7 +245,7 @@ class _PromotionsViewState extends State<_PromotionsView> {
     return ChoiceChip(
       label: Text(label),
       selected: isSelected,
-      selectedColor: AppColors.primaryContainer,
+      selectedColor: AppColors.primary.withValues(alpha: 0.14),
       labelStyle: TextStyle(
         fontFamily: 'Cairo',
         fontSize: 12,
@@ -255,16 +298,29 @@ class _PromotionsViewState extends State<_PromotionsView> {
 
 class _PromotionCard extends StatelessWidget {
   final Promotion promotion;
+  final Map<String, String> productNames;
+  final Map<String, String> categoryNames;
   final VoidCallback onEdit;
   final VoidCallback onToggleActive;
   final VoidCallback onDelete;
 
   const _PromotionCard({
     required this.promotion,
+    this.productNames = const {},
+    this.categoryNames = const {},
     required this.onEdit,
     required this.onToggleActive,
     required this.onDelete,
   });
+
+  String _formatTargetNames(List<String> ids, Map<String, String> lookup) {
+    if (ids.isEmpty) return '';
+    final names = ids.map((id) => lookup[id] ?? id).toList();
+    if (names.length <= 3) {
+      return names.join('، ');
+    }
+    return '${names.take(3).join('، ')} (+${names.length - 3} آخرين)';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -279,11 +335,19 @@ class _PromotionCard extends StatelessWidget {
       valueDisplay = '${Money(promotion.valuePiasters ?? 0).toDisplay()} ج.م';
     }
 
+    final effectiveTargetIds = promotion.targetIds.isNotEmpty
+        ? promotion.targetIds
+        : (promotion.targetId != null && promotion.targetId!.isNotEmpty
+            ? [promotion.targetId!]
+            : const <String>[]);
+
     String scopeDisplay = 'كل المنتجات';
     if (promotion.scope == 'product') {
-      scopeDisplay = 'منتج محدد (${promotion.targetId ?? ""})';
+      final resolved = _formatTargetNames(effectiveTargetIds, productNames);
+      scopeDisplay = resolved.isNotEmpty ? 'منتج محدد: $resolved' : 'منتج محدد';
     } else if (promotion.scope == 'category') {
-      scopeDisplay = 'قسم محدد (${promotion.targetId ?? ""})';
+      final resolved = _formatTargetNames(effectiveTargetIds, categoryNames);
+      scopeDisplay = resolved.isNotEmpty ? 'قسم محدد: $resolved' : 'قسم محدد';
     }
 
     return Card(

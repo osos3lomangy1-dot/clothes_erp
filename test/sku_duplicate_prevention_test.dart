@@ -216,5 +216,78 @@ void main() {
 
       await cubit.close();
     });
+
+    test('init in edit mode synchronously populates all variant fields', () async {
+      final fakeRepo = _FakeVariantRepository();
+      final cubit = VariantFormCubit(
+        AddVariantUseCase(fakeRepo),
+        UpdateVariantUseCase(fakeRepo),
+        variantLocalDataSource: vds,
+      );
+
+      final existing = VariantEntity(
+        id: 'v-edit-1',
+        productId: 'p-1',
+        productCode: 'SKU-EDIT-1',
+        color: 'أسود',
+        size: 'XL',
+        quantity: 12,
+        costPrice: 10000,
+        salePrice: 15000,
+        wholesalePrice: 12500,
+        minStock: 5,
+        createdAt: DateTime(2026, 1, 1),
+      );
+
+      // Even before awaiting async DB check, fields must be populated synchronously
+      final future = cubit.init(existing, productId: 'p-1', productName: 'بلوزة');
+      expect(cubit.state.isEdit, isTrue);
+      expect(cubit.state.productCode, equals('SKU-EDIT-1'));
+      expect(cubit.state.color, equals('أسود'));
+      expect(cubit.state.size, equals('XL'));
+      expect(cubit.state.quantity, equals(12));
+      expect(cubit.state.costPrice, equals(10000));
+      expect(cubit.state.salePrice, equals(15000));
+      expect(cubit.state.wholesalePrice, equals(12500));
+
+      await future;
+      await cubit.close();
+    });
+
+    test('init in add mode pre-fills color, prices, and unique SKU from existing sibling variant', () async {
+      await pds.createProduct(name: 'بلوزة', categoryId: 'c1');
+      final prod = (await pds.getProducts()).first;
+      await vds.createVariant(
+        productId: prod.id,
+        sku: 'BLZ-M',
+        color: 'كحلي',
+        size: 'M',
+        costPrice: 8000,
+        sellPrice: 15000,
+        wholesalePrice: 12000,
+        quantity: 10,
+      );
+
+      final fakeRepo = _FakeVariantRepository();
+      final cubit = VariantFormCubit(
+        AddVariantUseCase(fakeRepo),
+        UpdateVariantUseCase(fakeRepo),
+        variantLocalDataSource: vds,
+      );
+
+      await cubit.init(null, productId: prod.id, productName: 'بلوزة');
+
+      expect(cubit.state.isEdit, isFalse);
+      expect(cubit.state.prefilledFromSibling, isTrue);
+      expect(cubit.state.color, equals('كحلي'));
+      expect(cubit.state.costPrice, equals(8000));
+      expect(cubit.state.salePrice, equals(15000));
+      expect(cubit.state.wholesalePrice, equals(12000));
+      expect(cubit.state.productCode.isNotEmpty, isTrue);
+      expect(cubit.state.productCode.toLowerCase(), isNot(equals('blz-m')));
+      expect(cubit.state.hasDuplicateSku, isFalse);
+
+      await cubit.close();
+    });
   });
 }
