@@ -90,6 +90,8 @@ class _PosView extends StatefulWidget {
 
 class _PosViewState extends State<_PosView> {
   final FocusNode _searchFocusNode = FocusNode();
+  final GlobalKey<_ProductPanelState> _productPanelKey = GlobalKey<_ProductPanelState>();
+  final GlobalKey<_CartPanelState> _cartPanelKey = GlobalKey<_CartPanelState>();
   final StringBuffer _scannerBuffer = StringBuffer();
   DateTime _lastScanKeyTime = DateTime.now();
 
@@ -105,7 +107,44 @@ class _PosViewState extends State<_PosView> {
   }
 
   bool _handleHardwareScan(KeyEvent event) {
+    if (!mounted) return false;
     if (event is! KeyDownEvent) return false;
+
+    // Only handle POS global shortcuts & scans when POS is the active top route
+    // (avoid firing while a modal dialog like Split Payment / Installments / Receipt is open).
+    final route = ModalRoute.of(context);
+    if (route != null && !route.isCurrent) return false;
+
+    final key = event.logicalKey;
+
+    // Shortcut [F2]: Focus & select search bar
+    if (key == LogicalKeyboardKey.f2) {
+      _scannerBuffer.clear();
+      _productPanelKey.currentState?.focusAndSelectSearch();
+      if (_productPanelKey.currentState == null) {
+        _searchFocusNode.requestFocus();
+      }
+      return true;
+    }
+
+    // Shortcut [F12]: Complete Sale / Checkout
+    if (key == LogicalKeyboardKey.f12) {
+      _scannerBuffer.clear();
+      _cartPanelKey.currentState?.triggerCheckout();
+      return true;
+    }
+
+    // Shortcut [Esc]: Clear cart (or clear search text if cart is already empty)
+    if (key == LogicalKeyboardKey.escape) {
+      _scannerBuffer.clear();
+      final posCubit = context.read<PosCubit>();
+      if (posCubit.state.cart.isNotEmpty) {
+        _cartPanelKey.currentState?.clearCartAndInputs();
+        return true;
+      }
+      final clearedSearch = _productPanelKey.currentState?.clearSearchIfNotEmpty() ?? false;
+      return clearedSearch;
+    }
 
     final now = DateTime.now();
     final diffMs = now.difference(_lastScanKeyTime).inMilliseconds;
@@ -116,7 +155,7 @@ class _PosViewState extends State<_PosView> {
       _scannerBuffer.clear();
     }
 
-    if (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+    if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.numpadEnter) {
       final code = _scannerBuffer.toString().trim();
       _scannerBuffer.clear();
       if (code.isNotEmpty && code.length >= 3) {
@@ -187,13 +226,8 @@ class _PosViewState extends State<_PosView> {
           );
         }
 
-        return CallbackShortcuts(
-          bindings: {
-            const SingleActivator(LogicalKeyboardKey.f2): () => _searchFocusNode.requestFocus(),
-            const SingleActivator(LogicalKeyboardKey.escape): () => context.read<PosCubit>().clearCart(),
-          },
-          child: Scaffold(
-            backgroundColor: AppColors.surface,
+        return Scaffold(
+          backgroundColor: AppColors.surface,
             appBar: AppBar(
               elevation: 0,
               backgroundColor: AppColors.primary,
@@ -301,7 +335,10 @@ class _PosViewState extends State<_PosView> {
                   child: Builder(
                     builder: (ctx) {
                       try {
-                        return _ProductPanel(searchFocusNode: _searchFocusNode);
+                        return _ProductPanel(
+                          key: _productPanelKey,
+                          searchFocusNode: _searchFocusNode,
+                        );
                       } catch (e, st) {
                         return SingleChildScrollView(
                           padding: const EdgeInsets.all(16),
@@ -318,7 +355,7 @@ class _PosViewState extends State<_PosView> {
                   child: Builder(
                     builder: (ctx) {
                       try {
-                        return const _CartPanel();
+                        return _CartPanel(key: _cartPanelKey);
                       } catch (e, st) {
                         return SingleChildScrollView(
                           padding: const EdgeInsets.all(16),
@@ -330,8 +367,7 @@ class _PosViewState extends State<_PosView> {
                 ),
               ],
             ),
-          ),
-        );
+          );
       },
     );
   }
@@ -525,7 +561,7 @@ class _PosViewState extends State<_PosView> {
 // ---------------------------------------------------------------------------
 class _ProductPanel extends StatefulWidget {
   final FocusNode searchFocusNode;
-  const _ProductPanel({required this.searchFocusNode});
+  const _ProductPanel({super.key, required this.searchFocusNode});
 
   @override
   State<_ProductPanel> createState() => _ProductPanelState();
@@ -533,6 +569,24 @@ class _ProductPanel extends StatefulWidget {
 
 class _ProductPanelState extends State<_ProductPanel> {
   final _searchCtrl = TextEditingController();
+
+  void focusAndSelectSearch() {
+    widget.searchFocusNode.requestFocus();
+    if (_searchCtrl.text.isNotEmpty) {
+      _searchCtrl.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: _searchCtrl.text.length,
+      );
+    }
+  }
+
+  bool clearSearchIfNotEmpty() {
+    if (_searchCtrl.text.isEmpty) return false;
+    _searchCtrl.clear();
+    context.read<PosCubit>().searchProducts('');
+    setState(() {});
+    return true;
+  }
 
   @override
   void dispose() {
@@ -1507,7 +1561,7 @@ class _VariantModalState extends State<_VariantModal> {
 // LEFT PANEL: CART (440px)
 // ---------------------------------------------------------------------------
 class _CartPanel extends StatefulWidget {
-  const _CartPanel();
+  const _CartPanel({super.key});
 
   @override
   State<_CartPanel> createState() => _CartPanelState();
@@ -1520,6 +1574,21 @@ class _CartPanelState extends State<_CartPanel> {
   String _paymentMethod = 'cash'; // 'cash' or 'card'
   bool _installmentAvailable = false;
   bool _isWholesaleMode = false;
+
+  void triggerCheckout() {
+    if (!mounted) return;
+    final state = context.read<PosCubit>().state;
+    if (state.cart.isEmpty || state.isProcessing) return;
+    _handleCheckout(state);
+  }
+
+  void clearCartAndInputs() {
+    if (!mounted) return;
+    context.read<PosCubit>().clearCart();
+    _discountCtrl.clear();
+    _receivedCtrl.clear();
+    setState(() => _isWholesaleMode = false);
+  }
 
   @override
   void initState() {
