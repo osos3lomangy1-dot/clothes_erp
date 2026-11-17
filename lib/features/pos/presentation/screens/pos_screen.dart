@@ -90,9 +90,58 @@ class _PosView extends StatefulWidget {
 
 class _PosViewState extends State<_PosView> {
   final FocusNode _searchFocusNode = FocusNode();
+  final StringBuffer _scannerBuffer = StringBuffer();
+  DateTime _lastScanKeyTime = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    HardwareKeyboard.instance.addHandler(_handleHardwareScan);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _searchFocusNode.requestFocus();
+      }
+    });
+  }
+
+  bool _handleHardwareScan(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+
+    final now = DateTime.now();
+    final diffMs = now.difference(_lastScanKeyTime).inMilliseconds;
+    _lastScanKeyTime = now;
+
+    // Reset buffer if delay between keystrokes exceeds 500ms
+    if (diffMs > 500) {
+      _scannerBuffer.clear();
+    }
+
+    if (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+      final code = _scannerBuffer.toString().trim();
+      _scannerBuffer.clear();
+      if (code.isNotEmpty && code.length >= 3) {
+        if (!_searchFocusNode.hasFocus) {
+          final added = context.read<PosCubit>().addByBarcode(code);
+          if (added) {
+            _searchFocusNode.requestFocus();
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    final char = event.character;
+    if (char != null && char.isNotEmpty && !char.contains('\n') && !char.contains('\r')) {
+      _scannerBuffer.write(char);
+    }
+
+    return false;
+  }
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleHardwareScan);
     _searchFocusNode.dispose();
     super.dispose();
   }
@@ -526,6 +575,7 @@ class _ProductPanelState extends State<_ProductPanel> {
             child: TextField(
               controller: _searchCtrl,
               focusNode: widget.searchFocusNode,
+              autofocus: true,
               style: TextStyle(fontFamily: 'Cairo', fontSize: 14),
               decoration: InputDecoration(
                 hintText: 'بحث بالاسم أو كود الصنف أو المقاس... [F2]',
