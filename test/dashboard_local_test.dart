@@ -293,5 +293,171 @@ void main() {
     expect(hour8.totalAmount, 0);
     expect(hour8.transactionsCount, 0);
   });
+
+  test('dashboard accurately aggregates executive KPIs (profit, live drawer cash, supplier debts, overdue installments, returns, top products)', () async {
+    final now = DateTime.now();
+
+    // 1. Seed Category, Product & Variant
+    await db.into(db.categories).insert(CategoriesCompanion.insert(
+      id: 'cat_exec',
+      branchId: branchId,
+      name: 'Pants',
+      createdAt: now,
+      updatedAt: now,
+    ));
+
+    await db.into(db.products).insert(ProductsCompanion.insert(
+      id: 'prod_exec',
+      branchId: branchId,
+      name: 'Jeans',
+      categoryId: 'cat_exec',
+      minStock: const Value(2),
+      createdAt: now,
+      updatedAt: now,
+    ));
+
+    await db.into(db.productVariants).insert(ProductVariantsCompanion.insert(
+      id: 'v_exec_1',
+      branchId: branchId,
+      productId: 'prod_exec',
+      sku: 'JNS-BLK-32',
+      color: 'Black',
+      size: '32',
+      quantity: const Value(20),
+      costPrice: 20000, // 200 EGP cost
+      sellPrice: 35000, // 350 EGP sell
+      createdAt: now,
+      updatedAt: now,
+    ));
+
+    // 2. Seed Sale with 2 units sold: Total = 700 EGP (70,000 piasters), Cost = 400 EGP (40,000 piasters)
+    const saleId = 'sale_exec_1';
+    await db.into(db.sales).insert(SalesCompanion.insert(
+      id: saleId,
+      branchId: branchId,
+      shortRef: 'SEXEC1',
+      cashierId: 'cashier_ahmed',
+      subtotal: 70000,
+      discountType: 'none',
+      total: 70000,
+      paymentMethod: 'cash',
+      date: now,
+      createdAt: now,
+      updatedAt: now,
+    ));
+
+    await db.into(db.saleItems).insert(SaleItemsCompanion.insert(
+      id: 'si_exec_1',
+      branchId: branchId,
+      saleId: saleId,
+      variantId: 'v_exec_1',
+      productName: 'Jeans',
+      color: 'Black',
+      size: '32',
+      qty: 2,
+      priceSnapshot: 35000,
+      costSnapshot: 20000,
+      lineTotal: 70000,
+      createdAt: now,
+    ));
+
+    // 3. Seed Operating Expense: 100 EGP (10,000 piasters)
+    await db.into(db.expenses).insert(ExpensesCompanion.insert(
+      id: 'exp_exec_1',
+      branchId: branchId,
+      userId: 'cashier_ahmed',
+      note: const Value('كهرباء وضيافة'),
+      amount: 10000,
+      category: 'bills',
+      expenseDate: now,
+      createdAt: now,
+      updatedAt: now,
+    ));
+
+    // 4. Seed Today Return: 50 EGP (5,000 piasters)
+    await db.into(db.returns).insert(ReturnsCompanion.insert(
+      id: 'ret_exec_1',
+      branchId: branchId,
+      saleId: const Value(saleId),
+      cashierId: 'cashier_ahmed',
+      refundAmount: 5000,
+      paymentMethod: 'cash',
+      reason: 'مقاس غير مناسب',
+      date: now,
+      createdAt: now,
+      updatedAt: now,
+    ));
+
+    // 5. Seed Active Shift with 100 EGP opening
+    await db.into(db.shifts).insert(ShiftsCompanion.insert(
+      id: 'shift_exec_1',
+      branchId: branchId,
+      cashierId: 'cashier_ahmed',
+      openingBalance: 10000, // 100 EGP
+      openedAt: now.subtract(const Duration(hours: 2)),
+      createdAt: now.subtract(const Duration(hours: 2)),
+      updatedAt: now.subtract(const Duration(hours: 2)),
+    ));
+
+    // 6. Seed Supplier with balance: 500 EGP (50,000 piasters)
+    await db.into(db.suppliers).insert(SuppliersCompanion.insert(
+      id: 'sup_exec_1',
+      branchId: branchId,
+      name: 'مصنع الأهرام للملابس',
+      balance: const Value(50000),
+      createdAt: now,
+      updatedAt: now,
+    ));
+
+    // 7. Seed Customer Overdue Installment: 300 EGP (30,000 piasters) remaining with endDate in the past
+    await db.into(db.customerInstallments).insert(CustomerInstallmentsCompanion.insert(
+      id: 'ci_exec_1',
+      branchId: branchId,
+      customerId: 'cust_1',
+      saleId: saleId,
+      totalPiasters: 60000,
+      downPaymentPiasters: const Value(10000),
+      principalPiasters: 50000,
+      interestBp: 0,
+      monthlyAmountPiasters: 10000,
+      remainingPiasters: 30000,
+      durationMonths: 5,
+      startDate: now.subtract(const Duration(days: 60)),
+      endDate: now.subtract(const Duration(days: 10)), // In the past!
+      status: const Value('active'),
+      createdBy: 'admin',
+      createdAt: now.subtract(const Duration(days: 60)),
+      updatedAt: now,
+    ));
+
+    final stats = await dataSource.getDashboardStats();
+
+    // Verify Sales, Cost, Expenses & Estimated Net Profit
+    expect(stats.todaySales, 70000);
+    expect(stats.todayCost, 40000);
+    expect(stats.todayExpenses, 10000);
+    // Net profit = 70,000 (Revenue) - 40,000 (Cost) - 10,000 (Expenses) = 20,000 piasters (200 EGP)
+    expect(stats.todayEstimatedNetProfit, 20000);
+
+    // Verify Returns
+    expect(stats.todayReturnsCount, 1);
+    expect(stats.todayReturnsTotal, 5000);
+
+    // Verify Shift & Live Drawer Cash
+    expect(stats.hasActiveShift, isTrue);
+    expect(stats.activeShiftOpeningBalance, 10000);
+    expect(stats.liveDrawerCash, greaterThan(0));
+
+    // Verify Supplier Debts & Overdue Installments
+    expect(stats.totalSupplierDebts, 50000);
+    expect(stats.overdueInstallmentsCount, 1);
+    expect(stats.overdueInstallmentsAmount, 30000);
+
+    // Verify Top Products & Payment Breakdown
+    expect(stats.todayPaymentBreakdown['cash'], 70000);
+    expect(stats.todayTopProducts.length, 1);
+    expect(stats.todayTopProducts.first.productName, 'Jeans');
+    expect(stats.todayTopProducts.first.quantitySold, 2);
+  });
 }
 
