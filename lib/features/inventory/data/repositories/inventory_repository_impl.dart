@@ -24,9 +24,11 @@ class InventoryRepositoryImpl implements InventoryRepository {
         quantity: item.quantity,
         costPrice: item.costPrice,
         salePrice: item.sellPrice,
-        minStock: 5,
+        wholesalePrice: item.wholesalePrice,
+        minStock: item.minStock,
         createdAt: DateTime.now(),
         productName: item.productName,
+        categoryName: item.categoryName,
       )).toList();
       return Right(entities);
     } catch (e) {
@@ -47,9 +49,11 @@ class InventoryRepositoryImpl implements InventoryRepository {
         quantity: item.quantity,
         costPrice: item.costPrice,
         salePrice: item.sellPrice,
-        minStock: 5,
+        wholesalePrice: item.wholesalePrice,
+        minStock: item.minStock,
         createdAt: DateTime.now(),
         productName: item.productName,
+        categoryName: item.categoryName,
       )).toList();
       return Right(entities);
     } catch (e) {

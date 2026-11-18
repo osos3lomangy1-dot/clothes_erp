@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import '../../../../core/database/app_database.dart';
 import '../../data/datasources/inventory_local_data_source.dart';
 import '../../domain/usecases/get_all_inventory_usecase.dart';
 import '../../domain/usecases/get_low_stock_usecase.dart';
@@ -67,6 +68,35 @@ class InventoryCubit extends Cubit<InventoryState> {
       emit(InventoryError('تعذر استلام المخزون: $e'));
       rethrow;
     }
+  }
+
+  Future<void> adjustStock({
+    required String variantId,
+    required int qtyDelta,
+    required String reason,
+    required String userId,
+  }) async {
+    if (qtyDelta == 0) {
+      throw Exception('قيمة التسوية يجب أن تكون غير صفرية');
+    }
+    if (reason.trim().isEmpty) {
+      throw Exception('يجب إدخال سبب التسوية (مثل: تالف، هالك، تصحيح جرد)');
+    }
+
+    await _inventoryLocalDataSource.applyStockMovement(
+      variantId: variantId,
+      qtyDelta: qtyDelta,
+      type: StockMovementType.adjustment,
+      reason: reason.trim(),
+      userId: userId,
+      refType: 'manual_adjustment',
+    );
+
+    await loadInventory(lowStockOnly: _isLowStockFilter);
+  }
+
+  Future<List<InventoryLog>> getVariantLogs(String variantId) {
+    return _inventoryLocalDataSource.getLogsForVariant(variantId);
   }
 
   Future<List<InventoryItemDetail>> searchVariants(String query) async {

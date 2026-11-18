@@ -146,9 +146,17 @@ void showCustomerDialog(BuildContext context, {CustomerEntity? customer}) {
                   AppFeedback.showError(dialogCtx, 'يرجى إدخال اسم العميل ورقم هاتفه');
                   return;
                 }
+                if (discount < 0 || discount > 100) {
+                  AppFeedback.showError(dialogCtx, 'نسبة الخصم يجب أن تكون بين 0% و 100%');
+                  return;
+                }
+                if (points < 0) {
+                  AppFeedback.showError(dialogCtx, 'رصيد نقاط الولاء لا يمكن أن يكون سالباً');
+                  return;
+                }
 
                 if (isEditing) {
-                  await cubit.updateCustomer(
+                  final ok = await cubit.updateCustomer(
                     customer.copyWith(
                       name: name,
                       phone: phone,
@@ -157,12 +165,21 @@ void showCustomerDialog(BuildContext context, {CustomerEntity? customer}) {
                       customerType: selectedType,
                     ),
                   );
-                  if (dialogCtx.mounted) {
+                  if (!dialogCtx.mounted) return;
+                  if (ok) {
                     Navigator.pop(dialogCtx);
-                    AppFeedback.showSuccess(context, 'تم تعديل بيانات العميل بنجاح');
+                    if (context.mounted) {
+                      AppFeedback.showSuccess(context, 'تم تعديل بيانات العميل بنجاح');
+                    }
+                  } else {
+                    final err = cubit.state.errorMessage ?? 'تعذر تعديل بيانات العميل';
+                    AppFeedback.showError(
+                      dialogCtx,
+                      err.replaceFirst('Exception: ', ''),
+                    );
                   }
                 } else {
-                  await cubit.addCustomer(
+                  final ok = await cubit.addCustomer(
                     CustomerEntity(
                       id: '',
                       name: name,
@@ -173,9 +190,18 @@ void showCustomerDialog(BuildContext context, {CustomerEntity? customer}) {
                       createdAt: DateTime.now(),
                     ),
                   );
-                  if (dialogCtx.mounted) {
+                  if (!dialogCtx.mounted) return;
+                  if (ok) {
                     Navigator.pop(dialogCtx);
-                    AppFeedback.showSuccess(context, 'تمت إضافة العميل "$name" بنجاح');
+                    if (context.mounted) {
+                      AppFeedback.showSuccess(context, 'تمت إضافة العميل "$name" بنجاح');
+                    }
+                  } else {
+                    final err = cubit.state.errorMessage ?? 'تعذر إضافة العميل';
+                    AppFeedback.showError(
+                      dialogCtx,
+                      err.replaceFirst('Exception: ', ''),
+                    );
                   }
                 }
               },

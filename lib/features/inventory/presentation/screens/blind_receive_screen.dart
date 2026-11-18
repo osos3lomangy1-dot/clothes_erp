@@ -362,7 +362,7 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
         backgroundColor: Colors.white,
         elevation: 0,
         automaticallyImplyLeading: false,
-        leading: isCashier
+        leading: (isCashier || widget.onBack != null || Navigator.canPop(context))
             ? IconButton(
                 icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
                 tooltip: 'رجوع',

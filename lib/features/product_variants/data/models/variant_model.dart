@@ -14,6 +14,7 @@ class VariantModel extends VariantEntity {
     required super.minStock,
     required super.createdAt,
     super.productName,
+    super.categoryName,
   });
 
   @override
@@ -30,6 +31,7 @@ class VariantModel extends VariantEntity {
     int? minStock,
     DateTime? createdAt,
     String? productName,
+    String? categoryName,
   }) {
     return VariantModel(
       id: id ?? this.id,
@@ -44,6 +46,7 @@ class VariantModel extends VariantEntity {
       minStock: minStock ?? this.minStock,
       createdAt: createdAt ?? this.createdAt,
       productName: productName,
+      categoryName: categoryName ?? this.categoryName,
     );
   }
 

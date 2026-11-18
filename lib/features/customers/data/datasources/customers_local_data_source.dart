@@ -74,26 +74,71 @@ class CustomersLocalDataSourceImpl implements CustomersLocalDataSource {
     String customerType = 'retail',
     String userId = 'system',
   }) async {
-    if (name.trim().isEmpty) throw Exception('Customer name is required');
-    if (phone.trim().isEmpty) throw Exception('Customer phone is required');
+    final cleanName = name.trim();
+    final cleanPhone = phone.trim();
+    if (cleanName.isEmpty) throw Exception('اسم العميل مطلوب');
+    if (cleanPhone.isEmpty) throw Exception('رقم هاتف العميل مطلوب');
+    if (discountPercent < 0 || discountPercent > 100) {
+      throw Exception('نسبة الخصم يجب أن تكون بين 0% و 100%');
+    }
+    if (loyaltyPoints < 0) {
+      throw Exception('نقاط الولاء لا يمكن أن تكون سالبة');
+    }
+
+    final existingAny = await (_db.select(
+      _db.customers,
+    )..where((c) => c.phone.equals(cleanPhone))).getSingleOrNull();
 
     final now = DateTime.now();
-    final id = _uuid.v4();
     final branchId = await _branchId();
 
+    if (existingAny != null) {
+      if (existingAny.deletedAt == null) {
+        throw Exception(
+          'رقم الهاتف ($cleanPhone) مسجّل بالفعل للعميل "${existingAny.name}"',
+        );
+      }
+      // Reactivate previously soft-deleted customer cleanly instead of failing UNIQUE
+      await _tx.write(
+        writeFn: () async {
+          await (_db.update(
+            _db.customers,
+          )..where((c) => c.id.equals(existingAny.id))).write(
+            CustomersCompanion(
+              name: Value(cleanName),
+              loyaltyPoints: Value(loyaltyPoints),
+              discountPercent: Value(discountPercent),
+              customerType: Value(customerType),
+              deletedAt: const Value(null),
+              updatedAt: Value(now),
+            ),
+          );
+        },
+        branchId: branchId,
+        entity: 'customer',
+        entityId: existingAny.id,
+        operation: 'restore',
+        userId: userId,
+      );
+      return;
+    }
+
+    final id = _uuid.v4();
     await _tx.write(
       writeFn: () async {
-        await _db.into(_db.customers).insert(CustomersCompanion.insert(
-          id: id,
-          branchId: branchId,
-          name: name.trim(),
-          phone: phone.trim(),
-          loyaltyPoints: Value(loyaltyPoints),
-          discountPercent: Value(discountPercent),
-          customerType: Value(customerType),
-          createdAt: now,
-          updatedAt: now,
-        ));
+        await _db.into(_db.customers).insert(
+              CustomersCompanion.insert(
+                id: id,
+                branchId: branchId,
+                name: cleanName,
+                phone: cleanPhone,
+                loyaltyPoints: Value(loyaltyPoints),
+                discountPercent: Value(discountPercent),
+                customerType: Value(customerType),
+                createdAt: now,
+                updatedAt: now,
+              ),
+            );
       },
       branchId: branchId,
       entity: 'customer',
@@ -113,8 +158,25 @@ class CustomersLocalDataSourceImpl implements CustomersLocalDataSource {
     String? customerType,
     String userId = 'system',
   }) async {
-    if (name.trim().isEmpty) throw Exception('Customer name is required');
-    if (phone.trim().isEmpty) throw Exception('Customer phone is required');
+    final cleanName = name.trim();
+    final cleanPhone = phone.trim();
+    if (cleanName.isEmpty) throw Exception('اسم العميل مطلوب');
+    if (cleanPhone.isEmpty) throw Exception('رقم هاتف العميل مطلوب');
+    if (discountPercent != null && (discountPercent < 0 || discountPercent > 100)) {
+      throw Exception('نسبة الخصم يجب أن تكون بين 0% و 100%');
+    }
+    if (loyaltyPoints != null && loyaltyPoints < 0) {
+      throw Exception('نقاط الولاء لا يمكن أن تكون سالبة');
+    }
+
+    final duplicate = await (_db.select(_db.customers)
+          ..where((c) => c.phone.equals(cleanPhone) & c.id.isNotValue(id)))
+        .getSingleOrNull();
+    if (duplicate != null) {
+      throw Exception(
+        'رقم الهاتف ($cleanPhone) مستخدم بالفعل لعميل آخر ("${duplicate.name}")',
+      );
+    }
 
     final now = DateTime.now();
     final branchId = await _branchId();
@@ -123,11 +185,17 @@ class CustomersLocalDataSourceImpl implements CustomersLocalDataSource {
       writeFn: () async {
         await (_db.update(_db.customers)..where((c) => c.id.equals(id))).write(
           CustomersCompanion(
-            name: Value(name.trim()),
-            phone: Value(phone.trim()),
-            loyaltyPoints: loyaltyPoints != null ? Value(loyaltyPoints) : const Value.absent(),
-            discountPercent: discountPercent != null ? Value(discountPercent) : const Value.absent(),
-            customerType: customerType != null ? Value(customerType) : const Value.absent(),
+            name: Value(cleanName),
+            phone: Value(cleanPhone),
+            loyaltyPoints: loyaltyPoints != null
+                ? Value(loyaltyPoints)
+                : const Value.absent(),
+            discountPercent: discountPercent != null
+                ? Value(discountPercent)
+                : const Value.absent(),
+            customerType: customerType != null
+                ? Value(customerType)
+                : const Value.absent(),
             updatedAt: Value(now),
           ),
         );
@@ -142,6 +210,20 @@ class CustomersLocalDataSourceImpl implements CustomersLocalDataSource {
 
   @override
   Future<void> softDeleteCustomer(String id, {String userId = 'system'}) async {
+    final activeContracts = await (_db.select(_db.customerInstallments)
+          ..where(
+            (c) =>
+                c.customerId.equals(id) &
+                c.deletedAt.isNull() &
+                c.status.isIn(const ['active', 'overdue']),
+          ))
+        .get();
+    if (activeContracts.isNotEmpty) {
+      throw Exception(
+        'لا يمكن حذف هذا العميل لوجود ${activeContracts.length} عقد تقسيط نشط أو متأخر باسمه.',
+      );
+    }
+
     final now = DateTime.now();
     final branchId = await _branchId();
 

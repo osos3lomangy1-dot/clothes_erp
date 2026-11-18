@@ -2,6 +2,7 @@ import 'package:get_it/get_it.dart';
 import 'package:injectable/injectable.dart';
 import 'injection.config.dart';
 import '../../features/auth/data/datasources/auth_local_data_source.dart';
+import '../../features/customers/data/services/customer_ledger_service.dart';
 import '../../features/employees/domain/repositories/employee_repository.dart';
 import '../../features/employees/presentation/cubits/cashier_payroll_cubit.dart';
 import '../../features/installments/data/services/manager_pin_service.dart';
@@ -71,6 +72,11 @@ Future<void> configureDependencies() async {
         getIt<BranchProvider>(),
         getIt<TxWriter>(),
       ),
+    );
+  }
+  if (!getIt.isRegistered<CustomerLedgerService>()) {
+    getIt.registerLazySingleton<CustomerLedgerService>(
+      () => CustomerLedgerService(getIt<AppDatabase>()),
     );
   }
 }

@@ -101,7 +101,11 @@ class InventoryLocalDataSource {
         _db.products.id.equalsExp(_db.productVariants.productId),
       ),
     ]);
-    query = query..where(_db.productVariants.deletedAt.isNull());
+    query = query
+      ..where(
+        _db.productVariants.deletedAt.isNull() &
+            _db.products.deletedAt.isNull(),
+      );
     if (search != null && search.isNotEmpty) {
       query = query
         ..where(
@@ -115,7 +119,9 @@ class InventoryLocalDataSource {
       query = query
         ..where(
           _db.productVariants.quantity.isBiggerThanValue(0) &
-              _db.productVariants.quantity.isSmallerOrEqualValue(5),
+              _db.productVariants.quantity.isSmallerOrEqual(
+                _db.products.minStock,
+              ),
         );
     } else if (filter == 'out') {
       query = query..where(_db.productVariants.quantity.equals(0));
@@ -149,8 +155,16 @@ class InventoryLocalDataSource {
         _db.products,
         _db.products.id.equalsExp(_db.productVariants.productId),
       ),
+      leftOuterJoin(
+        _db.categories,
+        _db.categories.id.equalsExp(_db.products.categoryId),
+      ),
     ]);
-    query = query..where(_db.productVariants.deletedAt.isNull());
+    query = query
+      ..where(
+        _db.productVariants.deletedAt.isNull() &
+            _db.products.deletedAt.isNull(),
+      );
     if (search != null && search.trim().isNotEmpty) {
       final s = search.trim();
       query = query
@@ -163,13 +177,16 @@ class InventoryLocalDataSource {
     }
     if (lowStockOnly) {
       query = query
-        ..where(_db.productVariants.quantity.isSmallerOrEqualValue(5));
+        ..where(
+          _db.productVariants.quantity.isSmallerOrEqual(_db.products.minStock),
+        );
     }
     query = query..orderBy([OrderingTerm.asc(_db.products.name)]);
     final rows = await query.get();
     return rows.map((r) {
       final variant = r.readTable(_db.productVariants);
       final product = r.readTable(_db.products);
+      final category = r.readTableOrNull(_db.categories);
       return InventoryItemDetail(
         variantId: variant.id,
         productId: variant.productId,
@@ -179,9 +196,24 @@ class InventoryLocalDataSource {
         quantity: variant.quantity,
         costPrice: variant.costPrice,
         sellPrice: variant.sellPrice,
+        wholesalePrice: variant.wholesalePrice,
+        minStock: product.minStock,
         productName: product.name,
+        categoryId: product.categoryId,
+        categoryName: category?.name,
       );
     }).toList();
+  }
+
+  Future<List<InventoryLog>> getLogsForVariant(
+    String variantId, {
+    int limit = 40,
+  }) async {
+    return (_db.select(_db.inventoryLogs)
+          ..where((l) => l.variantId.equals(variantId))
+          ..orderBy([(l) => OrderingTerm.desc(l.createdAt)])
+          ..limit(limit))
+        .get();
   }
 
   Future<List<Category>> getCategories() async {
@@ -576,7 +608,11 @@ class InventoryItemDetail {
   final int quantity;
   final int costPrice;
   final int sellPrice;
+  final int wholesalePrice;
+  final int minStock;
   final String productName;
+  final String? categoryId;
+  final String? categoryName;
 
   const InventoryItemDetail({
     required this.variantId,
@@ -587,6 +623,10 @@ class InventoryItemDetail {
     required this.quantity,
     required this.costPrice,
     required this.sellPrice,
+    this.wholesalePrice = 0,
+    this.minStock = 5,
     required this.productName,
+    this.categoryId,
+    this.categoryName,
   });
 }

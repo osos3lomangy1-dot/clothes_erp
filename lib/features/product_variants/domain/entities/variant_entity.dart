@@ -14,6 +14,7 @@ class VariantEntity extends Equatable {
   final DateTime createdAt;
 
   final String? _productName;
+  final String? categoryName;
 
   String get sku => productCode;
   String get productName {
@@ -34,6 +35,7 @@ class VariantEntity extends Equatable {
     required this.minStock,
     required this.createdAt,
     String? productName,
+    this.categoryName,
   }) : _productName = productName;
 
   VariantEntity copyWith({
@@ -49,6 +51,7 @@ class VariantEntity extends Equatable {
     int? minStock,
     DateTime? createdAt,
     String? productName,
+    String? categoryName,
   }) {
     return VariantEntity(
       id: id ?? this.id,
@@ -63,6 +66,7 @@ class VariantEntity extends Equatable {
       minStock: minStock ?? this.minStock,
       createdAt: createdAt ?? this.createdAt,
       productName: productName ?? _productName,
+      categoryName: categoryName ?? this.categoryName,
     );
   }
 
