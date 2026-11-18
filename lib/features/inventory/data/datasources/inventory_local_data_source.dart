@@ -31,6 +31,32 @@ class InventoryLocalDataSource {
 
   Future<String> _branchId() => _branchProvider.getBranchId();
 
+  Future<void> updateProductMinStock({
+    required String productId,
+    required int minStock,
+    String? variantId,
+    String userId = 'admin',
+  }) async {
+    final now = DateTime.now();
+    final branchId = await _branchId();
+    await _tx.write(
+      writeFn: () async {
+        await (_db.update(_db.products)..where((t) => t.id.equals(productId))).write(
+          ProductsCompanion(
+            minStock: Value(minStock),
+            updatedAt: Value(now),
+          ),
+        );
+      },
+      branchId: branchId,
+      entity: 'product',
+      entityId: productId,
+      operation: 'update_min_stock',
+      userId: userId,
+      payload: '{"minStock": $minStock}',
+    );
+  }
+
   Future<void> applyStockMovement({
     required String variantId,
     required int qtyDelta,

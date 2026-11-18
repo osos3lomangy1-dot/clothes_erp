@@ -95,6 +95,24 @@ class InventoryCubit extends Cubit<InventoryState> {
     await loadInventory(lowStockOnly: _isLowStockFilter);
   }
 
+  Future<void> updateMinStock({
+    required String productId,
+    required int minStock,
+    String? variantId,
+    String userId = 'admin',
+  }) async {
+    if (minStock < 0) {
+      throw Exception('حد إعادة الطلب لا يمكن أن يكون سالباً');
+    }
+    await _inventoryLocalDataSource.updateProductMinStock(
+      productId: productId,
+      minStock: minStock,
+      variantId: variantId,
+      userId: userId,
+    );
+    await loadInventory(lowStockOnly: _isLowStockFilter);
+  }
+
   Future<List<InventoryLog>> getVariantLogs(String variantId) {
     return _inventoryLocalDataSource.getLogsForVariant(variantId);
   }

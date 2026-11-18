@@ -518,3 +518,387 @@ class _VariantHistoryBodyState extends State<_VariantHistoryBody> {
     );
   }
 }
+
+/// Opens a clean modal dialog to edit the reorder limit (minimum stock) for [item].
+Future<bool?> showEditMinStockDialog(
+  BuildContext context, {
+  required VariantEntity item,
+  required InventoryCubit cubit,
+  String userId = 'admin',
+}) {
+  return showDialog<bool>(
+    context: context,
+    builder: (_) => _EditMinStockDialog(
+      item: item,
+      cubit: cubit,
+      userId: userId,
+    ),
+  );
+}
+
+class _EditMinStockDialog extends StatefulWidget {
+  final VariantEntity item;
+  final InventoryCubit cubit;
+  final String userId;
+
+  const _EditMinStockDialog({
+    required this.item,
+    required this.cubit,
+    required this.userId,
+  });
+
+  @override
+  State<_EditMinStockDialog> createState() => _EditMinStockDialogState();
+}
+
+class _EditMinStockDialogState extends State<_EditMinStockDialog> {
+  late final TextEditingController _minStockCtrl;
+  bool _submitting = false;
+  String? _error;
+
+  static const _quickOptions = [2, 3, 5, 10, 15, 20];
+
+  @override
+  void initState() {
+    super.initState();
+    _minStockCtrl = TextEditingController(text: '${widget.item.minStock}');
+    _minStockCtrl.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _minStockCtrl.dispose();
+    super.dispose();
+  }
+
+  int get _parsedMinStock => int.tryParse(_minStockCtrl.text.trim()) ?? widget.item.minStock;
+
+  void _step(int delta) {
+    final next = (_parsedMinStock + delta).clamp(0, 99999);
+    _minStockCtrl.text = '$next';
+  }
+
+  Future<void> _submit() async {
+    final val = int.tryParse(_minStockCtrl.text.trim());
+    if (val == null || val < 0) {
+      setState(() => _error = 'يرجى إدخال رقم صحيح أكبر من أو يساوي صفر');
+      return;
+    }
+
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+
+    try {
+      await widget.cubit.updateMinStock(
+        productId: widget.item.productId,
+        minStock: val,
+        variantId: widget.item.id,
+        userId: widget.userId,
+      );
+      if (mounted) {
+        AppFeedback.showSuccess(
+          context,
+          'تم تحديث حد إعادة الطلب بنجاح إلى ($val قطعة)',
+        );
+        Navigator.of(context).pop(true);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _submitting = false;
+          _error = 'فشل تحديث حد الطلب: $e';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final newMin = _parsedMinStock;
+    final currentQty = widget.item.quantity;
+    final willBeLow = currentQty <= newMin && currentQty > 0;
+    final willBeOut = currentQty == 0;
+
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      clipBehavior: Clip.antiAlias,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: Padding(
+          padding: const EdgeInsets.all(22.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.notifications_active_outlined,
+                      color: Colors.amber.shade900,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'تعديل حد إعادة الطلب (حد الأمان)',
+                          style: TextStyle(
+                            fontSize: 16.5,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.onSurface,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'تحديد أقل كمية مسموحة قبل إطلاق تنبيه بالنواقص',
+                          style: TextStyle(fontSize: 11.5, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: _submitting ? null : () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Divider(height: 1),
+              const SizedBox(height: 16),
+
+              // Item Info Card
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.item.productName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'المقاس: ${widget.item.size} • اللون: ${widget.item.color} • SKU: ${widget.item.productCode}',
+                            style: TextStyle(fontSize: 11.5, color: Colors.grey.shade700),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'الرصيد: $currentQty قطعة',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              // Min Stock Input with +/- Stepper
+              const Text(
+                'الحد الأدنى الجديد للمخزون:',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  IconButton.filledTonal(
+                    icon: const Icon(Icons.remove),
+                    tooltip: 'تقليل 1',
+                    onPressed: _submitting ? null : () => _step(-1),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _minStockCtrl,
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: '5',
+                        suffixText: 'قطعة',
+                        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.filledTonal(
+                    icon: const Icon(Icons.add),
+                    tooltip: 'زيادة 1',
+                    onPressed: _submitting ? null : () => _step(1),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              // Quick presets
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: _quickOptions.map((n) {
+                  final isSelected = newMin == n;
+                  return ChoiceChip(
+                    label: Text('$n قطع'),
+                    selected: isSelected,
+                    onSelected: _submitting
+                        ? null
+                        : (selected) {
+                            if (selected) {
+                              _minStockCtrl.text = '$n';
+                            }
+                          },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 14),
+
+              // Status Impact Warning / Info Box
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: willBeOut
+                      ? Colors.red.shade50
+                      : (willBeLow ? Colors.orange.shade50 : Colors.green.shade50),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: willBeOut
+                        ? Colors.red.shade200
+                        : (willBeLow ? Colors.orange.shade200 : Colors.green.shade200),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      willBeOut
+                          ? Icons.error_outline_rounded
+                          : (willBeLow ? Icons.warning_amber_rounded : Icons.check_circle_outline_rounded),
+                      size: 18,
+                      color: willBeOut
+                          ? Colors.red.shade800
+                          : (willBeLow ? Colors.orange.shade900 : Colors.green.shade800),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        willBeOut
+                            ? 'الرصيد الحالي 0، الصنف مسجل كـ "نفذ المخزون".'
+                            : (willBeLow
+                                ? 'الرصيد الحالي ($currentQty) يصل أو يقل عن حد الطلب ($newMin) — سيظهر في تنبيهات النواقص.'
+                                : 'الرصيد الحالي ($currentQty) أكبر من حد الطلب ($newMin) — الصنف في وضع آمن.'),
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.bold,
+                          color: willBeOut
+                              ? Colors.red.shade900
+                              : (willBeLow ? Colors.orange.shade900 : Colors.green.shade900),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              if (_error != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  _error!,
+                  style: const TextStyle(
+                    color: AppColors.error,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 20),
+
+              // Actions
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: _submitting ? null : () => Navigator.of(context).pop(),
+                      child: const Text('إلغاء'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      icon: _submitting
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            )
+                          : const Icon(Icons.check_rounded, color: Colors.white, size: 20),
+                      label: Text(
+                        _submitting ? 'جارِ الحفظ...' : 'حفظ حد الطلب',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      onPressed: _submitting ? null : _submit,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

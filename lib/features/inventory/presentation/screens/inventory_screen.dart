@@ -829,9 +829,40 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         : (isLow ? Colors.orange.shade900 : AppColors.primary),
                   ),
                 ),
-                Text(
-                  'حد الطلب: ${item.minStock}',
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                InkWell(
+                  onTap: isAdmin
+                      ? () => showEditMinStockDialog(
+                            context,
+                            item: item,
+                            cubit: context.read<InventoryCubit>(),
+                            userId: _currentUserId(context),
+                          )
+                      : null,
+                  borderRadius: BorderRadius.circular(6),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'حد الطلب: ${item.minStock}',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                        if (isAdmin) ...[
+                          const SizedBox(width: 3),
+                          Icon(
+                            Icons.edit_outlined,
+                            size: 12,
+                            color: AppColors.primary,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -839,7 +870,22 @@ class _InventoryScreenState extends State<InventoryScreen> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (isAdmin)
+                if (isAdmin) ...[
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    tooltip: 'تعديل حد إعادة الطلب (حد الأمان)',
+                    icon: Icon(
+                      Icons.notifications_active_outlined,
+                      size: 20,
+                      color: Colors.amber.shade900,
+                    ),
+                    onPressed: () => showEditMinStockDialog(
+                      context,
+                      item: item,
+                      cubit: context.read<InventoryCubit>(),
+                      userId: _currentUserId(context),
+                    ),
+                  ),
                   IconButton(
                     visualDensity: VisualDensity.compact,
                     tooltip: 'تسوية رصيد / خصم تالف (للمدير فقط)',
@@ -855,6 +901,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       userId: _currentUserId(context),
                     ),
                   ),
+                ],
                 IconButton(
                   visualDensity: VisualDensity.compact,
                   tooltip: 'سجل حركات الصنف',

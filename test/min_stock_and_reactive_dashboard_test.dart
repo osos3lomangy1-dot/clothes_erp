@@ -2,11 +2,10 @@ import 'package:clothes_erp/core/database/app_database.dart';
 import 'package:clothes_erp/core/database/branch_provider.dart';
 import 'package:clothes_erp/core/database/tx_writer.dart';
 import 'package:clothes_erp/features/dashboard/data/datasources/dashboard_local_data_source.dart';
+import 'package:clothes_erp/features/inventory/data/datasources/inventory_local_data_source.dart';
 import 'package:clothes_erp/features/product_variants/data/datasources/variant_local_data_source.dart';
 import 'package:clothes_erp/features/product_variants/data/repositories/variant_repository_impl.dart';
 import 'package:clothes_erp/features/product_variants/domain/entities/variant_entity.dart';
-import 'package:clothes_erp/features/products/data/datasources/product_local_data_source.dart';
-import 'package:clothes_erp/features/products/data/repositories/product_repository_impl.dart';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -22,8 +21,6 @@ void main() {
   late TxWriter txWriter;
   late VariantLocalDataSource variantDataSource;
   late VariantRepositoryImpl variantRepository;
-  late ProductLocalDataSource productDataSource;
-  late ProductRepositoryImpl productRepository;
   late DashboardLocalDataSource dashboardDataSource;
 
   setUp(() async {
@@ -32,8 +29,6 @@ void main() {
     txWriter = TxWriter(db);
     variantDataSource = VariantLocalDataSource(db, branchProvider, txWriter);
     variantRepository = VariantRepositoryImpl(variantDataSource);
-    productDataSource = ProductLocalDataSource(db, branchProvider, txWriter);
-    productRepository = ProductRepositoryImpl(productDataSource);
     dashboardDataSource = DashboardLocalDataSourceImpl(db);
 
     // Seed category
@@ -181,5 +176,31 @@ void main() {
     expect(emitted, true);
 
     await sub.cancel();
+  });
+
+  test('InventoryLocalDataSource.updateProductMinStock updates product minStock and syncs to DB', () async {
+    final inventoryDataSource = InventoryLocalDataSource(db, branchProvider, txWriter);
+
+    const prodId = 'prod_shirt';
+    final now = DateTime.now();
+
+    await db.into(db.products).insert(ProductsCompanion.insert(
+      id: prodId,
+      branchId: 'test_branch',
+      name: 'قميص كتان',
+      categoryId: 'cat_1',
+      minStock: const Value(5),
+      createdAt: now,
+      updatedAt: now,
+    ));
+
+    // Admin edits minStock directly from inventory to 12
+    await inventoryDataSource.updateProductMinStock(
+      productId: prodId,
+      minStock: 12,
+    );
+
+    final prod = await (db.select(db.products)..where((t) => t.id.equals(prodId))).getSingle();
+    expect(prod.minStock, 12);
   });
 }
