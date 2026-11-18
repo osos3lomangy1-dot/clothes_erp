@@ -70,9 +70,13 @@ class _SystemSettingsView extends StatelessWidget {
               .toList();
           final installmentsEnabled =
               state.features[FeatureKeys.installments] ?? false;
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
+          return Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 960),
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
               _sectionTitle('هوية النظام والألوان (الاسم والمظهر)'),
               _BrandingSettingsCard(userId: _userId(context)),
               const SizedBox(height: 20),
@@ -228,6 +232,8 @@ class _SystemSettingsView extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+            ),
           );
         },
       ),

@@ -9,6 +9,37 @@ import '../../../../core/utils/money.dart';
 import '../../domain/facades/installments_facade.dart';
 import '../cubits/record_payment_cubit.dart';
 
+/// Opens a polished modal dialog to record an installment payment while
+/// keeping the customer's schedule visible in the background.
+Future<bool?> showRecordPaymentDialog(
+  BuildContext context, {
+  required String contractId,
+}) {
+  return showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => BlocProvider(
+      create: (_) => RecordPaymentCubit(
+        contractId: contractId,
+        facade: getIt<InstallmentsFacade>(),
+        featureGate: getIt<FeatureGate>(),
+      ),
+      child: Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        clipBehavior: Clip.antiAlias,
+        backgroundColor: AppColors.surface,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 620, maxHeight: 740),
+          child: const _RecordPaymentView(isDialog: true),
+        ),
+      ),
+    ),
+  );
+}
+
 class RecordPaymentScreen extends StatelessWidget {
   final String contractId;
 
@@ -25,13 +56,15 @@ class RecordPaymentScreen extends StatelessWidget {
         facade: getIt<InstallmentsFacade>(),
         featureGate: getIt<FeatureGate>(),
       ),
-      child: const _RecordPaymentView(),
+      child: const _RecordPaymentView(isDialog: false),
     );
   }
 }
 
 class _RecordPaymentView extends StatefulWidget {
-  const _RecordPaymentView();
+  final bool isDialog;
+
+  const _RecordPaymentView({this.isDialog = false});
 
   @override
   State<_RecordPaymentView> createState() => _RecordPaymentViewState();
@@ -99,22 +132,7 @@ class _RecordPaymentViewState extends State<_RecordPaymentView> {
   Widget build(BuildContext context) {
     final cubit = context.read<RecordPaymentCubit>();
 
-    return Scaffold(
-      backgroundColor: AppColors.surface,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.onSurface),
-          tooltip: 'رجوع',
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
-        title: const Text(
-          'تسجيل دفعة قسط',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.onSurface),
-        ),
-      ),
-      body: BlocConsumer<RecordPaymentCubit, RecordPaymentState>(
+    final bodyContent = BlocConsumer<RecordPaymentCubit, RecordPaymentState>(
         listener: (context, state) {
           if (state.errorMessage != null && state.errorMessage!.isNotEmpty) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -471,7 +489,75 @@ class _RecordPaymentViewState extends State<_RecordPaymentView> {
             ),
           );
         },
+      );
+
+    if (widget.isDialog) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(
+                bottom: BorderSide(color: Colors.grey.shade200),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.payment_rounded,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'تسجيل دفعة قسط',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 17,
+                      color: AppColors.onSurface,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded),
+                  tooltip: 'إغلاق',
+                  onPressed: () => Navigator.of(context).pop(false),
+                ),
+              ],
+            ),
+          ),
+          Flexible(child: bodyContent),
+        ],
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: AppColors.surface,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        foregroundColor: AppColors.onSurface,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.onSurface),
+          tooltip: 'رجوع',
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
+        title: const Text(
+          'تسجيل دفعة قسط',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.onSurface),
+        ),
       ),
+      body: bodyContent,
     );
   }
 

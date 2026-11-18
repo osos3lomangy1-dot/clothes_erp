@@ -501,12 +501,14 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
               'تسجيل دفعة جديدة',
               style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 14),
             ),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => RecordPaymentScreen(contractId: contract.id),
-                ),
-              ).then((_) => cubit.refresh());
+            onPressed: () async {
+              final saved = await showRecordPaymentDialog(
+                context,
+                contractId: contract.id,
+              );
+              if (saved == true && context.mounted) {
+                cubit.refresh();
+              }
             },
           ),
         if (canPay)

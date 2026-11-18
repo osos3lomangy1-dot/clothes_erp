@@ -77,8 +77,9 @@ class CategoryListScreen extends StatelessWidget {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                     onPressed: () async {
-                      await Navigator.of(context).push(
-                        MaterialPageRoute(builder: (context) => const CategoryFormScreen()),
+                      await showDialog<void>(
+                        context: context,
+                        builder: (_) => const CategoryFormDialog(),
                       );
                       if (context.mounted) {
                         context.read<CategoryCubit>().getCategories();
@@ -131,8 +132,9 @@ class CategoryListScreen extends StatelessWidget {
                                 icon: Icon(Icons.edit_outlined, color: AppColors.primary),
                                 tooltip: 'تعديل التصنيف',
                                 onPressed: () async {
-                                  await Navigator.of(context).push(
-                                    MaterialPageRoute(builder: (context) => CategoryFormScreen(category: category)),
+                                  await showDialog<void>(
+                                    context: context,
+                                    builder: (_) => CategoryFormDialog(category: category),
                                   );
                                   if (context.mounted) {
                                     context.read<CategoryCubit>().getCategories();
@@ -184,8 +186,9 @@ class CategoryListScreen extends StatelessWidget {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () async {
-              await Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const CategoryFormScreen()),
+              await showDialog<void>(
+                context: context,
+                builder: (_) => const CategoryFormDialog(),
               );
               if (context.mounted) {
                 context.read<CategoryCubit>().getCategories();

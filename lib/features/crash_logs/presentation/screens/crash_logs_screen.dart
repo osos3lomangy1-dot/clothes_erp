@@ -122,7 +122,20 @@ class _CrashLogsScreenState extends State<CrashLogsScreen> {
 
     if (!isAdmin) {
       return Scaffold(
-        appBar: AppBar(title: const Text('سجلات الأعطال')),
+        backgroundColor: AppColors.surface,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          foregroundColor: AppColors.onSurface,
+          elevation: 0,
+          title: const Text(
+            'سجلات الأعطال',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              color: AppColors.onSurface,
+            ),
+          ),
+        ),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -155,17 +168,25 @@ class _CrashLogsScreenState extends State<CrashLogsScreen> {
           }).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.bug_report_rounded, color: Colors.white),
-            SizedBox(width: 10),
-            Text('سجلات الأعطال (Crash Logs)', style: TextStyle(fontWeight: FontWeight.bold)),
+            Icon(Icons.bug_report_rounded, color: AppColors.primary),
+            const SizedBox(width: 10),
+            const Text(
+              'سجلات الأعطال (Crash Logs)',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: AppColors.onSurface,
+              ),
+            ),
           ],
         ),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: AppColors.onSurface,
+        elevation: 0,
         actions: [
           IconButton(
             tooltip: 'تحديث السجلات',
