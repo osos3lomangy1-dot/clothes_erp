@@ -9,6 +9,7 @@ import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../../installments/data/services/manager_pin_service.dart';
 import '../cubits/settings_cubit.dart';
+import '../widgets/excel_migration_card.dart';
 import '../widgets/google_drive_backup_card.dart';
 import '../widgets/local_backup_card.dart';
 
@@ -181,6 +182,9 @@ class _SystemSettingsView extends StatelessWidget {
               const SizedBox(height: 16),
               _sectionTitle('النسخ الاحتياطي على حساب Google Drive'),
               GoogleDriveBackupCard(userId: _userId(context)),
+              const SizedBox(height: 16),
+              _sectionTitle('التصدير والاستيراد الشامل (Excel)'),
+              ExcelMigrationCard(userId: _userId(context)),
               const SizedBox(height: 20),
               _sectionTitle('المزامنة السحابية عبر الإنترنت'),
               Card(

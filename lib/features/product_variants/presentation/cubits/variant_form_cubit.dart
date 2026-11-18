@@ -147,4 +147,40 @@ class VariantFormCubit extends Cubit<VariantFormState> {
       (_) => emit(state.copyWith(status: VariantFormStatus.success)),
     );
   }
+
+  /// Resets size, quantity, and generates a fresh SKU for rapid consecutive
+  /// variant entry ("حفظ وإضافة مقاس آخر") while preserving color and prices.
+  Future<void> prepareNextVariant({required String productName}) async {
+    final updatedSkus = {
+      ...state.existingSkus,
+      if (state.productCode.trim().isNotEmpty)
+        state.productCode.trim().toLowerCase(),
+    };
+
+    String nextSku = '';
+    try {
+      final ds = _variantLocalDataSource ??
+          (getIt.isRegistered<VariantLocalDataSource>()
+              ? getIt<VariantLocalDataSource>()
+              : null);
+      if (ds != null) {
+        nextSku = await ds.autoGenerateSku(
+          productName,
+          state.color.isEmpty ? 'C' : state.color,
+          'N',
+        );
+      }
+    } catch (_) {}
+
+    emit(state.copyWith(
+      productCode: nextSku,
+      size: '',
+      quantity: 0,
+      status: VariantFormStatus.initial,
+      errorMessage: null,
+      existingSkus: updatedSkus,
+      hasDuplicateSku: false,
+      prefilledFromSibling: true,
+    ));
+  }
 }

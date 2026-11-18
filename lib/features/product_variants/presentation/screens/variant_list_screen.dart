@@ -265,10 +265,11 @@ class VariantListScreen extends StatelessWidget {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                     onPressed: () async {
-                      await Navigator.of(context).push(
-                        MaterialPageRoute(builder: (context) => VariantFormScreen(product: product)),
+                      final saved = await showVariantFormDialog(
+                        context,
+                        product: product,
                       );
-                      if (context.mounted) {
+                      if (saved == true && context.mounted) {
                         context.read<VariantCubit>().getVariants(product.id);
                       }
                     },
@@ -434,10 +435,12 @@ class VariantListScreen extends StatelessWidget {
                               icon: Icon(Icons.edit_outlined, size: 20, color: AppColors.primary),
                               tooltip: 'تعديل المقاس والأسعار',
                               onPressed: () async {
-                                await Navigator.of(context).push(
-                                  MaterialPageRoute(builder: (context) => VariantFormScreen(product: product, variant: variant)),
+                                final saved = await showVariantFormDialog(
+                                  context,
+                                  product: product,
+                                  variant: variant,
                                 );
-                                if (context.mounted) {
+                                if (saved == true && context.mounted) {
                                   context.read<VariantCubit>().getVariants(product.id);
                                 }
                               },
@@ -486,10 +489,11 @@ class VariantListScreen extends StatelessWidget {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () async {
-              await Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => VariantFormScreen(product: product)),
+              final saved = await showVariantFormDialog(
+                context,
+                product: product,
               );
-              if (context.mounted) {
+              if (saved == true && context.mounted) {
                 context.read<VariantCubit>().getVariants(product.id);
               }
             },
