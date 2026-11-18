@@ -5,6 +5,8 @@ class ReturnEntity extends Equatable {
   final String id;
   final String? saleId;
   final String? saleShortRef;
+  final String? customerName;
+  final String? customerPhone;
   final String cashierId;
   final String? cashierName;
   final String reason;
@@ -17,6 +19,8 @@ class ReturnEntity extends Equatable {
     required this.id,
     this.saleId,
     this.saleShortRef,
+    this.customerName,
+    this.customerPhone,
     required this.cashierId,
     this.cashierName,
     required this.reason,
@@ -31,6 +35,8 @@ class ReturnEntity extends Equatable {
         id,
         saleId,
         saleShortRef,
+        customerName,
+        customerPhone,
         cashierId,
         cashierName,
         reason,

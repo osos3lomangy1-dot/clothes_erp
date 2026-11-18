@@ -10,6 +10,18 @@ import '../../../pos/domain/entities/payment_split.dart';
 import '../../domain/entities/return_entity.dart';
 import '../../domain/entities/return_item_entity.dart';
 
+class ReturnableSaleRow {
+  final Sale sale;
+  final String? customerName;
+  final String? customerPhone;
+
+  const ReturnableSaleRow({
+    required this.sale,
+    this.customerName,
+    this.customerPhone,
+  });
+}
+
 abstract class ReturnsLocalDataSource {
   Future<void> processReturn({
     required String saleId,
@@ -22,6 +34,10 @@ abstract class ReturnsLocalDataSource {
     String? overridePin,
   });
   Future<List<Sale>> getRecentSales({int limit = 20});
+  Future<List<ReturnableSaleRow>> searchReturnableSales({
+    String? query,
+    int limit = 30,
+  });
   Future<List<SaleItem>> getSaleItems(String saleId);
   Future<Sale?> getSaleByIdOrRef(String query);
   Future<Map<String, int>> getAlreadyReturnedQuantities(String saleId);
@@ -294,10 +310,51 @@ class ReturnsLocalDataSourceImpl implements ReturnsLocalDataSource {
   @override
   Future<List<Sale>> getRecentSales({int limit = 20}) async {
     return (_db.select(_db.sales)
-          ..where((s) => s.deletedAt.isNull() & s.status.isNotIn(['returned']))
+          ..where((s) => s.deletedAt.isNull() & s.status.isNotIn(['returned', 'cancelled']))
           ..orderBy([(s) => OrderingTerm.desc(s.date)])
           ..limit(limit))
         .get();
+  }
+
+  @override
+  Future<List<ReturnableSaleRow>> searchReturnableSales({
+    String? query,
+    int limit = 30,
+  }) async {
+    final clean = (query ?? '').trim().replaceFirst(RegExp(r'^#'), '').trim();
+
+    final joinQuery = _db.select(_db.sales).join([
+      leftOuterJoin(
+        _db.customers,
+        _db.customers.id.equalsExp(_db.sales.customerId),
+      ),
+    ])
+      ..where(
+        _db.sales.deletedAt.isNull() &
+            _db.sales.status.isNotIn(const ['returned', 'cancelled']),
+      )
+      ..orderBy([OrderingTerm.desc(_db.sales.date)]);
+
+    if (clean.isNotEmpty) {
+      joinQuery.where(
+        _db.sales.id.contains(clean) |
+            _db.sales.shortRef.contains(clean) |
+            _db.customers.name.contains(clean) |
+            _db.customers.phone.contains(clean),
+      );
+    }
+
+    joinQuery.limit(limit);
+    final rows = await joinQuery.get();
+    return rows.map((row) {
+      final sale = row.readTable(_db.sales);
+      final cust = row.readTableOrNull(_db.customers);
+      return ReturnableSaleRow(
+        sale: sale,
+        customerName: cust?.name,
+        customerPhone: cust?.phone,
+      );
+    }).toList();
   }
 
   @override
@@ -307,8 +364,9 @@ class ReturnsLocalDataSourceImpl implements ReturnsLocalDataSource {
 
   @override
   Future<Sale?> getSaleByIdOrRef(String query) async {
+    final clean = query.trim().replaceFirst(RegExp(r'^#'), '').trim();
     return (_db.select(_db.sales)
-          ..where((s) => (s.id.equals(query) | s.shortRef.equals(query)) & s.deletedAt.isNull()))
+          ..where((s) => (s.id.equals(clean) | s.shortRef.equals(clean)) & s.deletedAt.isNull()))
         .getSingleOrNull();
   }
 
@@ -316,6 +374,7 @@ class ReturnsLocalDataSourceImpl implements ReturnsLocalDataSource {
   Future<List<ReturnEntity>> getReturnsHistory({int limit = 50}) async {
     final query = _db.select(_db.returns).join([
       leftOuterJoin(_db.sales, _db.sales.id.equalsExp(_db.returns.saleId)),
+      leftOuterJoin(_db.customers, _db.customers.id.equalsExp(_db.sales.customerId)),
       leftOuterJoin(_db.users, _db.users.id.equalsExp(_db.returns.cashierId)),
     ])..where(_db.returns.deletedAt.isNull())
       ..orderBy([OrderingTerm.desc(_db.returns.date)])
@@ -364,12 +423,15 @@ class ReturnsLocalDataSourceImpl implements ReturnsLocalDataSource {
     return rows.map((row) {
       final r = row.readTable(_db.returns);
       final s = row.readTableOrNull(_db.sales);
+      final c = row.readTableOrNull(_db.customers);
       final u = row.readTableOrNull(_db.users);
 
       return ReturnEntity(
         id: r.id,
         saleId: r.saleId,
         saleShortRef: s?.shortRef,
+        customerName: c?.name,
+        customerPhone: c?.phone,
         cashierId: r.cashierId,
         cashierName: u?.displayName ?? r.cashierId,
         reason: r.reason,

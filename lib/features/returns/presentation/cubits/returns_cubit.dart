@@ -46,25 +46,76 @@ class ReturnsCubit extends Cubit<ReturnsState> {
   }
 
   Future<void> searchSale(String query) async {
-    if (query.trim().isEmpty) {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) {
+      emit(state.copyWith(clearSelectedSale: true, returnItems: const []));
       await loadRecentSales();
       return;
     }
     emit(state.copyWith(isLoading: true, clearMessages: true));
     try {
-      final result = await _getRecentSalesUseCase.getSaleByIdOrRef(query.trim());
-      result.fold(
-        (failure) => emit(state.copyWith(isLoading: false, errorMessage: failure.message)),
-        (sale) {
-          if (sale != null) {
-            selectSale(sale);
+      final cleanNoHash = trimmed.replaceFirst(RegExp(r'^#'), '').trim();
+      final result = await _getRecentSalesUseCase.searchReturnableSales(trimmed);
+      await result.fold(
+        (failure) async => emit(
+          state.copyWith(isLoading: false, errorMessage: failure.message),
+        ),
+        (sales) async {
+          if (sales.isEmpty) {
+            // Distinguish between "never existed" vs "already fully returned"
+            final exact =
+                await _getRecentSalesUseCase.getSaleByIdOrRef(cleanNoHash);
+            final existingSale = exact.fold((_) => null, (s) => s);
+            if (existingSale != null) {
+              emit(
+                state.copyWith(
+                  isLoading: false,
+                  clearSelectedSale: true,
+                  recentSales: const [],
+                  errorMessage:
+                      'الفاتورة #$cleanNoHash تم إرجاع جميع أصنافها بالكامل مسبقاً ولا يمكن إرجاعها مرة أخرى.',
+                ),
+              );
+            } else {
+              emit(
+                state.copyWith(
+                  isLoading: false,
+                  clearSelectedSale: true,
+                  recentSales: const [],
+                  errorMessage:
+                      'لم يتم العثور على فواتير قابلة للإرجاع مطابقة لـ "$trimmed"',
+                ),
+              );
+            }
+            return;
+          }
+
+          // Auto-open directly ONLY when searching by exact invoice ID/ref and 1 result matches
+          final first = sales.first;
+          final isExactInvoiceMatch = sales.length == 1 &&
+              (first.id.toLowerCase() == cleanNoHash.toLowerCase() ||
+                  (first.shortRef?.toLowerCase() == cleanNoHash.toLowerCase()));
+          if (isExactInvoiceMatch) {
+            await selectSale(first);
           } else {
-            emit(state.copyWith(isLoading: false, errorMessage: 'لم يتم العثور على فاتورة مطابقة للبحث "$query"'));
+            emit(
+              state.copyWith(
+                isLoading: false,
+                clearSelectedSale: true,
+                returnItems: const [],
+                recentSales: sales,
+              ),
+            );
           }
         },
       );
     } catch (e) {
-      emit(state.copyWith(isLoading: false, errorMessage: 'تعذر البحث عن الفاتورة: $e'));
+      emit(
+        state.copyWith(
+          isLoading: false,
+          errorMessage: 'تعذر البحث عن الفاتورة: $e',
+        ),
+      );
     }
   }
 

@@ -16,6 +16,13 @@ class GetRecentSalesUseCase {
     return _repository.getRecentSales(limit: limit);
   }
 
+  Future<Either<Failure, List<SaleEntity>>> searchReturnableSales(
+    String query, {
+    int limit = 30,
+  }) {
+    return _repository.searchReturnableSales(query, limit: limit);
+  }
+
   Future<Either<Failure, List<ReturnItemEntity>>> getSaleItems(String saleId) {
     return _repository.getSaleItems(saleId);
   }

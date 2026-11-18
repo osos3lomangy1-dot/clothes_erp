@@ -310,83 +310,132 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       .length;
                   final outCount =
                       allItems.where((i) => i.quantity == 0).length;
+                  final inStockCount = allItems.length - lowCount - outCount;
+                  final expectedMarginPiasters =
+                      totalRetailPiasters - totalCostPiasters;
+                  final hasActiveFilters = _searchQuery.isNotEmpty ||
+                      _selectedCategory != null ||
+                      _statusFilter != _InventoryStatusFilter.all;
 
                   return Column(
                     children: [
-                      // Valuation KPIs + Search + Category + Sort + Status Chips
-                      Container(
-                        color: Colors.white,
-                        padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // KPI Cards Row
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Row(
-                                children: [
-                                  _kpiCard(
-                                    'الأصناف',
-                                    '${filteredItems.length}',
-                                    Icons.style_rounded,
-                                    AppColors.primary,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  _kpiCard(
-                                    'إجمالي القطع',
-                                    '$totalQty قطعة',
-                                    Icons.inventory_2_rounded,
-                                    Colors.indigo,
-                                  ),
-                                  if (isAdmin) ...[
-                                    const SizedBox(width: 10),
-                                    _kpiCard(
-                                      'قيمة المخزون (بالتكلفة)',
-                                      '${Money(totalCostPiasters).toDisplay()} ج.م',
-                                      Icons.account_balance_wallet_rounded,
-                                      Colors.teal.shade800,
-                                    ),
-                                    const SizedBox(width: 10),
-                                    _kpiCard(
-                                      'القيمة البيعية المتوقعة',
-                                      '${Money(totalRetailPiasters).toDisplay()} ج.م',
-                                      Icons.trending_up_rounded,
-                                      Colors.green.shade800,
-                                    ),
-                                  ],
-                                  const SizedBox(width: 10),
-                                  _kpiCard(
-                                    'منخفض / نفذ',
-                                    '$lowCount منخفض • $outCount نفذ',
-                                    Icons.warning_amber_rounded,
-                                    (lowCount + outCount) > 0
-                                        ? AppColors.error
-                                        : Colors.grey.shade600,
-                                  ),
-                                ],
+                      const Divider(height: 1),
+                      // Zone 1: Clean Equal-Width Executive KPI Cards on soft surface
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final cards = <Widget>[
+                              _executiveKpiCard(
+                                title: 'المخزون المتاح',
+                                value: '$totalQty قطعة',
+                                subtitle: '${filteredItems.length} صنف معروض',
+                                icon: Icons.inventory_2_outlined,
+                                accent: AppColors.primary,
                               ),
-                            ),
-                            const SizedBox(height: 12),
-                            // Search + Category + Sort
-                            Wrap(
-                              spacing: 10,
-                              runSpacing: 10,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              children: [
-                                SizedBox(
-                                  width: 340,
-                                  child: TextField(
+                              if (isAdmin)
+                                _executiveKpiCard(
+                                  title: 'رأس المال (بالتكلفة)',
+                                  value:
+                                      '${Money(totalCostPiasters).toDisplay()} ج.م',
+                                  subtitle: 'التكلفة الإجمالية للبضاعة',
+                                  icon: Icons.account_balance_wallet_outlined,
+                                  accent: Colors.teal.shade700,
+                                ),
+                              if (isAdmin)
+                                _executiveKpiCard(
+                                  title: 'القيمة البيعية المتوقعة',
+                                  value:
+                                      '${Money(totalRetailPiasters).toDisplay()} ج.م',
+                                  subtitle: expectedMarginPiasters >= 0
+                                      ? 'هامش ربح متوقع: +${Money(expectedMarginPiasters).toDisplay()} ج.م'
+                                      : 'هامش متوقع: ${Money(expectedMarginPiasters).toDisplay()} ج.م',
+                                  icon: Icons.trending_up_rounded,
+                                  accent: Colors.green.shade700,
+                                ),
+                              _executiveKpiCard(
+                                title: 'تنبيهات النقص',
+                                value: (lowCount + outCount) == 0
+                                    ? 'المخزون سليم'
+                                    : '${lowCount + outCount} صنف يحتاج متابعة',
+                                subtitle: '$lowCount منخفض • $outCount نفذ',
+                                icon: (lowCount + outCount) == 0
+                                    ? Icons.verified_outlined
+                                    : Icons.warning_amber_rounded,
+                                accent: outCount > 0
+                                    ? AppColors.error
+                                    : (lowCount > 0
+                                          ? Colors.orange.shade800
+                                          : Colors.teal.shade700),
+                              ),
+                            ];
+
+                            if (constraints.maxWidth >= 880) {
+                              return Row(
+                                children: [
+                                  for (var i = 0; i < cards.length; i++) ...[
+                                    Expanded(child: cards[i]),
+                                    if (i < cards.length - 1)
+                                      const SizedBox(width: 12),
+                                  ],
+                                ],
+                              );
+                            }
+
+                            final cardWidth =
+                                (constraints.maxWidth - 12) / 2;
+                            return Wrap(
+                              spacing: 12,
+                              runSpacing: 12,
+                              children: cards
+                                  .map(
+                                    (c) => SizedBox(
+                                      width: cardWidth > 220
+                                          ? cardWidth
+                                          : constraints.maxWidth,
+                                      child: c,
+                                    ),
+                                  )
+                                  .toList(),
+                            );
+                          },
+                        ),
+                      ),
+                      // Zone 2: Unified Compact Search, Filter & Segmented Status Bar
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              LayoutBuilder(
+                                builder: (context, c) {
+                                  final searchField = TextField(
                                     controller: _searchController,
                                     decoration: InputDecoration(
                                       hintText:
-                                          'ابحث بالاسم، الكود، اللون، المقاس، التصنيف...',
+                                          'ابحث بالاسم، الكود (SKU)، اللون، المقاس، أو التصنيف...',
+                                      hintStyle: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey.shade500,
+                                      ),
                                       prefixIcon: Icon(
-                                        Icons.search,
-                                        color: AppColors.primary,
+                                        Icons.search_rounded,
+                                        size: 20,
+                                        color: Colors.grey.shade600,
                                       ),
                                       suffixIcon: _searchQuery.isNotEmpty
                                           ? IconButton(
-                                              icon: const Icon(Icons.clear),
+                                              icon: const Icon(
+                                                Icons.close_rounded,
+                                                size: 18,
+                                              ),
                                               onPressed: () {
                                                 _searchController.clear();
                                                 setState(
@@ -395,21 +444,29 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                               },
                                             )
                                           : null,
+                                      filled: true,
+                                      fillColor: const Color(0xFFF8FAFC),
                                       isDense: true,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 11,
+                                      ),
                                     ),
                                     onChanged: (val) => setState(
-                                      () =>
-                                          _searchQuery = val.trim().toLowerCase(),
+                                      () => _searchQuery =
+                                          val.trim().toLowerCase(),
                                     ),
-                                  ),
-                                ),
-                                SizedBox(
-                                  width: 200,
-                                  child: DropdownButtonFormField<String?>(
+                                  );
+
+                                  final categoryDropdown =
+                                      DropdownButtonFormField<String?>(
                                     initialValue: _selectedCategory,
                                     isDense: true,
                                     decoration: const InputDecoration(
                                       labelText: 'التصنيف',
+                                      filled: true,
+                                      fillColor: Color(0xFFF8FAFC),
                                       contentPadding: EdgeInsets.symmetric(
                                         horizontal: 12,
                                         vertical: 10,
@@ -431,15 +488,16 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                     ],
                                     onChanged: (v) =>
                                         setState(() => _selectedCategory = v),
-                                  ),
-                                ),
-                                SizedBox(
-                                  width: 210,
-                                  child: DropdownButtonFormField<_InventorySort>(
+                                  );
+
+                                  final sortDropdown =
+                                      DropdownButtonFormField<_InventorySort>(
                                     initialValue: _sort,
                                     isDense: true,
                                     decoration: const InputDecoration(
-                                      labelText: 'ترتيب حسب',
+                                      labelText: 'الترتيب',
+                                      filled: true,
+                                      fillColor: Color(0xFFF8FAFC),
                                       contentPadding: EdgeInsets.symmetric(
                                         horizontal: 12,
                                         vertical: 10,
@@ -467,42 +525,114 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                     onChanged: (v) {
                                       if (v != null) setState(() => _sort = v);
                                     },
+                                  );
+
+                                  if (c.maxWidth >= 720) {
+                                    return Row(
+                                      children: [
+                                        Expanded(child: searchField),
+                                        const SizedBox(width: 10),
+                                        SizedBox(
+                                          width: 195,
+                                          child: categoryDropdown,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        SizedBox(
+                                          width: 195,
+                                          child: sortDropdown,
+                                        ),
+                                      ],
+                                    );
+                                  }
+
+                                  return Column(
+                                    children: [
+                                      searchField,
+                                      const SizedBox(height: 10),
+                                      Row(
+                                        children: [
+                                          Expanded(child: categoryDropdown),
+                                          const SizedBox(width: 10),
+                                          Expanded(child: sortDropdown),
+                                        ],
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF1F5F9),
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            _segmentTab(
+                                              _InventoryStatusFilter.all,
+                                              'الكل',
+                                              allItems.length,
+                                              AppColors.primary,
+                                            ),
+                                            _segmentTab(
+                                              _InventoryStatusFilter.inStock,
+                                              'متوفر',
+                                              inStockCount,
+                                              Colors.teal.shade700,
+                                            ),
+                                            _segmentTab(
+                                              _InventoryStatusFilter.lowStock,
+                                              'منخفض',
+                                              lowCount,
+                                              Colors.orange.shade800,
+                                            ),
+                                            _segmentTab(
+                                              _InventoryStatusFilter.outOfStock,
+                                              'نفذ',
+                                              outCount,
+                                              AppColors.error,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            // Status Filter Chips
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 6,
-                              children: [
-                                _statusChip(
-                                  _InventoryStatusFilter.all,
-                                  'الكل (${allItems.length})',
-                                  AppColors.primary,
-                                ),
-                                _statusChip(
-                                  _InventoryStatusFilter.inStock,
-                                  'متوفر (${allItems.length - lowCount - outCount})',
-                                  Colors.green.shade800,
-                                ),
-                                _statusChip(
-                                  _InventoryStatusFilter.lowStock,
-                                  'منخفض ($lowCount)',
-                                  Colors.orange.shade900,
-                                ),
-                                _statusChip(
-                                  _InventoryStatusFilter.outOfStock,
-                                  'نفذ ($outCount)',
-                                  AppColors.error,
-                                ),
-                              ],
-                            ),
-                          ],
+                                  if (hasActiveFilters) ...[
+                                    const SizedBox(width: 8),
+                                    TextButton.icon(
+                                      onPressed: () {
+                                        _searchController.clear();
+                                        setState(() {
+                                          _searchQuery = '';
+                                          _selectedCategory = null;
+                                          _statusFilter =
+                                              _InventoryStatusFilter.all;
+                                        });
+                                      },
+                                      icon: const Icon(
+                                        Icons.filter_alt_off_rounded,
+                                        size: 16,
+                                      ),
+                                      label: const Text(
+                                        'مسح الفلاتر',
+                                        style: TextStyle(fontSize: 12.5),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      const Divider(height: 1),
                       // Inventory List
                       Expanded(
                         child: filteredItems.isEmpty
@@ -711,6 +841,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
               children: [
                 if (isAdmin)
                   IconButton(
+                    visualDensity: VisualDensity.compact,
                     tooltip: 'تسوية رصيد / خصم تالف (للمدير فقط)',
                     icon: Icon(
                       Icons.tune_rounded,
@@ -725,6 +856,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     ),
                   ),
                 IconButton(
+                  visualDensity: VisualDensity.compact,
                   tooltip: 'سجل حركات الصنف',
                   icon: Icon(
                     Icons.history_rounded,
@@ -738,6 +870,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   ),
                 ),
                 IconButton(
+                  visualDensity: VisualDensity.compact,
                   tooltip: 'طباعة باركود الصنف',
                   icon: Icon(
                     Icons.qr_code_2_rounded,
@@ -754,56 +887,131 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  Widget _kpiCard(String label, String value, IconData icon, Color color) {
+  Widget _executiveKpiCard({
+    required String title,
+    required String value,
+    required String subtitle,
+    required IconData icon,
+    required Color accent,
+  }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade200),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
-              ),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.bold,
-                  color: color,
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 20, color: accent),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.onSurface,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: accent.withValues(alpha: 0.9),
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _statusChip(
+  Widget _segmentTab(
     _InventoryStatusFilter value,
     String label,
+    int count,
     Color activeColor,
   ) {
     final selected = _statusFilter == value;
-    return ChoiceChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: (_) => setState(() => _statusFilter = value),
-      selectedColor: activeColor.withValues(alpha: 0.14),
-      labelStyle: TextStyle(
-        fontSize: 12.5,
-        fontWeight: selected ? FontWeight.bold : FontWeight.w500,
-        color: selected ? activeColor : Colors.grey.shade800,
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () => setState(() => _statusFilter = value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: selected ? FontWeight.bold : FontWeight.w600,
+                color: selected ? activeColor : Colors.grey.shade700,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: selected
+                    ? activeColor.withValues(alpha: 0.12)
+                    : Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$count',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: selected ? activeColor : Colors.grey.shade700,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

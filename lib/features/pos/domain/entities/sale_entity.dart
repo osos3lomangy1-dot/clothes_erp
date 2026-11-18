@@ -5,6 +5,7 @@ import 'sale_item_entity.dart';
 
 class SaleEntity extends Equatable {
   final String id;
+  final String? shortRef;
   final DateTime date;
   final String cashierId;
   final String cashierName;
@@ -14,6 +15,8 @@ class SaleEntity extends Equatable {
   final int total;
   final String paymentMethod;
   final String? customerId;
+  final String? customerName;
+  final String? customerPhone;
   final String syncStatus;
   final List<PaymentSplit>? splits;
   final PromotionEvaluationResult? promotionResult;
@@ -21,6 +24,7 @@ class SaleEntity extends Equatable {
 
   const SaleEntity({
     required this.id,
+    this.shortRef,
     required this.date,
     required this.cashierId,
     this.cashierName = '',
@@ -30,6 +34,8 @@ class SaleEntity extends Equatable {
     this.total = 0,
     required this.paymentMethod,
     this.customerId,
+    this.customerName,
+    this.customerPhone,
     this.syncStatus = 'synced',
     this.splits,
     this.promotionResult,
@@ -39,6 +45,7 @@ class SaleEntity extends Equatable {
   @override
   List<Object?> get props => [
         id,
+        shortRef,
         date,
         cashierId,
         cashierName,
@@ -48,6 +55,8 @@ class SaleEntity extends Equatable {
         total,
         paymentMethod,
         customerId,
+        customerName,
+        customerPhone,
         syncStatus,
         splits,
         promotionResult,

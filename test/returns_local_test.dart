@@ -231,5 +231,92 @@ void main() {
       throwsA(anything),
     );
   });
+
+  test('searchReturnableSales searches by customer name, phone, and shortRef and excludes returned sales', () async {
+    final now = DateTime(2026, 6, 15, 14, 0);
+    await db.into(db.customers).insert(
+      CustomersCompanion.insert(
+        id: 'cust-ret-1',
+        branchId: 'b1',
+        name: 'أحمد منصور',
+        phone: '01098765432',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await db.into(db.sales).insert(
+      SalesCompanion.insert(
+        id: 'sale-open-1',
+        branchId: 'b1',
+        shortRef: 'S777001',
+        cashierId: 'cashier1',
+        customerId: const Value('cust-ret-1'),
+        subtotal: 30000,
+        discountType: 'none',
+        total: 30000,
+        paymentMethod: 'cash',
+        status: const Value('completed'),
+        date: now,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await db.into(db.sales).insert(
+      SalesCompanion.insert(
+        id: 'sale-already-returned',
+        branchId: 'b1',
+        shortRef: 'S777002',
+        cashierId: 'cashier1',
+        customerId: const Value('cust-ret-1'),
+        subtotal: 20000,
+        discountType: 'none',
+        total: 20000,
+        paymentMethod: 'cash',
+        status: const Value('returned'),
+        date: now,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+
+    // Search by customer name
+    final byName = await returnsDs.searchReturnableSales(query: 'أحمد');
+    expect(byName.length, 1);
+    expect(byName.first.sale.shortRef, 'S777001');
+    expect(byName.first.customerName, 'أحمد منصور');
+    expect(byName.first.customerPhone, '01098765432');
+
+    // Search by customer phone
+    final byPhone = await returnsDs.searchReturnableSales(query: '01098765432');
+    expect(byPhone.length, 1);
+    expect(byPhone.first.sale.id, 'sale-open-1');
+
+    // Search by #shortRef
+    final byRef = await returnsDs.searchReturnableSales(query: '#S777001');
+    expect(byRef.length, 1);
+    expect(byRef.first.sale.id, 'sale-open-1');
+
+    // Process return and verify getReturnsHistory includes customer name & phone
+    final vid = await seedProductAndVariant(initialQty: 5, price: 15000);
+    await returnsDs.processReturn(
+      saleId: 'sale-open-1',
+      items: [
+        ReturnItemEntity(
+          variantId: vid,
+          productName: 'T-Shirt',
+          maxQty: 1,
+          qty: 1,
+          refundUnitPrice: 15000,
+        ),
+      ],
+      reason: 'مقاس مختلف',
+      userId: 'cashier1',
+    );
+    final history = await returnsDs.getReturnsHistory();
+    expect(history.length, 1);
+    expect(history.first.customerName, 'أحمد منصور');
+    expect(history.first.customerPhone, '01098765432');
+    expect(history.first.saleShortRef, 'S777001');
+  });
 }
 

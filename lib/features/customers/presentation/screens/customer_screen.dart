@@ -288,68 +288,119 @@ class _CustomerViewState extends State<_CustomerView> {
             }
           }
 
+          final retailCount =
+              allCustomers.where((c) => !c.isWholesale && !c.isVip).length;
+          final discountedCount =
+              allCustomers.where((c) => c.discountPercent > 0).length;
+          final hasActiveFilters =
+              _searchCtrl.text.isNotEmpty || _filter != _CustomerFilter.all;
+
           return Column(
             children: [
-              // KPI Strip + Search + Filter Chips + Sort
-              Container(
-                color: Colors.white,
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // KPI Summary Strip
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          _kpiPill(
-                            'إجمالي العملاء',
-                            '${allCustomers.length}',
-                            Icons.people_alt_rounded,
-                            AppColors.primary,
-                          ),
-                          const SizedBox(width: 10),
-                          _kpiPill(
-                            'تجار جملة',
-                            '$wholesaleCount',
-                            Icons.storefront_rounded,
-                            Colors.purple.shade700,
-                          ),
-                          const SizedBox(width: 10),
-                          _kpiPill(
-                            'عملاء VIP',
-                            '$vipCount',
-                            Icons.workspace_premium_rounded,
-                            Colors.amber.shade800,
-                          ),
-                          const SizedBox(width: 10),
-                          _kpiPill(
-                            'عليهم أقساط نشطة',
-                            '$withInstCount عميل (${Money(totalInstRemaining).toDisplay()} ج.م)',
-                            Icons.credit_score_rounded,
-                            withInstCount > 0
-                                ? Colors.orange.shade800
-                                : Colors.teal,
-                          ),
-                        ],
+              const Divider(height: 1),
+              // Zone 1: Clean Equal-Width Executive KPI Cards
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final cards = <Widget>[
+                      _executiveKpiCard(
+                        title: 'إجمالي العملاء',
+                        value: '${allCustomers.length} عميل',
+                        subtitle: '$retailCount قطاعي • $discountedCount لديهم خصم',
+                        icon: Icons.people_alt_outlined,
+                        accent: AppColors.primary,
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    // Search + Sort Row
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
+                      _executiveKpiCard(
+                        title: 'تجار الجملة',
+                        value: '$wholesaleCount',
+                        subtitle: 'حسابات أسعار الجملة',
+                        icon: Icons.storefront_outlined,
+                        accent: Colors.purple.shade700,
+                      ),
+                      _executiveKpiCard(
+                        title: 'عملاء VIP',
+                        value: '$vipCount',
+                        subtitle: 'العملاء المميزون',
+                        icon: Icons.workspace_premium_outlined,
+                        accent: Colors.amber.shade800,
+                      ),
+                      _executiveKpiCard(
+                        title: 'أقساط نشطة',
+                        value: withInstCount == 0
+                            ? 'لا توجد أقساط'
+                            : '${Money(totalInstRemaining).toDisplay()} ج.م',
+                        subtitle: '$withInstCount عميل عليه أقساط',
+                        icon: Icons.credit_score_rounded,
+                        accent: withInstCount > 0
+                            ? Colors.orange.shade800
+                            : Colors.teal.shade700,
+                      ),
+                    ];
+
+                    if (constraints.maxWidth >= 880) {
+                      return Row(
+                        children: [
+                          for (var i = 0; i < cards.length; i++) ...[
+                            Expanded(child: cards[i]),
+                            if (i < cards.length - 1) const SizedBox(width: 12),
+                          ],
+                        ],
+                      );
+                    }
+
+                    final cardWidth = (constraints.maxWidth - 12) / 2;
+                    return Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: cards
+                          .map(
+                            (c) => SizedBox(
+                              width: cardWidth > 220
+                                  ? cardWidth
+                                  : constraints.maxWidth,
+                              child: c,
+                            ),
+                          )
+                          .toList(),
+                    );
+                  },
+                ),
+              ),
+              // Zone 2: Unified Search, Sort & Segmented Filter Bar
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      LayoutBuilder(
+                        builder: (context, c) {
+                          final searchField = TextField(
                             controller: _searchCtrl,
                             decoration: InputDecoration(
                               hintText: 'البحث عن عميل بالاسم أو رقم الهاتف...',
+                              hintStyle: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey.shade500,
+                              ),
                               prefixIcon: Icon(
-                                Icons.search,
-                                color: AppColors.primary,
+                                Icons.search_rounded,
+                                size: 20,
+                                color: Colors.grey.shade600,
                               ),
                               suffixIcon: _searchCtrl.text.isNotEmpty
                                   ? IconButton(
-                                      icon: const Icon(Icons.clear),
+                                      icon: const Icon(
+                                        Icons.close_rounded,
+                                        size: 18,
+                                      ),
                                       onPressed: () {
                                         _searchCtrl.clear();
                                         context
@@ -359,7 +410,13 @@ class _CustomerViewState extends State<_CustomerView> {
                                       },
                                     )
                                   : null,
+                              filled: true,
+                              fillColor: const Color(0xFFF8FAFC),
                               isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 11,
+                              ),
                             ),
                             onChanged: (query) {
                               context
@@ -367,16 +424,16 @@ class _CustomerViewState extends State<_CustomerView> {
                                   .searchCustomers(query);
                               setState(() {});
                             },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        SizedBox(
-                          width: 210,
-                          child: DropdownButtonFormField<_CustomerSort>(
+                          );
+
+                          final sortDropdown =
+                              DropdownButtonFormField<_CustomerSort>(
                             initialValue: _sort,
                             isDense: true,
                             decoration: const InputDecoration(
-                              labelText: 'ترتيب حسب',
+                              labelText: 'الترتيب',
+                              filled: true,
+                              fillColor: Color(0xFFF8FAFC),
                               contentPadding: EdgeInsets.symmetric(
                                 horizontal: 12,
                                 vertical: 10,
@@ -403,31 +460,108 @@ class _CustomerViewState extends State<_CustomerView> {
                             onChanged: (v) {
                               if (v != null) setState(() => _sort = v);
                             },
+                          );
+
+                          if (c.maxWidth >= 600) {
+                            return Row(
+                              children: [
+                                Expanded(child: searchField),
+                                const SizedBox(width: 10),
+                                SizedBox(width: 205, child: sortDropdown),
+                              ],
+                            );
+                          }
+                          return Column(
+                            children: [
+                              searchField,
+                              const SizedBox(height: 10),
+                              sortDropdown,
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF1F5F9),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _segmentTab(
+                                      _CustomerFilter.all,
+                                      'الكل',
+                                      allCustomers.length,
+                                      AppColors.primary,
+                                    ),
+                                    _segmentTab(
+                                      _CustomerFilter.retail,
+                                      'قطاعي',
+                                      retailCount,
+                                      Colors.blueGrey.shade700,
+                                    ),
+                                    _segmentTab(
+                                      _CustomerFilter.wholesale,
+                                      'جملة',
+                                      wholesaleCount,
+                                      Colors.purple.shade700,
+                                    ),
+                                    _segmentTab(
+                                      _CustomerFilter.vip,
+                                      'VIP',
+                                      vipCount,
+                                      Colors.amber.shade800,
+                                    ),
+                                    _segmentTab(
+                                      _CustomerFilter.discounted,
+                                      'لديهم خصم',
+                                      discountedCount,
+                                      Colors.green.shade700,
+                                    ),
+                                    _segmentTab(
+                                      _CustomerFilter.withInstallments,
+                                      'لديهم أقساط',
+                                      withInstCount,
+                                      Colors.orange.shade800,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    // Filter Chips
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      children: [
-                        _filterChip(_CustomerFilter.all, 'الكل'),
-                        _filterChip(_CustomerFilter.retail, 'قطاعي'),
-                        _filterChip(_CustomerFilter.wholesale, 'جملة'),
-                        _filterChip(_CustomerFilter.vip, 'VIP'),
-                        _filterChip(_CustomerFilter.discounted, 'لديهم خصم'),
-                        _filterChip(
-                          _CustomerFilter.withInstallments,
-                          'لديهم أقساط ($withInstCount)',
-                        ),
-                      ],
-                    ),
-                  ],
+                          if (hasActiveFilters) ...[
+                            const SizedBox(width: 8),
+                            TextButton.icon(
+                              onPressed: () {
+                                _searchCtrl.clear();
+                                context.read<CustomerCubit>().searchCustomers(
+                                  '',
+                                );
+                                setState(() => _filter = _CustomerFilter.all);
+                              },
+                              icon: const Icon(
+                                Icons.filter_alt_off_rounded,
+                                size: 16,
+                              ),
+                              label: const Text(
+                                'مسح الفلاتر',
+                                style: TextStyle(fontSize: 12.5),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const Divider(height: 1),
               Expanded(
                 child: Builder(
                   builder: (context) {
@@ -661,6 +795,7 @@ class _CustomerViewState extends State<_CustomerView> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
+                    visualDensity: VisualDensity.compact,
                     icon: const Icon(
                       Icons.account_balance_wallet_outlined,
                       color: Colors.teal,
@@ -673,6 +808,7 @@ class _CustomerViewState extends State<_CustomerView> {
                     ),
                   ),
                   IconButton(
+                    visualDensity: VisualDensity.compact,
                     icon: Icon(
                       Icons.chat_rounded,
                       color: Colors.green.shade700,
@@ -682,6 +818,7 @@ class _CustomerViewState extends State<_CustomerView> {
                     onPressed: () => _openWhatsApp(customer),
                   ),
                   IconButton(
+                    visualDensity: VisualDensity.compact,
                     icon: Icon(
                       Icons.copy_rounded,
                       color: Colors.grey.shade700,
@@ -691,6 +828,7 @@ class _CustomerViewState extends State<_CustomerView> {
                     onPressed: () => _copyPhone(customer),
                   ),
                   IconButton(
+                    visualDensity: VisualDensity.compact,
                     icon: Icon(
                       Icons.edit_outlined,
                       color: AppColors.primary,
@@ -703,6 +841,7 @@ class _CustomerViewState extends State<_CustomerView> {
                   ),
                   if (isAdmin)
                     IconButton(
+                      visualDensity: VisualDensity.compact,
                       icon: const Icon(
                         Icons.delete_outline,
                         color: AppColors.error,
@@ -719,52 +858,131 @@ class _CustomerViewState extends State<_CustomerView> {
     );
   }
 
-  Widget _kpiPill(String label, String value, IconData icon, Color color) {
+  Widget _executiveKpiCard({
+    required String title,
+    required String value,
+    required String subtitle,
+    required IconData icon,
+    required Color accent,
+  }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade200),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 17, color: color),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
-              ),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.bold,
-                  color: color,
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 20, color: accent),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.onSurface,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: accent.withValues(alpha: 0.9),
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _filterChip(_CustomerFilter value, String label) {
+  Widget _segmentTab(
+    _CustomerFilter value,
+    String label,
+    int count,
+    Color activeColor,
+  ) {
     final selected = _filter == value;
-    return ChoiceChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: (_) => setState(() => _filter = value),
-      selectedColor: AppColors.primary.withValues(alpha: 0.14),
-      labelStyle: TextStyle(
-        fontSize: 12.5,
-        fontWeight: selected ? FontWeight.bold : FontWeight.w500,
-        color: selected ? AppColors.primary : Colors.grey.shade800,
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () => setState(() => _filter = value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: selected ? FontWeight.bold : FontWeight.w600,
+                color: selected ? activeColor : Colors.grey.shade700,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: selected
+                    ? activeColor.withValues(alpha: 0.12)
+                    : Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$count',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: selected ? activeColor : Colors.grey.shade700,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

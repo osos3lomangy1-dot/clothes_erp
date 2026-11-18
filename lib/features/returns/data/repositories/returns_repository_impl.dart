@@ -38,23 +38,48 @@ class ReturnsRepositoryImpl implements ReturnsRepository {
   @override
   Future<Either<Failure, List<SaleEntity>>> getRecentSales({int limit = 20}) async {
     try {
-      final rows = await _localDataSource.getRecentSales(limit: limit);
-      final entities = rows
-          .map((s) => SaleEntity(
-                id: s.id,
-                date: s.date,
-                cashierId: s.cashierId,
-                subtotal: s.subtotal,
-                discount: s.discountAmount,
-                total: s.total,
-                paymentMethod: s.paymentMethod,
-                items: const [],
-              ))
-          .toList();
-      return Right(entities);
+      final rows = await _localDataSource.searchReturnableSales(limit: limit);
+      return Right(_mapReturnableRows(rows));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
+  }
+
+  @override
+  Future<Either<Failure, List<SaleEntity>>> searchReturnableSales(
+    String query, {
+    int limit = 30,
+  }) async {
+    try {
+      final rows = await _localDataSource.searchReturnableSales(
+        query: query,
+        limit: limit,
+      );
+      return Right(_mapReturnableRows(rows));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  List<SaleEntity> _mapReturnableRows(List<ReturnableSaleRow> rows) {
+    return rows
+        .map(
+          (r) => SaleEntity(
+            id: r.sale.id,
+            shortRef: r.sale.shortRef,
+            date: r.sale.date,
+            cashierId: r.sale.cashierId,
+            subtotal: r.sale.subtotal,
+            discount: r.sale.discountAmount,
+            total: r.sale.total,
+            paymentMethod: r.sale.paymentMethod,
+            customerId: r.sale.customerId,
+            customerName: r.customerName,
+            customerPhone: r.customerPhone,
+            items: const [],
+          ),
+        )
+        .toList();
   }
 
   @override

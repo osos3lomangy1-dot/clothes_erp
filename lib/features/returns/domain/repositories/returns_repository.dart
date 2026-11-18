@@ -13,6 +13,10 @@ abstract class ReturnsRepository {
     String paymentMethod = 'cash',
   });
   Future<Either<Failure, List<SaleEntity>>> getRecentSales({int limit = 20});
+  Future<Either<Failure, List<SaleEntity>>> searchReturnableSales(
+    String query, {
+    int limit = 30,
+  });
   Future<Either<Failure, List<ReturnItemEntity>>> getSaleItems(String saleId);
   Future<Either<Failure, SaleEntity?>> getSaleByIdOrRef(String query);
   Future<Either<Failure, List<ReturnEntity>>> getReturnsHistory({int limit = 50});

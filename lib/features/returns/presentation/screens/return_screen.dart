@@ -19,14 +19,33 @@ class ReturnScreen extends StatefulWidget {
 
 class _ReturnScreenState extends State<ReturnScreen> {
   final _searchCtrl = TextEditingController();
+  final _historySearchCtrl = TextEditingController();
   final _reasonCtrl = TextEditingController();
   final _dateFormat = DateFormat('yyyy/MM/dd - hh:mm a');
+  String _historyQuery = '';
 
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _historySearchCtrl.dispose();
     _reasonCtrl.dispose();
     super.dispose();
+  }
+
+  String _formatPayment(String raw) {
+    switch (raw.toLowerCase().trim()) {
+      case 'cash':
+        return 'نقدي';
+      case 'card':
+      case 'visa':
+        return 'بطاقة';
+      case 'installment':
+        return 'تقسيط';
+      case 'mixed':
+        return 'مختلط';
+      default:
+        return raw;
+    }
   }
 
   @override
@@ -127,7 +146,7 @@ class _ReturnScreenState extends State<ReturnScreen> {
                 child: TextField(
                   controller: _searchCtrl,
                   decoration: InputDecoration(
-                    labelText: 'ابحث برقم الفاتورة (مثال: #S101 أو المعرف)...',
+                    labelText: 'ابحث برقم الفاتورة (#S...) أو اسم العميل أو رقم الهاتف...',
                     border: const OutlineInputBorder(),
                     prefixIcon: Icon(Icons.search, color: AppColors.primary),
                     suffixIcon: _searchCtrl.text.isNotEmpty
@@ -135,11 +154,13 @@ class _ReturnScreenState extends State<ReturnScreen> {
                             icon: const Icon(Icons.clear, size: 18),
                             onPressed: () {
                               _searchCtrl.clear();
+                              setState(() {});
                               context.read<ReturnsCubit>().loadRecentSales();
                             },
                           )
                         : null,
                   ),
+                  onChanged: (_) => setState(() {}),
                   onSubmitted: (val) => context.read<ReturnsCubit>().searchSale(val),
                 ),
               ),
@@ -246,6 +267,12 @@ class _ReturnScreenState extends State<ReturnScreen> {
             itemBuilder: (context, index) {
               final sale = state.recentSales[index];
               final dateStr = _dateFormat.format(sale.date);
+              final refDisplay = (sale.shortRef != null && sale.shortRef!.isNotEmpty)
+                  ? sale.shortRef!
+                  : (sale.id.length > 8 ? sale.id.substring(0, 8) : sale.id);
+              final custLabel = (sale.customerName != null && sale.customerName!.isNotEmpty)
+                  ? '${sale.customerName}${sale.customerPhone != null && sale.customerPhone!.isNotEmpty ? ' (${sale.customerPhone})' : ''}'
+                  : 'عميل نقدي';
 
               return Container(
                 decoration: BoxDecoration(
@@ -262,12 +289,34 @@ class _ReturnScreenState extends State<ReturnScreen> {
                     ),
                     child: Icon(Icons.receipt_rounded, color: AppColors.primary),
                   ),
-                  title: Text(
-                    'فاتورة #${sale.id.length > 8 ? sale.id.substring(0, 8) : sale.id} • الإجمالي: ${Money(sale.total).toDisplay()} ج.م',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  title: Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(
+                        'فاتورة #$refDisplay • الإجمالي: ${Money(sale.total).toDisplay()} ج.م',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          custLabel,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.blue.shade900,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   subtitle: Text(
-                    'التاريخ: $dateStr • طريقة الدفع: ${sale.paymentMethod}',
+                    'التاريخ: $dateStr • طريقة الدفع: ${_formatPayment(sale.paymentMethod)}',
                     style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                   ),
                   trailing: Icon(Icons.chevron_left_rounded, color: AppColors.primary),
@@ -296,19 +345,22 @@ class _ReturnScreenState extends State<ReturnScreen> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 12,
+              runSpacing: 8,
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'الفاتورة المحددة: #${sale.id.length > 8 ? sale.id.substring(0, 8) : sale.id}',
+                      'الفاتورة المحددة: #${(sale.shortRef != null && sale.shortRef!.isNotEmpty) ? sale.shortRef : (sale.id.length > 8 ? sale.id.substring(0, 8) : sale.id)}',
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'التاريخ: $dateStr • طريقة الدفع: ${sale.paymentMethod}',
+                      'العميل: ${sale.customerName ?? 'عميل نقدي'}${sale.customerPhone != null && sale.customerPhone!.isNotEmpty ? ' (${sale.customerPhone})' : ''} • التاريخ: $dateStr • الدفع: ${_formatPayment(sale.paymentMethod)}',
                       style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
                     ),
                   ],
@@ -493,48 +545,101 @@ class _ReturnScreenState extends State<ReturnScreen> {
   // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildReturnsHistoryTab(BuildContext context, ReturnsState state) {
-    if (state.returnsHistory.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: () => context.read<ReturnsCubit>().loadReturnsHistory(),
-        child: ListView(
-          children: [
-            SizedBox(
-              height: MediaQuery.of(context).size.height * 0.5,
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.assignment_return_outlined, size: 64, color: Colors.grey.shade400),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'لا توجد فواتير مرتجعات مسجلة حتى الآن',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'عند تنفيذ أي عملية إرجاع ستظهر تفاصيلها وسجلها هنا تلقائياً',
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+    final q = _historyQuery.trim().toLowerCase().replaceFirst(RegExp(r'^#'), '');
+    final filtered = q.isEmpty
+        ? state.returnsHistory
+        : state.returnsHistory.where((ret) {
+            return ret.id.toLowerCase().contains(q) ||
+                (ret.saleShortRef?.toLowerCase().contains(q) ?? false) ||
+                (ret.customerName?.toLowerCase().contains(q) ?? false) ||
+                (ret.customerPhone?.toLowerCase().contains(q) ?? false) ||
+                ret.reason.toLowerCase().contains(q);
+          }).toList();
 
-    return RefreshIndicator(
-      onRefresh: () => context.read<ReturnsCubit>().loadReturnsHistory(),
-      child: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: state.returnsHistory.length,
-        separatorBuilder: (_, index) => const SizedBox(height: 10),
-        itemBuilder: (context, index) {
-          final ret = state.returnsHistory[index];
-          return _buildReturnHistoryCard(ret);
-        },
-      ),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+          child: TextField(
+            controller: _historySearchCtrl,
+            decoration: InputDecoration(
+              hintText: 'ابحث في سجل المرتجعات باسم العميل، الهاتف، رقم الفاتورة، أو السبب...',
+              prefixIcon: Icon(Icons.search_rounded, color: AppColors.primary),
+              suffixIcon: _historyQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear_rounded, size: 18),
+                      onPressed: () {
+                        _historySearchCtrl.clear();
+                        setState(() => _historyQuery = '');
+                      },
+                    )
+                  : null,
+              filled: true,
+              fillColor: Colors.white,
+              isDense: true,
+            ),
+            onChanged: (val) => setState(() => _historyQuery = val),
+          ),
+        ),
+        Expanded(
+          child: filtered.isEmpty
+              ? RefreshIndicator(
+                  onRefresh: () =>
+                      context.read<ReturnsCubit>().loadReturnsHistory(),
+                  child: ListView(
+                    children: [
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.45,
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.assignment_return_outlined,
+                                size: 64,
+                                color: Colors.grey.shade400,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                q.isNotEmpty
+                                    ? 'لا توجد مرتجعات مطابقة للبحث "$_historyQuery"'
+                                    : 'لا توجد فواتير مرتجعات مسجلة حتى الآن',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              if (q.isEmpty) ...[
+                                const SizedBox(height: 6),
+                                Text(
+                                  'عند تنفيذ أي عملية إرجاع ستظهر تفاصيلها وسجلها هنا تلقائياً',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: () =>
+                      context.read<ReturnsCubit>().loadReturnsHistory(),
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, index) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      return _buildReturnHistoryCard(filtered[index]);
+                    },
+                  ),
+                ),
+        ),
+      ],
     );
   }
 
@@ -555,13 +660,15 @@ class _ReturnScreenState extends State<ReturnScreen> {
           ),
           child: Icon(Icons.assignment_return_rounded, color: Colors.red.shade700),
         ),
-        title: Row(
+        title: Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             Text(
               'مرتجع #${ret.id.length > 8 ? ret.id.substring(0, 8) : ret.id}',
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
             ),
-            const SizedBox(width: 8),
             if (ret.saleShortRef != null)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -574,27 +681,39 @@ class _ReturnScreenState extends State<ReturnScreen> {
                   style: TextStyle(color: Colors.blue.shade900, fontSize: 11, fontWeight: FontWeight.bold),
                 ),
               ),
-            const Spacer(),
+            if (ret.customerName != null && ret.customerName!.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.teal.shade50,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '${ret.customerName}${ret.customerPhone != null && ret.customerPhone!.isNotEmpty ? ' • ${ret.customerPhone}' : ''}',
+                  style: TextStyle(color: Colors.teal.shade900, fontSize: 11, fontWeight: FontWeight.w600),
+                ),
+              ),
             Text(
               '-${Money(ret.refundAmount).toDisplay()} ج.م',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.red.shade700),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15.5, color: Colors.red.shade700),
             ),
           ],
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 4.0),
-          child: Row(
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text(
                 dateStr,
                 style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
               ),
-              const SizedBox(width: 12),
               Text(
                 'بواسطة: ${ret.cashierName ?? ret.cashierId}',
                 style: TextStyle(color: Colors.grey.shade700, fontSize: 11),
               ),
-              const SizedBox(width: 12),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                 decoration: BoxDecoration(

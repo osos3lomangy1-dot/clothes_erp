@@ -133,46 +133,36 @@ class _InvoicesViewState extends State<_InvoicesView> {
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
-            // Search & Date Filter Bar
-            Row(
-              children: [
-                Expanded(
-                  flex: 4,
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: (q) => context.read<InvoicesCubit>().search(q),
-                    decoration: InputDecoration(
-                      hintText:
-                          'ابحث برقم الفاتورة (#S...) أو اسم العميل أو الموبايل...',
-                      prefixIcon: const Icon(Icons.search_rounded),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear_rounded),
-                              onPressed: () {
-                                _searchController.clear();
-                                context.read<InvoicesCubit>().search('');
-                              },
-                            )
-                          : null,
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
+            // Search & Date Filter Bar (Responsive: single Row on wide, Wrap below on compact)
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final searchField = TextField(
+                  controller: _searchController,
+                  onChanged: (q) => context.read<InvoicesCubit>().search(q),
+                  decoration: InputDecoration(
+                    hintText:
+                        'ابحث برقم الفاتورة (#S...) أو اسم العميل أو الموبايل...',
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear_rounded),
+                            onPressed: () {
+                              _searchController.clear();
+                              context.read<InvoicesCubit>().search('');
+                            },
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: Colors.white,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                _filterChip('الكل', 'all'),
-                const SizedBox(width: 6),
-                _filterChip('اليوم', 'today'),
-                const SizedBox(width: 6),
-                _filterChip('آخر 7 أيام', 'week'),
-                const SizedBox(width: 6),
-                _filterChip('هذا الشهر', 'month'),
-                const SizedBox(width: 6),
-                OutlinedButton.icon(
+                );
+
+                final customDateBtn = OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -184,7 +174,7 @@ class _InvoicesViewState extends State<_InvoicesView> {
                     ),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
-                      vertical: 12,
+                      vertical: 10,
                     ),
                   ),
                   onPressed: _pickCustomDateRange,
@@ -204,38 +194,73 @@ class _InvoicesViewState extends State<_InvoicesView> {
                           : Colors.grey.shade700,
                     ),
                   ),
-                ),
-              ],
+                );
+
+                final dateChips = Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    _filterChip('الكل', 'all'),
+                    _filterChip('اليوم', 'today'),
+                    _filterChip('آخر 7 أيام', 'week'),
+                    _filterChip('هذا الشهر', 'month'),
+                    customDateBtn,
+                  ],
+                );
+
+                if (constraints.maxWidth >= 880) {
+                  return Row(
+                    children: [
+                      Expanded(child: searchField),
+                      const SizedBox(width: 12),
+                      dateChips,
+                    ],
+                  );
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    searchField,
+                    const SizedBox(height: 10),
+                    dateChips,
+                  ],
+                );
+              },
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
 
             // Status Filter Tabs (الكل | المكتملة | المرتجعات)
             BlocBuilder<InvoicesCubit, InvoicesState>(
               builder: (context, state) {
-                return Row(
-                  children: [
-                    _statusChip(
-                      context,
-                      'جميع الفواتير',
-                      'all',
-                      state.statusFilter,
-                    ),
-                    const SizedBox(width: 8),
-                    _statusChip(
-                      context,
-                      'المبيعات المكتملة',
-                      'completed',
-                      state.statusFilter,
-                    ),
-                    const SizedBox(width: 8),
-                    _statusChip(
-                      context,
-                      'المرتجعات',
-                      'returned',
-                      state.statusFilter,
-                      badgeCount: state.returnedInvoicesCount,
-                    ),
-                  ],
+                return Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      _statusChip(
+                        context,
+                        'جميع الفواتير',
+                        'all',
+                        state.statusFilter,
+                      ),
+                      _statusChip(
+                        context,
+                        'المبيعات المكتملة',
+                        'completed',
+                        state.statusFilter,
+                      ),
+                      _statusChip(
+                        context,
+                        'المرتجعات',
+                        'returned',
+                        state.statusFilter,
+                        badgeCount: state.returnedInvoicesCount,
+                      ),
+                    ],
+                  ),
                 );
               },
             ),
@@ -353,7 +378,7 @@ class _InvoicesViewState extends State<_InvoicesView> {
         onTap: () => _openDetails(invoice),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(
             children: [
               Container(
@@ -371,25 +396,29 @@ class _InvoicesViewState extends State<_InvoicesView> {
                   color: invoice.status == 'returned'
                       ? Colors.red.shade700
                       : AppColors.primary,
-                  size: 24,
+                  size: 22,
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 flex: 3,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
                           'فاتورة #${invoice.shortRef}',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 15,
+                            fontSize: 14.5,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 6,
@@ -405,7 +434,7 @@ class _InvoicesViewState extends State<_InvoicesView> {
                           child: Text(
                             statusLabel,
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 10.5,
                               fontWeight: FontWeight.bold,
                               color: statusTextColor,
                             ),
@@ -413,17 +442,20 @@ class _InvoicesViewState extends State<_InvoicesView> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 3),
                     Text(
                       dateFormat.format(invoice.date),
                       style: TextStyle(
                         color: Colors.grey.shade600,
                         fontSize: 11,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               Expanded(
                 flex: 2,
                 child: Column(
@@ -435,6 +467,8 @@ class _InvoicesViewState extends State<_InvoicesView> {
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       'كاشير: ${invoice.cashierName}',
@@ -442,12 +476,15 @@ class _InvoicesViewState extends State<_InvoicesView> {
                         color: Colors.grey.shade600,
                         fontSize: 11,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
-              Expanded(
-                flex: 2,
+              const SizedBox(width: 8),
+              Flexible(
+                flex: 1,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -462,7 +499,7 @@ class _InvoicesViewState extends State<_InvoicesView> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    invoice.paymentMethod,
+                    _formatPaymentLabel(invoice.paymentMethod),
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
@@ -475,10 +512,12 @@ class _InvoicesViewState extends State<_InvoicesView> {
                           : Colors.blue.shade800,
                     ),
                     textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -486,7 +525,7 @@ class _InvoicesViewState extends State<_InvoicesView> {
                     '${Money(invoice.total).toDisplay()} ج.م',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                      fontSize: 15,
                       color: invoice.status == 'returned'
                           ? Colors.red.shade700
                           : AppColors.primary,
@@ -501,12 +540,13 @@ class _InvoicesViewState extends State<_InvoicesView> {
                   ),
                 ],
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 8),
               // Quick Action Icons
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
+                    visualDensity: VisualDensity.compact,
                     tooltip: 'تنزيل PDF',
                     icon: const Icon(
                       Icons.picture_as_pdf_rounded,
@@ -638,26 +678,48 @@ class _InvoicesViewState extends State<_InvoicesView> {
             child: Icon(icon, color: color, size: 20),
           ),
           const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: color,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
+  }
+
+  String _formatPaymentLabel(String raw) {
+    switch (raw.toLowerCase().trim()) {
+      case 'cash':
+        return 'نقدي';
+      case 'card':
+      case 'visa':
+        return 'بطاقة';
+      case 'installment':
+        return 'تقسيط';
+      case 'mixed':
+        return 'مختلط';
+      default:
+        return raw;
+    }
   }
 }

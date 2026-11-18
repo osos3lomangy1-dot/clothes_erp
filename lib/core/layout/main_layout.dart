@@ -43,7 +43,7 @@ class MainLayout extends StatefulWidget {
 
 class _MainLayoutState extends State<MainLayout> {
   final GlobalKey<NavigatorState> _contentNavKey = GlobalKey<NavigatorState>();
-  bool _isCollapsed = false;
+  bool? _userCollapsedOverride;
   bool _isSyncing = false;
   bool _cloudSyncEnabled = false;
   String _activeTitle = 'لوحة التحكم';
@@ -144,27 +144,37 @@ class _MainLayoutState extends State<MainLayout> {
     return features[key] ?? def.defaultEnabled;
   }
 
+  bool get _isCollapsed {
+    if (_userCollapsedOverride != null) return _userCollapsedOverride!;
+    final width = MediaQuery.maybeSizeOf(context)?.width ?? 1280;
+    // Auto-collapse sidebar on narrow screens (< 720) to prevent horizontal cramping
+    return width < 720;
+  }
+
   @override
   Widget build(BuildContext context) {
     final featureGate = getIt<FeatureGate>();
+    final collapsed = _isCollapsed;
     return ValueListenableBuilder<AppBrandingConfig>(
       valueListenable: AppBranding.notifier,
       builder: (context, branding, _) {
         return Scaffold(
           body: Row(
             children: [
-              SizedBox(
-                width: _isCollapsed ? 80 : 250,
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                width: collapsed ? 76 : 232,
                 child: Material(
                   color: branding.primaryColor,
                   child: Column(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                         child: Row(
-                          mainAxisAlignment: _isCollapsed ? MainAxisAlignment.center : MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment: collapsed ? MainAxisAlignment.center : MainAxisAlignment.spaceBetween,
                           children: [
-                            if (!_isCollapsed) ...[
+                            if (!collapsed) ...[
                               Expanded(
                                 child: Row(
                                   children: [
@@ -199,9 +209,9 @@ class _MainLayoutState extends State<MainLayout> {
                               ),
                             ],
                         IconButton(
-                          icon: Icon(_isCollapsed ? Icons.menu_rounded : Icons.menu_open_rounded, color: Colors.white),
-                          tooltip: _isCollapsed ? 'توسيع القائمة' : 'طي القائمة',
-                          onPressed: () => setState(() => _isCollapsed = !_isCollapsed),
+                          icon: Icon(collapsed ? Icons.menu_rounded : Icons.menu_open_rounded, color: Colors.white),
+                          tooltip: collapsed ? 'توسيع القائمة' : 'طي القائمة',
+                          onPressed: () => setState(() => _userCollapsedOverride = !collapsed),
                         ),
                       ],
                     ),
