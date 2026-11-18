@@ -117,7 +117,7 @@ void main() {
 
       // Reset in-memory state and verify reload from DB
       AppBranding.apply(AppBrandingConfig.defaults);
-      expect(AppBranding.current.appName, equals('سيستم مبيعات'));
+      expect(AppBranding.current.appName, equals('بيعة'));
 
       await AppBranding.loadFromFeatureGate(gate);
       expect(AppBranding.current.appName, equals('متجر الأناقة'));
@@ -176,7 +176,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Sidebar & initial content are visible
-      expect(find.text('سيستم مبيعات'), findsOneWidget);
+      expect(find.text('بيعة'), findsOneWidget);
       expect(find.text('لوحة التحكم'), findsOneWidget);
       expect(find.text('فتح صفحة فرعية'), findsOneWidget);
 
@@ -187,7 +187,7 @@ void main() {
       // Sub-page is displayed AND Sidebar is STILL visible!
       expect(find.text('صفحة فرعية داخل اللايوت'), findsOneWidget);
       expect(find.text('لوحة التحكم'), findsOneWidget);
-      expect(find.text('سيستم مبيعات'), findsOneWidget);
+      expect(find.text('بيعة'), findsOneWidget);
 
       // Live branding update immediately updates Sidebar title!
       AppBranding.apply(

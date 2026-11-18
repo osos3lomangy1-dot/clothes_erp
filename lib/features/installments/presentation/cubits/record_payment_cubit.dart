@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/features/feature_gate.dart';
 import '../../domain/facades/installments_facade.dart';
+import '../../domain/services/installment_calculator.dart';
 
 enum RecordPaymentStatus { initial, loading, success, error }
 
@@ -10,6 +11,8 @@ class RecordPaymentState extends Equatable {
   final RecordPaymentStatus status;
   final int remainingPiasters;
   final int monthlyAmountPiasters;
+  final int nextInstallmentRemainingPiasters;
+  final int? nextInstallmentNumber;
   final DateTime? nextDueDate;
   final bool isPinRequired;
   final bool isSubmitting;
@@ -19,6 +22,8 @@ class RecordPaymentState extends Equatable {
     this.status = RecordPaymentStatus.initial,
     this.remainingPiasters = 0,
     this.monthlyAmountPiasters = 0,
+    this.nextInstallmentRemainingPiasters = 0,
+    this.nextInstallmentNumber,
     this.nextDueDate,
     this.isPinRequired = true,
     this.isSubmitting = false,
@@ -29,6 +34,8 @@ class RecordPaymentState extends Equatable {
     RecordPaymentStatus? status,
     int? remainingPiasters,
     int? monthlyAmountPiasters,
+    int? nextInstallmentRemainingPiasters,
+    int? nextInstallmentNumber,
     DateTime? nextDueDate,
     bool? isPinRequired,
     bool? isSubmitting,
@@ -38,6 +45,9 @@ class RecordPaymentState extends Equatable {
       status: status ?? this.status,
       remainingPiasters: remainingPiasters ?? this.remainingPiasters,
       monthlyAmountPiasters: monthlyAmountPiasters ?? this.monthlyAmountPiasters,
+      nextInstallmentRemainingPiasters:
+          nextInstallmentRemainingPiasters ?? this.nextInstallmentRemainingPiasters,
+      nextInstallmentNumber: nextInstallmentNumber ?? this.nextInstallmentNumber,
       nextDueDate: nextDueDate ?? this.nextDueDate,
       isPinRequired: isPinRequired ?? this.isPinRequired,
       isSubmitting: isSubmitting ?? this.isSubmitting,
@@ -50,6 +60,8 @@ class RecordPaymentState extends Equatable {
         status,
         remainingPiasters,
         monthlyAmountPiasters,
+        nextInstallmentRemainingPiasters,
+        nextInstallmentNumber,
         nextDueDate,
         isPinRequired,
         isSubmitting,
@@ -86,6 +98,31 @@ class RecordPaymentCubit extends Cubit<RecordPaymentState> {
 
     final contract = contractRes.getOrElse(() => throw Exception());
 
+    // Reconstruct schedule & find the actual next unpaid installment
+    final paymentsRes = await _facade.listPayments(contractId);
+    final payments = paymentsRes.getOrElse(() => []);
+    final nonDownPaymentsTotal = payments
+        .where((p) => p.receiptNumber != 'DOWN_PAYMENT')
+        .fold<int>(0, (sum, p) => sum + p.amountPiasters);
+    final totalScheduled = contract.remainingPiasters + nonDownPaymentsTotal;
+    final exactTotalInterest =
+        (totalScheduled - contract.principalPiasters).clamp(0, totalScheduled);
+    final schedule = _facade
+        .calculateSchedule(
+          principalPiasters: contract.totalPiasters,
+          durationMonths: contract.durationMonths,
+          interestModel: InstallmentInterestModel.fixed,
+          interestValue: exactTotalInterest,
+          downPaymentPiasters: contract.downPaymentPiasters,
+          startDate: contract.startDate,
+        )
+        .getOrElse(() => []);
+    final allocations = InstallmentCalculator.allocatePaymentsToSchedule(
+      schedule: schedule,
+      payments: payments,
+    );
+    final nextUnpaid = allocations.where((a) => !a.isPaid).firstOrNull;
+
     // Check PIN requirement setting (defaults to true)
     final pinSetting = await _featureGate.getMeta('installments.pin.require');
     final isPinRequired = pinSetting != '0';
@@ -94,7 +131,10 @@ class RecordPaymentCubit extends Cubit<RecordPaymentState> {
       status: RecordPaymentStatus.success,
       remainingPiasters: contract.remainingPiasters,
       monthlyAmountPiasters: contract.monthlyAmountPiasters,
-      nextDueDate: contract.endDate,
+      nextInstallmentRemainingPiasters:
+          nextUnpaid?.remainingPiasters ?? contract.monthlyAmountPiasters,
+      nextInstallmentNumber: nextUnpaid?.entry.installmentNumber,
+      nextDueDate: nextUnpaid?.entry.dueDate ?? contract.endDate,
       isPinRequired: isPinRequired,
     ));
   }
@@ -105,6 +145,7 @@ class RecordPaymentCubit extends Cubit<RecordPaymentState> {
     String? notes,
     required String pin,
     String? receiptNumber,
+    DateTime? paidAt,
   }) async {
     if (amountPiasters <= 0) {
       emit(state.copyWith(errorMessage: 'المبلغ يجب أن يكون أكبر من صفر'));
@@ -124,6 +165,7 @@ class RecordPaymentCubit extends Cubit<RecordPaymentState> {
       notes: notes,
       pin: pin,
       receiptNumber: receiptNumber,
+      paidAt: paidAt,
     );
 
     return res.fold(

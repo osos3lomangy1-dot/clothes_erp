@@ -291,11 +291,29 @@ class ProductLocalDataSource {
   Future<void> softDeleteProduct(String id) async {
     final now = DateTime.now();
     final branchId = await _branchId();
-    // Check if product has sales
-    final variantIds = await (_db.select(_db.productVariants)..where((v) => v.productId.equals(id))).map((v) => v.id).get();
-    final saleItems = await (_db.select(_db.saleItems)..where((t) => t.variantId.isIn(variantIds))).get();
-    if (saleItems.isNotEmpty) {
-      throw Exception('Cannot delete product with sales history. Deactivate instead.');
+    // Check if product has active (non-cancelled, non-deleted) sales history
+    final variantIds = await (_db.select(_db.productVariants)
+          ..where((v) => v.productId.equals(id)))
+        .map((v) => v.id)
+        .get();
+    if (variantIds.isNotEmpty) {
+      final activeSaleItems = await (_db.select(_db.saleItems).join([
+        innerJoin(
+          _db.sales,
+          _db.sales.id.equalsExp(_db.saleItems.saleId),
+        ),
+      ])
+            ..where(
+              _db.saleItems.variantId.isIn(variantIds) &
+                  _db.sales.deletedAt.isNull() &
+                  _db.sales.status.isNotValue('cancelled'),
+            ))
+          .get();
+      if (activeSaleItems.isNotEmpty) {
+        throw Exception(
+          'لا يمكن حذف هذا المنتج لوجود فواتير مبيعات مرتبطة به. يمكنك تعطيله (إخفاؤه من نقطة البيع) بدلاً من الحذف للحفاظ على سجل المبيعات.',
+        );
+      }
     }
     await _tx.write(
       writeFn: () async {

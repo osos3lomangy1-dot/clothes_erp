@@ -647,6 +647,34 @@ QueryExecutor _openConnection() {
             await supportDir.create(recursive: true);
           }
           final targetFile = File('${supportDir.path}/clothes_erp.sqlite');
+          // Apply any staged backup restore atomically BEFORE SQLite opens the DB
+          final pendingRestore = File('${targetFile.path}.pending_restore');
+          if (pendingRestore.existsSync()) {
+            if (Platform.isWindows && targetFile.existsSync()) {
+              try {
+                await Process.run('attrib', ['-r', targetFile.path]);
+              } catch (_) {}
+            }
+            for (final suffix in const ['-wal', '-shm']) {
+              final sidecar = File('${targetFile.path}$suffix');
+              if (sidecar.existsSync()) {
+                try {
+                  await sidecar.delete();
+                } catch (_) {}
+              }
+            }
+            if (targetFile.existsSync()) {
+              await targetFile.delete();
+            }
+            try {
+              await pendingRestore.rename(targetFile.path);
+            } catch (_) {
+              await pendingRestore.copy(targetFile.path);
+              if (pendingRestore.existsSync()) {
+                await pendingRestore.delete();
+              }
+            }
+          }
           if (targetFile.existsSync()) {
             if (Platform.isWindows) {
               try {
@@ -882,6 +910,7 @@ class AppDatabase extends _$AppDatabase {
         ip.updated_at
       FROM installment_payments ip
       WHERE ip.deleted_at IS NULL
+        AND COALESCE(ip.receipt_number, '') != 'INTEREST_WAIVER'
         AND NOT EXISTS (
           SELECT 1 FROM cash_movements cm
           WHERE cm.reference_id = ip.id AND cm.type = 'installment_payment'

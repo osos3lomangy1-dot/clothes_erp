@@ -118,7 +118,7 @@ class ProductRepositoryImpl implements ProductRepository {
       await _localDataSource.softDeleteProduct(id);
       return const Right(null);
     } catch (e) {
-      return Left(ServerFailure(e.toString()));
+      return Left(ServerFailure(e.toString().replaceFirst('Exception: ', '')));
     }
   }
 }

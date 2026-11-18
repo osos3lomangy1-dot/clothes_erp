@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import '../../domain/entities/product_entity.dart';
 import '../../domain/usecases/delete_product_usecase.dart';
 import '../../domain/repositories/product_repository.dart';
 import 'product_state.dart';
@@ -62,15 +63,41 @@ class ProductCubit extends Cubit<ProductState> {
     }
   }
 
-  Future<void> deleteProduct(String id) async {
+  /// Deletes a product and returns `null` on success, or an Arabic error message
+  /// on failure without replacing the currently loaded product catalog screen.
+  Future<String?> deleteProduct(String id) async {
     try {
       final result = await _deleteProductUseCase(id);
-      result.fold(
-        (failure) => emit(ProductError(failure.message)),
-        (_) {},
+      return result.fold(
+        (failure) => failure.message,
+        (_) => null,
       );
     } catch (e) {
-      emit(ProductError('تعذر حذف المنتج: $e'));
+      return 'تعذر حذف المنتج: ${e.toString().replaceFirst('Exception: ', '')}';
+    }
+  }
+
+  /// Deactivates a product (hides it from POS while preserving sales history).
+  Future<String?> deactivateProduct(ProductEntity product) async {
+    try {
+      final updated = ProductEntity(
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        categoryId: product.categoryId,
+        categoryName: product.categoryName,
+        createdAt: product.createdAt,
+        minStock: product.minStock,
+        isActive: false,
+        variants: product.variants,
+      );
+      final result = await _productRepository.updateProduct(updated);
+      return result.fold(
+        (failure) => failure.message,
+        (_) => null,
+      );
+    } catch (e) {
+      return 'تعذر تعطيل المنتج: ${e.toString().replaceFirst('Exception: ', '')}';
     }
   }
 

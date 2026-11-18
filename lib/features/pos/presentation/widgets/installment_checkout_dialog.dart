@@ -1,5 +1,6 @@
 import 'package:dartz/dartz.dart' hide State;
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/errors/failures.dart';
@@ -78,7 +79,7 @@ class _InstallmentCheckoutDialogState extends State<InstallmentCheckoutDialog> {
     final interestPct = _selectedPlan.interestBp / 100.0;
     switch (m) {
       case InstallmentInterestModel.percentTotal:
-        return 'نسبة إجمالية من أصل المبلغ ($interestPct%)';
+        return 'نسبة إجمالية من المبلغ المتبقي ($interestPct%)';
       case InstallmentInterestModel.percentMonthly:
         return 'نسبة شهرية ($interestPct% شهرياً)';
       case InstallmentInterestModel.fixed:
@@ -170,10 +171,12 @@ class _InstallmentCheckoutDialogState extends State<InstallmentCheckoutDialog> {
 
     int totalInterestPiasters = 0;
     int monthlyAmountPiasters = 0;
+    DateTime firstDueDate = InstallmentCalculator.addMonths(DateTime.now(), 1);
     scheduleResult.fold((_) {}, (entries) {
       if (entries.isNotEmpty) {
         totalInterestPiasters = entries.fold<int>(0, (s, e) => s + e.interestComponentPiasters);
         monthlyAmountPiasters = entries.first.amountPiasters;
+        firstDueDate = entries.first.dueDate;
       }
     });
 
@@ -347,6 +350,14 @@ class _InstallmentCheckoutDialogState extends State<InstallmentCheckoutDialog> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        Text('المتبقي للتقسيط:', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade600)),
+                        Text('${Money(financedPiasters).toDisplay()} ج.م', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
                         Text('الفائدة المحسوبة:', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade600)),
                         Text(
                           totalInterestPiasters > 0
@@ -366,6 +377,17 @@ class _InstallmentCheckoutDialogState extends State<InstallmentCheckoutDialog> {
                         Text(
                           '${Money(monthlyAmountPiasters).toDisplay()} ج.م / شهر',
                           style: TextStyle(fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('تاريخ أول قسط:', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade600)),
+                        Text(
+                          '${DateFormat('yyyy/MM/dd').format(firstDueDate)} (الشهر القادم)',
+                          style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold, color: Colors.teal.shade700),
                         ),
                       ],
                     ),

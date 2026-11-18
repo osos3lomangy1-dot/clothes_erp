@@ -168,7 +168,20 @@ class _MainLayoutState extends State<MainLayout> {
                               Expanded(
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.storefront_rounded, color: Colors.white, size: 24),
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(7),
+                                      child: Image.asset(
+                                        'assets/icons/bay3ah-128.png',
+                                        width: 28,
+                                        height: 28,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, _, _) => const Icon(
+                                          Icons.storefront_rounded,
+                                          color: Colors.white,
+                                          size: 24,
+                                        ),
+                                      ),
+                                    ),
                                     const SizedBox(width: 10),
                                     Flexible(
                                       child: Text(

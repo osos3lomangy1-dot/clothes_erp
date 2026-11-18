@@ -14,9 +14,9 @@ class AppBrandingConfig {
   });
 
   static const AppBrandingConfig defaults = AppBrandingConfig(
-    appName: 'سيستم مبيعات',
-    primaryColor: Color(0xFF340588),
-    secondaryColor: Color(0xFF4B2A9E),
+    appName: 'بيعة',
+    primaryColor: Color(0xFF0A2E5C),
+    secondaryColor: Color(0xFF1FB5A8),
   );
 
   AppBrandingConfig copyWith({
@@ -69,7 +69,12 @@ class AppBranding {
 
   static const List<AppColorPreset> presets = [
     AppColorPreset(
-      name: 'بنفسجي ملكي (الافتراضي)',
+      name: 'بيعة (الافتراضي)',
+      primary: Color(0xFF0A2E5C),
+      secondary: Color(0xFF1FB5A8),
+    ),
+    AppColorPreset(
+      name: 'بنفسجي ملكي',
       primary: Color(0xFF340588),
       secondary: Color(0xFF4B2A9E),
     ),

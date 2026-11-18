@@ -5,6 +5,7 @@ import '../../../pos/domain/entities/payment_split.dart';
 import '../entities/customer_installment_entity.dart';
 import '../entities/customer_installments_summary.dart';
 import '../entities/bulk_installment_payment_result.dart';
+import '../entities/early_settlement_outcome.dart';
 import '../entities/installment_payment_entity.dart';
 import '../entities/installment_plan_entity.dart';
 import '../entities/installment_schedule_entry.dart';
@@ -62,6 +63,7 @@ abstract class InstallmentsFacade {
     String? receiptNumber,
     String? notes,
     required String pin,
+    DateTime? paidAt,
   });
   Future<Either<Failure, BulkInstallmentPaymentResult>> recordBulkCustomerPayment({
     required String customerId,
@@ -70,6 +72,14 @@ abstract class InstallmentsFacade {
     String? receiptNumber,
     String? notes,
     required String pin,
+  });
+  Future<Either<Failure, EarlySettlementOutcome>> settleContractEarly({
+    required String contractId,
+    required int waivedInterestPiasters,
+    required String paymentMethod, // 'cash' | 'card'
+    String? notes,
+    required String pin,
+    DateTime? settledAt,
   });
   Future<Either<Failure, List<InstallmentPaymentEntity>>> listPayments(String contractId);
 

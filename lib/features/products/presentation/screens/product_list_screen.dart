@@ -151,7 +151,79 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
     );
 
     if (confirmed == true && context.mounted) {
-      context.read<ProductCubit>().deleteProduct(product.id);
+      final cubit = context.read<ProductCubit>();
+      final error = await cubit.deleteProduct(product.id);
+      if (!context.mounted) return;
+
+      if (error == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.green.shade800,
+            content: Text('تم حذف المنتج "${product.name}" بنجاح'),
+          ),
+        );
+      } else if (error.contains('مبيعات')) {
+        // Product has sales history — offer 1-click deactivation instead of crashing!
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                Icon(Icons.info_outline_rounded, color: Colors.amber.shade800),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'المنتج مرتبط بفواتير مبيعات',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              product.isActive
+                  ? 'لا يمكن حذف المنتج "${product.name}" نهائياً لوجود فواتير مبيعات مسجلة عليه، وذلك حفاظاً على دقة الحسابات والتقارير.\n\nيمكنك تعطيله الآن ليختفي من شاشة الكاشير فوراً.'
+                  : 'هذا المنتج "${product.name}" معطل بالفعل ومخفي من شاشة الكاشير، ولا يمكن حذفه نهائياً للحفاظ على فواتير وتقارير المبيعات السابقة.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('إغلاق'),
+              ),
+              if (product.isActive)
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.amber.shade800,
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: const Icon(Icons.visibility_off_rounded, size: 18),
+                  label: const Text('تعطيل المنتج وإخفاؤه'),
+                  onPressed: () async {
+                    Navigator.of(ctx).pop();
+                    final deactErr = await cubit.deactivateProduct(product);
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        backgroundColor:
+                            deactErr == null ? Colors.green.shade800 : AppColors.error,
+                        content: Text(
+                          deactErr ?? 'تم تعطيل المنتج "${product.name}" وإخفاؤه من الكاشير بنجاح',
+                        ),
+                      ),
+                    );
+                  },
+                ),
+            ],
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.error,
+            content: Text(error),
+          ),
+        );
+      }
     }
   }
 
@@ -207,18 +279,24 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
     }
 
     if (!context.mounted) return;
+    final rootNavigator = Navigator.of(context, rootNavigator: true);
     showDialog(
       context: context,
+      useRootNavigator: true,
       barrierDismissible: false,
-      builder: (_) => Center(child: CircularProgressIndicator(color: AppColors.primary)),
+      builder: (_) => Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      ),
     );
 
     ExcelImportAnalysis analysis;
     try {
       analysis = await ExcelService().analyzeExcel(bytes);
     } catch (e) {
+      if (rootNavigator.canPop()) {
+        rootNavigator.pop();
+      }
       if (context.mounted) {
-        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('فشل تحليل ملف الإكسيل: $e'), backgroundColor: AppColors.error),
         );
@@ -226,8 +304,8 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
       return;
     }
 
-    if (context.mounted) {
-      Navigator.pop(context);
+    if (rootNavigator.canPop()) {
+      rootNavigator.pop();
     }
 
     if (analysis.totalRows == 0) {

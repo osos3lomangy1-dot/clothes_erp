@@ -360,8 +360,8 @@ void main() {
       expect(contract.totalPiasters, 100000);
       expect(contract.downPaymentPiasters, 20000);
       expect(contract.principalPiasters, 80000); // 100,000 - 20,000
-      // For percentTotal: 10% of total 100,000 = 10,000 interest. Financed = 80,000. Remaining = 90,000
-      expect(contract.remainingPiasters, 90000);
+      // For percentTotal: 10% of financed remaining 80,000 = 8,000 interest. Financed = 80,000. Remaining = 88,000
+      expect(contract.remainingPiasters, 88000);
 
       // Verify down payment row was recorded atomically
       final payments = await (db.select(db.installmentPayments)..where((t) => t.customerInstallmentId.equals(contract.id))).get();
@@ -429,7 +429,7 @@ void main() {
       expect(rFixed.isRight(), isTrue);
       expect(rFixed.getOrElse(() => throw Exception()).remainingPiasters, 85000); // 80000 + 5000
 
-      // 2. PercentTotal model (1000 bp = 10% on 100,000 = 10,000)
+      // 2. PercentTotal model (1000 bp = 10% on financed 80,000 = 8,000)
       final rTotal = await facade.createContract(
         saleId: 's-m2',
         customerId: 'c-m2',
@@ -442,7 +442,7 @@ void main() {
         pin: managerPin,
       );
       expect(rTotal.isRight(), isTrue);
-      expect(rTotal.getOrElse(() => throw Exception()).remainingPiasters, 90000); // 80000 + 10000
+      expect(rTotal.getOrElse(() => throw Exception()).remainingPiasters, 88000); // 80000 + 8000
 
       // 3. PercentMonthly model (100 bp = 1%/month on 80,000 for 5 months = 4,000)
       final rMonthly = await facade.createContract(
@@ -1092,6 +1092,113 @@ void main() {
       expect(entities.contains('installment_plans'), isTrue);
       expect(entities.contains('customer_installments'), isTrue);
       expect(entities.contains('installment_payments'), isTrue);
+    });
+
+    test('recordPayment persists actual early and late paidAt dates accurately', () async {
+      await seedSaleAndCustomer(saleId: 's-dates', customerId: 'c-dates');
+      final purchaseDate = DateTime(2026, 1, 15);
+      final contractRes = await facade.createContract(
+        saleId: 's-dates',
+        customerId: 'c-dates',
+        totalPiasters: 100000,
+        downPaymentPiasters: 20000,
+        interestBp: 0,
+        interestModel: InstallmentInterestModel.percentTotal,
+        durationMonths: 4,
+        startDate: purchaseDate,
+        pin: managerPin,
+      );
+      final contract = contractRes.getOrElse(() => throw Exception());
+
+      final earlyPaidAt = DateTime(2026, 2, 10, 14, 30); // 5 days before 2026/02/15
+      final latePaidAt = DateTime(2026, 3, 20, 18, 0); // 5 days after 2026/03/15
+
+      final p1 = await facade.recordPayment(
+        contractId: contract.id,
+        amountPiasters: 20000,
+        paymentMethod: 'cash',
+        pin: managerPin,
+        paidAt: earlyPaidAt,
+      );
+      final p2 = await facade.recordPayment(
+        contractId: contract.id,
+        amountPiasters: 20000,
+        paymentMethod: 'cash',
+        pin: managerPin,
+        paidAt: latePaidAt,
+      );
+      expect(p1.isRight(), isTrue);
+      expect(p2.isRight(), isTrue);
+
+      final listed = (await facade.listPayments(contract.id)).getOrElse(() => []);
+      final nonDown = listed.where((p) => p.receiptNumber != 'DOWN_PAYMENT').toList();
+      expect(nonDown.length, 2);
+      expect(nonDown[0].paidAt, earlyPaidAt);
+      expect(nonDown[1].paidAt, latePaidAt);
+    });
+
+    test('settleContractEarly completes contract, puts ONLY real cash in cash_movements, and excludes waiver from monthlyCollected', () async {
+      await seedSaleAndCustomer(saleId: 's-early', customerId: 'c-early');
+      final now = DateTime.now();
+      // Invoice 1000, down 200 -> financed 800, 25% interest = 200 -> remaining 1000
+      final contractRes = await facade.createContract(
+        saleId: 's-early',
+        customerId: 'c-early',
+        totalPiasters: 100000,
+        downPaymentPiasters: 20000,
+        interestBp: 2500, // 25% of 800 = 200 EGP
+        interestModel: InstallmentInterestModel.percentTotal,
+        durationMonths: 10,
+        startDate: now.subtract(const Duration(days: 7)),
+        pin: managerPin,
+      );
+      final contract = contractRes.getOrElse(() => throw Exception());
+      expect(contract.remainingPiasters, 100000);
+
+      // Trying to waive more than 20,000 interest must be rejected
+      final tooMuchWaiver = await facade.settleContractEarly(
+        contractId: contract.id,
+        waivedInterestPiasters: 25000,
+        paymentMethod: 'cash',
+        pin: managerPin,
+      );
+      expect(tooMuchWaiver.isLeft(), isTrue);
+
+      // Full waiver of 20,000 interest -> customer pays 80,000 cash only
+      final settleRes = await facade.settleContractEarly(
+        contractId: contract.id,
+        waivedInterestPiasters: 20000,
+        paymentMethod: 'cash',
+        notes: 'سداد خلال أسبوع بدون فوائد',
+        pin: managerPin,
+        settledAt: now,
+      );
+      expect(settleRes.isRight(), isTrue);
+      final outcome = settleRes.getOrElse(() => throw Exception());
+      expect(outcome.settlementAmountPiasters, 80000);
+      expect(outcome.waivedInterestPiasters, 20000);
+
+      // Contract is now completed with 0 remaining
+      final updated = (await facade.getContract(contract.id)).getOrElse(() => throw Exception());
+      expect(updated.status, 'completed');
+      expect(updated.remainingPiasters, 0);
+
+      // cash_movements for installment_payment must contain ONLY the 80,000 real cash (NOT the 20,000 waiver!)
+      final allMovements = await db.select(db.cashMovements).get();
+      final movements = allMovements
+          .where((m) => m.referenceId == contract.id && m.type == 'installment_payment')
+          .toList();
+      expect(movements.length, 1);
+      expect(movements.first.amountPiasters, 80000);
+
+      // installment_payments documents both EARLY_SETTLEMENT (80,000) and INTEREST_WAIVER (20,000)
+      final payments = (await facade.listPayments(contract.id)).getOrElse(() => []);
+      expect(payments.any((p) => p.receiptNumber == 'EARLY_SETTLEMENT' && p.amountPiasters == 80000), isTrue);
+      expect(payments.any((p) => p.receiptNumber == 'INTEREST_WAIVER' && p.amountPiasters == 20000), isTrue);
+
+      // Summary monthlyCollected must exclude the 20,000 waiver (only 20,000 down + 80,000 settlement = 100,000)
+      final summary = (await facade.getSummary(now: now)).getOrElse(() => throw Exception());
+      expect(summary.monthlyCollected, 100000);
     });
   });
 }

@@ -164,15 +164,36 @@ class _LoginViewState extends State<_LoginView> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.2),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
                         ),
-                        child: Icon(
-                          Icons.storefront_rounded,
-                          size: 54,
-                          color: AppColors.primary,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: Image.asset(
+                            'assets/icons/bay3ah-256.png',
+                            width: 84,
+                            height: 84,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.storefront_rounded,
+                                size: 54,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 20),

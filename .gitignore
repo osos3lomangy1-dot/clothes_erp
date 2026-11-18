@@ -47,3 +47,8 @@ app.*.map.json
 
 # Generated files needed for CI build (DO NOT IGNORE)
 !lib/core/database/app_database.g.dart
+
+# Local secrets & OAuth credentials (NEVER commit!)
+env/*.local.json
+.env
+.env.*

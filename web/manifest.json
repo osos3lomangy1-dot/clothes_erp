@@ -1,11 +1,11 @@
 {
-    "name": "clothes_erp",
-    "short_name": "clothes_erp",
+    "name": "بيعة - Bay3ah",
+    "short_name": "بيعة",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0A2E5C",
+    "theme_color": "#0A2E5C",
+    "description": "بيعة (Bay3ah) - نظام إدارة المبيعات والمخزون والتقسيط",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

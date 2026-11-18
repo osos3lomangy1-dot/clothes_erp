@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
@@ -42,11 +43,35 @@ class _RecordPaymentViewState extends State<_RecordPaymentView> {
   final _pinController = TextEditingController();
   final _receiptController = TextEditingController();
   String _paymentMethod = 'cash';
+  DateTime _paymentDate = DateTime.now();
 
   @override
   void initState() {
     super.initState();
     _guardFeature();
+    _amountController.addListener(() => setState(() {}));
+  }
+
+  Future<void> _pickPaymentDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _paymentDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(now.year + 5),
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        _paymentDate = DateTime(
+          picked.year,
+          picked.month,
+          picked.day,
+          now.hour,
+          now.minute,
+          now.second,
+        );
+      });
+    }
   }
 
   Future<void> _guardFeature() async {
@@ -118,7 +143,39 @@ class _RecordPaymentViewState extends State<_RecordPaymentView> {
           }
 
           final remainingDisplay = Money(state.remainingPiasters).toDisplay();
-          final monthlyDisplay = Money(state.monthlyAmountPiasters).toDisplay();
+          final currentDueAmountPiasters =
+              state.nextInstallmentRemainingPiasters > 0
+                  ? state.nextInstallmentRemainingPiasters
+                  : state.monthlyAmountPiasters;
+          final monthlyDisplay = Money(currentDueAmountPiasters).toDisplay();
+          final enteredDouble = double.tryParse(_amountController.text.trim()) ?? 0;
+          final enteredPiasters = (enteredDouble * 100).round();
+          final excessPiasters = (enteredPiasters > currentDueAmountPiasters &&
+                  enteredPiasters <= state.remainingPiasters)
+              ? (enteredPiasters - currentDueAmountPiasters)
+              : 0;
+
+          final paidDay = DateTime(_paymentDate.year, _paymentDate.month, _paymentDate.day);
+          String? timingBadgeText;
+          Color timingBadgeColor = AppColors.success;
+          if (state.nextDueDate != null) {
+            final dueDay = DateTime(
+              state.nextDueDate!.year,
+              state.nextDueDate!.month,
+              state.nextDueDate!.day,
+            );
+            final diff = paidDay.difference(dueDay).inDays;
+            if (diff < 0) {
+              timingBadgeText = 'قبل الموعد بـ ${diff.abs()} يوم';
+              timingBadgeColor = Colors.teal.shade700;
+            } else if (diff == 0) {
+              timingBadgeText = 'في موعد الاستحقاق';
+              timingBadgeColor = AppColors.success;
+            } else {
+              timingBadgeText = 'بعد الموعد بـ $diff يوم';
+              timingBadgeColor = AppColors.error;
+            }
+          }
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20),
@@ -133,31 +190,62 @@ class _RecordPaymentViewState extends State<_RecordPaymentView> {
                     border: Border.all(color: Colors.grey.shade200),
                   ),
                   padding: const EdgeInsets.all(20),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  child: Column(
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('الرصيد المتبقي على العقد', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                          const SizedBox(height: 4),
-                          Text(
-                            '$remainingDisplay ج.م',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primary),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('الرصيد المتبقي على العقد', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                              const SizedBox(height: 4),
+                              Text(
+                                '$remainingDisplay ج.م',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primary),
+                              ),
+                            ],
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                state.nextInstallmentNumber != null
+                                    ? 'المستحق للقسط #${state.nextInstallmentNumber}'
+                                    : 'قيمة القسط الشهري',
+                                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '$monthlyDisplay ج.م',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          const Text('قيمة القسط الشهري', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                          const SizedBox(height: 4),
-                          Text(
-                            '$monthlyDisplay ج.م',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                          ),
-                        ],
-                      ),
+                      if (state.nextDueDate != null) ...[
+                        const Divider(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.event_note_rounded, size: 16, color: AppColors.primary),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'تاريخ استحقاق القسط القادم:',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                                ),
+                              ],
+                            ),
+                            Text(
+                              DateFormat('yyyy/MM/dd').format(state.nextDueDate!),
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -177,6 +265,66 @@ class _RecordPaymentViewState extends State<_RecordPaymentView> {
                       const Text('تفاصيل الدفعة', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                       const SizedBox(height: 16),
 
+                      // Payment Date Row (recorded whether early or late)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8F9FC),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.calendar_today_rounded, size: 18, color: AppColors.primary),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'تاريخ السداد الفعلي (يُسجَّل تلقائياً)',
+                                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        DateFormat('yyyy/MM/dd').format(_paymentDate),
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                      ),
+                                      if (timingBadgeText != null) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: timingBadgeColor.withValues(alpha: 0.12),
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: Text(
+                                            timingBadgeText,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              color: timingBadgeColor,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            TextButton.icon(
+                              onPressed: _pickPaymentDate,
+                              icon: const Icon(Icons.edit_calendar_rounded, size: 16),
+                              label: const Text('تغيير'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
                       TextField(
                         controller: _amountController,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -187,12 +335,39 @@ class _RecordPaymentViewState extends State<_RecordPaymentView> {
                           suffixText: 'ج.م',
                         ),
                       ),
+                      if (excessPiasters > 0) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.purple.shade50,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.purple.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.fast_rewind_rounded, color: Colors.purple.shade700, size: 18),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'سيتم سداد القسط الحالي (${Money(currentDueAmountPiasters).toDisplay()} ج.م) وترحيل الزيادة (${Money(excessPiasters).toDisplay()} ج.م) لآخر قسط تلقائياً.',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.purple.shade900,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 12),
                       Row(
                         children: [
                           TextButton(
                             onPressed: () => _amountController.text = monthlyDisplay,
-                            child: const Text('دفع قسط واحد'),
+                            child: const Text('دفع القسط الحالي'),
                           ),
                           const SizedBox(width: 8),
                           TextButton(
@@ -255,20 +430,21 @@ class _RecordPaymentViewState extends State<_RecordPaymentView> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Manager PIN
-                      TextField(
-                        controller: _pinController,
-                        obscureText: true,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: state.isPinRequired
-                              ? 'الرقم السري للمدير (PIN) *'
-                              : 'الرقم السري للمدير (اختياري)',
-                          border: const OutlineInputBorder(),
-                          prefixIcon: const Icon(Icons.lock_outline_rounded),
+                      // Manager PIN (hidden completely when disabled in settings)
+                      if (state.isPinRequired) ...[
+                        TextField(
+                          controller: _pinController,
+                          obscureText: true,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'الرقم السري للمدير (PIN) *',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.lock_outline_rounded),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 24),
+                        const SizedBox(height: 24),
+                      ] else
+                        const SizedBox(height: 8),
 
                       // Submit Button
                       SizedBox(
@@ -342,6 +518,7 @@ class _RecordPaymentViewState extends State<_RecordPaymentView> {
       notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
       pin: pin,
       receiptNumber: _receiptController.text.trim().isEmpty ? null : _receiptController.text.trim(),
+      paidAt: _paymentDate,
     );
 
     if (success && context.mounted) {

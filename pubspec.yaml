@@ -48,6 +48,9 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  assets:
+    - assets/icons/
+
   fonts:
     - family: Cairo
       fonts:
@@ -61,10 +64,10 @@ flutter:
           weight: 900
 
 msix_config:
-  display_name: Orkeed Clothes ERP
-  publisher_display_name: Orkeed ERP
-  identity_name: com.example.clothes_erp
-  msix_version: 1.0.0.0
+  display_name: Bay3ah - بيعة
+  publisher_display_name: Bay3ah
+  identity_name: com.bay3ah.erp
+  msix_version: 1.0.2.0
   logo_path: windows/runner/resources/app_icon.ico
   capabilities: internetClient
 

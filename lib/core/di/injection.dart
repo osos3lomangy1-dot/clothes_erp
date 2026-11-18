@@ -1,4 +1,4 @@
-﻿import 'package:get_it/get_it.dart';
+import 'package:get_it/get_it.dart';
 import 'package:injectable/injectable.dart';
 import 'injection.config.dart';
 import '../../features/auth/data/datasources/auth_local_data_source.dart';
@@ -10,6 +10,8 @@ import '../database/app_database.dart';
 import '../database/branch_provider.dart';
 import '../database/tx_writer.dart';
 import '../features/feature_gate.dart';
+import '../services/google_drive_backup_service.dart';
+import '../services/local_backup_service.dart';
 
 final getIt = GetIt.instance;
 
@@ -44,5 +46,21 @@ Future<void> configureDependencies() async {
   }
   if (!getIt.isRegistered<SettingsCubit>()) {
     getIt.registerFactory<SettingsCubit>(() => SettingsCubit(getIt<FeatureGate>()));
+  }
+  if (!getIt.isRegistered<LocalBackupService>()) {
+    getIt.registerLazySingleton<LocalBackupService>(
+      () => LocalBackupService(
+        getIt<AppDatabase>(),
+        getIt<FeatureGate>(),
+      ),
+    );
+  }
+  if (!getIt.isRegistered<GoogleDriveBackupService>()) {
+    getIt.registerLazySingleton<GoogleDriveBackupService>(
+      () => GoogleDriveBackupService(
+        getIt<LocalBackupService>(),
+        getIt<FeatureGate>(),
+      ),
+    );
   }
 }

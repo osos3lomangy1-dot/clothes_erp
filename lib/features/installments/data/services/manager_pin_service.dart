@@ -104,7 +104,7 @@ class ManagerPinService {
     final userId = user?.id ?? 'unknown';
     final branchId = await _branchProvider.getBranchId();
 
-    if (!await isPinRequired() && pin.isEmpty) {
+    if (!await isPinRequired()) {
       await _txWriter.write(
         writeFn: () async {},
         branchId: branchId,

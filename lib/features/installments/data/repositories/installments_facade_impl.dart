@@ -16,6 +16,7 @@ import '../services/manager_pin_service.dart';
 import '../../domain/entities/bulk_installment_payment_result.dart';
 import '../../domain/entities/customer_installment_entity.dart';
 import '../../domain/entities/customer_installments_summary.dart';
+import '../../domain/entities/early_settlement_outcome.dart';
 import '../../domain/entities/installment_payment_entity.dart';
 import '../../domain/entities/installment_plan_entity.dart';
 import '../../domain/entities/installment_schedule_entry.dart';
@@ -345,7 +346,7 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
     final totalInterest = entries.fold<int>(0, (s, e) => s + e.interestComponentPiasters);
     final monthlyAmount = entries.isNotEmpty ? entries.first.amountPiasters : (financedPrincipal ~/ durationMonths);
     final initialRemaining = financedPrincipal + totalInterest;
-    final endDate = DateTime(startDate.year, startDate.month + durationMonths, startDate.day);
+    final endDate = InstallmentCalculator.addMonths(startDate, durationMonths);
 
     final contractId = const Uuid().v4();
     final branchId = await _branchProvider.getBranchId();
@@ -661,6 +662,7 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
     String? receiptNumber,
     String? notes,
     required String pin,
+    DateTime? paidAt,
   }) async {
     if (!await _featureGate.isEnabled(FeatureKeys.installments)) {
       return Left(FeatureDisabledFailure(FeatureKeys.installments));
@@ -699,6 +701,7 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
     final user = await _auth.getCachedUser();
     final userId = user?.id ?? 'unknown';
     final now = DateTime.now();
+    final effectivePaidAt = paidAt ?? now;
     final nowSec = now.millisecondsSinceEpoch ~/ 1000;
     final activeShift = await _getActiveShift();
 
@@ -711,7 +714,7 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
       customerInstallmentId: contractId,
       amountPiasters: amountPiasters,
       paymentMethod: paymentMethod,
-      paidAt: now,
+      paidAt: effectivePaidAt,
       receiptNumber: receiptNumber,
       notes: notes,
       recordedBy: userId,
@@ -728,7 +731,7 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
             customerInstallmentId: contractId,
             amountPiasters: amountPiasters,
             paymentMethod: paymentMethod,
-            paidAt: now,
+            paidAt: effectivePaidAt,
             receiptNumber: Value(receiptNumber),
             notes: Value(notes),
             recordedBy: userId,
@@ -939,6 +942,203 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
   }
 
   @override
+  Future<Either<Failure, EarlySettlementOutcome>> settleContractEarly({
+    required String contractId,
+    required int waivedInterestPiasters,
+    required String paymentMethod,
+    String? notes,
+    required String pin,
+    DateTime? settledAt,
+  }) async {
+    if (!await _featureGate.isEnabled(FeatureKeys.installments)) {
+      return Left(FeatureDisabledFailure(FeatureKeys.installments));
+    }
+
+    final pinResult = await _pinService.verifyPin(
+      pin: pin,
+      operation: 'early_settlement',
+    );
+    if (!pinResult.ok) {
+      return Left(AuthFailure(pinResult.error ?? 'الرقم السري للمدير غير صحيح'));
+    }
+
+    if (paymentMethod != 'cash' && paymentMethod != 'card') {
+      return const Left(ServerFailure('طريقة الدفع غير صالحة'));
+    }
+    if (waivedInterestPiasters < 0) {
+      return const Left(ServerFailure('مبلغ إعفاء الفائدة لا يمكن أن يكون سالباً'));
+    }
+
+    final contract = await (_db.select(_db.customerInstallments)
+          ..where((t) => t.id.equals(contractId) & t.deletedAt.isNull()))
+        .getSingleOrNull();
+    if (contract == null) {
+      return const Left(ServerFailure('العقد غير موجود'));
+    }
+    if (contract.status == 'cancelled') {
+      return const Left(ServerFailure('لا يمكن تسوية عقد ملغي'));
+    }
+    if (contract.status == 'completed' || contract.remainingPiasters <= 0) {
+      return const Left(ServerFailure('العقد مكتمل بالكامل بالفعل'));
+    }
+
+    // Calculate max waivable interest so total cash collected never drops below financed principal
+    final existingPayments = await (_db.select(_db.installmentPayments)
+          ..where((t) =>
+              t.customerInstallmentId.equals(contractId) & t.deletedAt.isNull()))
+        .get();
+    final paidTowardsScheduleCash = existingPayments
+        .where((p) =>
+            p.receiptNumber != 'DOWN_PAYMENT' &&
+            p.receiptNumber != 'INTEREST_WAIVER' &&
+            p.paymentMethod != 'waiver')
+        .fold<int>(0, (sum, p) => sum + p.amountPiasters);
+    final minCashForPrincipal =
+        (contract.principalPiasters - paidTowardsScheduleCash)
+            .clamp(0, contract.remainingPiasters);
+    final maxWaivableInterest =
+        (contract.remainingPiasters - minCashForPrincipal)
+            .clamp(0, contract.remainingPiasters);
+
+    if (waivedInterestPiasters > maxWaivableInterest) {
+      return Left(ServerFailure(
+        'مبلغ الإعفاء يتجاوز الفائدة المتبقية المسموح بإعفائها (${(maxWaivableInterest / 100).toStringAsFixed(2)} ج.م)',
+      ));
+    }
+
+    final settlementAmountPiasters =
+        contract.remainingPiasters - waivedInterestPiasters;
+    final branchId = await _branchProvider.getBranchId();
+    final user = await _auth.getCachedUser();
+    final userId = user?.id ?? 'unknown';
+    final now = DateTime.now();
+    final effectiveSettledAt = settledAt ?? now;
+    final nowSec = now.millisecondsSinceEpoch ~/ 1000;
+    final activeShift = await _getActiveShift();
+
+    InstallmentPaymentEntity? cashPayment;
+    final cashPaymentId = const Uuid().v4();
+    final waiverPaymentId = const Uuid().v4();
+    final waiverNote = notes != null && notes.trim().isNotEmpty
+        ? 'إعفاء فائدة سداد مبكر — ${notes.trim()}'
+        : 'إعفاء فائدة سداد مبكر';
+    final cashNote = notes != null && notes.trim().isNotEmpty
+        ? 'سداد مبكر / تسوية نهائية — ${notes.trim()}'
+        : 'سداد مبكر / تسوية نهائية للعقد';
+
+    if (settlementAmountPiasters > 0) {
+      cashPayment = InstallmentPaymentEntity(
+        id: cashPaymentId,
+        branchId: branchId,
+        customerInstallmentId: contractId,
+        amountPiasters: settlementAmountPiasters,
+        paymentMethod: paymentMethod,
+        paidAt: effectiveSettledAt,
+        receiptNumber: 'EARLY_SETTLEMENT',
+        notes: cashNote,
+        recordedBy: userId,
+        createdAt: now,
+        updatedAt: now,
+      );
+    }
+
+    await _txWriter.write(
+      writeFn: () async {
+        // 1. Record actual cash/card collected (and ONLY this amount enters cash_movements!)
+        if (settlementAmountPiasters > 0) {
+          await _db.into(_db.installmentPayments).insert(
+            InstallmentPaymentsCompanion.insert(
+              id: cashPaymentId,
+              branchId: branchId,
+              customerInstallmentId: contractId,
+              amountPiasters: settlementAmountPiasters,
+              paymentMethod: paymentMethod,
+              paidAt: effectiveSettledAt,
+              receiptNumber: const Value('EARLY_SETTLEMENT'),
+              notes: Value(cashNote),
+              recordedBy: userId,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+          await _db.into(_db.cashMovements).insert(
+            CashMovementsCompanion.insert(
+              id: const Uuid().v4(),
+              branchId: branchId,
+              shiftId: Value(activeShift?.id),
+              type: 'installment_payment',
+              method: paymentMethod,
+              direction: 'in',
+              amountPiasters: settlementAmountPiasters,
+              referenceId: Value(contractId),
+              notes: Value(cashNote),
+              createdAt: nowSec,
+              updatedAt: nowSec,
+            ),
+          );
+        }
+
+        // 2. Document waived interest in installment_payments (NO cash_movements row!)
+        if (waivedInterestPiasters > 0) {
+          await _db.into(_db.installmentPayments).insert(
+            InstallmentPaymentsCompanion.insert(
+              id: waiverPaymentId,
+              branchId: branchId,
+              customerInstallmentId: contractId,
+              amountPiasters: waivedInterestPiasters,
+              paymentMethod: paymentMethod,
+              paidAt: effectiveSettledAt,
+              receiptNumber: const Value('INTEREST_WAIVER'),
+              notes: Value(waiverNote),
+              recordedBy: userId,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+        }
+
+        // 3. Close contract atomically
+        await (_db.update(_db.customerInstallments)
+              ..where((t) => t.id.equals(contractId)))
+            .write(
+          CustomerInstallmentsCompanion(
+            remainingPiasters: const Value(0),
+            status: const Value('completed'),
+            updatedAt: Value(now),
+          ),
+        );
+      },
+      branchId: branchId,
+      entity: 'customer_installments',
+      entityId: contractId,
+      operation: 'early_settlement',
+      userId: userId,
+      oldValue: '${contract.remainingPiasters}',
+      newValue: '0',
+      auditAction: 'installment_early_settlement',
+      payload: jsonEncode({
+        'contractId': contractId,
+        'previousRemaining': contract.remainingPiasters,
+        'settlementAmountPiasters': settlementAmountPiasters,
+        'waivedInterestPiasters': waivedInterestPiasters,
+        'paymentMethod': paymentMethod,
+        'settledAt': effectiveSettledAt.toIso8601String(),
+        'shiftId': activeShift?.id,
+      }),
+    );
+
+    return Right(EarlySettlementOutcome(
+      contractId: contractId,
+      settlementAmountPiasters: settlementAmountPiasters,
+      waivedInterestPiasters: waivedInterestPiasters,
+      paymentMethod: paymentMethod,
+      settledAt: effectiveSettledAt,
+      cashPayment: cashPayment,
+    ));
+  }
+
+  @override
   Future<Either<Failure, List<InstallmentPaymentEntity>>> listPayments(String contractId) async {
     final rows = await (_db.select(_db.installmentPayments)
       ..where((t) => t.customerInstallmentId.equals(contractId) & t.deletedAt.isNull())
@@ -959,9 +1159,14 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
       final startOfMonth = DateTime(current.year, current.month, 1);
       final nextMonth = DateTime(current.year, current.month + 1, 1);
       final paymentsThisMonth = await (_db.select(_db.installmentPayments)
-        ..where((t) => t.deletedAt.isNull() & t.paidAt.isBiggerOrEqualValue(startOfMonth) & t.paidAt.isSmallerThanValue(nextMonth)))
+        ..where((t) =>
+            t.deletedAt.isNull() &
+            t.paidAt.isBiggerOrEqualValue(startOfMonth) &
+            t.paidAt.isSmallerThanValue(nextMonth)))
         .get();
-      final monthlyCollected = paymentsThisMonth.fold<int>(0, (sum, p) => sum + p.amountPiasters);
+      final monthlyCollected = paymentsThisMonth
+          .where((p) => p.receiptNumber != 'INTEREST_WAIVER')
+          .fold<int>(0, (sum, p) => sum + p.amountPiasters);
 
       final rows = await (_db.select(_db.customerInstallments)
         ..where((t) => t.deletedAt.isNull() & t.status.isNotIn(['completed', 'cancelled']) & t.remainingPiasters.isBiggerThanValue(0)))

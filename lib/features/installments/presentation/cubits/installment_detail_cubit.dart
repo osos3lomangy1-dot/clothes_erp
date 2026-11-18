@@ -15,8 +15,12 @@ class InstallmentDetailState extends Equatable {
   final CustomerInstallmentEntity? contract;
   final String? customerName;
   final List<InstallmentScheduleEntry> schedule;
+  final List<InstallmentScheduleAllocation> allocations;
   final List<InstallmentPaymentEntity> payments;
+  final int totalContractInterestPiasters;
+  final int paidTowardsScheduleCashPiasters;
   final bool isCancelling;
+  final bool isSettling;
   final String? errorMessage;
 
   const InstallmentDetailState({
@@ -24,8 +28,12 @@ class InstallmentDetailState extends Equatable {
     this.contract,
     this.customerName,
     this.schedule = const [],
+    this.allocations = const [],
     this.payments = const [],
+    this.totalContractInterestPiasters = 0,
+    this.paidTowardsScheduleCashPiasters = 0,
     this.isCancelling = false,
+    this.isSettling = false,
     this.errorMessage,
   });
 
@@ -34,8 +42,12 @@ class InstallmentDetailState extends Equatable {
     CustomerInstallmentEntity? contract,
     String? customerName,
     List<InstallmentScheduleEntry>? schedule,
+    List<InstallmentScheduleAllocation>? allocations,
     List<InstallmentPaymentEntity>? payments,
+    int? totalContractInterestPiasters,
+    int? paidTowardsScheduleCashPiasters,
     bool? isCancelling,
+    bool? isSettling,
     String? errorMessage,
   }) {
     return InstallmentDetailState(
@@ -43,8 +55,14 @@ class InstallmentDetailState extends Equatable {
       contract: contract ?? this.contract,
       customerName: customerName ?? this.customerName,
       schedule: schedule ?? this.schedule,
+      allocations: allocations ?? this.allocations,
       payments: payments ?? this.payments,
+      totalContractInterestPiasters:
+          totalContractInterestPiasters ?? this.totalContractInterestPiasters,
+      paidTowardsScheduleCashPiasters:
+          paidTowardsScheduleCashPiasters ?? this.paidTowardsScheduleCashPiasters,
       isCancelling: isCancelling ?? this.isCancelling,
+      isSettling: isSettling ?? this.isSettling,
       errorMessage: errorMessage,
     );
   }
@@ -55,8 +73,12 @@ class InstallmentDetailState extends Equatable {
         contract,
         customerName,
         schedule,
+        allocations,
         payments,
+        totalContractInterestPiasters,
+        paidTowardsScheduleCashPiasters,
         isCancelling,
+        isSettling,
         errorMessage,
       ];
 }
@@ -102,27 +124,79 @@ class InstallmentDetailCubit extends Cubit<InstallmentDetailState> {
     final paymentsRes = await _facade.listPayments(contractId);
     final payments = paymentsRes.getOrElse(() => []);
 
-    // Calculate schedule
+    // Derive the exact contract total interest from remaining + non-down payments - principal.
+    // This faithfully reproduces the original schedule regardless of whether the contract
+    // was created with percentTotal, percentMonthly, or fixed interest.
+    final nonDownPaymentsTotal = payments
+        .where((p) => p.receiptNumber != 'DOWN_PAYMENT')
+        .fold<int>(0, (sum, p) => sum + p.amountPiasters);
+    final paidTowardsScheduleCash = payments
+        .where((p) =>
+            p.receiptNumber != 'DOWN_PAYMENT' &&
+            p.receiptNumber != 'INTEREST_WAIVER' &&
+            p.paymentMethod != 'waiver')
+        .fold<int>(0, (sum, p) => sum + p.amountPiasters);
+    final totalScheduledObligation = contract.remainingPiasters + nonDownPaymentsTotal;
+    final exactTotalInterest = (totalScheduledObligation - contract.principalPiasters)
+        .clamp(0, totalScheduledObligation);
+
+    // Calculate schedule (first installment due next month after startDate)
     final scheduleRes = _facade.calculateSchedule(
       principalPiasters: contract.totalPiasters,
       durationMonths: contract.durationMonths,
-      interestModel: InstallmentInterestModel.fixed, // standard baseline calculation
-      interestValue: contract.interestBp,
+      interestModel: InstallmentInterestModel.fixed,
+      interestValue: exactTotalInterest,
       downPaymentPiasters: contract.downPaymentPiasters,
       startDate: contract.startDate,
     );
     final schedule = scheduleRes.getOrElse(() => []);
+    final allocations = InstallmentCalculator.allocatePaymentsToSchedule(
+      schedule: schedule,
+      payments: payments,
+    );
 
     emit(state.copyWith(
       status: InstallmentDetailStatus.success,
       contract: contract,
       customerName: customerName,
       schedule: schedule,
+      allocations: allocations,
       payments: payments,
+      totalContractInterestPiasters: exactTotalInterest,
+      paidTowardsScheduleCashPiasters: paidTowardsScheduleCash,
     ));
   }
 
   Future<void> refresh() => load();
+
+  Future<bool> settleEarly({
+    required int waivedInterestPiasters,
+    required String paymentMethod,
+    required String pin,
+    String? notes,
+    DateTime? settledAt,
+  }) async {
+    emit(state.copyWith(isSettling: true, errorMessage: null));
+    final res = await _facade.settleContractEarly(
+      contractId: contractId,
+      waivedInterestPiasters: waivedInterestPiasters,
+      paymentMethod: paymentMethod,
+      pin: pin,
+      notes: notes,
+      settledAt: settledAt,
+    );
+    return res.fold(
+      (failure) {
+        emit(state.copyWith(isSettling: false, errorMessage: failure.message));
+        return false;
+      },
+      (_) {
+        emit(state.copyWith(isSettling: false));
+        load();
+        return true;
+      },
+    );
+  }
 
   Future<bool> cancelContract(String pin) async {
     emit(state.copyWith(isCancelling: true));

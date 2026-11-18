@@ -9,6 +9,8 @@ import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../../installments/data/services/manager_pin_service.dart';
 import '../cubits/settings_cubit.dart';
+import '../widgets/google_drive_backup_card.dart';
+import '../widgets/local_backup_card.dart';
 
 class SystemSettingsScreen extends StatelessWidget {
   const SystemSettingsScreen({super.key});
@@ -174,6 +176,12 @@ class _SystemSettingsView extends StatelessWidget {
                 const _InstallmentSettingsSection(),
               ],
               const SizedBox(height: 20),
+              _sectionTitle('النسخ الاحتياطي والاستعادة (حماية البيانات المحلية)'),
+              LocalBackupCard(userId: _userId(context)),
+              const SizedBox(height: 16),
+              _sectionTitle('النسخ الاحتياطي على حساب Google Drive'),
+              GoogleDriveBackupCard(userId: _userId(context)),
+              const SizedBox(height: 20),
               _sectionTitle('المزامنة السحابية عبر الإنترنت'),
               Card(
                 child: SwitchListTile(
@@ -328,7 +336,9 @@ class _InstallmentSettingsSectionState
           SwitchListTile(
             key: const Key('installment_pin_required_toggle'),
             title: const Text('طلب الرقم السري للمدير (Manager PIN)'),
-            subtitle: const Text('تأكيد المدير عند إنشاء عقد تقسيط أو إلغائه'),
+            subtitle: const Text(
+              'تأكيد المدير عند إنشاء عقد تقسيط، تسجيل دفعة، التسوية المبكرة، أو الإلغاء',
+            ),
             value: _pinRequired,
             onChanged: (v) async {
               final uid = _userId(context);
@@ -340,12 +350,15 @@ class _InstallmentSettingsSectionState
           ),
           const Divider(height: 1),
           ListTile(
+            enabled: _pinRequired,
             title: const Text('الرقم السري للمدير'),
             subtitle: Text(
-              _pinSet ? 'الرقم السري مُعيَّن' : 'لم يتم تعيين الرقم السري بعد',
+              !_pinRequired
+                  ? 'معطّل حالياً — لن يُطلب الرقم السري في شاشات التقسيط'
+                  : (_pinSet ? 'الرقم السري مُعيَّن' : 'لم يتم تعيين الرقم السري بعد'),
             ),
             trailing: OutlinedButton(
-              onPressed: () => _showSetPinDialog(context),
+              onPressed: _pinRequired ? () => _showSetPinDialog(context) : null,
               child: Text(_pinSet ? 'تغيير' : 'تعيين'),
             ),
           ),
@@ -554,7 +567,7 @@ class _BrandingSettingsCardState extends State<_BrandingSettingsCard> {
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 labelText: 'اسم النظام / المحل',
-                hintText: 'مثال: سيستم مبيعات',
+                hintText: 'مثال: بيعة',
                 prefixIcon: Icon(Icons.storefront_rounded, color: _selectedPrimary),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
               ),
