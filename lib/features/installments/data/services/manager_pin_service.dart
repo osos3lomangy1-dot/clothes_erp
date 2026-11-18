@@ -30,6 +30,7 @@ class ManagerPinService {
   static const _failedKey = 'installments.pin.failed_attempts';
   static const _lockedUntilKey = 'installments.pin.locked_until';
   static const _requirePinKey = 'installments.pin.require';
+  static const _requireCreditPinKey = 'credit_sales.pin.require';
   static const int maxAttempts = 5;
   static const Duration lockoutWindow = Duration(minutes: 15);
 
@@ -98,17 +99,33 @@ class ManagerPinService {
     await _featureGate.setMeta(_requirePinKey, required ? '1' : '0', userId: userId);
   }
 
-  Future<PinVerificationResult> verifyPin({required String pin, required String operation, DateTime? now}) async {
+  Future<bool> isCreditPinRequired() async {
+    final v = await _getMeta(_requireCreditPinKey);
+    if (v == null) return false; // default optional (false) unless explicitly enabled by manager
+    return v == '1';
+  }
+
+  Future<void> setCreditPinRequired({required bool required, required String userId}) async {
+    await _featureGate.setMeta(_requireCreditPinKey, required ? '1' : '0', userId: userId);
+  }
+
+  Future<PinVerificationResult> verifyPin({
+    required String pin,
+    required String operation,
+    DateTime? now,
+    bool isCreditSale = false,
+  }) async {
     final current = now ?? DateTime.now();
     final user = await _auth.getCachedUser();
     final userId = user?.id ?? 'unknown';
     final branchId = await _branchProvider.getBranchId();
 
-    if (!await isPinRequired()) {
+    final required = isCreditSale ? await isCreditPinRequired() : await isPinRequired();
+    if (!required) {
       await _txWriter.write(
         writeFn: () async {},
         branchId: branchId,
-        entity: 'installments_pin',
+        entity: isCreditSale ? 'credit_sales_pin' : 'installments_pin',
         entityId: operation,
         operation: 'verify',
         userId: userId,

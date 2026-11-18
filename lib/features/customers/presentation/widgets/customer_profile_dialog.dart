@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -7,7 +8,10 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/money.dart';
 import '../../../../core/widgets/app_feedback.dart';
+import '../../../auth/presentation/cubits/auth_cubit.dart';
+import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../../installments/presentation/screens/installment_detail_screen.dart';
+import '../../data/datasources/customers_local_data_source.dart';
 import '../../data/services/customer_ledger_service.dart';
 import '../../domain/entities/customer_entity.dart';
 
@@ -301,12 +305,12 @@ class _CustomerProfileBodyState extends State<_CustomerProfileBody> {
         else
           Expanded(
             child: DefaultTabController(
-              length: 3,
+              length: 4,
               child: Column(
                 children: [
                   // 4 KPI Summary Cards
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
                     child: Row(
                       children: [
                         Expanded(
@@ -349,6 +353,89 @@ class _CustomerProfileBodyState extends State<_CustomerProfileBody> {
                       ],
                     ),
                   ),
+                  // Credit Account & Debt Banner
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: _statement!.summary.creditDebtPiasters > 0
+                            ? Colors.red.shade50
+                            : Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _statement!.summary.creditDebtPiasters > 0
+                              ? Colors.red.shade200
+                              : Colors.blue.shade200,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.account_balance_wallet_rounded,
+                            color: _statement!.summary.creditDebtPiasters > 0
+                                ? Colors.red.shade800
+                                : AppColors.primary,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      'مديونية الحساب الآجل: ',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.grey.shade800,
+                                      ),
+                                    ),
+                                    Text(
+                                      '${Money(_statement!.summary.creditDebtPiasters).toDisplay()} ج.م',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        color: _statement!.summary.creditDebtPiasters > 0
+                                            ? Colors.red.shade800
+                                            : Colors.green.shade800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  c.creditLimit > 0
+                                      ? 'الحد الائتماني المسموح: ${Money(c.creditLimit).toDisplay()} ج.م'
+                                      : 'الحد الائتماني: غير مقيد (مفتوح)',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            onPressed: () => _showRecordPaymentDialog(context),
+                            icon: const Icon(Icons.price_check_rounded, size: 18),
+                            label: const Text(
+                              'تحصيل دفعة حساب',
+                              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                   Container(
                     color: Colors.white,
                     child: TabBar(
@@ -361,6 +448,9 @@ class _CustomerProfileBodyState extends State<_CustomerProfileBody> {
                         ),
                         Tab(
                           text: 'التقسيط (${_statement!.installments.length})',
+                        ),
+                        Tab(
+                          text: 'سداد الآجل (${_statement!.payments.length})',
                         ),
                         Tab(
                           text: 'نقاط الولاء (${_statement!.loyaltyLogs.length})',
@@ -509,7 +599,62 @@ class _CustomerProfileBodyState extends State<_CustomerProfileBody> {
                                   );
                                 },
                               ),
-                        // Tab 3: Loyalty Ledger
+                        // Tab 3: Credit Payments (سداد الآجل)
+                        _statement!.payments.isEmpty
+                            ? _emptyTab('لا توجد دفعات مسجلة على الحساب الآجل لهذا العميل بعد')
+                            : ListView.separated(
+                                padding: const EdgeInsets.all(14),
+                                itemCount: _statement!.payments.length,
+                                separatorBuilder: (_, _) => const SizedBox(height: 8),
+                                itemBuilder: (_, i) {
+                                  final p = _statement!.payments[i];
+                                  final isCash = p.paymentMethod == 'cash';
+                                  return Card(
+                                    margin: EdgeInsets.zero,
+                                    child: ListTile(
+                                      dense: true,
+                                      leading: CircleAvatar(
+                                        radius: 18,
+                                        backgroundColor: Colors.green.shade50,
+                                        child: Icon(
+                                          isCash ? Icons.payments_rounded : Icons.credit_card_rounded,
+                                          size: 18,
+                                          color: Colors.green.shade800,
+                                        ),
+                                      ),
+                                      title: Text(
+                                        'سند قبض / تحصيل دفعة: +${Money(p.amount).toDisplay()} ج.م',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.green.shade900,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      subtitle: Text(
+                                        '${dateFmt.format(p.paymentDate.toLocal())} • ${isCash ? 'نقدي (أودع بالدرج)' : 'بطاقة / فيزا'}'
+                                        '${p.notes != null && p.notes!.isNotEmpty ? '\nملاحظات: ${p.notes}' : ''}',
+                                      ),
+                                      trailing: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.green.shade50,
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(color: Colors.green.shade300),
+                                        ),
+                                        child: Text(
+                                          'تم التحصيل',
+                                          style: TextStyle(
+                                            color: Colors.green.shade800,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                        // Tab 4: Loyalty Ledger
                         _statement!.loyaltyLogs.isEmpty
                             ? _emptyTab('لا توجد حركات نقاط ولاء مسجلة بعد')
                             : ListView.separated(
@@ -570,6 +715,159 @@ class _CustomerProfileBodyState extends State<_CustomerProfileBody> {
       child: Text(
         msg,
         style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+      ),
+    );
+  }
+
+  Future<void> _showRecordPaymentDialog(BuildContext context) async {
+    final debt = _statement?.summary.creditDebtPiasters ?? 0;
+    final amountCtrl = TextEditingController(
+      text: debt > 0
+          ? (debt % 100 == 0 ? '${debt ~/ 100}' : (debt / 100.0).toStringAsFixed(2))
+          : '',
+    );
+    final notesCtrl = TextEditingController();
+    String method = 'cash';
+
+    await showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Icon(Icons.price_check_rounded, color: AppColors.primary),
+              const SizedBox(width: 8),
+              const Text(
+                'تحصيل دفعة من حساب العميل',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+              ),
+            ],
+          ),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('إجمالي المديونية الحالية:', style: TextStyle(fontSize: 13)),
+                      Text(
+                        '${Money(debt).toDisplay()} ج.م',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: debt > 0 ? Colors.red.shade800 : Colors.green.shade800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: amountCtrl,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: 'المبلغ المحصل *',
+                    suffixText: 'ج.م',
+                    prefixIcon: const Icon(Icons.attach_money_rounded),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                ),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  initialValue: method,
+                  decoration: InputDecoration(
+                    labelText: 'طريقة الدفع',
+                    prefixIcon: const Icon(Icons.payment_rounded),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'cash', child: Text('كاش / نقدي (إيداع بالدرج)')),
+                    DropdownMenuItem(value: 'card', child: Text('بطاقة / فيزا')),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) setDialogState(() => method = val);
+                  },
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: notesCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'ملاحظات (اختياري)',
+                    hintText: 'مثال: سداد دفعة نقدية بالفرع',
+                    prefixIcon: const Icon(Icons.notes_rounded),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () async {
+                final amtDouble = double.tryParse(amountCtrl.text.trim()) ?? 0.0;
+                final amtPiasters = (amtDouble * 100).round();
+                if (amtPiasters <= 0) {
+                  AppFeedback.showError(dialogCtx, 'يرجى إدخال مبلغ صحيح أكبر من الصفر');
+                  return;
+                }
+
+                String userId = 'admin';
+                try {
+                  final auth = context.read<AuthCubit>().state;
+                  if (auth is AuthAuthenticated) userId = auth.user.id;
+                } catch (_) {}
+
+                final ds = getIt<CustomersLocalDataSource>();
+                try {
+                  await ds.recordCustomerPayment(
+                    customerId: widget.customer.id,
+                    amount: amtPiasters,
+                    userId: userId,
+                    paymentMethod: method,
+                    notes: notesCtrl.text.trim().isEmpty ? null : notesCtrl.text.trim(),
+                  );
+                  if (!dialogCtx.mounted) return;
+                  Navigator.pop(dialogCtx);
+                  if (mounted) {
+                    AppFeedback.showSuccess(
+                      context,
+                      'تم تسجيل سند قبض بمبلغ ${Money(amtPiasters).toDisplay()} ج.م بنجاح',
+                    );
+                    _load();
+                  }
+                } catch (e) {
+                  if (dialogCtx.mounted) {
+                    AppFeedback.showError(dialogCtx, 'فشل تسجيل الدفعة: $e');
+                  }
+                }
+              },
+              child: const Text(
+                'تأكيد واستلام الدفعة',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

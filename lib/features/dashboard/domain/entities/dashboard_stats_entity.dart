@@ -24,6 +24,7 @@ class DashboardStatsEntity extends Equatable {
   final int overdueInstallmentsCount;
   final int overdueInstallmentsAmount; // in piasters
   final int totalSupplierDebts; // in piasters
+  final int totalCustomerCreditDebts; // in piasters
 
   // Charts & Breakdowns
   final List<DailySalesPointEntity> last7DaysSales;
@@ -48,6 +49,7 @@ class DashboardStatsEntity extends Equatable {
     this.overdueInstallmentsCount = 0,
     this.overdueInstallmentsAmount = 0,
     this.totalSupplierDebts = 0,
+    this.totalCustomerCreditDebts = 0,
     this.last7DaysSales = const [],
     this.todayHourlySales = const [],
     this.todayPaymentBreakdown = const {},
@@ -72,6 +74,7 @@ class DashboardStatsEntity extends Equatable {
         overdueInstallmentsCount,
         overdueInstallmentsAmount,
         totalSupplierDebts,
+        totalCustomerCreditDebts,
         last7DaysSales,
         todayHourlySales,
         todayPaymentBreakdown,

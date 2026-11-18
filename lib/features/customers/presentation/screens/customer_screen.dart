@@ -785,6 +785,18 @@ class _CustomerViewState extends State<_CustomerView> {
                             Colors.orange.shade50,
                             Colors.orange.shade900,
                           ),
+                        if (sum.creditDebtPiasters > 0)
+                          _tag(
+                            'مديونية آجلة: ${Money(sum.creditDebtPiasters).toDisplay()} ج.م',
+                            Colors.red.shade50,
+                            Colors.red.shade900,
+                          ),
+                        if (customer.creditLimit > 0)
+                          _tag(
+                            'حد آجل: ${Money(customer.creditLimit).toDisplay()} ج.م',
+                            Colors.purple.shade50,
+                            Colors.purple.shade900,
+                          ),
                       ],
                     ),
                   ],

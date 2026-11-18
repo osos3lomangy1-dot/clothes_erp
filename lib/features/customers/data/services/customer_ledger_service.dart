@@ -14,6 +14,7 @@ class CustomerFinancialSummary {
   final int totalSpentPiasters;
   final int activeInstallmentsCount;
   final int installmentsRemainingPiasters;
+  final int creditDebtPiasters;
   final DateTime? lastPurchaseDate;
 
   const CustomerFinancialSummary({
@@ -21,6 +22,7 @@ class CustomerFinancialSummary {
     this.totalSpentPiasters = 0,
     this.activeInstallmentsCount = 0,
     this.installmentsRemainingPiasters = 0,
+    this.creditDebtPiasters = 0,
     this.lastPurchaseDate,
   });
 
@@ -32,12 +34,14 @@ class CustomerStatement {
   final List<Sale> sales;
   final List<CustomerInstallment> installments;
   final List<LoyaltyTransaction> loyaltyLogs;
+  final List<CustomerPayment> payments;
 
   const CustomerStatement({
     required this.summary,
     required this.sales,
     required this.installments,
     required this.loyaltyLogs,
+    this.payments = const [],
   });
 }
 
@@ -64,21 +68,63 @@ class CustomerLedgerService {
           ..where((c) => c.deletedAt.isNull()))
         .get();
 
+    final payments = await (_db.select(_db.customerPayments)
+          ..where((p) => p.deletedAt.isNull()))
+        .get();
+
+    final returnsJoin = await (_db.select(_db.returns).join([
+      drift.innerJoin(_db.sales, _db.sales.id.equalsExp(_db.returns.saleId)),
+    ])..where(
+      _db.sales.customerId.isNotNull() &
+      _db.returns.paymentMethod.equals('credit') &
+      _db.returns.deletedAt.isNull(),
+    )).get();
+
+    final downPayments = await (_db.select(_db.salePayments)
+          ..where((sp) => sp.deletedAt.isNull()))
+        .get();
+    final Map<String, int> saleToDownPayment = {};
+    for (final sp in downPayments) {
+      saleToDownPayment[sp.saleId] = (saleToDownPayment[sp.saleId] ?? 0) + sp.amountPiasters;
+    }
+
     final invoiceCount = <String, int>{};
     final totalSpent = <String, int>{};
+    final creditSalesTotal = <String, int>{};
     final lastDate = <String, DateTime>{};
     final activeInstCount = <String, int>{};
     final instRemaining = <String, int>{};
+    final paymentsTotal = <String, int>{};
+    final returnsCreditTotal = <String, int>{};
 
     for (final s in sales) {
       final cid = s.customerId;
       if (cid == null || cid.isEmpty) continue;
       invoiceCount[cid] = (invoiceCount[cid] ?? 0) + 1;
       totalSpent[cid] = (totalSpent[cid] ?? 0) + s.total;
+      if (s.paymentMethod == 'credit') {
+        final paidDown = saleToDownPayment[s.id] ?? 0;
+        final creditPortion = s.total - paidDown;
+        creditSalesTotal[cid] = (creditSalesTotal[cid] ?? 0) + (creditPortion < 0 ? 0 : creditPortion);
+      }
       final prev = lastDate[cid];
       if (prev == null || s.date.isAfter(prev)) {
         lastDate[cid] = s.date;
       }
+    }
+
+    for (final p in payments) {
+      final cid = p.customerId;
+      if (cid.isEmpty) continue;
+      paymentsTotal[cid] = (paymentsTotal[cid] ?? 0) + p.amount;
+    }
+
+    for (final row in returnsJoin) {
+      final s = row.readTable(_db.sales);
+      final r = row.readTable(_db.returns);
+      final cid = s.customerId;
+      if (cid == null || cid.isEmpty) continue;
+      returnsCreditTotal[cid] = (returnsCreditTotal[cid] ?? 0) + r.refundAmount;
     }
 
     for (final c in installments) {
@@ -93,6 +139,8 @@ class CustomerLedgerService {
     final allIds = <String>{
       ...invoiceCount.keys,
       ...activeInstCount.keys,
+      ...creditSalesTotal.keys,
+      ...paymentsTotal.keys,
     };
     return {
       for (final id in allIds)
@@ -101,6 +149,12 @@ class CustomerLedgerService {
           totalSpentPiasters: totalSpent[id] ?? 0,
           activeInstallmentsCount: activeInstCount[id] ?? 0,
           installmentsRemainingPiasters: instRemaining[id] ?? 0,
+          creditDebtPiasters: () {
+            final net = (creditSalesTotal[id] ?? 0) -
+                (paymentsTotal[id] ?? 0) -
+                (returnsCreditTotal[id] ?? 0);
+            return net < 0 ? 0 : net;
+          }(),
           lastPurchaseDate: lastDate[id],
         ),
     };
@@ -122,6 +176,22 @@ class CustomerLedgerService {
           ..orderBy([(c) => drift.OrderingTerm.desc(c.startDate)]))
         .get();
 
+    final payments = await (_db.select(_db.customerPayments)
+          ..where(
+            (p) => p.customerId.equals(customerId) & p.deletedAt.isNull(),
+          )
+          ..orderBy([(p) => drift.OrderingTerm.desc(p.paymentDate)]))
+        .get();
+
+    final returnsRows = await (_db.select(_db.returns).join([
+      drift.innerJoin(_db.sales, _db.sales.id.equalsExp(_db.returns.saleId)),
+    ])..where(
+      _db.sales.customerId.equals(customerId) &
+      _db.returns.paymentMethod.equals('credit') &
+      _db.returns.deletedAt.isNull(),
+    )).get();
+    final returnsCreditTotal = returnsRows.fold<int>(0, (sum, r) => sum + r.readTable(_db.returns).refundAmount);
+
     final loyaltyLogs = await (_db.select(_db.loyaltyTransactions)
           ..where((l) => l.customerId.equals(customerId))
           ..orderBy([(l) => drift.OrderingTerm.desc(l.createdAt)]))
@@ -138,18 +208,39 @@ class CustomerLedgerService {
       (sum, c) => sum + c.remainingPiasters,
     );
 
+    final downPayments = await (_db.select(_db.salePayments)
+          ..where((sp) => sp.deletedAt.isNull()))
+        .get();
+    final Map<String, int> saleToDownPayment = {};
+    for (final sp in downPayments) {
+      saleToDownPayment[sp.saleId] = (saleToDownPayment[sp.saleId] ?? 0) + sp.amountPiasters;
+    }
+
+    final creditSalesTotal = completedSales
+        .where((s) => s.paymentMethod == 'credit')
+        .fold<int>(0, (sum, s) {
+          final paidDown = saleToDownPayment[s.id] ?? 0;
+          final creditPortion = s.total - paidDown;
+          return sum + (creditPortion < 0 ? 0 : creditPortion);
+        });
+    final paymentsTotal = payments.fold<int>(0, (sum, p) => sum + p.amount);
+    final netDebt = creditSalesTotal - paymentsTotal - returnsCreditTotal;
+    final creditDebt = netDebt < 0 ? 0 : netDebt;
+
     return CustomerStatement(
       summary: CustomerFinancialSummary(
         invoiceCount: completedSales.length,
         totalSpentPiasters: totalSpent,
         activeInstallmentsCount: activeInst.length,
         installmentsRemainingPiasters: remaining,
+        creditDebtPiasters: creditDebt,
         lastPurchaseDate:
             completedSales.isNotEmpty ? completedSales.first.date : null,
       ),
       sales: sales,
       installments: installments,
       loyaltyLogs: loyaltyLogs,
+      payments: payments,
     );
   }
 
@@ -195,6 +286,8 @@ class CustomerLedgerService {
       'التصنيف',
       'نسبة الخصم (%)',
       'نقاط الولاء',
+      'الحد الائتماني (ج.م)',
+      'المديونية الآجلة (ج.م)',
       'عدد الفواتير',
       'إجمالي المشتريات (ج.م)',
       'عقود تقسيط نشطة',
@@ -220,6 +313,8 @@ class CustomerLedgerService {
         TextCellValue(typeLabel),
         IntCellValue(c.discountPercent),
         IntCellValue(c.loyaltyPoints),
+        DoubleCellValue(c.creditLimit / 100.0),
+        DoubleCellValue(sum.creditDebtPiasters / 100.0),
         IntCellValue(sum.invoiceCount),
         DoubleCellValue(sum.totalSpentPiasters / 100.0),
         IntCellValue(sum.activeInstallmentsCount),

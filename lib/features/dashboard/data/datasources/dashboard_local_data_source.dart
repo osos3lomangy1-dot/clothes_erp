@@ -281,6 +281,35 @@ class DashboardLocalDataSourceImpl implements DashboardLocalDataSource {
     final suppliers = await (_db.select(_db.suppliers)..where((s) => s.deletedAt.isNull())).get();
     final int totalSupplierDebts = suppliers.fold<int>(0, (sum, s) => sum + s.balance);
 
+    // 11. Customer Credit Debts
+    final creditSales = await (_db.select(_db.sales)
+          ..where((s) => s.paymentMethod.equals('credit') & s.status.isNotValue('cancelled') & s.deletedAt.isNull()))
+        .get();
+
+    final downPayments = await (_db.select(_db.salePayments)
+          ..where((sp) => sp.deletedAt.isNull()))
+        .get();
+    final Map<String, int> saleToDownPayment = {};
+    for (final sp in downPayments) {
+      saleToDownPayment[sp.saleId] = (saleToDownPayment[sp.saleId] ?? 0) + sp.amountPiasters;
+    }
+    final totalCreditSales = creditSales.fold<int>(0, (sum, s) {
+      final paidDown = saleToDownPayment[s.id] ?? 0;
+      final creditPortion = s.total - paidDown;
+      return sum + (creditPortion < 0 ? 0 : creditPortion);
+    });
+
+    final custPayments = await (_db.select(_db.customerPayments)..where((p) => p.deletedAt.isNull())).get();
+    final totalCustPayments = custPayments.fold<int>(0, (sum, p) => sum + p.amount);
+
+    final creditReturns = await (_db.select(_db.returns).join([
+      innerJoin(_db.sales, _db.sales.id.equalsExp(_db.returns.saleId)),
+    ])..where(_db.returns.paymentMethod.equals('credit') & _db.returns.deletedAt.isNull())).get();
+    final totalCreditReturns = creditReturns.fold<int>(0, (sum, r) => sum + r.readTable(_db.returns).refundAmount);
+
+    final netCreditDebt = totalCreditSales - totalCustPayments - totalCreditReturns;
+    final int totalCustomerCreditDebts = netCreditDebt < 0 ? 0 : netCreditDebt;
+
     return DashboardStatsEntity(
       todaySales: todaySales,
       todayTransactions: todayTransactions,
@@ -298,6 +327,7 @@ class DashboardLocalDataSourceImpl implements DashboardLocalDataSource {
       overdueInstallmentsCount: overdueInstallmentsCount,
       overdueInstallmentsAmount: overdueInstallmentsAmount,
       totalSupplierDebts: totalSupplierDebts,
+      totalCustomerCreditDebts: totalCustomerCreditDebts,
       last7DaysSales: last7DaysSales,
       todayHourlySales: todayHourlySales,
       todayPaymentBreakdown: todayPaymentBreakdown,

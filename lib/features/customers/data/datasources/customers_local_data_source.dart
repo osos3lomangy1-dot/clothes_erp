@@ -15,6 +15,7 @@ abstract class CustomersLocalDataSource {
     int loyaltyPoints = 0,
     int discountPercent = 0,
     String customerType = 'retail',
+    int creditLimit = 0,
     String userId = 'system',
   });
   Future<void> updateCustomer({
@@ -24,9 +25,21 @@ abstract class CustomersLocalDataSource {
     int? loyaltyPoints,
     int? discountPercent,
     String? customerType,
+    int? creditLimit,
     String userId = 'system',
   });
   Future<void> softDeleteCustomer(String id, {String userId = 'system'});
+  Future<String> recordCustomerPayment({
+    required String customerId,
+    required int amount,
+    required String paymentMethod,
+    String? shiftId,
+    String? referenceNumber,
+    String? notes,
+    String userId = 'admin',
+  });
+  Future<List<CustomerPayment>> getCustomerPayments(String customerId);
+  Future<int> getCustomerCreditDebt(String customerId);
 }
 
 @LazySingleton(as: CustomersLocalDataSource)
@@ -72,6 +85,7 @@ class CustomersLocalDataSourceImpl implements CustomersLocalDataSource {
     int loyaltyPoints = 0,
     int discountPercent = 0,
     String customerType = 'retail',
+    int creditLimit = 0,
     String userId = 'system',
   }) async {
     final cleanName = name.trim();
@@ -109,6 +123,7 @@ class CustomersLocalDataSourceImpl implements CustomersLocalDataSource {
               loyaltyPoints: Value(loyaltyPoints),
               discountPercent: Value(discountPercent),
               customerType: Value(customerType),
+              creditLimit: Value(creditLimit),
               deletedAt: const Value(null),
               updatedAt: Value(now),
             ),
@@ -135,6 +150,7 @@ class CustomersLocalDataSourceImpl implements CustomersLocalDataSource {
                 loyaltyPoints: Value(loyaltyPoints),
                 discountPercent: Value(discountPercent),
                 customerType: Value(customerType),
+                creditLimit: Value(creditLimit),
                 createdAt: now,
                 updatedAt: now,
               ),
@@ -156,6 +172,7 @@ class CustomersLocalDataSourceImpl implements CustomersLocalDataSource {
     int? loyaltyPoints,
     int? discountPercent,
     String? customerType,
+    int? creditLimit,
     String userId = 'system',
   }) async {
     final cleanName = name.trim();
@@ -196,6 +213,9 @@ class CustomersLocalDataSourceImpl implements CustomersLocalDataSource {
             customerType: customerType != null
                 ? Value(customerType)
                 : const Value.absent(),
+            creditLimit: creditLimit != null
+                ? Value(creditLimit)
+                : const Value.absent(),
             updatedAt: Value(now),
           ),
         );
@@ -224,6 +244,13 @@ class CustomersLocalDataSourceImpl implements CustomersLocalDataSource {
       );
     }
 
+    final openDebt = await getCustomerCreditDebt(id);
+    if (openDebt > 0) {
+      throw Exception(
+        'لا يمكن حذف هذا العميل لوجود مديونية آجلة قائمة عليه غير مسددة.',
+      );
+    }
+
     final now = DateTime.now();
     final branchId = await _branchId();
 
@@ -242,5 +269,135 @@ class CustomersLocalDataSourceImpl implements CustomersLocalDataSource {
       operation: 'delete',
       userId: userId,
     );
+  }
+
+  @override
+  Future<String> recordCustomerPayment({
+    required String customerId,
+    required int amount,
+    required String paymentMethod,
+    String? shiftId,
+    String? referenceNumber,
+    String? notes,
+    String userId = 'admin',
+  }) async {
+    if (amount <= 0) throw Exception('مبلغ السداد يجب أن يكون أكبر من صفر');
+    final now = DateTime.now();
+    final branchId = await _branchId();
+    final id = _uuid.v4();
+    final ref = (referenceNumber != null && referenceNumber.trim().isNotEmpty)
+        ? referenceNumber.trim()
+        : 'REC-${now.millisecondsSinceEpoch}';
+
+    String? effectiveShiftId = shiftId;
+    if (effectiveShiftId == null) {
+      final activeShift = await (_db.select(_db.shifts)
+            ..where((s) => s.closedAt.isNull() & s.deletedAt.isNull())
+            ..orderBy([(s) => OrderingTerm.desc(s.openedAt)])
+            ..limit(1))
+          .getSingleOrNull();
+      effectiveShiftId = activeShift?.id;
+    }
+
+    await _tx.write(
+      writeFn: () async {
+        await _db.into(_db.customerPayments).insert(
+          CustomerPaymentsCompanion.insert(
+            id: id,
+            branchId: branchId,
+            customerId: customerId,
+            shiftId: Value(effectiveShiftId),
+            amount: amount,
+            paymentMethod: Value(paymentMethod),
+            referenceNumber: Value(ref),
+            notes: Value(notes),
+            createdBy: userId,
+            paymentDate: now,
+            createdAt: now,
+          ),
+        );
+
+        await _db.into(_db.cashMovements).insert(
+          CashMovementsCompanion.insert(
+            id: _uuid.v4(),
+            branchId: branchId,
+            shiftId: Value(effectiveShiftId),
+            type: 'deposit',
+            method: paymentMethod,
+            direction: 'in',
+            amountPiasters: amount,
+            referenceId: Value(id),
+            notes: Value('تحصيل دفعة حساب عميل ($ref)'),
+            createdAt: now.millisecondsSinceEpoch ~/ 1000,
+            updatedAt: now.millisecondsSinceEpoch ~/ 1000,
+          ),
+        );
+      },
+      branchId: branchId,
+      entity: 'customer_payment',
+      entityId: id,
+      operation: 'insert',
+      userId: userId,
+      payload: '{"customerId":"$customerId","amount":$amount,"method":"$paymentMethod"}',
+    );
+    return id;
+  }
+
+  @override
+  Future<List<CustomerPayment>> getCustomerPayments(String customerId) async {
+    return (_db.select(_db.customerPayments)
+          ..where((t) => t.customerId.equals(customerId) & t.deletedAt.isNull())
+          ..orderBy([(t) => OrderingTerm.desc(t.paymentDate)]))
+        .get();
+  }
+
+  @override
+  Future<int> getCustomerCreditDebt(String customerId) async {
+    final creditSalesRows = await (_db.select(_db.sales)
+          ..where(
+            (s) =>
+                s.customerId.equals(customerId) &
+                s.paymentMethod.equals('credit') &
+                s.status.isNotValue('cancelled') &
+                s.deletedAt.isNull(),
+          ))
+        .get();
+
+    int totalCreditSales = 0;
+    if (creditSalesRows.isNotEmpty) {
+      final saleIds = creditSalesRows.map((s) => s.id).toList();
+      final downPayments = await (_db.select(_db.salePayments)
+            ..where((sp) => sp.saleId.isIn(saleIds) & sp.deletedAt.isNull()))
+          .get();
+
+      final Map<String, int> saleToDownPayment = {};
+      for (final sp in downPayments) {
+        saleToDownPayment[sp.saleId] = (saleToDownPayment[sp.saleId] ?? 0) + sp.amountPiasters;
+      }
+
+      for (final s in creditSalesRows) {
+        final paidDown = saleToDownPayment[s.id] ?? 0;
+        final owed = s.total - paidDown;
+        totalCreditSales += (owed < 0 ? 0 : owed);
+      }
+    }
+
+    final paymentRows = await (_db.select(_db.customerPayments)
+          ..where((p) => p.customerId.equals(customerId) & p.deletedAt.isNull()))
+        .get();
+    final totalPayments = paymentRows.fold<int>(0, (sum, p) => sum + p.amount);
+
+    final returnQuery = _db.select(_db.returns).join([
+      innerJoin(_db.sales, _db.sales.id.equalsExp(_db.returns.saleId)),
+    ])..where(
+      _db.sales.customerId.equals(customerId) &
+      _db.returns.paymentMethod.equals('credit') &
+      _db.returns.deletedAt.isNull(),
+    );
+    final returnRows = await returnQuery.get();
+    final totalReturns = returnRows.fold<int>(0, (sum, row) => sum + row.readTable(_db.returns).refundAmount);
+
+    final netDebt = totalCreditSales - totalPayments - totalReturns;
+    return netDebt < 0 ? 0 : netDebt;
   }
 }

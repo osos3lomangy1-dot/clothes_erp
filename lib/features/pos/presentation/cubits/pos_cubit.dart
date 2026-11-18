@@ -445,9 +445,10 @@ class PosCubit extends Cubit<PosState> {
     final state = this.state;
     if (state.cart.isEmpty) return false;
 
+    final isCredit = paymentMethod == 'credit';
     final effectiveSplits = splits ?? [
       PaymentSplit(
-        method: paymentMethod == 'card' ? 'card' : 'cash',
+        method: isCredit ? 'credit' : (paymentMethod == 'card' ? 'card' : 'cash'),
         amountPiasters: state.total,
       ),
     ];
@@ -478,7 +479,9 @@ class PosCubit extends Cubit<PosState> {
         total: state.total,
         paymentMethod: paymentMethod == 'installment'
             ? 'installment'
-            : (effectiveSplits.length > 1 ? 'split' : effectiveSplits.first.method),
+            : (isCredit
+                ? 'credit'
+                : (effectiveSplits.length > 1 ? 'split' : effectiveSplits.first.method)),
         splits: effectiveSplits,
         promotionResult: state.promotionResult,
         promotionDiscount: state.promotionDiscountPiasters,

@@ -7,6 +7,7 @@ class CustomerEntity extends Equatable {
   final int loyaltyPoints;
   final int discountPercent;
   final String customerType; // 'retail', 'wholesale', 'vip'
+  final int creditLimit; // in piasters (0 = unconstrained)
   final DateTime createdAt;
 
   const CustomerEntity({
@@ -16,6 +17,7 @@ class CustomerEntity extends Equatable {
     this.loyaltyPoints = 0,
     this.discountPercent = 0,
     this.customerType = 'retail',
+    this.creditLimit = 0,
     required this.createdAt,
   });
 
@@ -29,6 +31,7 @@ class CustomerEntity extends Equatable {
     int? loyaltyPoints,
     int? discountPercent,
     String? customerType,
+    int? creditLimit,
     DateTime? createdAt,
   }) {
     return CustomerEntity(
@@ -38,6 +41,7 @@ class CustomerEntity extends Equatable {
       loyaltyPoints: loyaltyPoints ?? this.loyaltyPoints,
       discountPercent: discountPercent ?? this.discountPercent,
       customerType: customerType ?? this.customerType,
+      creditLimit: creditLimit ?? this.creditLimit,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -50,6 +54,7 @@ class CustomerEntity extends Equatable {
         loyaltyPoints,
         discountPercent,
         customerType,
+        creditLimit,
         createdAt,
       ];
 }

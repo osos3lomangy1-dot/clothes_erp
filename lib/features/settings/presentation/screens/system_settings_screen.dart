@@ -298,6 +298,7 @@ class _InstallmentSettingsSection extends StatefulWidget {
 class _InstallmentSettingsSectionState
     extends State<_InstallmentSettingsSection> {
   bool _pinRequired = true;
+  bool _creditPinRequired = false;
   bool _pinSet = false;
   bool _loading = true;
 
@@ -310,10 +311,12 @@ class _InstallmentSettingsSectionState
   Future<void> _loadPinStatus() async {
     final pinSvc = getIt<ManagerPinService>();
     final required = await pinSvc.isPinRequired();
+    final creditRequired = await pinSvc.isCreditPinRequired();
     final set = await pinSvc.isPinSet();
     if (mounted) {
       setState(() {
         _pinRequired = required;
+        _creditPinRequired = creditRequired;
         _pinSet = set;
         _loading = false;
       });
@@ -345,7 +348,7 @@ class _InstallmentSettingsSectionState
         children: [
           SwitchListTile(
             key: const Key('installment_pin_required_toggle'),
-            title: const Text('طلب الرقم السري للمدير (Manager PIN)'),
+            title: const Text('طلب الرقم السري للمدير (Manager PIN) في التقسيط'),
             subtitle: const Text(
               'تأكيد المدير عند إنشاء عقد تقسيط، تسجيل دفعة، التسوية المبكرة، أو الإلغاء',
             ),
@@ -359,16 +362,32 @@ class _InstallmentSettingsSectionState
             },
           ),
           const Divider(height: 1),
+          SwitchListTile(
+            key: const Key('credit_sales_pin_required_toggle'),
+            title: const Text('طلب الرقم السري للمدير عند البيع الآجل'),
+            subtitle: const Text(
+              'طلب موافقة وتأكيد المدير عند إتمام مبيعات بالآجل أو عند تجاوز الحد الائتماني للعميل',
+            ),
+            value: _creditPinRequired,
+            onChanged: (v) async {
+              final uid = _userId(context);
+              await pinSvc.setCreditPinRequired(required: v, userId: uid);
+              if (mounted) {
+                setState(() => _creditPinRequired = v);
+              }
+            },
+          ),
+          const Divider(height: 1),
           ListTile(
-            enabled: _pinRequired,
+            enabled: _pinRequired || _creditPinRequired,
             title: const Text('الرقم السري للمدير'),
             subtitle: Text(
-              !_pinRequired
-                  ? 'معطّل حالياً — لن يُطلب الرقم السري في شاشات التقسيط'
+              (!_pinRequired && !_creditPinRequired)
+                  ? 'معطّل حالياً — لن يُطلب الرقم السري'
                   : (_pinSet ? 'الرقم السري مُعيَّن' : 'لم يتم تعيين الرقم السري بعد'),
             ),
             trailing: OutlinedButton(
-              onPressed: _pinRequired ? () => _showSetPinDialog(context) : null,
+              onPressed: (_pinRequired || _creditPinRequired) ? () => _showSetPinDialog(context) : null,
               child: Text(_pinSet ? 'تغيير' : 'تعيين'),
             ),
           ),

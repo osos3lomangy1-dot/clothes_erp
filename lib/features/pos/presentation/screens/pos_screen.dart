@@ -8,6 +8,7 @@ import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../../customers/domain/entities/customer_entity.dart';
 import '../../../customers/domain/repositories/customer_repository.dart';
+import '../../../customers/data/datasources/customers_local_data_source.dart';
 import '../../../product_variants/domain/entities/variant_entity.dart';
 import '../../domain/entities/sale_item_entity.dart';
 import '../cubits/pos_cubit.dart';
@@ -1570,8 +1571,9 @@ class _CartPanel extends StatefulWidget {
 class _CartPanelState extends State<_CartPanel> {
   final _discountCtrl = TextEditingController();
   final _receivedCtrl = TextEditingController();
+  final _creditDownPaymentCtrl = TextEditingController();
   bool _isPercentageDiscount = false;
-  String _paymentMethod = 'cash'; // 'cash' or 'card'
+  String _paymentMethod = 'cash'; // 'cash', 'card', 'split', 'installment', 'credit'
   bool _installmentAvailable = false;
   bool _isWholesaleMode = false;
 
@@ -1608,6 +1610,7 @@ class _CartPanelState extends State<_CartPanel> {
   void dispose() {
     _discountCtrl.dispose();
     _receivedCtrl.dispose();
+    _creditDownPaymentCtrl.dispose();
     super.dispose();
   }
 
@@ -1664,6 +1667,10 @@ class _CartPanelState extends State<_CartPanel> {
     }
     if (_paymentMethod == 'split') {
       await _handleSplitCheckout(state);
+      return;
+    }
+    if (_paymentMethod == 'credit') {
+      await _handleCreditCheckout(state);
       return;
     }
     if (state.cart.isEmpty || state.isProcessing) return;
@@ -1759,6 +1766,183 @@ class _CartPanelState extends State<_CartPanel> {
           SnackBar(
             content: Text(
               'تم إتمام عملية البيع المجزأ بنجاح!',
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
+            ),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleCreditCheckout(PosState state) async {
+    if (state.cart.isEmpty || state.isProcessing) return;
+
+    final customer = state.customer;
+    if (customer == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('البيع الآجل (على الحساب) يتطلب تحديد العميل أولاً لحساب الرصيد والحد الائتماني.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    final downPaymentNum = double.tryParse(_creditDownPaymentCtrl.text.trim()) ?? 0.0;
+    final downPaymentPiasters = (downPaymentNum * 100).round();
+    if (downPaymentPiasters < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('مبلغ الدفعة المقدمة لا يمكن أن يكون سالباً'), backgroundColor: AppColors.error),
+      );
+      return;
+    }
+    if (downPaymentPiasters > state.total) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('الدفعة المقدمة لا يمكن أن تتجاوز إجمالي الفاتورة'), backgroundColor: AppColors.error),
+      );
+      return;
+    }
+
+    final creditPortion = state.total - downPaymentPiasters;
+    final customersDs = getIt<CustomersLocalDataSource>();
+    final currentDebt = await customersDs.getCustomerCreditDebt(customer.id);
+    final projectedDebt = currentDebt + creditPortion;
+    final isLimitExceeded = (customer.creditLimit > 0) && (projectedDebt > customer.creditLimit);
+
+    final pinSvc = getIt.isRegistered<ManagerPinService>() ? getIt<ManagerPinService>() : null;
+    final creditPinConfigured = pinSvc != null && (await pinSvc.isCreditPinRequired());
+    final requirePin = isLimitExceeded || creditPinConfigured;
+
+    if (requirePin && pinSvc != null) {
+      final pinCtrl = TextEditingController();
+      final reasonMsg = isLimitExceeded
+          ? 'تنبيه: مديونية العميل بعد هذه الفاتورة ستصل إلى (${Money(projectedDebt).toDisplay()} ج.م) متجاوزة الحد الائتماني الأقصى (${Money(customer.creditLimit).toDisplay()} ج.م).\nيرجى إدخال رمز مرور المدير للموافقة والاستثناء:'
+          : 'النظام مضبوط لطلب رمز مرور المدير (PIN) عند البيع الآجل.\nأدخل الرمز للمتابعة:';
+
+      if (!mounted) return;
+      final pinApproved = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Icon(isLimitExceeded ? Icons.warning_amber_rounded : Icons.lock_outline_rounded,
+                  color: isLimitExceeded ? Colors.orange.shade800 : AppColors.primary),
+              const SizedBox(width: 8),
+              Text(
+                isLimitExceeded ? 'تجاوز الحد الائتماني (موافقة المدير)' : 'تأكيد المدير للبيع الآجل',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(reasonMsg, style: const TextStyle(fontSize: 13, height: 1.4)),
+              const SizedBox(height: 14),
+              TextField(
+                controller: pinCtrl,
+                autofocus: true,
+                obscureText: true,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'رمز مرور المدير (PIN)',
+                  prefixIcon: const Icon(Icons.pin_rounded),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isLimitExceeded ? Colors.orange.shade800 : AppColors.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () async {
+                final pin = pinCtrl.text.trim();
+                final res = await pinSvc.verifyPin(
+                  pin: pin,
+                  operation: 'credit_sale_override',
+                  isCreditSale: true,
+                );
+                if (!ctx.mounted) return;
+                if (res.ok) {
+                  Navigator.pop(ctx, true);
+                } else {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    SnackBar(content: Text(res.error ?? 'رمز المرور غير صحيح'), backgroundColor: AppColors.error),
+                  );
+                }
+              },
+              child: const Text('موافقة وتأكيد', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+
+      if (pinApproved != true) {
+        return;
+      }
+    }
+
+    if (!mounted) return;
+
+    String? cashierId;
+    try {
+      final authState = context.read<AuthCubit>().state;
+      if (authState is AuthAuthenticated) {
+        cashierId = authState.user.id;
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final posCubit = context.read<PosCubit>();
+
+    final splits = <PaymentSplit>[];
+    if (downPaymentPiasters > 0) {
+      splits.add(PaymentSplit(method: 'cash', amountPiasters: downPaymentPiasters));
+      splits.add(PaymentSplit(method: 'credit', amountPiasters: creditPortion));
+    } else {
+      splits.add(PaymentSplit(method: 'credit', amountPiasters: state.total));
+    }
+
+    final ok = await posCubit.checkout(
+      cashierId: cashierId,
+      splits: splits,
+      paymentMethod: 'credit',
+    );
+
+    if (ok && mounted) {
+      _receivedCtrl.clear();
+      _discountCtrl.clear();
+      _creditDownPaymentCtrl.clear();
+      setState(() => _isWholesaleMode = false);
+
+      final invoicesRepo = getIt<InvoicesRepository>();
+      final res = await invoicesRepo.getInvoices(limit: 1);
+      InvoiceDetailsEntity? latestInvoice;
+      res.fold((_) {}, (list) => latestInvoice = list.isNotEmpty ? list.first : null);
+
+      if (latestInvoice != null && mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => SaleSuccessDialog(invoice: latestInvoice!),
+        );
+      } else {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text(
+              'تم إتمام البيع الآجل وقيد المديونية على حساب العميل بنجاح!',
               style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
             ),
             backgroundColor: AppColors.success,
@@ -2561,8 +2745,43 @@ class _CartPanelState extends State<_CartPanel> {
                               ),
                             ),
                           ],
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () => setState(() => _paymentMethod = 'credit'),
+                              style: ElevatedButton.styleFrom(
+                                elevation: _paymentMethod == 'credit' ? 2 : 0,
+                                backgroundColor: _paymentMethod == 'credit'
+                                    ? AppColors.primary
+                                    : AppColors.surfaceContainerLowest,
+                                foregroundColor: _paymentMethod == 'credit'
+                                    ? Colors.white
+                                    : AppColors.onSurface,
+                                side: BorderSide(
+                                  color: _paymentMethod == 'credit'
+                                      ? AppColors.primary
+                                      : AppColors.outlineVariant,
+                                ),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 9),
+                                minimumSize: const Size(0, 38),
+                              ),
+                              icon: const Icon(Icons.account_balance_wallet_outlined, size: 15),
+                              label: const Text(
+                                'آجل',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 11.5),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
+
+                      if (_paymentMethod == 'credit') ...[
+                        const SizedBox(height: 8),
+                        _buildCreditPaymentSection(state),
+                      ],
 
                       // Fast Cash Banknote Presets (when cash mode is active)
                       if (_paymentMethod == 'cash') ...[
@@ -2726,6 +2945,127 @@ class _CartPanelState extends State<_CartPanel> {
             color: isSelected ? Colors.white : AppColors.onSurface,),
         ),
       ),
+    );
+  }
+
+  Widget _buildCreditPaymentSection(PosState state) {
+    final customer = state.customer;
+    if (customer == null) {
+      return Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.orange.shade50,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.orange.shade300),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800, size: 20),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'البيع الآجل يتطلب تحديد عميل لحساب المديونية والحد الائتماني.',
+                style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return FutureBuilder<int>(
+      future: getIt<CustomersLocalDataSource>().getCustomerCreditDebt(customer.id),
+      builder: (context, snapshot) {
+        final currentDebt = snapshot.data ?? 0;
+        final downPaymentNum = double.tryParse(_creditDownPaymentCtrl.text.trim()) ?? 0.0;
+        final downPaymentPiasters = (downPaymentNum * 100).round().clamp(0, state.total);
+        final netCredit = state.total - downPaymentPiasters;
+        final projectedDebt = currentDebt + netCredit;
+        final limitExceeded = (customer.creditLimit > 0) && (projectedDebt > customer.creditLimit);
+
+        return Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: limitExceeded ? Colors.red.shade50 : Colors.blue.shade50,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: limitExceeded ? Colors.red.shade300 : Colors.blue.shade200),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'العميل: ${customer.name}',
+                    style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  Text(
+                    customer.creditLimit > 0
+                        ? 'الحد الائتماني: ${Money(customer.creditLimit).toDisplay()} ج.م'
+                        : 'الحد: غير مقيد',
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5, color: Colors.grey.shade700),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'المديونية السابقة: ${Money(currentDebt).toDisplay()} ج.م',
+                    style: const TextStyle(fontFamily: 'Cairo', fontSize: 12),
+                  ),
+                  Text(
+                    'الإجمالي بعد الفاتورة: ${Money(projectedDebt).toDisplay()} ج.م',
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.bold,
+                      color: limitExceeded ? Colors.red.shade800 : AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+              if (limitExceeded) ...[
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 14, color: Colors.red.shade800),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        'تجاوز للحد الائتماني بمقدار ${Money(projectedDebt - customer.creditLimit).toDisplay()} ج.م (يتطلب موافقة المدير)',
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red.shade800),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _creditDownPaymentCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'دفعة مقدمة كاش (اختياري)',
+                        hintText: '0',
+                        suffixText: 'ج.م',
+                        isDense: true,
+                        prefixIcon: const Icon(Icons.payments_outlined, size: 16),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

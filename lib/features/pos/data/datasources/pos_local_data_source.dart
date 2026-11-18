@@ -69,20 +69,25 @@ class PosLocalDataSource {
     }
 
     final isInstallment = paymentMethod == 'installment';
+    final isCredit = paymentMethod == 'credit';
     final effectiveSplits = (splits != null && splits.isNotEmpty)
         ? splits
         : [
             PaymentSplit(
-              method: (paymentMethod != null && paymentMethod.toLowerCase() == 'card')
-                  ? 'card'
-                  : 'cash',
+              method: isCredit
+                  ? 'credit'
+                  : ((paymentMethod != null && paymentMethod.toLowerCase() == 'card')
+                      ? 'card'
+                      : 'cash'),
               amountPiasters: total,
             ),
           ];
 
     final effectivePaymentMethod = isInstallment
         ? 'installment'
-        : (effectiveSplits.length > 1 ? 'split' : effectiveSplits.first.method);
+        : (isCredit
+            ? 'credit'
+            : (effectiveSplits.length > 1 ? 'split' : effectiveSplits.first.method));
 
     final nowSec = now.millisecondsSinceEpoch ~/ 1000;
 
@@ -166,7 +171,7 @@ class PosLocalDataSource {
         }
 
         // For non-installment sales, write sale_payments and cash_movements (sale)
-        if (!isInstallment) {
+        if (!isInstallment && !isCredit) {
           for (final split in effectiveSplits) {
             final spId = _uuid.v4();
             await _db.into(_db.salePayments).insert(
@@ -197,6 +202,41 @@ class PosLocalDataSource {
                 updatedAt: nowSec,
               ),
             );
+          }
+        } else if (isCredit) {
+          // In credit sales, record down payments (cash/card) in sale_payments & cash_movements
+          for (final split in effectiveSplits) {
+            if (split.method != 'credit' && split.amountPiasters > 0) {
+              final spId = _uuid.v4();
+              await _db.into(_db.salePayments).insert(
+                SalePaymentsCompanion.insert(
+                  id: spId,
+                  branchId: branchId,
+                  saleId: effectiveSaleId,
+                  method: split.method,
+                  amountPiasters: split.amountPiasters,
+                  shiftId: Value(effectiveShiftId),
+                  createdAt: nowSec,
+                  updatedAt: nowSec,
+                ),
+              );
+
+              await _db.into(_db.cashMovements).insert(
+                CashMovementsCompanion.insert(
+                  id: _uuid.v4(),
+                  branchId: branchId,
+                  shiftId: Value(effectiveShiftId),
+                  type: 'sale',
+                  method: split.method,
+                  direction: 'in',
+                  amountPiasters: split.amountPiasters,
+                  referenceId: Value(effectiveSaleId),
+                  notes: Value('دفعة مقدمة لمبيعات آجل (${split.method})'),
+                  createdAt: nowSec,
+                  updatedAt: nowSec,
+                ),
+              );
+            }
           }
         }
       },

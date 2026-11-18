@@ -346,6 +346,15 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
           bgColor: Colors.blueGrey.shade50,
         );
 
+        final alertCustomerCredit = _MiniAlertCard(
+          title: 'مديونيات العملاء الآجلة',
+          countText: '${Money(stats.totalCustomerCreditDebts).toDisplay()} ج.م',
+          subtext: 'مستحقات على الحساب الآجل',
+          icon: Icons.account_balance_wallet_rounded,
+          color: stats.totalCustomerCreditDebts > 0 ? Colors.purple.shade800 : Colors.grey.shade600,
+          bgColor: stats.totalCustomerCreditDebts > 0 ? Colors.purple.shade50 : Colors.grey.shade50,
+        );
+
         final alertReturns = _MiniAlertCard(
           title: 'مرتجعات اليوم',
           countText: '${Money(stats.todayReturnsTotal).toDisplay()} ج.م',
@@ -355,12 +364,12 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
           bgColor: stats.todayReturnsCount > 0 ? Colors.indigo.shade50 : Colors.grey.shade50,
         );
 
-        if (constraints.maxWidth < 900) {
+        if (constraints.maxWidth < 1100) {
           return Column(
             children: [
               Row(children: [Expanded(child: alertStock), const SizedBox(width: 10), Expanded(child: alertInstallments)]),
               const SizedBox(height: 10),
-              Row(children: [Expanded(child: alertSuppliers), const SizedBox(width: 10), Expanded(child: alertReturns)]),
+              Row(children: [Expanded(child: alertSuppliers), const SizedBox(width: 10), Expanded(child: alertCustomerCredit), const SizedBox(width: 10), Expanded(child: alertReturns)]),
             ],
           );
         }
@@ -372,6 +381,8 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
             Expanded(child: alertInstallments),
             const SizedBox(width: 10),
             Expanded(child: alertSuppliers),
+            const SizedBox(width: 10),
+            Expanded(child: alertCustomerCredit),
             const SizedBox(width: 10),
             Expanded(child: alertReturns),
           ],

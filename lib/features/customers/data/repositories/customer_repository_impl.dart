@@ -25,6 +25,7 @@ class CustomerRepositoryImpl implements CustomerRepository {
                 loyaltyPoints: r.loyaltyPoints,
                 discountPercent: r.discountPercent,
                 customerType: r.customerType,
+                creditLimit: r.creditLimit,
                 createdAt: r.createdAt,
               ))
           .toList();
@@ -50,6 +51,7 @@ class CustomerRepositoryImpl implements CustomerRepository {
         loyaltyPoints: customer.loyaltyPoints,
         discountPercent: customer.discountPercent,
         customerType: customer.customerType,
+        creditLimit: customer.creditLimit,
       );
       return const Right(null);
     } catch (e) {
@@ -73,6 +75,7 @@ class CustomerRepositoryImpl implements CustomerRepository {
         loyaltyPoints: customer.loyaltyPoints,
         discountPercent: customer.discountPercent,
         customerType: customer.customerType,
+        creditLimit: customer.creditLimit,
       );
       return const Right(null);
     } catch (e) {
@@ -102,6 +105,7 @@ class CustomerRepositoryImpl implements CustomerRepository {
         loyaltyPoints: row.loyaltyPoints,
         discountPercent: row.discountPercent,
         customerType: row.customerType,
+        creditLimit: row.creditLimit,
         createdAt: row.createdAt,
       ));
     } catch (e) {

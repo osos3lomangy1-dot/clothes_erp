@@ -76,6 +76,7 @@ class _TestManagerPinService extends ManagerPinService {
     required String pin,
     required String operation,
     DateTime? now,
+    bool isCreditSale = false,
   }) async {
     if (pin == '1234') {
       return const PinVerificationResult.success();

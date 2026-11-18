@@ -16,6 +16,13 @@ void showCustomerDialog(BuildContext context, {CustomerEntity? customer}) {
     final discountCtrl = TextEditingController(
       text: customer != null && customer.discountPercent > 0 ? '${customer.discountPercent}' : '',
     );
+    final creditLimitCtrl = TextEditingController(
+      text: customer != null && customer.creditLimit > 0
+          ? (customer.creditLimit % 100 == 0
+              ? '${customer.creditLimit ~/ 100}'
+              : (customer.creditLimit / 100.0).toStringAsFixed(2))
+          : '',
+    );
     String selectedType = customer?.customerType ?? 'retail';
     final isEditing = customer != null;
     final cubit = context.read<CustomerCubit>();
@@ -120,6 +127,20 @@ void showCustomerDialog(BuildContext context, {CustomerEntity? customer}) {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: creditLimitCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'الحد الأقصى للآجل (الائتماني)',
+                      hintText: 'اتركه فارغاً أو 0 إذا كان غير مقيد',
+                      suffixText: 'ج.م',
+                      prefixIcon: const Icon(Icons.account_balance_wallet_outlined),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  ),
                 ],
               ),
             ),
@@ -141,6 +162,8 @@ void showCustomerDialog(BuildContext context, {CustomerEntity? customer}) {
                 final phone = phoneCtrl.text.trim();
                 final points = int.tryParse(pointsCtrl.text.trim()) ?? 0;
                 final discount = int.tryParse(discountCtrl.text.trim()) ?? 0;
+                final creditLimitNum = double.tryParse(creditLimitCtrl.text.trim()) ?? 0.0;
+                final creditLimit = (creditLimitNum * 100).round();
 
                 if (name.isEmpty || phone.isEmpty) {
                   AppFeedback.showError(dialogCtx, 'يرجى إدخال اسم العميل ورقم هاتفه');
@@ -154,6 +177,10 @@ void showCustomerDialog(BuildContext context, {CustomerEntity? customer}) {
                   AppFeedback.showError(dialogCtx, 'رصيد نقاط الولاء لا يمكن أن يكون سالباً');
                   return;
                 }
+                if (creditLimit < 0) {
+                  AppFeedback.showError(dialogCtx, 'الحد الائتماني لا يمكن أن يكون سالباً');
+                  return;
+                }
 
                 if (isEditing) {
                   final ok = await cubit.updateCustomer(
@@ -163,6 +190,7 @@ void showCustomerDialog(BuildContext context, {CustomerEntity? customer}) {
                       loyaltyPoints: points,
                       discountPercent: discount,
                       customerType: selectedType,
+                      creditLimit: creditLimit,
                     ),
                   );
                   if (!dialogCtx.mounted) return;
@@ -187,6 +215,7 @@ void showCustomerDialog(BuildContext context, {CustomerEntity? customer}) {
                       loyaltyPoints: points,
                       discountPercent: discount,
                       customerType: selectedType,
+                      creditLimit: creditLimit,
                       createdAt: DateTime.now(),
                     ),
                   );

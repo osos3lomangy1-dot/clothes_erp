@@ -261,6 +261,7 @@ class Customers extends Table {
   IntColumn get loyaltyPoints => integer().withDefault(const Constant(0))();
   IntColumn get discountPercent => integer().withDefault(const Constant(0))();
   TextColumn get customerType => text().withDefault(const Constant('retail'))();
+  IntColumn get creditLimit => integer().withDefault(const Constant(0))(); // in piasters (0 = unconstrained)
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
   DateTimeColumn get deletedAt => dateTime().nullable()();
@@ -426,6 +427,25 @@ class SupplierPayments extends Table {
   TextColumn get notes => text().nullable()();
   TextColumn get createdBy => text()();
   DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class CustomerPayments extends Table {
+  TextColumn get id => text()();
+  TextColumn get branchId => text()();
+  TextColumn get customerId => text().references(Customers, #id)();
+  TextColumn get saleId => text().nullable()();
+  TextColumn get shiftId => text().nullable()();
+  IntColumn get amount => integer()();
+  DateTimeColumn get paymentDate => dateTime()();
+  TextColumn get paymentMethod => text().withDefault(const Constant('cash'))();
+  TextColumn get referenceNumber => text().nullable()();
+  TextColumn get notes => text().nullable()();
+  TextColumn get createdBy => text()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -737,6 +757,7 @@ QueryExecutor _openConnection() {
     Purchases,
     PurchaseItems,
     SupplierPayments,
+    CustomerPayments,
     LoyaltyTransactions,
     GoodsReceipts,
     GoodsReceiptItems,
@@ -754,7 +775,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @visibleForTesting
   Future<void> migrateToV6(Migrator m) async {
@@ -1077,6 +1098,22 @@ class AppDatabase extends _$AppDatabase {
     ''');
   }
 
+  @visibleForTesting
+  Future<void> migrateToV11(Migrator m) async {
+    final payTables = await customSelect(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='customer_payments'",
+    ).get();
+    if (payTables.isEmpty) {
+      await m.createTable(customerPayments);
+    }
+
+    final custCols = await customSelect('PRAGMA table_info("customers")').get();
+    final cols = custCols.map((r) => (r.data['name'] as String).toLowerCase()).toSet();
+    if (!cols.contains('credit_limit')) {
+      await m.addColumn(customers, customers.creditLimit);
+    }
+  }
+
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (Migrator m) async {
@@ -1171,6 +1208,10 @@ class AppDatabase extends _$AppDatabase {
       if (from < 10 && to >= 10) {
         await migrateToV10(m);
       }
+
+      if (from < 11 && to >= 11) {
+        await migrateToV11(m);
+      }
     },
     beforeOpen: (details) async {
       Future<void> addColumnIfNotExists(
@@ -1223,6 +1264,7 @@ class AppDatabase extends _$AppDatabase {
         'promotion_applications',
         promotionApplications,
       );
+      await createTableIfNotExists('customer_payments', customerPayments);
 
       await addColumnIfNotExists(
         'product_variants',
@@ -1238,6 +1280,11 @@ class AppDatabase extends _$AppDatabase {
         'customers',
         'customer_type',
         "TEXT NOT NULL DEFAULT 'retail'",
+      );
+      await addColumnIfNotExists(
+        'customers',
+        'credit_limit',
+        'INTEGER NOT NULL DEFAULT 0',
       );
       await addColumnIfNotExists(
         'users',

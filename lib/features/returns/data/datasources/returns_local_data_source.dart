@@ -261,7 +261,7 @@ class ReturnsLocalDataSourceImpl implements ReturnsLocalDataSource {
                     ),
                   );
             }
-            if (remainingRefund > 0) {
+            if (remainingRefund > 0 && paymentMethod.toLowerCase() != 'credit') {
               await _db.into(_db.cashMovements).insert(
                     CashMovementsCompanion.insert(
                       id: _uuid.v4(),
@@ -278,7 +278,7 @@ class ReturnsLocalDataSourceImpl implements ReturnsLocalDataSource {
                     ),
                   );
             }
-          } else {
+          } else if (paymentMethod.toLowerCase() != 'credit') {
             await _db.into(_db.cashMovements).insert(
                   CashMovementsCompanion.insert(
                     id: _uuid.v4(),
