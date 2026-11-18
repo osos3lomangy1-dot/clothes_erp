@@ -172,9 +172,35 @@ class _SystemSettingsView extends StatelessWidget {
                         },
                       ),
                     ],
+                    const Divider(height: 1),
+                    SwitchListTile(
+                      key: const Key('payment_credit_toggle'),
+                      title: const Text('آجل (الدفع على الحساب)'),
+                      value: state.creditPaymentEnabled,
+                      onChanged: (v) async {
+                        final err = await context
+                            .read<SettingsCubit>()
+                            .setPaymentMethod(
+                              'payment.credit',
+                              v,
+                              _userId(context),
+                            );
+                        if (err != null && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(err),
+                              backgroundColor: AppColors.error,
+                            ),
+                          );
+                        }
+                      },
+                    ),
                   ],
                 ),
               ),
+              const SizedBox(height: 20),
+              _sectionTitle('إعدادات الدفع الآجل (البيع على الحساب)'),
+              _CreditSalesSettingsSection(userId: _userId(context)),
               if (installmentsEnabled) ...[
                 const SizedBox(height: 20),
                 _sectionTitle('إعدادات التقسيط'),
@@ -298,7 +324,6 @@ class _InstallmentSettingsSection extends StatefulWidget {
 class _InstallmentSettingsSectionState
     extends State<_InstallmentSettingsSection> {
   bool _pinRequired = true;
-  bool _creditPinRequired = false;
   bool _pinSet = false;
   bool _loading = true;
 
@@ -311,12 +336,10 @@ class _InstallmentSettingsSectionState
   Future<void> _loadPinStatus() async {
     final pinSvc = getIt<ManagerPinService>();
     final required = await pinSvc.isPinRequired();
-    final creditRequired = await pinSvc.isCreditPinRequired();
     final set = await pinSvc.isPinSet();
     if (mounted) {
       setState(() {
         _pinRequired = required;
-        _creditPinRequired = creditRequired;
         _pinSet = set;
         _loading = false;
       });
@@ -362,32 +385,16 @@ class _InstallmentSettingsSectionState
             },
           ),
           const Divider(height: 1),
-          SwitchListTile(
-            key: const Key('credit_sales_pin_required_toggle'),
-            title: const Text('طلب الرقم السري للمدير عند البيع الآجل'),
-            subtitle: const Text(
-              'طلب موافقة وتأكيد المدير عند إتمام مبيعات بالآجل أو عند تجاوز الحد الائتماني للعميل',
-            ),
-            value: _creditPinRequired,
-            onChanged: (v) async {
-              final uid = _userId(context);
-              await pinSvc.setCreditPinRequired(required: v, userId: uid);
-              if (mounted) {
-                setState(() => _creditPinRequired = v);
-              }
-            },
-          ),
-          const Divider(height: 1),
           ListTile(
-            enabled: _pinRequired || _creditPinRequired,
+            enabled: _pinRequired,
             title: const Text('الرقم السري للمدير'),
             subtitle: Text(
-              (!_pinRequired && !_creditPinRequired)
-                  ? 'معطّل حالياً — لن يُطلب الرقم السري'
+              !_pinRequired
+                  ? 'معطّل حالياً في التقسيط'
                   : (_pinSet ? 'الرقم السري مُعيَّن' : 'لم يتم تعيين الرقم السري بعد'),
             ),
             trailing: OutlinedButton(
-              onPressed: (_pinRequired || _creditPinRequired) ? () => _showSetPinDialog(context) : null,
+              onPressed: _pinRequired ? () => _showSetPinDialog(context) : null,
               child: Text(_pinSet ? 'تغيير' : 'تعيين'),
             ),
           ),
@@ -399,6 +406,186 @@ class _InstallmentSettingsSectionState
   Future<void> _showSetPinDialog(BuildContext context) async {
     final controller = TextEditingController();
     final uid = _userId(context);
+    final pinSvc = getIt<ManagerPinService>();
+    await showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: Text(_pinSet ? 'تغيير الرقم السري' : 'تعيين الرقم السري'),
+        content: TextField(
+          controller: controller,
+          obscureText: true,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(labelText: 'الرقم السري الجديد'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (controller.text.isNotEmpty) {
+                final res = await pinSvc.setPin(
+                  pin: controller.text,
+                  userId: uid,
+                );
+                res.fold(
+                  (f) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(f.message),
+                          backgroundColor: AppColors.error,
+                        ),
+                      );
+                    }
+                  },
+                  (_) {
+                    if (mounted) {
+                      setState(() => _pinSet = true);
+                    }
+                  },
+                );
+              }
+              if (dialogCtx.mounted) {
+                Navigator.of(dialogCtx).pop();
+              }
+            },
+            child: const Text('حفظ'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CreditSalesSettingsSection extends StatefulWidget {
+  final String userId;
+
+  const _CreditSalesSettingsSection({required this.userId});
+
+  @override
+  State<_CreditSalesSettingsSection> createState() =>
+      _CreditSalesSettingsSectionState();
+}
+
+class _CreditSalesSettingsSectionState
+    extends State<_CreditSalesSettingsSection> {
+  bool _loading = true;
+  bool _creditPinRequired = false;
+  bool _pinSet = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final pinSvc = getIt<ManagerPinService>();
+    final creditPin = await pinSvc.isCreditPinRequired();
+    final pinSet = await pinSvc.isPinSet();
+    if (mounted) {
+      setState(() {
+        _creditPinRequired = creditPin;
+        _pinSet = pinSet;
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Card(
+        key: Key('credit_settings_section'),
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    final pinSvc = getIt<ManagerPinService>();
+    final state = context.watch<SettingsCubit>().state;
+    final creditEnabled = state.creditPaymentEnabled;
+
+    return Card(
+      key: const Key('credit_settings_section'),
+      child: Column(
+        children: [
+          SwitchListTile(
+            key: const Key('credit_sales_enabled_toggle'),
+            title: const Text('تفعيل الدفع الآجل في الكاشير (نقطة البيع)'),
+            subtitle: const Text(
+              'إظهار طريقة الدفع "آجل" في شاشة البيع، مع تسجيل الفواتير في ذمة العميل',
+            ),
+            value: creditEnabled,
+            onChanged: (v) async {
+              final err = await context
+                  .read<SettingsCubit>()
+                  .setPaymentMethod('payment.credit', v, widget.userId);
+              if (err != null && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(err), backgroundColor: AppColors.error),
+                );
+              }
+            },
+          ),
+          const Divider(height: 1),
+          SwitchListTile(
+            key: const Key('credit_sales_pin_required_toggle'),
+            title: const Text('طلب الرقم السري للمدير عند البيع الآجل'),
+            subtitle: const Text(
+              'طلب موافقة وتأكيد المدير برقم الـ PIN عند إتمام أي عملية بيع بالآجل',
+            ),
+            value: _creditPinRequired,
+            onChanged: (v) async {
+              await pinSvc.setCreditPinRequired(required: v, userId: widget.userId);
+              if (mounted) {
+                setState(() => _creditPinRequired = v);
+              }
+            },
+          ),
+          const Divider(height: 1),
+          ListTile(
+            enabled: _creditPinRequired,
+            title: const Text('الرقم السري للمدير (Manager PIN) للآجل'),
+            subtitle: Text(
+              !_creditPinRequired
+                  ? 'معطّل حالياً في البيع الآجل — لن يُطلب الرقم السري'
+                  : (_pinSet ? 'الرقم السري مُعيَّن' : 'لم يتم تعيين الرقم السري بعد'),
+            ),
+            trailing: OutlinedButton(
+              onPressed: _creditPinRequired ? () => _showSetPinDialog(context) : null,
+              child: Text(_pinSet ? 'تغيير' : 'تعيين'),
+            ),
+          ),
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.info_outline_rounded, size: 20, color: AppColors.primary),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'ملاحظة: يمكن للمدير تحديد "الحد الأقصى للآجل (الائتماني)" لكل عميل من شاشة سجل العملاء. في حال تجاوز العميل للحد الائتماني، يلزم النظام إدخال الرقم السري للمدير للموافقة على الاستثناء.',
+                    style: TextStyle(fontSize: 12.5, color: Colors.grey, height: 1.4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showSetPinDialog(BuildContext context) async {
+    final controller = TextEditingController();
+    final uid = widget.userId;
     final pinSvc = getIt<ManagerPinService>();
     await showDialog(
       context: context,

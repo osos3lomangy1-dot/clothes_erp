@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/features/feature_gate.dart';
 import '../../../../core/utils/money.dart';
 import '../../../../core/widgets/app_feedback.dart';
 import '../../../../core/widgets/show_customer_dialog.dart';
@@ -48,6 +49,7 @@ class _CustomerViewState extends State<_CustomerView> {
   _CustomerSort _sort = _CustomerSort.newest;
   Map<String, CustomerFinancialSummary> _summaries = const {};
   bool _exporting = false;
+  bool _installmentsEnabled = false;
 
   CustomerLedgerService? get _ledgerService {
     if (widget.ledgerOverride != null) return widget.ledgerOverride;
@@ -60,6 +62,19 @@ class _CustomerViewState extends State<_CustomerView> {
   void initState() {
     super.initState();
     _loadSummaries();
+    _checkFeatures();
+  }
+
+  Future<void> _checkFeatures() async {
+    try {
+      if (getIt.isRegistered<FeatureGate>()) {
+        final gate = getIt<FeatureGate>();
+        final featureOn = await gate.isEnabled(FeatureKeys.installments);
+        final meta = await gate.getMeta('payment.installment');
+        final on = featureOn && (meta != '0');
+        if (mounted) setState(() => _installmentsEnabled = on);
+      }
+    } catch (_) {}
   }
 
   @override
@@ -525,12 +540,13 @@ class _CustomerViewState extends State<_CustomerView> {
                                       discountedCount,
                                       Colors.green.shade700,
                                     ),
-                                    _segmentTab(
-                                      _CustomerFilter.withInstallments,
-                                      'لديهم أقساط',
-                                      withInstCount,
-                                      Colors.orange.shade800,
-                                    ),
+                                    if (_installmentsEnabled || withInstCount > 0)
+                                      _segmentTab(
+                                        _CustomerFilter.withInstallments,
+                                        _installmentsEnabled ? 'لديهم أقساط' : 'أقساط نشطة',
+                                        withInstCount,
+                                        Colors.orange.shade800,
+                                      ),
                                   ],
                                 ),
                               ),

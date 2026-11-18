@@ -11,6 +11,7 @@ class SettingsState extends Equatable {
   final bool cashEnabled;
   final bool cardEnabled;
   final bool installmentPaymentEnabled;
+  final bool creditPaymentEnabled;
   final bool cloudSyncEnabled;
   final bool isLoading;
   final String? error;
@@ -20,6 +21,7 @@ class SettingsState extends Equatable {
     this.cashEnabled = true,
     this.cardEnabled = true,
     this.installmentPaymentEnabled = false,
+    this.creditPaymentEnabled = true,
     this.cloudSyncEnabled = false,
     this.isLoading = false,
     this.error,
@@ -30,6 +32,7 @@ class SettingsState extends Equatable {
     bool? cashEnabled,
     bool? cardEnabled,
     bool? installmentPaymentEnabled,
+    bool? creditPaymentEnabled,
     bool? cloudSyncEnabled,
     bool? isLoading,
     String? error,
@@ -41,6 +44,7 @@ class SettingsState extends Equatable {
       cardEnabled: cardEnabled ?? this.cardEnabled,
       installmentPaymentEnabled:
           installmentPaymentEnabled ?? this.installmentPaymentEnabled,
+      creditPaymentEnabled: creditPaymentEnabled ?? this.creditPaymentEnabled,
       cloudSyncEnabled: cloudSyncEnabled ?? this.cloudSyncEnabled,
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
@@ -53,6 +57,7 @@ class SettingsState extends Equatable {
     cashEnabled,
     cardEnabled,
     installmentPaymentEnabled,
+    creditPaymentEnabled,
     cloudSyncEnabled,
     isLoading,
     error,
@@ -66,6 +71,7 @@ class SettingsCubit extends Cubit<SettingsState> {
   StreamSubscription<String?>? _cashSub;
   StreamSubscription<String?>? _cardSub;
   StreamSubscription<String?>? _installmentSub;
+  StreamSubscription<String?>? _creditSub;
   StreamSubscription<String?>? _cloudSyncSub;
 
   SettingsCubit(this._featureGate)
@@ -89,6 +95,10 @@ class SettingsCubit extends Cubit<SettingsState> {
     _installmentSub?.cancel();
     _installmentSub = _featureGate.watchMeta('payment.installment').listen((v) {
       emit(state.copyWith(installmentPaymentEnabled: v == '1'));
+    });
+    _creditSub?.cancel();
+    _creditSub = _featureGate.watchMeta('payment.credit').listen((v) {
+      emit(state.copyWith(creditPaymentEnabled: v == null ? true : v == '1'));
     });
     _cloudSyncSub?.cancel();
     _cloudSyncSub = _featureGate.watchMeta('sync.cloud_enabled').listen((v) {
@@ -133,7 +143,10 @@ class SettingsCubit extends Cubit<SettingsState> {
       final inst = methodKey == 'payment.installment'
           ? enabled
           : state.installmentPaymentEnabled;
-      if (!cash && !card && !inst) {
+      final credit = methodKey == 'payment.credit'
+          ? enabled
+          : state.creditPaymentEnabled;
+      if (!cash && !card && !inst && !credit) {
         return 'يجب تفعيل طريقة دفع واحدة على الأقل';
       }
       await _featureGate.setMeta(
@@ -155,6 +168,7 @@ class SettingsCubit extends Cubit<SettingsState> {
     _cashSub?.cancel();
     _cardSub?.cancel();
     _installmentSub?.cancel();
+    _creditSub?.cancel();
     _cloudSyncSub?.cancel();
     return super.close();
   }

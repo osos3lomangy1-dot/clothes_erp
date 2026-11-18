@@ -290,7 +290,7 @@ void main() {
       expect(find.text('واتساب'), findsOneWidget);
       expect(find.text('إجمالي المشتريات'), findsOneWidget);
       expect(find.text('الفواتير (0)'), findsOneWidget);
-      expect(find.text('التقسيط (0)'), findsOneWidget);
+      expect(find.text('سداد الآجل (0)'), findsOneWidget);
       expect(find.text('نقاط الولاء (0)'), findsOneWidget);
     });
   });

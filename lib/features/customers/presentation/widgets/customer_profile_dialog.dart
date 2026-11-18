@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/features/feature_gate.dart';
 import '../../../../core/utils/money.dart';
 import '../../../../core/widgets/app_feedback.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
@@ -55,6 +56,7 @@ class _CustomerProfileBody extends StatefulWidget {
 class _CustomerProfileBodyState extends State<_CustomerProfileBody> {
   CustomerStatement? _statement;
   bool _loading = true;
+  bool _installmentsEnabled = false;
   String? _error;
 
   CustomerLedgerService? get _service {
@@ -83,9 +85,20 @@ class _CustomerProfileBodyState extends State<_CustomerProfileBody> {
     }
     try {
       final st = await svc.getCustomerStatement(widget.customer.id);
+      bool instOn = false;
+      try {
+        if (getIt.isRegistered<FeatureGate>()) {
+          final gate = getIt<FeatureGate>();
+          final featureOn = await gate.isEnabled(FeatureKeys.installments);
+          final meta = await gate.getMeta('payment.installment');
+          instOn = featureOn && (meta != '0');
+        }
+      } catch (_) {}
+
       if (!mounted) return;
       setState(() {
         _statement = st;
+        _installmentsEnabled = instOn;
         _loading = false;
       });
     } catch (e) {
@@ -303,56 +316,65 @@ class _CustomerProfileBodyState extends State<_CustomerProfileBody> {
             ),
           )
         else
-          Expanded(
-            child: DefaultTabController(
-              length: 4,
-              child: Column(
-                children: [
-                  // 4 KPI Summary Cards
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _kpiBox(
-                            'إجمالي المشتريات',
-                            '${Money(_statement!.summary.totalSpentPiasters).toDisplay()} ج.م',
-                            Icons.shopping_bag_outlined,
-                            AppColors.primary,
-                          ),
+          Builder(
+            builder: (context) {
+              final hasActiveInstallment = _statement!.installments.any(
+                (inst) => inst.status == 'active' || inst.remainingPiasters > 0,
+              );
+              final showInstallments = _installmentsEnabled || hasActiveInstallment;
+
+              return Expanded(
+                child: DefaultTabController(
+                  length: showInstallments ? 4 : 3,
+                  child: Column(
+                    children: [
+                      // KPI Summary Cards
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _kpiBox(
+                                'إجمالي المشتريات',
+                                '${Money(_statement!.summary.totalSpentPiasters).toDisplay()} ج.م',
+                                Icons.shopping_bag_outlined,
+                                AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _kpiBox(
+                                'عدد الفواتير',
+                                '${_statement!.summary.invoiceCount}',
+                                Icons.receipt_long_rounded,
+                                Colors.indigo,
+                              ),
+                            ),
+                            if (showInstallments) ...[
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: _kpiBox(
+                                  'متبقي الأقساط',
+                                  '${Money(_statement!.summary.installmentsRemainingPiasters).toDisplay()} ج.م',
+                                  Icons.credit_score_rounded,
+                                  _statement!.summary.installmentsRemainingPiasters > 0
+                                      ? Colors.orange.shade800
+                                      : Colors.teal,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _kpiBox(
+                                'نقاط الولاء',
+                                '${c.loyaltyPoints} نقطة',
+                                Icons.star_rounded,
+                                Colors.amber.shade800,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _kpiBox(
-                            'عدد الفواتير',
-                            '${_statement!.summary.invoiceCount}',
-                            Icons.receipt_long_rounded,
-                            Colors.indigo,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _kpiBox(
-                            'متبقي الأقساط',
-                            '${Money(_statement!.summary.installmentsRemainingPiasters).toDisplay()} ج.م',
-                            Icons.credit_score_rounded,
-                            _statement!.summary.installmentsRemainingPiasters > 0
-                                ? Colors.orange.shade800
-                                : Colors.teal,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _kpiBox(
-                            'نقاط الولاء',
-                            '${c.loyaltyPoints} نقطة',
-                            Icons.star_rounded,
-                            Colors.amber.shade800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                      ),
                   // Credit Account & Debt Banner
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -446,9 +468,10 @@ class _CustomerProfileBodyState extends State<_CustomerProfileBody> {
                         Tab(
                           text: 'الفواتير (${_statement!.sales.length})',
                         ),
-                        Tab(
-                          text: 'التقسيط (${_statement!.installments.length})',
-                        ),
+                        if (showInstallments)
+                          Tab(
+                            text: 'التقسيط (${_statement!.installments.length})',
+                          ),
                         Tab(
                           text: 'سداد الآجل (${_statement!.payments.length})',
                         ),
@@ -521,8 +544,9 @@ class _CustomerProfileBodyState extends State<_CustomerProfileBody> {
                                   );
                                 },
                               ),
-                        // Tab 2: Installments
-                        _statement!.installments.isEmpty
+                        // Tab 2: Installments (only shown if feature enabled or customer has active installment)
+                        if (showInstallments)
+                          _statement!.installments.isEmpty
                             ? _emptyTab('لا توجد عقود تقسيط مسجلة لهذا العميل')
                             : ListView.separated(
                                 padding: const EdgeInsets.all(14),
@@ -705,10 +729,12 @@ class _CustomerProfileBodyState extends State<_CustomerProfileBody> {
                 ],
               ),
             ),
-          ),
-      ],
-    );
-  }
+          );
+        },
+      ),
+    ],
+  );
+}
 
   Widget _emptyTab(String msg) {
     return Center(

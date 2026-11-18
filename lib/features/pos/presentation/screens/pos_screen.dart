@@ -1575,6 +1575,7 @@ class _CartPanelState extends State<_CartPanel> {
   bool _isPercentageDiscount = false;
   String _paymentMethod = 'cash'; // 'cash', 'card', 'split', 'installment', 'credit'
   bool _installmentAvailable = false;
+  bool _creditAvailable = true;
   bool _isWholesaleMode = false;
 
   void triggerCheckout() {
@@ -1595,15 +1596,30 @@ class _CartPanelState extends State<_CartPanel> {
   @override
   void initState() {
     super.initState();
-    _checkInstallmentAvailability();
+    _checkPaymentAvailability();
   }
 
-  Future<void> _checkInstallmentAvailability() async {
+  Future<void> _checkPaymentAvailability() async {
     final gate = getIt<FeatureGate>();
     final featureOn = await gate.isEnabled(FeatureKeys.installments);
     final meta = await gate.getMeta('payment.installment');
-    final paymentOn = meta != '0';
-    if (mounted) setState(() => _installmentAvailable = featureOn && paymentOn);
+    final installmentOn = featureOn && (meta != '0');
+
+    final creditMeta = await gate.getMeta('payment.credit');
+    final creditOn = creditMeta == null || creditMeta != '0';
+
+    if (mounted) {
+      setState(() {
+        _installmentAvailable = installmentOn;
+        _creditAvailable = creditOn;
+        if (!creditOn && _paymentMethod == 'credit') {
+          _paymentMethod = 'cash';
+        }
+        if (!installmentOn && _paymentMethod == 'installment') {
+          _paymentMethod = 'cash';
+        }
+      });
+    }
   }
 
   @override
@@ -2428,25 +2444,57 @@ class _CartPanelState extends State<_CartPanel> {
                 // Cart Items List
                 Expanded(
                   child: state.cart.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.shopping_cart_outlined, size: 64, color: Colors.grey.shade300),
-                              const SizedBox(height: 12),
-                              Text(
-                                'سلة المشتريات فارغة',
-                                style: TextStyle(fontFamily: 'Cairo', color: Colors.grey.shade500,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,),
+                      ? LayoutBuilder(
+                          builder: (context, constraints) {
+                            final iconSize = (constraints.maxHeight * 0.32).clamp(24.0, 56.0);
+                            return SingleChildScrollView(
+                              physics: const ClampingScrollPhysics(),
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                                child: Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.shopping_cart_outlined,
+                                          size: iconSize,
+                                          color: Colors.grey.shade300,
+                                        ),
+                                        if (constraints.maxHeight >= 60) ...[
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            'سلة المشتريات فارغة',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontFamily: 'Cairo',
+                                              color: Colors.grey.shade500,
+                                              fontSize: constraints.maxHeight < 90 ? 11.5 : 13.5,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                        if (constraints.maxHeight >= 115) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'انقر على أي منتج لإضافته فوراً إلى الفاتورة',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontFamily: 'Cairo',
+                                              color: Colors.grey.shade400,
+                                              fontSize: 10.5,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ),
                               ),
-                              Text(
-                                'انقر على أي منتج لإضافته فوراً إلى الفاتورة',
-                                style: TextStyle(fontFamily: 'Cairo', color: Colors.grey.shade400,
-                                  fontSize: 11,),
-                              ),
-                            ],
-                          ),
+                            );
+                          },
                         )
                       : ListView.separated(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -2641,19 +2689,20 @@ class _CartPanelState extends State<_CartPanel> {
                                       : AppColors.outlineVariant,
                                 ),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 9),
-                                minimumSize: const Size(0, 38),
+                                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+                                minimumSize: const Size(0, 36),
                               ),
-                              icon: const Icon(Icons.payments_outlined, size: 15),
-                              label: const Text(
-                                'كاش',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 11.5),
+                              icon: const Icon(Icons.payments_outlined, size: 14),
+                              label: const FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  'كاش',
+                                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 11),
+                                ),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 4),
                           Expanded(
                             child: ElevatedButton.icon(
                               onPressed: () => setState(() => _paymentMethod = 'card'),
@@ -2671,19 +2720,20 @@ class _CartPanelState extends State<_CartPanel> {
                                       : AppColors.outlineVariant,
                                 ),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 9),
-                                minimumSize: const Size(0, 38),
+                                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+                                minimumSize: const Size(0, 36),
                               ),
-                              icon: const Icon(Icons.credit_card_rounded, size: 15),
-                              label: const Text(
-                                'فيزا',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 11.5),
+                              icon: const Icon(Icons.credit_card_rounded, size: 14),
+                              label: const FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  'فيزا',
+                                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 11),
+                                ),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 4),
                           Expanded(
                             child: ElevatedButton.icon(
                               onPressed: () => setState(() => _paymentMethod = 'split'),
@@ -2701,20 +2751,21 @@ class _CartPanelState extends State<_CartPanel> {
                                       : AppColors.outlineVariant,
                                 ),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 9),
-                                minimumSize: const Size(0, 38),
+                                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+                                minimumSize: const Size(0, 36),
                               ),
-                              icon: const Icon(Icons.call_split_rounded, size: 15),
-                              label: const Text(
-                                'مجزأ',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 11.5),
+                              icon: const Icon(Icons.call_split_rounded, size: 14),
+                              label: const FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  'مجزأ',
+                                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 11),
+                                ),
                               ),
                             ),
                           ),
                           if (_installmentAvailable) ...[
-                            const SizedBox(width: 6),
+                            const SizedBox(width: 4),
                             Expanded(
                               child: ElevatedButton.icon(
                                 onPressed: () => setState(() => _paymentMethod = 'installment'),
@@ -2732,49 +2783,53 @@ class _CartPanelState extends State<_CartPanel> {
                                         : AppColors.outlineVariant,
                                   ),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 9),
-                                  minimumSize: const Size(0, 38),
+                                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+                                  minimumSize: const Size(0, 36),
                                 ),
-                                icon: const Icon(Icons.payments_rounded, size: 15),
-                                label: const Text(
-                                  'تقسيط',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 11.5),
+                                icon: const Icon(Icons.payments_rounded, size: 14),
+                                label: const FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    'تقسيط',
+                                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 11),
+                                  ),
                                 ),
                               ),
                             ),
                           ],
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () => setState(() => _paymentMethod = 'credit'),
-                              style: ElevatedButton.styleFrom(
-                                elevation: _paymentMethod == 'credit' ? 2 : 0,
-                                backgroundColor: _paymentMethod == 'credit'
-                                    ? AppColors.primary
-                                    : AppColors.surfaceContainerLowest,
-                                foregroundColor: _paymentMethod == 'credit'
-                                    ? Colors.white
-                                    : AppColors.onSurface,
-                                side: BorderSide(
-                                  color: _paymentMethod == 'credit'
+                          if (_creditAvailable) ...[
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () => setState(() => _paymentMethod = 'credit'),
+                                style: ElevatedButton.styleFrom(
+                                  elevation: _paymentMethod == 'credit' ? 2 : 0,
+                                  backgroundColor: _paymentMethod == 'credit'
                                       ? AppColors.primary
-                                      : AppColors.outlineVariant,
+                                      : AppColors.surfaceContainerLowest,
+                                  foregroundColor: _paymentMethod == 'credit'
+                                      ? Colors.white
+                                      : AppColors.onSurface,
+                                  side: BorderSide(
+                                    color: _paymentMethod == 'credit'
+                                        ? AppColors.primary
+                                        : AppColors.outlineVariant,
+                                  ),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+                                  minimumSize: const Size(0, 36),
                                 ),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 9),
-                                minimumSize: const Size(0, 38),
-                              ),
-                              icon: const Icon(Icons.account_balance_wallet_outlined, size: 15),
-                              label: const Text(
-                                'آجل',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 11.5),
+                                icon: const Icon(Icons.account_balance_wallet_outlined, size: 14),
+                                label: const FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    'آجل',
+                                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 11),
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
 
