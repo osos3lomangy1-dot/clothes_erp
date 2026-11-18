@@ -9,6 +9,7 @@ class ProductFormState extends Equatable {
   final String description;
   final String? categoryId;
   final String? categoryName;
+  final int minStock;
   final List<CategoryEntity> categories;
   final ProductFormStatus status;
   final String? errorMessage;
@@ -24,6 +25,7 @@ class ProductFormState extends Equatable {
     this.description = '',
     this.categoryId,
     this.categoryName,
+    this.minStock = 5,
     this.categories = const [],
     this.status = ProductFormStatus.initial,
     this.errorMessage,
@@ -48,6 +50,7 @@ class ProductFormState extends Equatable {
     String? description,
     String? categoryId,
     String? categoryName,
+    int? minStock,
     List<CategoryEntity>? categories,
     ProductFormStatus? status,
     String? errorMessage,
@@ -64,6 +67,7 @@ class ProductFormState extends Equatable {
       description: description ?? this.description,
       categoryId: categoryId ?? this.categoryId,
       categoryName: categoryName ?? this.categoryName,
+      minStock: minStock ?? this.minStock,
       categories: categories ?? this.categories,
       status: status ?? this.status,
       errorMessage: errorMessage,
@@ -82,6 +86,7 @@ class ProductFormState extends Equatable {
         description,
         categoryId,
         categoryName,
+        minStock,
         categories,
         status,
         errorMessage,

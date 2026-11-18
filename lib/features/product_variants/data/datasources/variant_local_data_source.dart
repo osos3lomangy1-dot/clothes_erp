@@ -41,6 +41,17 @@ class VariantLocalDataSource {
         .get();
   }
 
+  Future<int> getProductMinStock(String productId) async {
+    final p = await (_db.select(_db.products)..where((t) => t.id.equals(productId))).getSingleOrNull();
+    return p?.minStock ?? 5;
+  }
+
+  Future<Map<String, int>> getProductMinStocks(Iterable<String> productIds) async {
+    if (productIds.isEmpty) return const {};
+    final list = await (_db.select(_db.products)..where((t) => t.id.isIn(productIds))).get();
+    return {for (final p in list) p.id: p.minStock};
+  }
+
   Future<ProductVariant?> getVariantById(String id) async {
     return (_db.select(_db.productVariants)
           ..where((t) => t.id.equals(id) & t.deletedAt.isNull()))
@@ -93,6 +104,7 @@ class VariantLocalDataSource {
     required int sellPrice,
     int wholesalePrice = 0,
     int quantity = 0,
+    int? minStock,
   }) async {
     final cleanSku = sku.trim();
     await _assertSkuUnique(cleanSku);
@@ -102,6 +114,14 @@ class VariantLocalDataSource {
     final branchId = await _branchId();
     await _tx.write(
       writeFn: () async {
+        if (minStock != null) {
+          await (_db.update(_db.products)..where((t) => t.id.equals(productId))).write(
+            ProductsCompanion(
+              minStock: Value(minStock),
+              updatedAt: Value(now),
+            ),
+          );
+        }
         await _db.into(_db.productVariants).insert(ProductVariantsCompanion.insert(
           id: id,
           branchId: branchId,
@@ -151,6 +171,7 @@ class VariantLocalDataSource {
     String? sku,
     String? color,
     String? size,
+    int? minStock,
     String? reason,
     String userId = 'system',
   }) async {
@@ -170,6 +191,14 @@ class VariantLocalDataSource {
 
     await _tx.write(
       writeFn: () async {
+        if (minStock != null) {
+          await (_db.update(_db.products)..where((t) => t.id.equals(existing.productId))).write(
+            ProductsCompanion(
+              minStock: Value(minStock),
+              updatedAt: Value(now),
+            ),
+          );
+        }
         await (_db.update(_db.productVariants)..where((t) => t.id.equals(id))).write(
           ProductVariantsCompanion(
             costPrice: costPrice != null ? Value(costPrice) : const Value.absent(),

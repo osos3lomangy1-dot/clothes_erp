@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -23,9 +24,11 @@ class _ReturnScreenState extends State<ReturnScreen> {
   final _reasonCtrl = TextEditingController();
   final _dateFormat = DateFormat('yyyy/MM/dd - hh:mm a');
   String _historyQuery = '';
+  Timer? _searchDebounce;
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchCtrl.dispose();
     _historySearchCtrl.dispose();
     _reasonCtrl.dispose();
@@ -146,13 +149,16 @@ class _ReturnScreenState extends State<ReturnScreen> {
                 child: TextField(
                   controller: _searchCtrl,
                   decoration: InputDecoration(
-                    labelText: 'ابحث برقم الفاتورة (#S...) أو اسم العميل أو رقم الهاتف...',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.search, color: AppColors.primary),
+                    hintText: 'ابحث برقم الفاتورة (#S...) أو اسم العميل أو رقم الهاتف...',
+                    filled: true,
+                    fillColor: Colors.white,
+                    isDense: true,
+                    prefixIcon: Icon(Icons.search_rounded, color: AppColors.primary),
                     suffixIcon: _searchCtrl.text.isNotEmpty
                         ? IconButton(
-                            icon: const Icon(Icons.clear, size: 18),
+                            icon: const Icon(Icons.clear_rounded, size: 18),
                             onPressed: () {
+                              _searchDebounce?.cancel();
                               _searchCtrl.clear();
                               setState(() {});
                               context.read<ReturnsCubit>().loadRecentSales();
@@ -160,8 +166,22 @@ class _ReturnScreenState extends State<ReturnScreen> {
                           )
                         : null,
                   ),
-                  onChanged: (_) => setState(() {}),
-                  onSubmitted: (val) => context.read<ReturnsCubit>().searchSale(val),
+                  onChanged: (val) {
+                    setState(() {});
+                    _searchDebounce?.cancel();
+                    _searchDebounce = Timer(
+                      const Duration(milliseconds: 250),
+                      () {
+                        if (mounted) {
+                          context.read<ReturnsCubit>().searchSale(val);
+                        }
+                      },
+                    );
+                  },
+                  onSubmitted: (val) {
+                    _searchDebounce?.cancel();
+                    context.read<ReturnsCubit>().searchSale(val);
+                  },
                 ),
               ),
               const SizedBox(width: 8),
@@ -232,22 +252,47 @@ class _ReturnScreenState extends State<ReturnScreen> {
       );
     }
     if (state.recentSales.isEmpty) {
+      final hasQuery = _searchCtrl.text.trim().isNotEmpty;
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey.shade400),
+            Icon(
+              hasQuery
+                  ? Icons.search_off_rounded
+                  : Icons.receipt_long_outlined,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
             const SizedBox(height: 12),
-            const Text(
-              'لا توجد فواتير بيع قابلة للإرجاع حالياً',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            Text(
+              hasQuery
+                  ? 'لا توجد فواتير قابلة للإرجاع مطابقة لـ "${_searchCtrl.text.trim()}"'
+                  : 'لا توجد فواتير بيع قابلة للإرجاع حالياً',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 6),
             Text(
-              'الفواتير المرتجعة بالكامل لا تظهر هنا منعاً للتكرار، ويمكنك مراجعتها في تاب "سجل فواتير المرتجعات"',
+              hasQuery
+                  ? 'تأكد من كتابة اسم العميل أو رقم الهاتف أو رقم الفاتورة، أو راجع تاب «سجل فواتير المرتجعات».'
+                  : 'الفواتير المرتجعة بالكامل لا تظهر هنا منعاً للتكرار، ويمكنك مراجعتها في تاب "سجل فواتير المرتجعات"',
               style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
               textAlign: TextAlign.center,
             ),
+            if (hasQuery) ...[
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: () {
+                  _searchDebounce?.cancel();
+                  _searchCtrl.clear();
+                  setState(() {});
+                  context.read<ReturnsCubit>().loadRecentSales();
+                },
+                icon: const Icon(Icons.clear_all_rounded, size: 18),
+                label: const Text('مسح البحث وعرض جميع الفواتير'),
+              ),
+            ],
           ],
         ),
       );

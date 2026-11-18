@@ -560,17 +560,42 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                 ),
                               ],
                               const SizedBox(height: 12),
-                              TextFormField(
-                                initialValue: state.description,
-                                decoration: InputDecoration(
-                                  labelText: 'وصف أو ملاحظات (اختياري)',
-                                  hintText: 'مثال: خامة قطن 100% تصنيع محلي',
-                                  prefixIcon: const Icon(Icons.description_outlined),
-                                  filled: true,
-                                  fillColor: Colors.grey.shade50,
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                ),
-                                onChanged: (value) => context.read<ProductFormCubit>().onDescriptionChanged(value),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    flex: 3,
+                                    child: TextFormField(
+                                      initialValue: state.description,
+                                      decoration: InputDecoration(
+                                        labelText: 'وصف أو ملاحظات (اختياري)',
+                                        hintText: 'مثال: خامة قطن 100% تصنيع محلي',
+                                        prefixIcon: const Icon(Icons.description_outlined),
+                                        filled: true,
+                                        fillColor: Colors.grey.shade50,
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                      ),
+                                      onChanged: (value) => context.read<ProductFormCubit>().onDescriptionChanged(value),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    flex: 1,
+                                    child: TextFormField(
+                                      initialValue: '${state.minStock}',
+                                      decoration: InputDecoration(
+                                        labelText: 'حد الأمان (التنبيه)',
+                                        hintText: '5',
+                                        prefixIcon: const Icon(Icons.notifications_active_outlined),
+                                        filled: true,
+                                        fillColor: Colors.grey.shade50,
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                      ),
+                                      keyboardType: TextInputType.number,
+                                      onChanged: (value) => context.read<ProductFormCubit>().onMinStockChanged(int.tryParse(value) ?? 5),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),

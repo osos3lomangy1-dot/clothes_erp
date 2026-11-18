@@ -4,4 +4,5 @@ import '../entities/dashboard_stats_entity.dart';
 
 abstract class DashboardRepository {
   Future<Either<Failure, DashboardStatsEntity>> getDashboardStats();
+  Stream<void> watchDashboardUpdates();
 }

@@ -56,40 +56,65 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
           elevation: 0,
           title: const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 'لوحة تحكم المدير العام',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.onSurface),
+                overflow: TextOverflow.ellipsis,
               ),
               Text(
                 'نبض النشاط اللحظي، السيولة، والأرباح اليومية',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
           actions: [
             Builder(
-              builder: (innerCtx) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              builder: (innerCtx) {
+                final screenWidth = MediaQuery.sizeOf(innerCtx).width;
+                final isCompact = screenWidth < 720;
+                if (isCompact) {
+                  return IconButton(
+                    tooltip: 'التقرير المالي الشامل',
+                    icon: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.analytics_rounded, color: Colors.white, size: 18),
+                    ),
+                    onPressed: () {
+                      Navigator.of(innerCtx).push(
+                        MaterialPageRoute(builder: (_) => const ReportsScreen()),
+                      );
+                    },
+                  );
+                }
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    ),
+                    icon: const Icon(Icons.analytics_rounded, color: Colors.white, size: 18),
+                    label: const Text(
+                      'التقرير المالي الشامل',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    onPressed: () {
+                      Navigator.of(innerCtx).push(
+                        MaterialPageRoute(builder: (_) => const ReportsScreen()),
+                      );
+                    },
                   ),
-                  icon: const Icon(Icons.analytics_rounded, color: Colors.white, size: 18),
-                  label: const Text(
-                    'التقرير المالي الشامل',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                  ),
-                  onPressed: () {
-                    Navigator.of(innerCtx).push(
-                      MaterialPageRoute(builder: (_) => const ReportsScreen()),
-                    );
-                  },
-                ),
-              ),
+                );
+              },
             ),
             IconButton(
               tooltip: 'التحقق من التحديثات',

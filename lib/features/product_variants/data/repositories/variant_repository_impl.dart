@@ -15,6 +15,7 @@ class VariantRepositoryImpl implements VariantRepository {
   Future<Either<Failure, List<VariantEntity>>> getVariants(String productId) async {
     try {
       final rows = await _localDataSource.getVariants(productId);
+      final minStock = await _localDataSource.getProductMinStock(productId);
       final entities = rows.map((r) => VariantEntity(
         id: r.id,
         productId: r.productId,
@@ -25,7 +26,7 @@ class VariantRepositoryImpl implements VariantRepository {
         costPrice: r.costPrice,
         salePrice: r.sellPrice,
         wholesalePrice: r.wholesalePrice,
-        minStock: 5,
+        minStock: minStock,
         createdAt: r.createdAt,
       )).toList();
       return Right(entities);
@@ -38,6 +39,7 @@ class VariantRepositoryImpl implements VariantRepository {
   Stream<Either<Failure, List<VariantEntity>>> watchVariants(String productId) async* {
     try {
       await for (final rows in _localDataSource.watchVariants(productId)) {
+        final minStock = await _localDataSource.getProductMinStock(productId);
         final entities = rows.map((r) => VariantEntity(
           id: r.id,
           productId: r.productId,
@@ -48,7 +50,7 @@ class VariantRepositoryImpl implements VariantRepository {
           costPrice: r.costPrice,
           salePrice: r.sellPrice,
           wholesalePrice: r.wholesalePrice,
-          minStock: 5,
+          minStock: minStock,
           createdAt: r.createdAt,
         )).toList();
         yield Right(entities);
@@ -70,6 +72,7 @@ class VariantRepositoryImpl implements VariantRepository {
         sellPrice: variant.salePrice,
         wholesalePrice: variant.wholesalePrice,
         quantity: variant.quantity,
+        minStock: variant.minStock,
       );
       return const Right(null);
     } catch (e) {
@@ -89,6 +92,7 @@ class VariantRepositoryImpl implements VariantRepository {
         sku: variant.productCode,
         color: variant.color,
         size: variant.size,
+        minStock: variant.minStock,
       );
       return const Right(null);
     } catch (e) {
@@ -110,6 +114,8 @@ class VariantRepositoryImpl implements VariantRepository {
   Future<Either<Failure, List<VariantEntity>>> searchVariants(String query) async {
     try {
       final rows = await _localDataSource.getAllVariants();
+      final pIds = rows.map((r) => r.productId).toSet();
+      final minStocks = await _localDataSource.getProductMinStocks(pIds);
       final entities = rows.map((r) => VariantEntity(
         id: r.id,
         productId: r.productId,
@@ -120,7 +126,7 @@ class VariantRepositoryImpl implements VariantRepository {
         costPrice: r.costPrice,
         salePrice: r.sellPrice,
         wholesalePrice: r.wholesalePrice,
-        minStock: 5,
+        minStock: minStocks[r.productId] ?? 5,
         createdAt: r.createdAt,
       )).toList();
       return Right(entities);
@@ -133,6 +139,8 @@ class VariantRepositoryImpl implements VariantRepository {
   Future<Either<Failure, List<VariantEntity>>> getAllVariants() async {
     try {
       final rows = await _localDataSource.getAllVariants();
+      final pIds = rows.map((r) => r.productId).toSet();
+      final minStocks = await _localDataSource.getProductMinStocks(pIds);
       final entities = rows.map((r) => VariantEntity(
         id: r.id,
         productId: r.productId,
@@ -143,7 +151,7 @@ class VariantRepositoryImpl implements VariantRepository {
         costPrice: r.costPrice,
         salePrice: r.sellPrice,
         wholesalePrice: r.wholesalePrice,
-        minStock: 5,
+        minStock: minStocks[r.productId] ?? 5,
         createdAt: r.createdAt,
       )).toList();
       return Right(entities);
@@ -156,6 +164,8 @@ class VariantRepositoryImpl implements VariantRepository {
   Stream<Either<Failure, List<VariantEntity>>> watchAllVariants() async* {
     try {
       await for (final rows in _localDataSource.watchAllVariants()) {
+        final pIds = rows.map((r) => r.productId).toSet();
+        final minStocks = await _localDataSource.getProductMinStocks(pIds);
         final entities = rows.map((r) => VariantEntity(
           id: r.id,
           productId: r.productId,
@@ -166,7 +176,7 @@ class VariantRepositoryImpl implements VariantRepository {
           costPrice: r.costPrice,
           salePrice: r.sellPrice,
           wholesalePrice: r.wholesalePrice,
-          minStock: 5,
+          minStock: minStocks[r.productId] ?? 5,
           createdAt: r.createdAt,
         )).toList();
         yield Right(entities);

@@ -13,6 +13,7 @@ import '../../features/auth/presentation/cubits/auth_cubit.dart';
 import '../../features/auth/presentation/cubits/auth_state.dart';
 import '../../features/crash_logs/presentation/screens/crash_logs_screen.dart';
 import '../../features/customers/presentation/screens/customer_screen.dart';
+import '../../features/dashboard/presentation/cubits/dashboard_cubit.dart';
 import '../../features/employees/presentation/screens/employee_list_screen.dart';
 import '../../features/expenses/presentation/screens/expenses_screen.dart';
 import '../../features/installments/presentation/screens/installments_list_screen.dart';
@@ -452,6 +453,11 @@ class _MainLayoutState extends State<MainLayout> {
               MaterialPageRoute(builder: (_) => const PosScreen()),
             );
           } else if (screen != null) {
+            if (title == 'لوحة التحكم') {
+              try {
+                context.read<DashboardCubit>().loadStats(silent: true);
+              } catch (_) {}
+            }
             if (_activeTitle == title) {
               if (_contentNavKey.currentState?.canPop() == true) {
                 _contentNavKey.currentState?.popUntil((route) => route.isFirst);

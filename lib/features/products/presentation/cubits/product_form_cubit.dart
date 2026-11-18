@@ -63,6 +63,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             description: product.description,
             categoryId: product.categoryId,
             categoryName: product.categoryName,
+            minStock: product.minStock,
             categories: categories,
             existingProducts: existingProducts,
             existingSkus: existingSkus,
@@ -111,6 +112,10 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     emit(state.copyWith(description: value));
   }
 
+  void onMinStockChanged(int value) {
+    emit(state.copyWith(minStock: value));
+  }
+
   void onCategoryChanged(String id, String name) {
     emit(state.copyWith(categoryId: id, categoryName: name));
   }
@@ -153,6 +158,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       description: state.description,
       categoryId: state.categoryId!,
       categoryName: state.categoryName!,
+      minStock: state.minStock,
       createdAt: DateTime.now(),
     );
 
@@ -247,6 +253,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       description: state.description,
       categoryId: state.categoryId!,
       categoryName: state.categoryName ?? '',
+      minStock: state.minStock,
       createdAt: DateTime.now(),
     );
 

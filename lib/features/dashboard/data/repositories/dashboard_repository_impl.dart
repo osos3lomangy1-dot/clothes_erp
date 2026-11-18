@@ -12,6 +12,9 @@ class DashboardRepositoryImpl implements DashboardRepository {
   DashboardRepositoryImpl(this._localDataSource);
 
   @override
+  Stream<void> watchDashboardUpdates() => _localDataSource.watchDashboardUpdates();
+
+  @override
   Future<Either<Failure, DashboardStatsEntity>> getDashboardStats() async {
     try {
       final stats = await _localDataSource.getDashboardStats();

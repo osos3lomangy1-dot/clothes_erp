@@ -82,8 +82,7 @@ class ReturnsCubit extends Cubit<ReturnsState> {
                   isLoading: false,
                   clearSelectedSale: true,
                   recentSales: const [],
-                  errorMessage:
-                      'لم يتم العثور على فواتير قابلة للإرجاع مطابقة لـ "$trimmed"',
+                  clearMessages: true,
                 ),
               );
             }

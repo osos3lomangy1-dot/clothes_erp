@@ -8,6 +8,7 @@ import '../../domain/entities/sales_chart_point_entity.dart';
 
 abstract class DashboardLocalDataSource {
   Future<DashboardStatsEntity> getDashboardStats();
+  Stream<void> watchDashboardUpdates();
 }
 
 @LazySingleton(as: DashboardLocalDataSource)
@@ -15,6 +16,9 @@ class DashboardLocalDataSourceImpl implements DashboardLocalDataSource {
   final AppDatabase _db;
 
   DashboardLocalDataSourceImpl(this._db);
+
+  @override
+  Stream<void> watchDashboardUpdates() => _db.tableUpdates();
 
   @override
   Future<DashboardStatsEntity> getDashboardStats() async {
