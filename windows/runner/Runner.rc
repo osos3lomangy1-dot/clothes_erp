@@ -94,7 +94,7 @@ BEGIN
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "bay3ah" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 Bay3ah. All rights reserved." "\0"
-            VALUE "OriginalFilename", "clothes_erp.exe" "\0"
+            VALUE "OriginalFilename", "bay3ah.exe" "\0"
             VALUE "ProductName", "Bay3ah" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END

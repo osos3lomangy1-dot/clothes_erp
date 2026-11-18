@@ -682,14 +682,27 @@ QueryExecutor _openConnection() {
               } catch (_) {}
             }
           } else {
+            // Migrate existing database from previous app identity (com.example\clothes_erp)
+            // or legacy Documents path so upgrading to Bay3ah preserves all user data!
+            final candidates = <File>[];
+            if (Platform.isWindows) {
+              final appData = Platform.environment['APPDATA'];
+              if (appData != null && appData.isNotEmpty) {
+                candidates.add(File('$appData\\com.example\\clothes_erp\\clothes_erp.sqlite'));
+              }
+            }
             final docsDir = await getApplicationDocumentsDirectory();
-            final legacyFile = File('${docsDir.path}/clothes_erp.sqlite');
-            if (legacyFile.existsSync()) {
-              await legacyFile.copy(targetFile.path);
-              if (Platform.isWindows) {
-                try {
-                  await Process.run('attrib', ['-r', targetFile.path]);
-                } catch (_) {}
+            candidates.add(File('${docsDir.path}/clothes_erp.sqlite'));
+
+            for (final legacyFile in candidates) {
+              if (legacyFile.existsSync()) {
+                await legacyFile.copy(targetFile.path);
+                if (Platform.isWindows) {
+                  try {
+                    await Process.run('attrib', ['-r', targetFile.path]);
+                  } catch (_) {}
+                }
+                break;
               }
             }
           }
