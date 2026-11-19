@@ -1,0 +1,651 @@
+import 'dart:math';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../../core/constants/app_colors.dart';
+import '../../../../core/di/injection.dart';
+import '../../../../core/utils/money.dart';
+import '../../../auth/presentation/cubits/auth_cubit.dart';
+import '../../../auth/presentation/cubits/auth_state.dart';
+import '../../../categories/domain/entities/category_entity.dart';
+import '../../../categories/presentation/screens/category_form_screen.dart';
+import '../../../product_variants/data/datasources/variant_local_data_source.dart';
+import '../../data/datasources/product_local_data_source.dart';
+import '../../domain/entities/product_entity.dart';
+import '../../domain/repositories/product_repository.dart';
+import '../cubits/product_form_cubit.dart';
+import '../cubits/product_form_state.dart';
+
+class SimpleProductFormDialog extends StatelessWidget {
+  final ProductEntity? product;
+
+  const SimpleProductFormDialog({super.key, this.product});
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 720, maxHeight: 820),
+        child: BlocProvider(
+          create: (context) => getIt<ProductFormCubit>()..init(product),
+          child: _SimpleProductFormInternal(product: product),
+        ),
+      ),
+    );
+  }
+}
+
+class _SimpleProductFormInternal extends StatefulWidget {
+  final ProductEntity? product;
+
+  const _SimpleProductFormInternal({this.product});
+
+  @override
+  State<_SimpleProductFormInternal> createState() =>
+      _SimpleProductFormInternalState();
+}
+
+class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> {
+  final _formKey = GlobalKey<FormState>();
+
+  late TextEditingController _nameCtrl;
+  late TextEditingController _barcodeCtrl;
+  late TextEditingController _costCtrl;
+  late TextEditingController _sellCtrl;
+  late TextEditingController _wholesaleCtrl;
+  late TextEditingController _qtyCtrl;
+  late TextEditingController _minStockCtrl;
+  late TextEditingController _descCtrl;
+
+  String? _selectedCategoryId;
+  String? _existingVariantId;
+  bool _loadingVariant = false;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final p = widget.product;
+    _nameCtrl = TextEditingController(text: p?.name ?? '');
+    _barcodeCtrl = TextEditingController();
+    _costCtrl = TextEditingController(text: '0.00');
+    _sellCtrl = TextEditingController(text: '0.00');
+    _wholesaleCtrl = TextEditingController(text: '0.00');
+    _qtyCtrl = TextEditingController(text: '0');
+    _minStockCtrl = TextEditingController(text: '${p?.minStock ?? 5}');
+    _descCtrl = TextEditingController(text: p?.description ?? '');
+    _selectedCategoryId = p?.categoryId;
+
+    if (p != null) {
+      _loadExistingVariant(p.id);
+    } else {
+      _generateBarcode();
+    }
+  }
+
+  Future<void> _loadExistingVariant(String productId) async {
+    setState(() => _loadingVariant = true);
+    try {
+      if (getIt.isRegistered<VariantLocalDataSource>()) {
+        final ds = getIt<VariantLocalDataSource>();
+        final variants = await ds.getVariants(productId);
+        if (variants.isNotEmpty && mounted) {
+          final v = variants.first;
+          _existingVariantId = v.id;
+          _barcodeCtrl.text = v.sku;
+          _costCtrl.text = Money(v.costPrice).toDisplay();
+          _sellCtrl.text = Money(v.sellPrice).toDisplay();
+          _wholesaleCtrl.text = Money(v.wholesalePrice).toDisplay();
+          _qtyCtrl.text = '${v.quantity}';
+        }
+      }
+    } catch (_) {}
+    if (mounted) {
+      setState(() => _loadingVariant = false);
+    }
+  }
+
+  void _generateBarcode() {
+    final rand = Random().nextInt(899999) + 100000;
+    _barcodeCtrl.text = '200$rand';
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _barcodeCtrl.dispose();
+    _costCtrl.dispose();
+    _sellCtrl.dispose();
+    _wholesaleCtrl.dispose();
+    _qtyCtrl.dispose();
+    _minStockCtrl.dispose();
+    _descCtrl.dispose();
+    super.dispose();
+  }
+
+  int _parsePiasters(String text) {
+    final cleaned = text.trim().replaceAll(',', '');
+    final val = double.tryParse(cleaned) ?? 0.0;
+    return (val * 100).round();
+  }
+
+  Future<void> _handleSave(List<CategoryEntity> categories) async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_selectedCategoryId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('يرجى اختيار قسم أو تصنيف للصنف'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    final cleanName = _nameCtrl.text.trim();
+    final cleanBarcode = _barcodeCtrl.text.trim();
+    final costPiasters = _parsePiasters(_costCtrl.text);
+    final sellPiasters = _parsePiasters(_sellCtrl.text);
+    final wholesalePiasters = _parsePiasters(_wholesaleCtrl.text);
+    final qty = int.tryParse(_qtyCtrl.text.trim()) ?? 0;
+    final minStock = int.tryParse(_minStockCtrl.text.trim()) ?? 5;
+    final desc = _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim();
+
+    final formCubit = context.read<ProductFormCubit>();
+    final authState = context.read<AuthCubit>().state;
+    final userId = authState is AuthAuthenticated ? authState.user.id : 'admin';
+
+    try {
+      if (widget.product == null) {
+        // Adding new simple product
+        final catMatch = categories.firstWhere(
+          (c) => c.id == _selectedCategoryId,
+          orElse: () => CategoryEntity(
+            id: _selectedCategoryId!,
+            name: '',
+            description: '',
+            createdAt: DateTime.now(),
+          ),
+        );
+
+        formCubit.onNameChanged(cleanName);
+        formCubit.onCategoryChanged(_selectedCategoryId!, catMatch.name);
+        formCubit.onDescriptionChanged(desc ?? '');
+        formCubit.onMinStockChanged(minStock);
+
+        final variant = VariantInput(
+          size: '-',
+          color: '-',
+          sku: cleanBarcode,
+          costPrice: costPiasters,
+          sellPrice: sellPiasters,
+          quantity: qty,
+        );
+
+        await formCubit.submitWithVariants(variants: [variant]);
+
+        if (!mounted) return;
+        final state = formCubit.state;
+        if (state.status == ProductFormStatus.error) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.errorMessage ?? 'حدث خطأ أثناء حفظ الصنف'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+          setState(() => _isSaving = false);
+          return;
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('تمت إضافة الصنف "$cleanName" بنجاح'),
+            backgroundColor: Colors.green.shade800,
+          ),
+        );
+        Navigator.of(context).pop(true);
+      } else {
+        // Editing existing simple product
+        final prod = widget.product!;
+        final updatedProduct = ProductEntity(
+          id: prod.id,
+          name: cleanName,
+          categoryId: _selectedCategoryId!,
+          categoryName: prod.categoryName,
+          description: desc ?? '',
+          minStock: minStock,
+          createdAt: prod.createdAt,
+        );
+
+        final productRepo = getIt<ProductRepository>();
+        final res = await productRepo.updateProduct(updatedProduct);
+        final err = res.fold((f) => f.message, (_) => null);
+        if (err != null) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(err), backgroundColor: AppColors.error),
+          );
+          setState(() => _isSaving = false);
+          return;
+        }
+
+        // Update single variant if exists
+        if (_existingVariantId != null &&
+            getIt.isRegistered<VariantLocalDataSource>()) {
+          final ds = getIt<VariantLocalDataSource>();
+          await ds.updateVariant(
+            _existingVariantId!,
+            costPrice: costPiasters,
+            sellPrice: sellPiasters,
+            wholesalePrice: wholesalePiasters,
+            quantity: qty,
+            sku: cleanBarcode,
+            userId: userId,
+          );
+        }
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('تم تعديل بيانات الصنف "$cleanName" بنجاح'),
+            backgroundColor: Colors.green.shade800,
+          ),
+        );
+        Navigator.of(context).pop(true);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e.toString().replaceAll('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: AppColors.error),
+      );
+      setState(() => _isSaving = false);
+    }
+  }
+
+  void _openAddCategoryQuick() async {
+    final newCat = await showDialog<CategoryEntity?>(
+      context: context,
+      builder: (_) => const CategoryFormDialog(),
+    );
+    if (newCat != null && mounted) {
+      setState(() {
+        _selectedCategoryId = newCat.id;
+      });
+      context.read<ProductFormCubit>().init(widget.product);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEdit = widget.product != null;
+
+    return BlocConsumer<ProductFormCubit, ProductFormState>(
+      listener: (context, state) {
+        if (state.categories.isNotEmpty && _selectedCategoryId == null) {
+          setState(() {
+            _selectedCategoryId = state.categories.first.id;
+          });
+        }
+      },
+      builder: (context, state) {
+        if (_loadingVariant || state.status == ProductFormStatus.loading) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(40),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        final categories = state.categories;
+
+        return Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isEdit ? Icons.edit_note_rounded : Icons.add_box_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        isEdit ? 'تعديل بيانات الصنف' : 'إضافة صنف جديد (منتج مفرد)',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, color: Colors.white),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Body
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Name & Barcode
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: TextFormField(
+                              controller: _nameCtrl,
+                              decoration: InputDecoration(
+                                labelText: 'اسم الصنف / المنتج *',
+                                hintText: 'مثال: طقم حلل جرانيت 10 قطع / شيبسي جبنة',
+                                prefixIcon: const Icon(Icons.inventory_2_outlined),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty) {
+                                  return 'اسم الصنف مطلوب';
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            flex: 2,
+                            child: TextFormField(
+                              controller: _barcodeCtrl,
+                              decoration: InputDecoration(
+                                labelText: 'الباركود / الكود (SKU) *',
+                                prefixIcon: const Icon(Icons.qr_code_scanner_rounded),
+                                suffixIcon: IconButton(
+                                  tooltip: 'توليد باركود تلقائي',
+                                  icon: const Icon(Icons.autorenew_rounded),
+                                  onPressed: _generateBarcode,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty) {
+                                  return 'الباركود مطلوب';
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Category selector
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              initialValue: categories.any((c) => c.id == _selectedCategoryId)
+                                  ? _selectedCategoryId
+                                  : null,
+                              decoration: InputDecoration(
+                                labelText: 'القسم / التصنيف *',
+                                prefixIcon: const Icon(Icons.category_outlined),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              items: categories
+                                  .map(
+                                    (c) => DropdownMenuItem(
+                                      value: c.id,
+                                      child: Text(c.name),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (val) {
+                                setState(() => _selectedCategoryId = val);
+                              },
+                              validator: (v) => v == null ? 'يرجى اختيار القسم' : null,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
+                            ),
+                            icon: const Icon(Icons.add_rounded),
+                            label: const Text('قسم جديد'),
+                            onPressed: _openAddCategoryQuick,
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 18),
+                      const Divider(),
+                      const SizedBox(height: 10),
+
+                      const Text(
+                        'الأسعار والمخزون',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Prices Row
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _costCtrl,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(decimal: true),
+                              decoration: InputDecoration(
+                                labelText: 'سعر التكلفة (ج.م) *',
+                                prefixIcon: const Icon(Icons.monetization_on_outlined),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty) {
+                                  return 'مطلوب';
+                                }
+                                final p = double.tryParse(v.trim());
+                                if (p == null || p < 0) return 'سعر غير صالح';
+                                return null;
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _sellCtrl,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(decimal: true),
+                              decoration: InputDecoration(
+                                labelText: 'سعر البيع قطاعي (ج.م) *',
+                                prefixIcon: const Icon(Icons.point_of_sale_rounded),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty) {
+                                  return 'مطلوب';
+                                }
+                                final p = double.tryParse(v.trim());
+                                if (p == null || p < 0) return 'سعر غير صالح';
+                                return null;
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _wholesaleCtrl,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(decimal: true),
+                              decoration: InputDecoration(
+                                labelText: 'سعر الجملة (اختياري)',
+                                prefixIcon: const Icon(Icons.storefront_outlined),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Quantity & Min stock
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _qtyCtrl,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                labelText: isEdit
+                                    ? 'الرصيد الحالي بالمخزن'
+                                    : 'الكمية الأولية بالمخزن *',
+                                prefixIcon: const Icon(Icons.warehouse_outlined),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty) return 'مطلوب';
+                                final q = int.tryParse(v.trim());
+                                if (q == null || q < 0) return 'رقم غير صالح';
+                                return null;
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _minStockCtrl,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                labelText: 'حد الأمان / الطلب *',
+                                prefixIcon: const Icon(Icons.warning_amber_rounded),
+                                helperText: 'تنبيه عند انخفاض الرصيد عن هذا الحد',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty) return 'مطلوب';
+                                final q = int.tryParse(v.trim());
+                                if (q == null || q < 0) return 'رقم غير صالح';
+                                return null;
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Description
+                      TextFormField(
+                        controller: _descCtrl,
+                        maxLines: 2,
+                        decoration: InputDecoration(
+                          labelText: 'ملاحظات / وصف إضافي (اختياري)',
+                          prefixIcon: const Icon(Icons.notes_rounded),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Actions Footer
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius:
+                      const BorderRadius.vertical(bottom: Radius.circular(16)),
+                  border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
+                      child: const Text('إلغاء'),
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: _isSaving ? null : () => _handleSave(categories),
+                      icon: _isSaving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.check_rounded, color: Colors.white),
+                      label: Text(
+                        _isSaving
+                            ? 'جاري الحفظ...'
+                            : (isEdit ? 'حفظ التعديلات' : 'إضافة الصنف للمخزن'),
+                        style: const TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}

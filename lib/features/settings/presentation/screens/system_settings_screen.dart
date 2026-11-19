@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/retail_sector.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/features/feature_gate.dart';
 import '../../../../core/theme/app_branding.dart';
@@ -77,6 +78,9 @@ class _SystemSettingsView extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+              _sectionTitle('نمط النشاط ونوع المتجر'),
+              _SectorModeSettingsCard(userId: _userId(context)),
+              const SizedBox(height: 20),
               _sectionTitle('هوية النظام والألوان (الاسم والمظهر)'),
               _BrandingSettingsCard(userId: _userId(context)),
               const SizedBox(height: 20),
@@ -993,6 +997,210 @@ class _BrandingSettingsCardState extends State<_BrandingSettingsCard> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _SectorModeSettingsCard extends StatelessWidget {
+  final String userId;
+
+  const _SectorModeSettingsCard({required this.userId});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<SettingsCubit, SettingsState>(
+      builder: (context, state) {
+        final currentMode = state.sectorMode;
+
+        final options = [
+          (
+            key: RetailSector.apparel,
+            title: RetailSector.getLabel(RetailSector.apparel),
+            desc: RetailSector.getDescription(RetailSector.apparel),
+            icon: Icons.checkroom_rounded,
+            color: const Color(0xFF6A1B9A),
+          ),
+          (
+            key: RetailSector.supermarket,
+            title: RetailSector.getLabel(RetailSector.supermarket),
+            desc: RetailSector.getDescription(RetailSector.supermarket),
+            icon: Icons.shopping_cart_rounded,
+            color: const Color(0xFF2E7D32),
+          ),
+          (
+            key: RetailSector.houseware,
+            title: RetailSector.getLabel(RetailSector.houseware),
+            desc: RetailSector.getDescription(RetailSector.houseware),
+            icon: Icons.kitchen_rounded,
+            color: const Color(0xFFE65100),
+          ),
+        ];
+
+        return Card(
+          elevation: 1,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.storefront_rounded, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'تخصيص نمط النظام لنشاط المحل',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'اختر نوع نشاط متجرك لتكييف شاشات إضافة المنتجات والكاشير وسلوك الماسح الضوئي تلقائياً.',
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 14),
+                for (final opt in options) ...[
+                  InkWell(
+                    key: Key('sector_tile_${opt.key}'),
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () async {
+                      if (currentMode == opt.key) return;
+                      final err = await context
+                          .read<SettingsCubit>()
+                          .setSectorMode(opt.key, userId);
+                      if (context.mounted) {
+                        if (err != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(err),
+                              backgroundColor: AppColors.error,
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('تم تفعيل نمط: ${opt.title} بنجاح'),
+                              backgroundColor: Colors.green.shade800,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: currentMode == opt.key
+                            ? opt.color.withValues(alpha: 0.08)
+                            : Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: currentMode == opt.key
+                              ? opt.color
+                              : Colors.grey.shade200,
+                          width: currentMode == opt.key ? 1.8 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: currentMode == opt.key
+                                  ? opt.color
+                                  : Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              opt.icon,
+                              color: currentMode == opt.key
+                                  ? Colors.white
+                                  : Colors.grey.shade700,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      opt.title,
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        color: currentMode == opt.key
+                                            ? opt.color
+                                            : AppColors.onSurface,
+                                      ),
+                                    ),
+                                    if (currentMode == opt.key) ...[
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: opt.color,
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                        ),
+                                        child: const Text(
+                                          'النشط حالياً',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  opt.desc,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // ignore: deprecated_member_use
+                          Radio<String>(
+                            value: opt.key,
+                            // ignore: deprecated_member_use
+                            groupValue: currentMode,
+                            activeColor: opt.color,
+                            // ignore: deprecated_member_use
+                            onChanged: (_) async {
+                              final err = await context
+                                  .read<SettingsCubit>()
+                                  .setSectorMode(opt.key, userId);
+                              if (context.mounted && err != null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(err),
+                                    backgroundColor: AppColors.error,
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

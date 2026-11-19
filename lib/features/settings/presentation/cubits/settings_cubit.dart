@@ -4,6 +4,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 
+import '../../../../core/constants/retail_sector.dart';
 import '../../../../core/features/feature_gate.dart';
 
 class SettingsState extends Equatable {
@@ -13,6 +14,7 @@ class SettingsState extends Equatable {
   final bool installmentPaymentEnabled;
   final bool creditPaymentEnabled;
   final bool cloudSyncEnabled;
+  final String sectorMode;
   final bool isLoading;
   final String? error;
 
@@ -23,6 +25,7 @@ class SettingsState extends Equatable {
     this.installmentPaymentEnabled = false,
     this.creditPaymentEnabled = true,
     this.cloudSyncEnabled = false,
+    this.sectorMode = RetailSector.apparel,
     this.isLoading = false,
     this.error,
   });
@@ -34,6 +37,7 @@ class SettingsState extends Equatable {
     bool? installmentPaymentEnabled,
     bool? creditPaymentEnabled,
     bool? cloudSyncEnabled,
+    String? sectorMode,
     bool? isLoading,
     String? error,
     bool clearError = false,
@@ -46,6 +50,7 @@ class SettingsState extends Equatable {
           installmentPaymentEnabled ?? this.installmentPaymentEnabled,
       creditPaymentEnabled: creditPaymentEnabled ?? this.creditPaymentEnabled,
       cloudSyncEnabled: cloudSyncEnabled ?? this.cloudSyncEnabled,
+      sectorMode: sectorMode ?? this.sectorMode,
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
     );
@@ -59,6 +64,7 @@ class SettingsState extends Equatable {
     installmentPaymentEnabled,
     creditPaymentEnabled,
     cloudSyncEnabled,
+    sectorMode,
     isLoading,
     error,
   ];
@@ -73,6 +79,7 @@ class SettingsCubit extends Cubit<SettingsState> {
   StreamSubscription<String?>? _installmentSub;
   StreamSubscription<String?>? _creditSub;
   StreamSubscription<String?>? _cloudSyncSub;
+  StreamSubscription<String?>? _sectorSub;
 
   SettingsCubit(this._featureGate)
     : super(const SettingsState(isLoading: true));
@@ -104,6 +111,25 @@ class SettingsCubit extends Cubit<SettingsState> {
     _cloudSyncSub = _featureGate.watchMeta('sync.cloud_enabled').listen((v) {
       emit(state.copyWith(cloudSyncEnabled: v == '1' || v == 'true'));
     });
+    _sectorSub?.cancel();
+    _sectorSub = _featureGate.watchMeta(RetailSector.metaKey).listen((v) {
+      emit(state.copyWith(sectorMode: v ?? RetailSector.apparel));
+    });
+  }
+
+  Future<String?> setSectorMode(String mode, String userId) async {
+    try {
+      await _featureGate.setMeta(
+        RetailSector.metaKey,
+        mode,
+        userId: userId,
+      );
+      return null;
+    } catch (e) {
+      final msg = e.toString().replaceAll('Exception: ', '');
+      emit(state.copyWith(error: msg));
+      return msg;
+    }
   }
 
   Future<String?> setCloudSyncEnabled(bool enabled, String userId) async {
@@ -170,6 +196,7 @@ class SettingsCubit extends Cubit<SettingsState> {
     _installmentSub?.cancel();
     _creditSub?.cancel();
     _cloudSyncSub?.cancel();
+    _sectorSub?.cancel();
     return super.close();
   }
 }

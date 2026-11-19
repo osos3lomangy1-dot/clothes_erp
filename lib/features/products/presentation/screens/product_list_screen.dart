@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/retail_sector.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/features/feature_gate.dart';
 import '../../../../core/services/excel_service.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
@@ -20,6 +23,8 @@ import '../../domain/entities/product_entity.dart';
 import '../../domain/services/product_search_filter.dart';
 import '../cubits/product_cubit.dart';
 import '../cubits/product_state.dart';
+import '../widgets/rapid_barcode_intake_dialog.dart';
+import '../widgets/simple_product_form_dialog.dart';
 import 'product_form_screen.dart';
 
 class ProductListScreen extends StatelessWidget {
@@ -50,8 +55,28 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
   String? _selectedCategoryId;
   String? _selectedCategoryName;
 
+  StreamSubscription<String?>? _sectorSub;
+  String _sectorMode = RetailSector.apparel;
+
+  @override
+  void initState() {
+    super.initState();
+    if (getIt.isRegistered<FeatureGate>()) {
+      _sectorSub = getIt<FeatureGate>()
+          .watchMeta(RetailSector.metaKey)
+          .listen((mode) {
+        if (mounted) {
+          setState(() {
+            _sectorMode = mode ?? RetailSector.apparel;
+          });
+        }
+      });
+    }
+  }
+
   @override
   void dispose() {
+    _sectorSub?.cancel();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -113,13 +138,32 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
 
   void _openAddProductDialog(BuildContext context, [ProductEntity? product]) async {
     final cubit = context.read<ProductCubit>();
+    final isSingle = RetailSector.isSingleProductMode(_sectorMode);
     await showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => ProductFormDialog(product: product),
+      builder: (_) => isSingle
+          ? SimpleProductFormDialog(product: product)
+          : ProductFormDialog(product: product),
     );
     if (context.mounted) {
       cubit.getProducts();
+    }
+  }
+
+  void _openRapidScanDialog(BuildContext context) async {
+    final prodCubit = context.read<ProductCubit>();
+    final catCubit = context.read<CategoryCubit>();
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => BlocProvider.value(
+        value: catCubit,
+        child: const RapidBarcodeIntakeDialog(),
+      ),
+    );
+    if (context.mounted) {
+      prodCubit.getProducts();
     }
   }
 
@@ -394,13 +438,36 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
             onPressed: () => _importFromExcel(context),
           ),
           const SizedBox(width: 8),
+          if (_sectorMode == RetailSector.supermarket || RetailSector.isSingleProductMode(_sectorMode)) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: ElevatedButton.icon(
+                key: const Key('rapid_scan_button'),
+                icon: const Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: 18),
+                label: const Text(
+                  'مسح سريع للأصناف',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2E7D32),
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: () => _openRapidScanDialog(context),
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: ElevatedButton.icon(
               icon: const Icon(Icons.add_circle_outline, color: Colors.white, size: 18),
-              label: const Text(
-                'إضافة منتج جديد',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+              label: Text(
+                RetailSector.isSingleProductMode(_sectorMode)
+                    ? 'إضافة صنف جديد'
+                    : 'إضافة منتج جديد',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
@@ -1003,8 +1070,18 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
           Row(
             children: [
               OutlinedButton.icon(
-                icon: const Icon(Icons.style_outlined, size: 15),
-                label: const Text('المقاسات والألوان', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                icon: Icon(
+                  RetailSector.isSingleProductMode(_sectorMode)
+                      ? Icons.edit_note_rounded
+                      : Icons.style_outlined,
+                  size: 15,
+                ),
+                label: Text(
+                  RetailSector.isSingleProductMode(_sectorMode)
+                      ? 'تعديل الصنف والباركود'
+                      : 'المقاسات والألوان',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.primary,
                   side: BorderSide(color: AppColors.primary, width: 1.2),
@@ -1012,11 +1089,15 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 onPressed: () async {
-                  await Navigator.of(context).push(
-                    MaterialPageRoute(builder: (context) => VariantListScreen(product: product)),
-                  );
-                  if (context.mounted) {
-                    context.read<ProductCubit>().getProducts();
+                  if (RetailSector.isSingleProductMode(_sectorMode)) {
+                    _openAddProductDialog(context, product);
+                  } else {
+                    await Navigator.of(context).push(
+                      MaterialPageRoute(builder: (context) => VariantListScreen(product: product)),
+                    );
+                    if (context.mounted) {
+                      context.read<ProductCubit>().getProducts();
+                    }
                   }
                 },
               ),

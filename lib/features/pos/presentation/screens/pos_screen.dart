@@ -981,26 +981,30 @@ class _ProductCard extends StatelessWidget {
                             // Row 2: Color • Size chip + SKU
                             Row(
                               children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 5, vertical: 1),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surfaceContainerLow,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    '${variant.color} • ${variant.size}',
-                                    style: TextStyle(
-                                      fontFamily: 'Cairo',
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.grey.shade700,
+                                if (!(variant.color == '-' && variant.size == '-') &&
+                                    variant.color.isNotEmpty &&
+                                    variant.size.isNotEmpty) ...[
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 5, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surfaceContainerLow,
+                                      borderRadius: BorderRadius.circular(4),
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                    child: Text(
+                                      '${variant.color} • ${variant.size}',
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.grey.shade700,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 4),
+                                  const SizedBox(width: 4),
+                                ],
                                 Expanded(
                                   child: Text(
                                     variant.sku,
@@ -2142,14 +2146,17 @@ class _CartPanelState extends State<_CartPanel> {
           bindings: {
             const SingleActivator(LogicalKeyboardKey.f12): () => _handleCheckout(state),
           },
-          child: Container(
-            color: AppColors.surfaceContainerLowest,
-            child: Column(
-              children: [
-                // Cart Header: Title + Items/Pieces count + Wholesale toggle + Clear [Esc]
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                  child: Row(
+          child: LayoutBuilder(
+            builder: (context, outerConstraints) {
+              final isCompact = outerConstraints.maxHeight < 680;
+              return Container(
+                color: AppColors.surfaceContainerLowest,
+                child: Column(
+                  children: [
+                    // Cart Header: Title + Items/Pieces count + Wholesale toggle + Clear [Esc]
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(16, isCompact ? 6 : 12, 16, isCompact ? 2 : 4),
+                      child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
@@ -2270,8 +2277,8 @@ class _CartPanelState extends State<_CartPanel> {
 
                 // Customer Section (Two buttons when guest, full perks when assigned)
                 Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  margin: EdgeInsets.symmetric(horizontal: 16, vertical: isCompact ? 2 : 4),
+                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: isCompact ? 5 : 8),
                   decoration: BoxDecoration(
                     color: state.customer != null ? AppColors.surfaceContainer : AppColors.surfaceContainerLow,
                     borderRadius: BorderRadius.circular(12),
@@ -2439,18 +2446,24 @@ class _CartPanelState extends State<_CartPanel> {
                         ),
                 ),
 
-                const Divider(height: 8),
+                Divider(height: isCompact ? 4 : 8),
 
                 // Cart Items List
                 Expanded(
                   child: state.cart.isEmpty
                       ? LayoutBuilder(
                           builder: (context, constraints) {
-                            final iconSize = (constraints.maxHeight * 0.32).clamp(24.0, 56.0);
+                            final safeHeight = constraints.maxHeight > 0
+                                ? constraints.maxHeight
+                                : 0.0;
+                            if (safeHeight < 20) {
+                              return const SizedBox.shrink();
+                            }
+                            final iconSize = (safeHeight * 0.32).clamp(20.0, 56.0);
                             return SingleChildScrollView(
                               physics: const ClampingScrollPhysics(),
                               child: ConstrainedBox(
-                                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                                constraints: BoxConstraints(minHeight: safeHeight),
                                 child: Center(
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -2463,20 +2476,20 @@ class _CartPanelState extends State<_CartPanel> {
                                           size: iconSize,
                                           color: Colors.grey.shade300,
                                         ),
-                                        if (constraints.maxHeight >= 60) ...[
-                                          const SizedBox(height: 6),
+                                        if (safeHeight >= 60) ...[
+                                          const SizedBox(height: 4),
                                           Text(
                                             'سلة المشتريات فارغة',
                                             textAlign: TextAlign.center,
                                             style: TextStyle(
                                               fontFamily: 'Cairo',
                                               color: Colors.grey.shade500,
-                                              fontSize: constraints.maxHeight < 90 ? 11.5 : 13.5,
+                                              fontSize: safeHeight < 90 ? 11.5 : 13.5,
                                               fontWeight: FontWeight.w600,
                                             ),
                                           ),
                                         ],
-                                        if (constraints.maxHeight >= 115) ...[
+                                        if (safeHeight >= 115) ...[
                                           const SizedBox(height: 2),
                                           Text(
                                             'انقر على أي منتج لإضافته فوراً إلى الفاتورة',
@@ -2518,7 +2531,7 @@ class _CartPanelState extends State<_CartPanel> {
 
                 // Checkout Footer
                 Container(
-                  padding: const EdgeInsets.all(14),
+                  padding: EdgeInsets.all(isCompact ? 10 : 14),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
                     border: Border(top: BorderSide(color: AppColors.outlineVariant.withValues(alpha: 0.5))),
@@ -2536,11 +2549,11 @@ class _CartPanelState extends State<_CartPanel> {
                           ),
                           Text(
                             '${Money(state.subtotal).toDisplay()} ج.م',
-                            style: TextStyle(fontFamily: 'Cairo', fontSize: 14, fontWeight: FontWeight.bold),
+                            style: const TextStyle(fontFamily: 'Cairo', fontSize: 14, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: isCompact ? 3 : 6),
 
                       // Promotions Discount
                       if (state.promotionDiscountPiasters > 0) ...[
@@ -2573,7 +2586,7 @@ class _CartPanelState extends State<_CartPanel> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 6),
+                        SizedBox(height: isCompact ? 3 : 6),
                       ],
 
                       // Discount with % and ج.م toggle
@@ -2622,7 +2635,7 @@ class _CartPanelState extends State<_CartPanel> {
                                 child: TextField(
                                   controller: _discountCtrl,
                                   keyboardType: TextInputType.number,
-                                  style: TextStyle(fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.bold),
+                                  style: const TextStyle(fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.bold),
                                   textAlign: TextAlign.center,
                                   decoration: InputDecoration(
                                     hintText: '0',
@@ -2642,11 +2655,11 @@ class _CartPanelState extends State<_CartPanel> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: isCompact ? 4 : 8),
 
                       // Grand Total: Big, bold, Primary color
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: isCompact ? 5 : 8),
                         decoration: BoxDecoration(
                           color: AppColors.surfaceContainer,
                           borderRadius: BorderRadius.circular(12),
@@ -2656,18 +2669,18 @@ class _CartPanelState extends State<_CartPanel> {
                           children: [
                             Text(
                               'الإجمالي النهائي',
-                              style: TextStyle(fontFamily: 'Cairo', fontSize: 15, fontWeight: FontWeight.bold),
+                              style: TextStyle(fontFamily: 'Cairo', fontSize: isCompact ? 13 : 15, fontWeight: FontWeight.bold),
                             ),
                             Text(
                               '${Money(state.total).toDisplay()} ج.م',
-                              style: TextStyle(fontFamily: 'Cairo', fontSize: 22,
+                              style: TextStyle(fontFamily: 'Cairo', fontSize: isCompact ? 18 : 22,
                                 fontWeight: FontWeight.w900,
                                 color: AppColors.primary,),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: isCompact ? 4 : 8),
 
                       // Payment Method Buttons: crisp single-line uniform height
                       Row(
@@ -2834,13 +2847,13 @@ class _CartPanelState extends State<_CartPanel> {
                       ),
 
                       if (_paymentMethod == 'credit') ...[
-                        const SizedBox(height: 8),
+                        SizedBox(height: isCompact ? 4 : 8),
                         _buildCreditPaymentSection(state),
                       ],
 
                       // Fast Cash Banknote Presets (when cash mode is active)
                       if (_paymentMethod == 'cash') ...[
-                        const SizedBox(height: 8),
+                        SizedBox(height: isCompact ? 4 : 8),
                         Row(
                           children: [
                             Text(
@@ -2856,7 +2869,7 @@ class _CartPanelState extends State<_CartPanel> {
                               },
                               borderRadius: BorderRadius.circular(6),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: isCompact ? 2 : 3),
                                 decoration: BoxDecoration(
                                   color: AppColors.surfaceContainerLow,
                                   borderRadius: BorderRadius.circular(6),
@@ -2880,7 +2893,7 @@ class _CartPanelState extends State<_CartPanel> {
                                   },
                                   borderRadius: BorderRadius.circular(6),
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: isCompact ? 2 : 3),
                                     decoration: BoxDecoration(
                                       color: AppColors.surfaceContainerLow,
                                       borderRadius: BorderRadius.circular(6),
@@ -2888,7 +2901,7 @@ class _CartPanelState extends State<_CartPanel> {
                                     ),
                                     child: Text(
                                       '$preset',
-                                      style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold),
+                                      style: const TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold),
                                     ),
                                   ),
                                 ),
@@ -2896,7 +2909,7 @@ class _CartPanelState extends State<_CartPanel> {
                             }),
                           ],
                         ),
-                        const SizedBox(height: 6),
+                        SizedBox(height: isCompact ? 4 : 6),
                         Row(
                           children: [
                             Text(
@@ -2906,11 +2919,11 @@ class _CartPanelState extends State<_CartPanel> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: SizedBox(
-                                height: 34,
+                                height: isCompact ? 30 : 34,
                                 child: TextField(
                                   controller: _receivedCtrl,
                                   keyboardType: TextInputType.number,
-                                  style: TextStyle(fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.bold),
+                                  style: const TextStyle(fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.bold),
                                   decoration: InputDecoration(
                                     hintText: 'المبلغ المدفوع',
                                     isDense: true,
@@ -2941,12 +2954,12 @@ class _CartPanelState extends State<_CartPanel> {
                         ),
                       ],
 
-                      const SizedBox(height: 10),
+                      SizedBox(height: isCompact ? 6 : 10),
 
                       // Massive Checkout [F12] Button
                       SizedBox(
                         width: double.infinity,
-                        height: 52,
+                        height: isCompact ? 44 : 52,
                         child: ElevatedButton.icon(
                           onPressed: state.cart.isEmpty || state.isProcessing
                               ? null
@@ -2954,7 +2967,7 @@ class _CartPanelState extends State<_CartPanel> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                             elevation: 3,
                           ),
                           icon: state.isProcessing
@@ -2964,7 +2977,7 @@ class _CartPanelState extends State<_CartPanel> {
                               ? const CircularProgressIndicator(color: Colors.white)
                               : Text(
                                   'إتمام عملية البيع [F12]',
-                                  style: TextStyle(fontFamily: 'Cairo', fontSize: 17, fontWeight: FontWeight.bold),
+                                  style: TextStyle(fontFamily: 'Cairo', fontSize: isCompact ? 15 : 17, fontWeight: FontWeight.bold),
                                 ),
                         ),
                       ),
@@ -2973,11 +2986,13 @@ class _CartPanelState extends State<_CartPanel> {
                 ),
               ],
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
-  }
+  },
+);
+}
 
   Widget _toggleBtn({
     required String label,
@@ -3198,8 +3213,10 @@ class _CartItemTileState extends State<_CartItemTile> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '${item.productName} (${item.color} - ${item.size})',
-                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
+                (!(item.color == '-' && item.size == '-') && item.color.isNotEmpty && item.size.isNotEmpty)
+                    ? '${item.productName} (${item.color} - ${item.size})'
+                    : item.productName,
+                style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -3291,20 +3308,22 @@ class _CartItemTileState extends State<_CartItemTile> {
                 const SizedBox(height: 2),
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(6),
+                    if (!(item.color == '-' && item.size == '-') && item.color.isNotEmpty && item.size.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '${item.color} • ${item.size}',
+                          style: TextStyle(fontFamily: 'Cairo', fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey.shade700,),
+                        ),
                       ),
-                      child: Text(
-                        '${item.color} • ${item.size}',
-                        style: TextStyle(fontFamily: 'Cairo', fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey.shade700,),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
+                      const SizedBox(width: 8),
+                    ],
                     InkWell(
                       onTap: () => _openPriceEditDialog(context),
                       borderRadius: BorderRadius.circular(6),

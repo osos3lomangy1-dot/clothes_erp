@@ -83,7 +83,7 @@ void main() {
   });
 
   testWidgets('Installment Settings section visible and payment installment toggle functional when enabled', (tester) async {
-    tester.view.physicalSize = const Size(1200, 2400);
+    tester.view.physicalSize = const Size(1200, 3600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() => tester.view.resetPhysicalSize());
     addTearDown(() => tester.view.resetDevicePixelRatio());
