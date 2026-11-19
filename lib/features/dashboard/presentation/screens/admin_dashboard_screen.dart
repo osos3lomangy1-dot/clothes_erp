@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/features/feature_gate.dart';
 import '../../../../core/layout/main_layout.dart';
 import '../../../../core/services/app_update_service.dart';
 import '../../../../core/utils/money.dart';
@@ -35,6 +37,12 @@ class _AdminDashboardView extends StatefulWidget {
 }
 
 class _AdminDashboardViewState extends State<_AdminDashboardView> {
+  StreamSubscription<Map<String, bool>>? _featureSub;
+  StreamSubscription<String?>? _creditSub;
+  bool _installmentsEnabled = false;
+  bool _suppliersEnabled = true;
+  bool _creditEnabled = true;
+
   @override
   void initState() {
     super.initState();
@@ -43,6 +51,31 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
         AppUpdateService.checkForUpdate(context);
       }
     });
+
+    final featureGate = getIt<FeatureGate>();
+    _featureSub = featureGate.watchFeatures().listen((features) {
+      if (mounted) {
+        setState(() {
+          _installmentsEnabled = features[FeatureKeys.installments] ?? false;
+          _suppliersEnabled = features[FeatureKeys.suppliers] ?? true;
+        });
+      }
+    });
+    _creditSub = featureGate.watchMeta('payment.credit').listen((val) {
+      final enabled = val == null ? true : (val == '1' || val.toLowerCase() == 'true');
+      if (mounted) {
+        setState(() {
+          _creditEnabled = enabled;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _featureSub?.cancel();
+    _creditSub?.cancel();
+    super.dispose();
   }
 
   @override
@@ -328,6 +361,9 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
           bgColor: stats.lowStockCount > 0 ? Colors.orange.shade50 : Colors.grey.shade50,
         );
 
+        final showInstallments = _installmentsEnabled ||
+            stats.overdueInstallmentsCount > 0 ||
+            stats.overdueInstallmentsAmount > 0;
         final alertInstallments = _MiniAlertCard(
           title: 'أقساط متأخرة',
           countText: '${stats.overdueInstallmentsCount} عقد',
@@ -337,6 +373,7 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
           bgColor: stats.overdueInstallmentsCount > 0 ? Colors.red.shade50 : Colors.grey.shade50,
         );
 
+        final showSuppliers = _suppliersEnabled || stats.totalSupplierDebts > 0;
         final alertSuppliers = _MiniAlertCard(
           title: 'مديونية الموردين',
           countText: '${Money(stats.totalSupplierDebts).toDisplay()} ج.م',
@@ -346,6 +383,7 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
           bgColor: Colors.blueGrey.shade50,
         );
 
+        final showCustomerCredit = _creditEnabled || stats.totalCustomerCreditDebts > 0;
         final alertCustomerCredit = _MiniAlertCard(
           title: 'مديونيات العملاء الآجلة',
           countText: '${Money(stats.totalCustomerCreditDebts).toDisplay()} ج.م',
@@ -364,27 +402,66 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
           bgColor: stats.todayReturnsCount > 0 ? Colors.indigo.shade50 : Colors.grey.shade50,
         );
 
-        if (constraints.maxWidth < 1100) {
+        final visibleCards = <Widget>[
+          alertStock,
+          if (showInstallments) alertInstallments,
+          if (showSuppliers) alertSuppliers,
+          if (showCustomerCredit) alertCustomerCredit,
+          alertReturns,
+        ];
+
+        if (constraints.maxWidth < 700) {
+          final rows = <Widget>[];
+          for (var i = 0; i < visibleCards.length; i += 2) {
+            final chunk = visibleCards.sublist(i, (i + 2).clamp(0, visibleCards.length));
+            if (rows.isNotEmpty) rows.add(const SizedBox(height: 10));
+            rows.add(
+              Row(
+                children: [
+                  for (int j = 0; j < chunk.length; j++) ...[
+                    if (j > 0) const SizedBox(width: 10),
+                    Expanded(child: chunk[j]),
+                  ],
+                ],
+              ),
+            );
+          }
+          return Column(children: rows);
+        } else if (constraints.maxWidth < 1100) {
+          final half = (visibleCards.length / 2).ceil();
+          final firstRow = visibleCards.sublist(0, half);
+          final secondRow = visibleCards.sublist(half);
           return Column(
             children: [
-              Row(children: [Expanded(child: alertStock), const SizedBox(width: 10), Expanded(child: alertInstallments)]),
-              const SizedBox(height: 10),
-              Row(children: [Expanded(child: alertSuppliers), const SizedBox(width: 10), Expanded(child: alertCustomerCredit), const SizedBox(width: 10), Expanded(child: alertReturns)]),
+              Row(
+                children: [
+                  for (int i = 0; i < firstRow.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 10),
+                    Expanded(child: firstRow[i]),
+                  ],
+                ],
+              ),
+              if (secondRow.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    for (int i = 0; i < secondRow.length; i++) ...[
+                      if (i > 0) const SizedBox(width: 10),
+                      Expanded(child: secondRow[i]),
+                    ],
+                  ],
+                ),
+              ],
             ],
           );
         }
 
         return Row(
           children: [
-            Expanded(child: alertStock),
-            const SizedBox(width: 10),
-            Expanded(child: alertInstallments),
-            const SizedBox(width: 10),
-            Expanded(child: alertSuppliers),
-            const SizedBox(width: 10),
-            Expanded(child: alertCustomerCredit),
-            const SizedBox(width: 10),
-            Expanded(child: alertReturns),
+            for (int i = 0; i < visibleCards.length; i++) ...[
+              if (i > 0) const SizedBox(width: 10),
+              Expanded(child: visibleCards[i]),
+            ],
           ],
         );
       },

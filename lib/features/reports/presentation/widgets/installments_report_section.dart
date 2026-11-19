@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/features/feature_gate.dart';
 import '../../../../core/utils/money.dart';
 import '../cubits/installments_report_cubit.dart';
 
@@ -18,13 +20,50 @@ class InstallmentsReportSection extends StatelessWidget {
   }
 }
 
-class _InstallmentsReportView extends StatelessWidget {
+class _InstallmentsReportView extends StatefulWidget {
   const _InstallmentsReportView();
+
+  @override
+  State<_InstallmentsReportView> createState() => _InstallmentsReportViewState();
+}
+
+class _InstallmentsReportViewState extends State<_InstallmentsReportView> {
+  StreamSubscription<Map<String, bool>>? _featureSub;
+  bool _installmentsEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (getIt.isRegistered<FeatureGate>()) {
+      final featureGate = getIt<FeatureGate>();
+      _featureSub = featureGate.watchFeatures().listen((features) {
+        if (mounted) {
+          setState(() {
+            _installmentsEnabled = features[FeatureKeys.installments] ?? false;
+          });
+        }
+      });
+    } else {
+      _installmentsEnabled = true;
+    }
+  }
+
+  @override
+  void dispose() {
+    _featureSub?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<InstallmentsReportCubit, InstallmentsReportState>(
       builder: (context, state) {
+        if (!_installmentsEnabled &&
+            (state.status == InstallmentsReportStatus.loading ||
+                state.status == InstallmentsReportStatus.error)) {
+          return const SizedBox.shrink();
+        }
+
         if (state.status == InstallmentsReportStatus.loading) {
           return const Card(
             margin: EdgeInsets.all(16),
@@ -45,6 +84,11 @@ class _InstallmentsReportView extends StatelessWidget {
         }
         final summary = state.summary;
         if (summary == null) return const SizedBox.shrink();
+
+        // If installments feature is disabled AND there are no outstanding or overdue installments, hide completely
+        if (!_installmentsEnabled && summary.totalOutstanding == 0 && summary.overdueCount == 0) {
+          return const SizedBox.shrink();
+        }
 
         return Card(
           margin: const EdgeInsets.all(16),

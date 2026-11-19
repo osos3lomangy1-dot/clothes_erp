@@ -40,6 +40,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
     if (lower == 'card' || lower == 'visa' || lower == 'فيزا') {
       return 'بطاقة / فيزا';
     }
+    if (lower == 'credit' || lower == 'آجل' || lower == 'اجل') {
+      return 'دفع آجل (حساب عملاء)';
+    }
+    if (lower == 'installment' || lower == 'تقسيط') {
+      return 'أقساط';
+    }
     return method;
   }
 

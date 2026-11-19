@@ -68,12 +68,15 @@ class _PaymentMethodPieChartState extends State<PaymentMethodPieChart> {
                   child: Icon(Icons.pie_chart_rounded, color: Colors.green.shade700, size: 22),
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  'توزيع طرق الدفع (Donut Chart)',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.onSurface,
+                const Expanded(
+                  child: Text(
+                    'توزيع طرق الدفع (Donut Chart)',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.onSurface,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],

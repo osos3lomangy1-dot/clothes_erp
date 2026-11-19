@@ -10,6 +10,7 @@ import 'package:clothes_erp/features/auth/data/datasources/auth_local_data_sourc
 import 'package:clothes_erp/features/auth/data/models/user_model.dart';
 import 'package:clothes_erp/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:clothes_erp/features/auth/presentation/cubits/auth_state.dart';
+import 'package:drift/drift.dart' hide Column;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -135,6 +136,47 @@ void main() {
     // Enable installments feature
     await featureGate.setFeatureEnabled(FeatureKeys.installments, true, userId: adminUser.id);
 
+    await tester.pumpWidget(buildTestWidget());
+    await tester.pumpAndSettle();
+
+    expect(find.text('التقسيط'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(milliseconds: 100));
+  });
+
+  testWidgets('sidebar entry remains visible when feature.installments is disabled but active contracts exist in DB', (tester) async {
+    tester.view.physicalSize = const Size(1200, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    // Seed an active contract in DB
+    final now = DateTime.now();
+    await db.into(db.customerInstallments).insert(
+      CustomerInstallmentsCompanion.insert(
+        id: 'ci_active_1',
+        branchId: 'default',
+        customerId: 'cust_1',
+        saleId: 'sale_1',
+        totalPiasters: 50000,
+        principalPiasters: 50000,
+        interestBp: 0,
+        monthlyAmountPiasters: 10000,
+        remainingPiasters: 25000,
+        durationMonths: 5,
+        startDate: now,
+        endDate: now.add(const Duration(days: 150)),
+        status: const Value('active'),
+        createdBy: 'admin',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+
+    // Feature is disabled, but active contract exists -> 'التقسيط' should remain visible
     await tester.pumpWidget(buildTestWidget());
     await tester.pumpAndSettle();
 

@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../constants/app_colors.dart';
+import '../database/app_database.dart';
 import '../di/injection.dart';
 import '../features/feature_gate.dart';
 import '../services/crash_logger_service.dart';
@@ -51,6 +53,8 @@ class _MainLayoutState extends State<MainLayout> {
   late Widget _currentScreen;
   StreamSubscription<bool>? _syncSubscription;
   StreamSubscription<String?>? _cloudSyncSub;
+  StreamSubscription<List<CustomerInstallment>>? _activeInstallmentsSub;
+  bool _hasActiveInstallments = false;
 
   @override
   void initState() {
@@ -59,6 +63,18 @@ class _MainLayoutState extends State<MainLayout> {
 
     final syncService = getIt<RestSyncService>();
     final featureGate = getIt<FeatureGate>();
+
+    if (getIt.isRegistered<AppDatabase>()) {
+      final db = getIt<AppDatabase>();
+      final query = (db.select(db.customerInstallments)
+        ..where((t) => t.deletedAt.isNull() & t.status.isIn(const ['active', 'overdue'])));
+      _activeInstallmentsSub = query.watch().listen((contracts) {
+        final hasActive = contracts.isNotEmpty;
+        if (mounted && _hasActiveInstallments != hasActive) {
+          setState(() => _hasActiveInstallments = hasActive);
+        }
+      });
+    }
 
     _cloudSyncSub = featureGate.watchMeta('sync.cloud_enabled').listen((val) {
       final enabled = val == '1' || val == 'true';
@@ -81,6 +97,7 @@ class _MainLayoutState extends State<MainLayout> {
 
   @override
   void dispose() {
+    _activeInstallmentsSub?.cancel();
     _cloudSyncSub?.cancel();
     _syncSubscription?.cancel();
     getIt<RestSyncService>().stopAutoSync();
@@ -254,7 +271,7 @@ class _MainLayoutState extends State<MainLayout> {
                                     _navItem(Icons.people_alt_rounded, 'سجل العملاء', const CustomerScreen()),
                                   if (isAdmin && _featureEnabled(features, FeatureKeys.promotions))
                                     _navItem(Icons.local_offer_rounded, 'العروض الترويجية', const PromotionsScreen()),
-                                  if (_featureEnabled(features, FeatureKeys.installments))
+                                  if (_featureEnabled(features, FeatureKeys.installments) || _hasActiveInstallments)
                                     _navItem(Icons.payments_rounded, 'التقسيط', const InstallmentsListScreen()),
                                   if (_featureEnabled(features, FeatureKeys.expenses))
                                     _navItem(Icons.payments_outlined, 'إدارة المصروفات', const ExpensesScreen()),
