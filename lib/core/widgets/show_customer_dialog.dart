@@ -1,5 +1,7 @@
 
-  import 'package:clothes_erp/core/constants/app_colors.dart';
+import 'package:clothes_erp/core/constants/app_colors.dart';
+import 'package:clothes_erp/core/di/injection.dart';
+import 'package:clothes_erp/core/features/feature_gate.dart';
 import 'package:clothes_erp/core/widgets/app_feedback.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -7,7 +9,18 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../features/customers/domain/entities/customer_entity.dart';
 import '../../features/customers/presentation/cubits/customer_cubit.dart';
 
-void showCustomerDialog(BuildContext context, {CustomerEntity? customer}) {
+Future<void> showCustomerDialog(BuildContext context, {CustomerEntity? customer}) async {
+    bool creditEnabled = true;
+    try {
+      if (getIt.isRegistered<FeatureGate>()) {
+        final gate = getIt<FeatureGate>();
+        final meta = await gate.getMeta('payment.credit');
+        creditEnabled = meta == null || meta != '0';
+      }
+    } catch (_) {}
+    if (!context.mounted) return;
+    final showCreditLimitField = creditEnabled || (customer != null && customer.creditLimit > 0);
+
     final nameCtrl = TextEditingController(text: customer?.name ?? '');
     final phoneCtrl = TextEditingController(text: customer?.phone ?? '');
     final pointsCtrl = TextEditingController(
@@ -127,20 +140,22 @@ void showCustomerDialog(BuildContext context, {CustomerEntity? customer}) {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: creditLimitCtrl,
-                    decoration: InputDecoration(
-                      labelText: 'الحد الأقصى للآجل (الائتماني)',
-                      hintText: 'اتركه فارغاً أو 0 إذا كان غير مقيد',
-                      suffixText: 'ج.م',
-                      prefixIcon: const Icon(Icons.account_balance_wallet_outlined),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
+                  if (showCreditLimitField) ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: creditLimitCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'الحد الأقصى للآجل (الائتماني)',
+                        hintText: 'اتركه فارغاً أو 0 إذا كان غير مقيد',
+                        suffixText: 'ج.م',
+                        prefixIcon: const Icon(Icons.account_balance_wallet_outlined),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     ),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  ),
+                  ],
                 ],
               ),
             ),

@@ -57,6 +57,7 @@ class _CustomerProfileBodyState extends State<_CustomerProfileBody> {
   CustomerStatement? _statement;
   bool _loading = true;
   bool _installmentsEnabled = false;
+  bool _creditEnabled = true;
   String? _error;
 
   CustomerLedgerService? get _service {
@@ -86,12 +87,16 @@ class _CustomerProfileBodyState extends State<_CustomerProfileBody> {
     try {
       final st = await svc.getCustomerStatement(widget.customer.id);
       bool instOn = false;
+      bool creditOn = true;
       try {
         if (getIt.isRegistered<FeatureGate>()) {
           final gate = getIt<FeatureGate>();
           final featureOn = await gate.isEnabled(FeatureKeys.installments);
           final meta = await gate.getMeta('payment.installment');
           instOn = featureOn && (meta != '0');
+
+          final creditMeta = await gate.getMeta('payment.credit');
+          creditOn = creditMeta == null || creditMeta != '0';
         }
       } catch (_) {}
 
@@ -99,6 +104,7 @@ class _CustomerProfileBodyState extends State<_CustomerProfileBody> {
       setState(() {
         _statement = st;
         _installmentsEnabled = instOn;
+        _creditEnabled = creditOn;
         _loading = false;
       });
     } catch (e) {
@@ -323,9 +329,15 @@ class _CustomerProfileBodyState extends State<_CustomerProfileBody> {
               );
               final showInstallments = _installmentsEnabled || hasActiveInstallment;
 
+              final hasActiveCreditDebt = _statement!.summary.creditDebtPiasters > 0;
+              final hasCreditPayments = _statement!.payments.isNotEmpty;
+              final showCredit = _creditEnabled || hasActiveCreditDebt || hasCreditPayments;
+
+              final tabCount = 1 + (showInstallments ? 1 : 0) + (showCredit ? 1 : 0) + 1;
+
               return Expanded(
                 child: DefaultTabController(
-                  length: showInstallments ? 4 : 3,
+                  length: tabCount,
                   child: Column(
                     children: [
                       // KPI Summary Cards
@@ -375,10 +387,11 @@ class _CustomerProfileBodyState extends State<_CustomerProfileBody> {
                           ],
                         ),
                       ),
-                  // Credit Account & Debt Banner
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    child: Container(
+                      // Credit Account & Debt Banner
+                      if (showCredit)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                          child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
                         color: _statement!.summary.creditDebtPiasters > 0
@@ -405,27 +418,27 @@ class _CustomerProfileBodyState extends State<_CustomerProfileBody> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
-                                  children: [
-                                    Text(
-                                      'مديونية الحساب الآجل: ',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.grey.shade800,
-                                      ),
+                                Text.rich(
+                                  TextSpan(
+                                    text: 'مديونية الحساب الآجل: ',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey.shade800,
                                     ),
-                                    Text(
-                                      '${Money(_statement!.summary.creditDebtPiasters).toDisplay()} ج.م',
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.bold,
-                                        color: _statement!.summary.creditDebtPiasters > 0
-                                            ? Colors.red.shade800
-                                            : Colors.green.shade800,
+                                    children: [
+                                      TextSpan(
+                                        text: '${Money(_statement!.summary.creditDebtPiasters).toDisplay()} ج.م',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          color: _statement!.summary.creditDebtPiasters > 0
+                                              ? Colors.red.shade800
+                                              : Colors.green.shade800,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
@@ -472,9 +485,10 @@ class _CustomerProfileBodyState extends State<_CustomerProfileBody> {
                           Tab(
                             text: 'التقسيط (${_statement!.installments.length})',
                           ),
-                        Tab(
-                          text: 'سداد الآجل (${_statement!.payments.length})',
-                        ),
+                        if (showCredit)
+                          Tab(
+                            text: 'سداد الآجل (${_statement!.payments.length})',
+                          ),
                         Tab(
                           text: 'نقاط الولاء (${_statement!.loyaltyLogs.length})',
                         ),
@@ -624,7 +638,8 @@ class _CustomerProfileBodyState extends State<_CustomerProfileBody> {
                                 },
                               ),
                         // Tab 3: Credit Payments (سداد الآجل)
-                        _statement!.payments.isEmpty
+                        if (showCredit)
+                          _statement!.payments.isEmpty
                             ? _emptyTab('لا توجد دفعات مسجلة على الحساب الآجل لهذا العميل بعد')
                             : ListView.separated(
                                 padding: const EdgeInsets.all(14),

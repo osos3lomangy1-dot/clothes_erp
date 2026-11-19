@@ -50,6 +50,7 @@ class _CustomerViewState extends State<_CustomerView> {
   Map<String, CustomerFinancialSummary> _summaries = const {};
   bool _exporting = false;
   bool _installmentsEnabled = false;
+  bool _creditEnabled = true;
 
   CustomerLedgerService? get _ledgerService {
     if (widget.ledgerOverride != null) return widget.ledgerOverride;
@@ -71,8 +72,17 @@ class _CustomerViewState extends State<_CustomerView> {
         final gate = getIt<FeatureGate>();
         final featureOn = await gate.isEnabled(FeatureKeys.installments);
         final meta = await gate.getMeta('payment.installment');
-        final on = featureOn && (meta != '0');
-        if (mounted) setState(() => _installmentsEnabled = on);
+        final instOn = featureOn && (meta != '0');
+
+        final creditMeta = await gate.getMeta('payment.credit');
+        final creditOn = creditMeta == null || creditMeta != '0';
+
+        if (mounted) {
+          setState(() {
+            _installmentsEnabled = instOn;
+            _creditEnabled = creditOn;
+          });
+        }
       }
     } catch (_) {}
   }
@@ -807,7 +817,7 @@ class _CustomerViewState extends State<_CustomerView> {
                             Colors.red.shade50,
                             Colors.red.shade900,
                           ),
-                        if (customer.creditLimit > 0)
+                        if ((_creditEnabled || sum.creditDebtPiasters > 0) && customer.creditLimit > 0)
                           _tag(
                             'حد آجل: ${Money(customer.creditLimit).toDisplay()} ج.م',
                             Colors.purple.shade50,

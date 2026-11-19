@@ -224,6 +224,110 @@ void main() {
       expect(find.textContaining('التقسيط (1)'), findsOneWidget);
       expect(find.text('متبقي الأقساط'), findsOneWidget);
     });
+
+    testWidgets('Credit banner & Tab are hidden when credit disabled and customer has NO active debt/payments',
+        (tester) async {
+      await featureGate.setMeta('payment.credit', '0', userId: 'admin-1');
+
+      final customer = CustomerEntity(
+        id: 'cust-3',
+        name: 'عميل بدون آجل',
+        phone: '01000000003',
+        createdAt: DateTime.now(),
+      );
+
+      final statement = CustomerStatement(
+        summary: CustomerFinancialSummary(
+          totalSpentPiasters: 20000,
+          invoiceCount: 1,
+          installmentsRemainingPiasters: 0,
+          activeInstallmentsCount: 0,
+          creditDebtPiasters: 0,
+        ),
+        sales: const [],
+        installments: const [],
+        payments: const [],
+        loyaltyLogs: const [],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (ctx) => ElevatedButton(
+                onPressed: () {
+                  showCustomerProfileDialog(
+                    ctx,
+                    customer: customer,
+                    ledgerOverride: _MockCustomerLedgerService(statement),
+                  );
+                },
+                child: const Text('Open Dialog'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Dialog'));
+      await tester.pumpAndSettle();
+
+      // Verify Credit banner and tab are NOT displayed
+      expect(find.textContaining('مديونية الحساب الآجل'), findsNothing);
+      expect(find.textContaining('سداد الآجل'), findsNothing);
+    });
+
+    testWidgets('Credit banner & Tab remain visible when customer HAS active credit debt even if credit is disabled in settings',
+        (tester) async {
+      await featureGate.setMeta('payment.credit', '0', userId: 'admin-1');
+
+      final customer = CustomerEntity(
+        id: 'cust-4',
+        name: 'عميل عليه دين آجل',
+        phone: '01000000004',
+        createdAt: DateTime.now(),
+      );
+
+      final statement = CustomerStatement(
+        summary: CustomerFinancialSummary(
+          totalSpentPiasters: 50000,
+          invoiceCount: 1,
+          installmentsRemainingPiasters: 0,
+          activeInstallmentsCount: 0,
+          creditDebtPiasters: 35000, // 350 EGP debt
+        ),
+        sales: const [],
+        installments: const [],
+        payments: const [],
+        loyaltyLogs: const [],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (ctx) => ElevatedButton(
+                onPressed: () {
+                  showCustomerProfileDialog(
+                    ctx,
+                    customer: customer,
+                    ledgerOverride: _MockCustomerLedgerService(statement),
+                  );
+                },
+                child: const Text('Open Dialog'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Dialog'));
+      await tester.pumpAndSettle();
+
+      // Because customer owes credit debt, merchant MUST be able to see and collect it!
+      expect(find.textContaining('مديونية الحساب الآجل'), findsOneWidget);
+      expect(find.textContaining('سداد الآجل'), findsOneWidget);
+    });
   });
 
   group('POS Cart Overflow Resilience Tests', () {
