@@ -375,19 +375,7 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
   }
 
   Color _getCategoryColor(String category) {
-    if (category.isEmpty) return AppColors.primary;
-    final hash = category.codeUnits.fold(0, (prev, elem) => prev + elem);
-    const palette = [
-      Color(0xFF340588),
-      Color(0xFF1E88E5),
-      Color(0xFF00897B),
-      Color(0xFFD81B60),
-      Color(0xFFFB8C00),
-      Color(0xFF8E24AA),
-      Color(0xFF3949AB),
-      Color(0xFF00ACC1),
-    ];
-    return palette[hash % palette.length];
+    return AppColors.primary;
   }
 
   List<ProductEntity> _filterProducts(List<ProductEntity> products) {
@@ -658,11 +646,15 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
           width: 32,
           height: 32,
           decoration: BoxDecoration(
-            color: color.withValues(alpha: isSelected ? 0.2 : 0.1),
+            color: isSelected
+                ? AppColors.primary.withValues(alpha: 0.12)
+                : const Color(0xFFF1F5F9),
             borderRadius: BorderRadius.circular(8),
           ),
           alignment: Alignment.center,
-          child: Icon(icon, color: color, size: 18),
+          child: Icon(icon,
+              color: isSelected ? AppColors.primary : AppColors.onSurfaceVariant,
+              size: 18),
         ),
         title: Text(
           title,
@@ -958,14 +950,7 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: AppColors.outlineVariant),
       ),
       padding: const EdgeInsets.all(14),
       child: Column(
@@ -978,14 +963,14 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: catColor.withValues(alpha: 0.12),
+                  color: const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   product.name.isNotEmpty ? product.name.characters.first : 'م',
                   style: TextStyle(
-                    color: catColor,
+                    color: AppColors.primary,
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
                   ),
@@ -1012,15 +997,15 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: catColor.withValues(alpha: 0.1),
+                            color: const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
                             product.categoryName.isNotEmpty ? product.categoryName : 'بدون تصنيف',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: catColor,
+                              color: Color(0xFF475569),
                             ),
                           ),
                         ),
@@ -1028,10 +1013,10 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: product.isActive ? Colors.green.shade50 : Colors.grey.shade100,
+                            color: product.isActive ? const Color(0xFFECFDF5) : const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(6),
                             border: Border.all(
-                              color: product.isActive ? Colors.green.shade300 : Colors.grey.shade400,
+                              color: product.isActive ? const Color(0xFFA7F3D0) : const Color(0xFFCBD5E1),
                               width: 0.8,
                             ),
                           ),
@@ -1040,7 +1025,7 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
-                              color: product.isActive ? Colors.green.shade800 : Colors.grey.shade700,
+                              color: product.isActive ? const Color(0xFF065F46) : const Color(0xFF64748B),
                             ),
                           ),
                         ),
@@ -1050,7 +1035,7 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.delete_outline_rounded, size: 20, color: AppColors.error),
+                icon: const Icon(Icons.delete_outline_rounded, size: 20, color: Color(0xFF94A3B8)),
                 tooltip: 'حذف المنتج',
                 onPressed: () => _confirmDeleteProduct(context, product),
               ),

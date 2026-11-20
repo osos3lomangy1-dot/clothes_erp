@@ -705,32 +705,21 @@ class _CustomerViewState extends State<_CustomerView> {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: sum.activeInstallmentsCount > 0
-                  ? Colors.orange.shade200
-                  : Colors.grey.shade200,
-            ),
+            border: Border.all(color: AppColors.outlineVariant),
           ),
           child: Row(
             children: [
               CircleAvatar(
-                radius: 22,
-                backgroundColor: isWholesale
-                    ? Colors.purple.shade50
-                    : isVip
-                        ? Colors.amber.shade50
-                        : AppColors.primary.withValues(alpha: 0.12),
+                radius: 20,
+                backgroundColor: const Color(0xFFF1F5F9),
                 child: Icon(
                   isWholesale
                       ? Icons.storefront_rounded
                       : isVip
                           ? Icons.workspace_premium_rounded
                           : Icons.person_rounded,
-                  color: isWholesale
-                      ? Colors.purple.shade700
-                      : isVip
-                          ? Colors.amber.shade800
-                          : AppColors.primary,
+                  color: AppColors.primary,
+                  size: 20,
                 ),
               ),
               const SizedBox(width: 12),
@@ -748,80 +737,85 @@ class _CustomerViewState extends State<_CustomerView> {
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15.5,
+                            color: AppColors.onSurface,
                           ),
                         ),
                         if (isWholesale)
                           _tag(
                             'تاجر جملة',
-                            Colors.purple.shade50,
-                            Colors.purple.shade800,
+                            const Color(0xFFF1F5F9),
+                            const Color(0xFF334155),
                           )
                         else if (isVip)
                           _tag(
                             'عميل مميز',
-                            Colors.amber.shade50,
-                            Colors.amber.shade900,
+                            const Color(0xFFF1F5F9),
+                            const Color(0xFF334155),
                           ),
                         if (customer.discountPercent > 0)
                           _tag(
                             'خصم ${customer.discountPercent}%',
-                            Colors.green.shade50,
-                            Colors.green.shade800,
+                            const Color(0xFFF1F5F9),
+                            const Color(0xFF334155),
                           ),
                       ],
                     ),
                     const SizedBox(height: 6),
                     Wrap(
-                      spacing: 10,
+                      spacing: 12,
                       runSpacing: 6,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
+                            const Icon(
                               Icons.phone_outlined,
                               size: 13.5,
-                              color: Colors.grey.shade600,
+                              color: Color(0xFF64748B),
                             ),
                             const SizedBox(width: 4),
                             Text(
                               customer.phone,
-                              style: TextStyle(
-                                color: Colors.grey.shade700,
+                              style: const TextStyle(
+                                color: Color(0xFF475569),
                                 fontSize: 13,
                               ),
                             ),
                           ],
                         ),
-                        _tag(
+                        Text(
                           '★ ${customer.loyaltyPoints} نقطة',
-                          Colors.amber.shade50,
-                          Colors.amber.shade900,
+                          style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                         ),
                         if (sum.invoiceCount > 0)
-                          _tag(
+                          Text(
                             '${sum.invoiceCount} فاتورة • ${Money(sum.totalSpentPiasters).toDisplay()} ج.م',
-                            Colors.blue.shade50,
-                            Colors.blue.shade900,
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                           ),
                         if (sum.activeInstallmentsCount > 0)
-                          _tag(
-                            'أقساط متبقية: ${Money(sum.installmentsRemainingPiasters).toDisplay()} ج.م',
-                            Colors.orange.shade50,
-                            Colors.orange.shade900,
+                          Text(
+                            'أقساط: ${Money(sum.installmentsRemainingPiasters).toDisplay()} ج.م',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: sum.installmentsRemainingPiasters > 0
+                                  ? AppColors.warning
+                                  : const Color(0xFF64748B),
+                            ),
                           ),
                         if (sum.creditDebtPiasters > 0)
-                          _tag(
-                            'مديونية آجلة: ${Money(sum.creditDebtPiasters).toDisplay()} ج.م',
-                            Colors.red.shade50,
-                            Colors.red.shade900,
+                          Text(
+                            'مديونية: ${Money(sum.creditDebtPiasters).toDisplay()} ج.م',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.error,
+                            ),
                           ),
                         if ((_creditEnabled || sum.creditDebtPiasters > 0) && customer.creditLimit > 0)
-                          _tag(
+                          Text(
                             'حد آجل: ${Money(customer.creditLimit).toDisplay()} ج.م',
-                            Colors.purple.shade50,
-                            Colors.purple.shade900,
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                           ),
                       ],
                     ),
@@ -836,7 +830,8 @@ class _CustomerViewState extends State<_CustomerView> {
                     visualDensity: VisualDensity.compact,
                     icon: const Icon(
                       Icons.account_balance_wallet_outlined,
-                      color: Colors.teal,
+                      color: Color(0xFF64748B),
+                      size: 20,
                     ),
                     tooltip: 'كشف حساب وفواتير العميل',
                     onPressed: () => showCustomerProfileDialog(
@@ -847,9 +842,9 @@ class _CustomerViewState extends State<_CustomerView> {
                   ),
                   IconButton(
                     visualDensity: VisualDensity.compact,
-                    icon: Icon(
+                    icon: const Icon(
                       Icons.chat_rounded,
-                      color: Colors.green.shade700,
+                      color: Color(0xFF64748B),
                       size: 20,
                     ),
                     tooltip: 'محادثة واتساب',
@@ -857,9 +852,9 @@ class _CustomerViewState extends State<_CustomerView> {
                   ),
                   IconButton(
                     visualDensity: VisualDensity.compact,
-                    icon: Icon(
+                    icon: const Icon(
                       Icons.copy_rounded,
-                      color: Colors.grey.shade700,
+                      color: Color(0xFF64748B),
                       size: 18,
                     ),
                     tooltip: 'نسخ رقم الهاتف',
@@ -867,9 +862,10 @@ class _CustomerViewState extends State<_CustomerView> {
                   ),
                   IconButton(
                     visualDensity: VisualDensity.compact,
-                    icon: Icon(
+                    icon: const Icon(
                       Icons.edit_outlined,
-                      color: AppColors.primary,
+                      color: Color(0xFF64748B),
+                      size: 20,
                     ),
                     tooltip: 'تعديل بيانات العميل ومزاياه',
                     onPressed: () => showCustomerDialog(
@@ -883,6 +879,7 @@ class _CustomerViewState extends State<_CustomerView> {
                       icon: const Icon(
                         Icons.delete_outline,
                         color: AppColors.error,
+                        size: 20,
                       ),
                       tooltip: 'حذف العميل (للمدير فقط)',
                       onPressed: () => _confirmDelete(context, customer),
@@ -907,19 +904,19 @@ class _CustomerViewState extends State<_CustomerView> {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.outlineVariant),
       ),
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.1),
+              color: const Color(0xFFF1F5F9),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, size: 20, color: accent),
+            child: Icon(icon, size: 20, color: AppColors.onSurfaceVariant),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -929,10 +926,10 @@ class _CustomerViewState extends State<_CustomerView> {
               children: [
                 Text(
                   title,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade600,
+                    color: Color(0xFF64748B),
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -949,10 +946,10 @@ class _CustomerViewState extends State<_CustomerView> {
                 const SizedBox(height: 1),
                 Text(
                   subtitle,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 11,
-                    color: accent.withValues(alpha: 0.9),
-                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF64748B),
+                    fontWeight: FontWeight.w500,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),

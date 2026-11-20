@@ -1897,7 +1897,7 @@ class _PartnersScreenState extends State<PartnersScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade200),
+                          border: Border.all(color: AppColors.outlineVariant),
                         ),
                         child: Wrap(
                           alignment: WrapAlignment.spaceBetween,
@@ -1912,22 +1912,16 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                 const SizedBox(width: 8),
                                 Text(
                                   'إجمالي رأس المال المسجل: ${Money(state.totalCapital).toDisplay()} ج.م',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.onSurface),
                                 ),
                               ],
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: (state.totalPercentage >= 99.9 && state.totalPercentage <= 100.1)
-                                    ? Colors.green.shade50
-                                    : Colors.amber.shade50,
+                                color: const Color(0xFFF1F5F9),
                                 borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: (state.totalPercentage >= 99.9 && state.totalPercentage <= 100.1)
-                                      ? Colors.green.shade300
-                                      : Colors.amber.shade400,
-                                ),
+                                border: Border.all(color: AppColors.outlineVariant),
                               ),
                               child: Text(
                                 'توزيع الحصص: ${state.totalPercentage.toStringAsFixed(1)}% من 100%',
@@ -1935,8 +1929,8 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                   color: (state.totalPercentage >= 99.9 && state.totalPercentage <= 100.1)
-                                      ? Colors.green.shade800
-                                      : Colors.amber.shade900,
+                                      ? AppColors.success
+                                      : AppColors.warning,
                                 ),
                               ),
                             ),
@@ -1995,15 +1989,8 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                     return Container(
                                       decoration: BoxDecoration(
                                         color: Colors.white,
-                                        borderRadius: BorderRadius.circular(14),
-                                        border: Border.all(color: Colors.grey.shade200),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withValues(alpha: 0.02),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                        ],
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: AppColors.outlineVariant),
                                       ),
                                       padding: const EdgeInsets.all(14),
                                       child: Column(
@@ -2030,35 +2017,35 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                                       spacing: 8,
                                                       runSpacing: 4,
                                                       children: [
-                                                        Text(partner.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                                        Text(partner.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.onSurface)),
                                                         Container(
                                                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                                           decoration: BoxDecoration(
-                                                            color: AppColors.surfaceContainer,
+                                                            color: const Color(0xFFF1F5F9),
                                                             borderRadius: BorderRadius.circular(8),
-                                                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+                                                            border: Border.all(color: AppColors.outlineVariant),
                                                           ),
                                                           child: Text(
                                                             partner.typeLabel,
-                                                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppColors.primary),
+                                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppColors.onSurfaceVariant),
                                                           ),
                                                         ),
                                                         if (partner.partnershipType != 'effort_only' && (partner.capital > 0 || partner.capitalPercentage != null))
                                                           Container(
                                                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                                             decoration: BoxDecoration(
-                                                              color: Colors.blueGrey.shade50,
+                                                              color: const Color(0xFFF1F5F9),
                                                               borderRadius: BorderRadius.circular(8),
-                                                              border: Border.all(color: Colors.blueGrey.shade200),
+                                                              border: Border.all(color: AppColors.outlineVariant),
                                                             ),
                                                             child: Row(
                                                               mainAxisSize: MainAxisSize.min,
                                                               children: [
-                                                                const Icon(Icons.pie_chart_outline_rounded, size: 12, color: Colors.blueGrey),
+                                                                const Icon(Icons.pie_chart_outline_rounded, size: 12, color: AppColors.onSurfaceVariant),
                                                                 const SizedBox(width: 4),
                                                                 Text(
                                                                   'حصة رأس المال: ${partner.effectiveCapitalPercentage.toStringAsFixed(1)}%',
-                                                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.blueGrey.shade800),
+                                                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppColors.onSurfaceVariant),
                                                                 ),
                                                               ],
                                                             ),
@@ -2066,20 +2053,20 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                                         Container(
                                                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                                           decoration: BoxDecoration(
-                                                            color: Colors.purple.shade50,
+                                                            color: const Color(0xFFF1F5F9),
                                                             borderRadius: BorderRadius.circular(8),
-                                                            border: Border.all(color: Colors.purple.shade200),
+                                                            border: Border.all(color: AppColors.outlineVariant),
                                                           ),
                                                           child: Row(
                                                             mainAxisSize: MainAxisSize.min,
                                                             children: [
-                                                              const Icon(Icons.monetization_on_outlined, size: 12, color: Colors.purple),
+                                                              const Icon(Icons.monetization_on_outlined, size: 12, color: Color(0xFF334155)),
                                                               const SizedBox(width: 4),
                                                               Text(
                                                                 partner.profitMode == 'fixed_roi'
                                                                     ? 'عائد سنوي: ${partner.roiPercentage.toStringAsFixed(1)}%'
                                                                     : 'نسبة الأرباح: ${partner.percentage.toStringAsFixed(1)}%',
-                                                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.purple.shade800),
+                                                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xFF334155)),
                                                               ),
                                                             ],
                                                           ),
@@ -2261,7 +2248,7 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                                   decoration: BoxDecoration(
                                                     color: Colors.white,
                                                     borderRadius: BorderRadius.circular(10),
-                                                    border: Border.all(color: Colors.green.shade200),
+                                                    border: Border.all(color: AppColors.outlineVariant),
                                                   ),
                                                   child: Column(
                                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -2269,14 +2256,14 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                                       Row(
                                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                                         children: [
-                                                          Text('نصيب الأرباح ($days يوم)', style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
-                                                          Icon(Icons.trending_up_rounded, size: 14, color: Colors.green.shade700),
+                                                          Text('نصيب الأرباح ($days يوم)', style: const TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+                                                          const Icon(Icons.trending_up_rounded, size: 14, color: AppColors.onSurfaceVariant),
                                                         ],
                                                       ),
                                                       const SizedBox(height: 4),
                                                       Text(
                                                         '${Money(partnerShare).toDisplay()} ج.م',
-                                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.green.shade800),
+                                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.onSurface),
                                                       ),
                                                     ],
                                                   ),
@@ -2289,7 +2276,7 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                                   decoration: BoxDecoration(
                                                     color: Colors.white,
                                                     borderRadius: BorderRadius.circular(10),
-                                                    border: Border.all(color: Colors.grey.shade300),
+                                                    border: Border.all(color: AppColors.outlineVariant),
                                                   ),
                                                   child: Column(
                                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -2297,14 +2284,14 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                                       Row(
                                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                                         children: [
-                                                          const Text('أرباح تم استلامها', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                                                          Icon(Icons.arrow_downward_rounded, size: 14, color: Colors.grey.shade600),
+                                                          const Text('أرباح تم استلامها', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+                                                          const Icon(Icons.arrow_downward_rounded, size: 14, color: AppColors.onSurfaceVariant),
                                                         ],
                                                       ),
                                                       const SizedBox(height: 4),
                                                       Text(
                                                         '${Money(totalWithdrawn).toDisplay()} ج.م',
-                                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey.shade800),
+                                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.onSurface),
                                                       ),
                                                     ],
                                                   ),
@@ -2317,7 +2304,7 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                                   decoration: BoxDecoration(
                                                     color: Colors.white,
                                                     borderRadius: BorderRadius.circular(10),
-                                                    border: Border.all(color: Colors.amber.shade300),
+                                                    border: Border.all(color: AppColors.outlineVariant),
                                                   ),
                                                   child: Column(
                                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -2325,14 +2312,14 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                                       Row(
                                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                                         children: [
-                                                          Text('أرباح باقية بالمحل', style: TextStyle(fontSize: 11, color: Colors.amber.shade900)),
-                                                          Icon(Icons.savings_outlined, size: 14, color: Colors.amber.shade800),
+                                                          const Text('أرباح باقية بالمحل', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+                                                          const Icon(Icons.savings_outlined, size: 14, color: AppColors.onSurfaceVariant),
                                                         ],
                                                       ),
                                                       const SizedBox(height: 4),
                                                       Text(
                                                         '${Money(partner.getUnwithdrawnProfit(partnerShare)).toDisplay()} ج.م',
-                                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.amber.shade900),
+                                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.onSurface),
                                                       ),
                                                     ],
                                                   ),
@@ -2343,24 +2330,24 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                                 child: Container(
                                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                                   decoration: BoxDecoration(
-                                                    color: AppColors.surfaceContainer,
+                                                    color: const Color(0xFFF1F5F9),
                                                     borderRadius: BorderRadius.circular(10),
-                                                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.35), width: 1.2),
+                                                    border: Border.all(color: AppColors.outlineVariant),
                                                   ),
                                                   child: Column(
                                                     crossAxisAlignment: CrossAxisAlignment.start,
                                                     children: [
                                                       Row(
                                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                        children: [
-                                                          Text('صافي المستحق الكلي', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary)),
-                                                          Icon(Icons.account_balance_wallet_rounded, size: 14, color: AppColors.primary),
+                                                        children: const [
+                                                          Text('صافي المستحق الكلي', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.onSurface)),
+                                                          Icon(Icons.account_balance_wallet_rounded, size: 14, color: AppColors.onSurface),
                                                         ],
                                                       ),
                                                       const SizedBox(height: 4),
                                                       Text(
                                                         '${Money(partner.calculateNetBalance(partnerShare)).toDisplay()} ج.م',
-                                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary),
+                                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.onSurface),
                                                       ),
                                                     ],
                                                   ),
@@ -2388,8 +2375,8 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                               ),
                                               OutlinedButton.icon(
                                                 style: OutlinedButton.styleFrom(
-                                                  foregroundColor: Colors.teal.shade800,
-                                                  side: BorderSide(color: Colors.teal.shade400),
+                                                  foregroundColor: AppColors.onSurface,
+                                                  side: const BorderSide(color: AppColors.outlineVariant),
                                                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                                 ),
@@ -2400,8 +2387,8 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                               if (partner.getUnwithdrawnProfit(partnerShare) > 0)
                                                 OutlinedButton.icon(
                                                   style: OutlinedButton.styleFrom(
-                                                    foregroundColor: Colors.indigo.shade800,
-                                                    side: BorderSide(color: Colors.indigo.shade300),
+                                                    foregroundColor: AppColors.onSurface,
+                                                    side: const BorderSide(color: AppColors.outlineVariant),
                                                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                                   ),
@@ -2411,7 +2398,7 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                                 ),
                                               TextButton.icon(
                                                 style: TextButton.styleFrom(
-                                                  foregroundColor: Colors.grey.shade700,
+                                                  foregroundColor: AppColors.onSurfaceVariant,
                                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                                 ),
@@ -2447,11 +2434,10 @@ class _PartnersScreenState extends State<PartnersScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isHighlighted ? AppColors.surfaceContainer : Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isHighlighted ? AppColors.primary.withValues(alpha: 0.4) : Colors.grey.shade200,
-          width: isHighlighted ? 1.5 : 1,
+          color: AppColors.outlineVariant,
         ),
       ),
       child: Column(
@@ -2459,22 +2445,29 @@ class _PartnersScreenState extends State<PartnersScreen> {
         children: [
           Row(
             children: [
-              Icon(icon, color: color, size: 20),
-              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: AppColors.onSurfaceVariant, size: 16),
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   title,
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade700, fontWeight: FontWeight.bold),
+                  style: const TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant, fontWeight: FontWeight.bold),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Text(
             value,
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.onSurface),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

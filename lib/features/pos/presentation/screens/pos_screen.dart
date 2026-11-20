@@ -36,6 +36,7 @@ import '../../../delivery/domain/entities/delivery_order_entity.dart';
 import '../../../delivery/domain/repositories/delivery_repository.dart';
 import '../../../delivery/presentation/screens/delivery_orders_screen.dart';
 import '../../../delivery/presentation/widgets/delivery_checkout_dialog.dart';
+import '../../../auth/services/cashier_permissions_service.dart';
 
 Color _getCategoryColor(String? categoryId) {
   if (categoryId == null || categoryId.isEmpty) return const Color(0xFF673AB7);
@@ -236,19 +237,23 @@ class _PosViewState extends State<_PosView> {
           backgroundColor: AppColors.surface,
             appBar: AppBar(
               elevation: 0,
-              backgroundColor: AppColors.primary,
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.transparent,
+              shape: const Border(bottom: BorderSide(color: AppColors.outlineVariant)),
+              leading: Navigator.canPop(context)
+                  ? IconButton(
+                      icon: const Icon(Icons.arrow_back_rounded, color: AppColors.onSurface),
+                      onPressed: () => Navigator.of(context).pop(),
+                    )
+                  : null,
               title: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.point_of_sale_rounded, color: Colors.white, size: 22),
+                  Icon(Icons.point_of_sale_rounded, color: AppColors.primary, size: 22),
                   const SizedBox(width: 8),
-                  Text(
+                  const Text(
                     'نقطة البيع',
-                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 18),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.onSurface),
                   ),
                 ],
               ),
@@ -266,18 +271,18 @@ class _PosViewState extends State<_PosView> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.green.withValues(alpha: 0.25),
+                          color: const Color(0xFFF1F5F9),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.greenAccent),
+                          border: Border.all(color: AppColors.outlineVariant),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.lock_open_rounded, color: Colors.greenAccent, size: 14),
+                            const Icon(Icons.lock_open_rounded, color: AppColors.success, size: 14),
                             const SizedBox(width: 4),
-                            Text(
+                            const Text(
                               'وردية مفتوحة',
-                              style: TextStyle(fontFamily: 'Cairo', color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                              style: TextStyle(fontFamily: 'Cairo', color: AppColors.success, fontSize: 11, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
@@ -285,7 +290,7 @@ class _PosViewState extends State<_PosView> {
                     ),
                   ),
                 IconButton(
-                  icon: const Icon(Icons.moped_rounded, color: Colors.white, size: 22),
+                  icon: const Icon(Icons.moped_rounded, color: AppColors.onSurfaceVariant, size: 22),
                   tooltip: 'إدارة وتتبع الدليفري والطيارين',
                   onPressed: () {
                     Navigator.of(context).push(
@@ -317,23 +322,23 @@ class _PosViewState extends State<_PosView> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.15),
+                                color: const Color(0xFFF1F5F9),
                                 borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                                border: Border.all(color: AppColors.outlineVariant),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.person_rounded, size: 16, color: Colors.white),
+                                  Icon(Icons.person_rounded, size: 16, color: AppColors.primary),
                                   const SizedBox(width: 6),
                                   Text(
                                     cashierName,
-                                    style: TextStyle(fontFamily: 'Cairo', color: Colors.white,
+                                    style: const TextStyle(fontFamily: 'Cairo', color: AppColors.onSurface,
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,),
                                   ),
                                   const SizedBox(width: 4),
-                                  const Icon(Icons.info_outline_rounded, size: 14, color: Colors.white70),
+                                  const Icon(Icons.info_outline_rounded, size: 14, color: AppColors.onSurfaceVariant),
                                 ],
                               ),
                             ),
@@ -400,14 +405,18 @@ class _PosViewState extends State<_PosView> {
       backgroundColor: AppColors.surface,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: AppColors.primary,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shape: const Border(bottom: BorderSide(color: AppColors.outlineVariant)),
+        leading: Navigator.canPop(context)
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_rounded, color: AppColors.onSurface),
+                onPressed: () => Navigator.of(context).pop(),
+              )
+            : null,
+        title: const Text(
           'نقطة البيع',
-          style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white),
+          style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.onSurface),
         ),
       ),
       body: Center(
@@ -1000,18 +1009,16 @@ class _ProductCard extends StatelessWidget {
                         ? AppColors.primary
                         : (isOut
                             ? Colors.grey.shade300
-                            : AppColors.outlineVariant.withValues(alpha: 0.7)),
+                            : AppColors.outlineVariant),
                     width: inCartQty > 0 ? 1.8 : 1.0,
                   ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Thin category color accent bar
-                    Container(height: 3, color: categoryColor),
                     Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+                        padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1210,16 +1217,16 @@ class _ProductCard extends StatelessWidget {
     Color text;
     String label;
     if (isOut) {
-      bg = AppColors.errorContainer;
+      bg = const Color(0xFFFEF2F2);
       text = AppColors.error;
       label = 'نفذت';
     } else if (isLow) {
-      bg = AppColors.warningContainer;
+      bg = const Color(0xFFFFFBEB);
       text = AppColors.warning;
       label = '$qty';
     } else {
-      bg = AppColors.successContainer;
-      text = AppColors.success;
+      bg = const Color(0xFFF1F5F9);
+      text = const Color(0xFF475569);
       label = '$qty';
     }
 
@@ -1715,10 +1722,18 @@ class _CartPanelState extends State<_CartPanel> {
     final gate = getIt<FeatureGate>();
     final featureOn = await gate.isEnabled(FeatureKeys.installments);
     final meta = await gate.getMeta('payment.installment');
-    final installmentOn = featureOn && (meta != '0');
+
+    final authState = context.read<AuthCubit>().state;
+    final isCashier = authState is AuthAuthenticated && authState.user.role == 'cashier';
+    final cashierPerms = CashierPermissionsService.current;
+
+    final creditAllowed = !isCashier || cashierPerms.allowCreditSale;
+    final installmentAllowed = !isCashier || cashierPerms.allowInstallments;
+
+    final installmentOn = featureOn && (meta != '0') && installmentAllowed;
 
     final creditMeta = await gate.getMeta('payment.credit');
-    final creditOn = creditMeta == null || creditMeta != '0';
+    final creditOn = (creditMeta == null || creditMeta != '0') && creditAllowed;
 
     if (mounted) {
       setState(() {

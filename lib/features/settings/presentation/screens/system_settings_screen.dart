@@ -15,6 +15,8 @@ import '../../../invoices/presentation/screens/receipt_customizer_screen.dart';
 import '../../../barcode_printing/domain/models/barcode_config.dart';
 import '../../../barcode_printing/presentation/screens/barcode_customizer_screen.dart';
 import '../../../barcode_printing/services/barcode_settings_service.dart';
+import '../../../auth/domain/models/cashier_permissions_config.dart';
+import '../../../auth/services/cashier_permissions_service.dart';
 import '../cubits/settings_cubit.dart';
 import '../widgets/excel_migration_card.dart';
 import '../widgets/google_drive_backup_card.dart';
@@ -32,8 +34,15 @@ class SystemSettingsScreen extends StatelessWidget {
   }
 }
 
-class _SystemSettingsView extends StatelessWidget {
+class _SystemSettingsView extends StatefulWidget {
   const _SystemSettingsView();
+
+  @override
+  State<_SystemSettingsView> createState() => _SystemSettingsViewState();
+}
+
+class _SystemSettingsViewState extends State<_SystemSettingsView> {
+  String _selectedCategory = 'all';
 
   bool _isAdmin(BuildContext context) {
     final auth = context.read<AuthCubit>().state;
@@ -46,6 +55,15 @@ class _SystemSettingsView extends StatelessWidget {
     if (auth is AuthAuthenticated) return auth.user.id;
     return 'admin';
   }
+
+  static const _categories = [
+    ('all', 'عرض الكل', Icons.dashboard_customize_rounded),
+    ('store', 'المتجر والهوية', Icons.storefront_rounded),
+    ('printing', 'الطباعة والباركود', Icons.print_rounded),
+    ('sales', 'المبيعات والدفع', Icons.payment_rounded),
+    ('permissions', 'الصلاحيات والميزات', Icons.shield_rounded),
+    ('data', 'البيانات والنسخ', Icons.cloud_sync_rounded),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -84,98 +102,241 @@ class _SystemSettingsView extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-              _sectionTitle('نمط النشاط ونوع المتجر'),
-              _SectorModeSettingsCard(userId: _userId(context)),
-              const SizedBox(height: 20),
-              _sectionTitle('هوية النظام والألوان (الاسم والمظهر)'),
-              _BrandingSettingsCard(userId: _userId(context)),
-              const SizedBox(height: 20),
-              _sectionTitle('إعدادات الطباعة (الفواتير وملصقات الباركود)'),
-              _ReceiptCustomizerSettingsCard(userId: _userId(context)),
-              const SizedBox(height: 12),
-              _BarcodeCustomizerSettingsCard(userId: _userId(context)),
-              const SizedBox(height: 20),
-              _sectionTitle('الميزات'),
-              Card(
-                child: Column(
-                  children: [
-                    for (final def in togglable) ...[
-                      _featureTile(context, state, def),
-                      if (def != togglable.last) const Divider(height: 1),
-                    ],
+                  // Category Navigation Filter Pills
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Row(
+                      children: [
+                        for (final cat in _categories) ...[
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: ChoiceChip(
+                              selected: _selectedCategory == cat.$1,
+                              avatar: Icon(
+                                cat.$3,
+                                size: 16,
+                                color: _selectedCategory == cat.$1
+                                    ? Colors.white
+                                    : AppColors.onSurfaceVariant,
+                              ),
+                              label: Text(cat.$2),
+                              labelStyle: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: _selectedCategory == cat.$1
+                                    ? Colors.white
+                                    : AppColors.onSurface,
+                              ),
+                              selectedColor: AppColors.primary,
+                              backgroundColor: AppColors.surfaceContainerLowest,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                side: BorderSide(
+                                  color: _selectedCategory == cat.$1
+                                      ? AppColors.primary
+                                      : AppColors.outlineVariant,
+                                ),
+                              ),
+                              onSelected: (_) =>
+                                  setState(() => _selectedCategory = cat.$1),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+
+                  // ─── 1. المتجر والهوية (Store & Branding) ───
+                  if (_selectedCategory == 'all' || _selectedCategory == 'store') ...[
+                    _sectionTitle('نمط النشاط ونوع المتجر'),
+                    _SectorModeSettingsCard(userId: _userId(context)),
+                    const SizedBox(height: 20),
+                    _sectionTitle('هوية النظام والألوان (الاسم والمظهر)'),
+                    _BrandingSettingsCard(userId: _userId(context)),
+                    const SizedBox(height: 20),
                   ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 4),
-                child: Text(
-                  'الميزات الأساسية (المصادقة، نقطة البيع، المخزون، حركات المخزن، العملاء) مفعّلة دائمًا.',
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-              ),
-              const SizedBox(height: 20),
-              _sectionTitle('طرق الدفع'),
-              Card(
-                child: Column(
-                  children: [
-                    SwitchListTile(
-                      title: const Text('نقدي'),
-                      value: state.cashEnabled,
-                      onChanged: (v) async {
-                        final err = await context
-                            .read<SettingsCubit>()
-                            .setPaymentMethod(
-                              'payment.cash',
-                              v,
-                              _userId(context),
-                            );
-                        if (err != null && context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(err),
-                              backgroundColor: AppColors.error,
+
+                  // ─── 2. الطباعة والباركود (Printing & Hardware) ───
+                  if (_selectedCategory == 'all' || _selectedCategory == 'printing') ...[
+                    _sectionTitle('إعدادات الطباعة (الفواتير وملصقات الباركود)'),
+                    _ReceiptCustomizerSettingsCard(userId: _userId(context)),
+                    const SizedBox(height: 12),
+                    _BarcodeCustomizerSettingsCard(userId: _userId(context)),
+                    const SizedBox(height: 20),
+                  ],
+
+                  // ─── 3. المبيعات وطرق الدفع (Sales & Payments) ───
+                  if (_selectedCategory == 'all' || _selectedCategory == 'sales') ...[
+                    _sectionTitle('طرق الدفع'),
+                    Card(
+                      child: Column(
+                        children: [
+                          SwitchListTile(
+                            title: const Text('نقدي'),
+                            value: state.cashEnabled,
+                            onChanged: (v) async {
+                              final err = await context
+                                  .read<SettingsCubit>()
+                                  .setPaymentMethod(
+                                    'payment.cash',
+                                    v,
+                                    _userId(context),
+                                  );
+                              if (err != null && context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(err),
+                                    backgroundColor: AppColors.error,
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                          const Divider(height: 1),
+                          SwitchListTile(
+                            title: const Text('بطاقة / فيزا'),
+                            value: state.cardEnabled,
+                            onChanged: (v) async {
+                              final err = await context
+                                  .read<SettingsCubit>()
+                                  .setPaymentMethod(
+                                    'payment.card',
+                                    v,
+                                    _userId(context),
+                                  );
+                              if (err != null && context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(err),
+                                    backgroundColor: AppColors.error,
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                          if (installmentsEnabled) ...[
+                            const Divider(height: 1),
+                            SwitchListTile(
+                              key: const Key('payment_installment_toggle'),
+                              title: const Text('تقسيط'),
+                              value: state.installmentPaymentEnabled,
+                              onChanged: (v) async {
+                                final err = await context
+                                    .read<SettingsCubit>()
+                                    .setPaymentMethod(
+                                      'payment.installment',
+                                      v,
+                                      _userId(context),
+                                    );
+                                if (err != null && context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(err),
+                                      backgroundColor: AppColors.error,
+                                    ),
+                                  );
+                                }
+                              },
                             ),
-                          );
-                        }
-                      },
+                          ],
+                          const Divider(height: 1),
+                          SwitchListTile(
+                            key: const Key('payment_credit_toggle'),
+                            title: const Text('آجل (الدفع على الحساب)'),
+                            value: state.creditPaymentEnabled,
+                            onChanged: (v) async {
+                              final err = await context
+                                  .read<SettingsCubit>()
+                                  .setPaymentMethod(
+                                    'payment.credit',
+                                    v,
+                                    _userId(context),
+                                  );
+                              if (err != null && context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(err),
+                                    backgroundColor: AppColors.error,
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                    const Divider(height: 1),
-                    SwitchListTile(
-                      title: const Text('بطاقة / فيزا'),
-                      value: state.cardEnabled,
-                      onChanged: (v) async {
-                        final err = await context
-                            .read<SettingsCubit>()
-                            .setPaymentMethod(
-                              'payment.card',
-                              v,
-                              _userId(context),
-                            );
-                        if (err != null && context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(err),
-                              backgroundColor: AppColors.error,
-                            ),
-                          );
-                        }
-                      },
-                    ),
+                    const SizedBox(height: 20),
+                    _sectionTitle('إعدادات الدفع الآجل (البيع على الحساب)'),
+                    _CreditSalesSettingsSection(userId: _userId(context)),
                     if (installmentsEnabled) ...[
-                      const Divider(height: 1),
-                      SwitchListTile(
-                        key: const Key('payment_installment_toggle'),
-                        title: const Text('تقسيط'),
-                        value: state.installmentPaymentEnabled,
+                      const SizedBox(height: 20),
+                      _sectionTitle('إعدادات التقسيط'),
+                      const _InstallmentSettingsSection(),
+                    ],
+                    const SizedBox(height: 20),
+                  ],
+
+                  // ─── 4. الصلاحيات والميزات (Permissions & Features) ───
+                  if (_selectedCategory == 'all' || _selectedCategory == 'permissions') ...[
+                    _sectionTitle('صلاحيات الكاشير والتحكم الإداري'),
+                    _CashierPermissionsSettingsCard(userId: _userId(context)),
+                    const SizedBox(height: 20),
+                    _sectionTitle('ميزات النظام (تفعيل/تعطيل الأقسام)'),
+                    Card(
+                      child: Column(
+                        children: [
+                          for (final def in togglable) ...[
+                            _featureTile(context, state, def),
+                            if (def != togglable.last) const Divider(height: 1),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 4),
+                      child: Text(
+                        'الميزات الأساسية (المصادقة، نقطة البيع، المخزون، حركات المخزن، العملاء) مفعّلة دائمًا.',
+                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+
+                  // ─── 5. البيانات والنسخ الاحتياطي (Data & Backups) ───
+                  if (_selectedCategory == 'all' || _selectedCategory == 'data') ...[
+                    _sectionTitle('النسخ الاحتياطي والاستعادة (حماية البيانات المحلية)'),
+                    LocalBackupCard(userId: _userId(context)),
+                    const SizedBox(height: 16),
+                    _sectionTitle('النسخ الاحتياطي على حساب Google Drive'),
+                    GoogleDriveBackupCard(userId: _userId(context)),
+                    const SizedBox(height: 16),
+                    _sectionTitle('التصدير والاستيراد الشامل (Excel)'),
+                    ExcelMigrationCard(userId: _userId(context)),
+                    const SizedBox(height: 20),
+                    _sectionTitle('المزامنة السحابية عبر الإنترنت'),
+                    Card(
+                      child: SwitchListTile(
+                        key: const Key('cloud_sync_toggle'),
+                        title: const Text('تفعيل المزامنة السحابية (اختياري)'),
+                        subtitle: const Text(
+                          'عند التعطيل يعمل النظام محلياً بالكامل بدون أي اتصال بالإنترنت، ويختفي زر المزامنة من القائمة الجانبية.',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        secondary: Icon(
+                          state.cloudSyncEnabled
+                              ? Icons.cloud_done_rounded
+                              : Icons.cloud_off_rounded,
+                          color: state.cloudSyncEnabled
+                              ? AppColors.primary
+                              : Colors.grey,
+                        ),
+                        value: state.cloudSyncEnabled,
                         onChanged: (v) async {
                           final err = await context
                               .read<SettingsCubit>()
-                              .setPaymentMethod(
-                                'payment.installment',
-                                v,
-                                _userId(context),
-                              );
+                              .setCloudSyncEnabled(v, _userId(context));
                           if (err != null && context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
@@ -186,94 +347,19 @@ class _SystemSettingsView extends StatelessWidget {
                           }
                         },
                       ),
-                    ],
-                    const Divider(height: 1),
-                    SwitchListTile(
-                      key: const Key('payment_credit_toggle'),
-                      title: const Text('آجل (الدفع على الحساب)'),
-                      value: state.creditPaymentEnabled,
-                      onChanged: (v) async {
-                        final err = await context
-                            .read<SettingsCubit>()
-                            .setPaymentMethod(
-                              'payment.credit',
-                              v,
-                              _userId(context),
-                            );
-                        if (err != null && context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(err),
-                              backgroundColor: AppColors.error,
-                            ),
-                          );
-                        }
-                      },
                     ),
+                    const SizedBox(height: 20),
                   ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              _sectionTitle('إعدادات الدفع الآجل (البيع على الحساب)'),
-              _CreditSalesSettingsSection(userId: _userId(context)),
-              if (installmentsEnabled) ...[
-                const SizedBox(height: 20),
-                _sectionTitle('إعدادات التقسيط'),
-                const _InstallmentSettingsSection(),
-              ],
-              const SizedBox(height: 20),
-              _sectionTitle('النسخ الاحتياطي والاستعادة (حماية البيانات المحلية)'),
-              LocalBackupCard(userId: _userId(context)),
-              const SizedBox(height: 16),
-              _sectionTitle('النسخ الاحتياطي على حساب Google Drive'),
-              GoogleDriveBackupCard(userId: _userId(context)),
-              const SizedBox(height: 16),
-              _sectionTitle('التصدير والاستيراد الشامل (Excel)'),
-              ExcelMigrationCard(userId: _userId(context)),
-              const SizedBox(height: 20),
-              _sectionTitle('المزامنة السحابية عبر الإنترنت'),
-              Card(
-                child: SwitchListTile(
-                  key: const Key('cloud_sync_toggle'),
-                  title: const Text('تفعيل المزامنة السحابية (اختياري)'),
-                  subtitle: const Text(
-                    'عند التعطيل يعمل النظام محلياً بالكامل بدون أي اتصال بالإنترنت، ويختفي زر المزامنة من القائمة الجانبية.',
-                    style: TextStyle(fontSize: 12),
+
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      'كل تغيير يُسجَّل في سجل التدقيق.',
+                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
                   ),
-                  secondary: Icon(
-                    state.cloudSyncEnabled
-                        ? Icons.cloud_done_rounded
-                        : Icons.cloud_off_rounded,
-                    color: state.cloudSyncEnabled
-                        ? AppColors.primary
-                        : Colors.grey,
-                  ),
-                  value: state.cloudSyncEnabled,
-                  onChanged: (v) async {
-                    final err = await context
-                        .read<SettingsCubit>()
-                        .setCloudSyncEnabled(v, _userId(context));
-                    if (err != null && context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(err),
-                          backgroundColor: AppColors.error,
-                        ),
-                      );
-                    }
-                  },
-                ),
+                ],
               ),
-              const SizedBox(height: 20),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 4),
-                child: Text(
-                  'كل تغيير يُسجَّل في سجل التدقيق.',
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-              ),
-            ],
-          ),
             ),
           );
         },
@@ -324,6 +410,136 @@ class _SystemSettingsView extends StatelessWidget {
           );
         }
       },
+    );
+  }
+}
+
+class _CashierPermissionsSettingsCard extends StatefulWidget {
+  final String userId;
+
+  const _CashierPermissionsSettingsCard({required this.userId});
+
+  @override
+  State<_CashierPermissionsSettingsCard> createState() =>
+      _CashierPermissionsSettingsCardState();
+}
+
+class _CashierPermissionsSettingsCardState
+    extends State<_CashierPermissionsSettingsCard> {
+  late CashierPermissionsConfig _config;
+
+  @override
+  void initState() {
+    super.initState();
+    _config = CashierPermissionsService.current;
+  }
+
+  Future<void> _update(CashierPermissionsConfig newConfig) async {
+    setState(() => _config = newConfig);
+    final gate = getIt<FeatureGate>();
+    await CashierPermissionsService.save(
+      gate,
+      newConfig,
+      userId: widget.userId,
+    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تم تحديث صلاحيات الكاشير بنجاح'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.shield_rounded, color: AppColors.primary),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'صلاحيات الكاشير الموثوق (Trusted Cashier)',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      Text(
+                        'حدد الميزات المسموح بها للكاشير، وتظل باقي العمليات الحساسة محجوبة للمدير فقط.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 24),
+            SwitchListTile(
+              title: const Text('السماح بالبيع الآجل (على الحساب)'),
+              subtitle: const Text('تمكين الكاشير من اختيار الدفع الآجل وربط الفاتورة بمديونية العميل'),
+              value: _config.allowCreditSale,
+              onChanged: (v) => _update(_config.copyWith(allowCreditSale: v)),
+            ),
+            const Divider(height: 1),
+            SwitchListTile(
+              title: const Text('السماح ببيع الأقساط (عقود التقسيط)'),
+              subtitle: const Text('تمكين الكاشير من إنشاء وجدولة عقود أقساط جديدة للعميل من شاشة البيع'),
+              value: _config.allowInstallments,
+              onChanged: (v) => _update(_config.copyWith(allowInstallments: v)),
+            ),
+            const Divider(height: 1),
+            SwitchListTile(
+              title: const Text('السماح باستلام شحنات بضاعة للمخزن'),
+              subtitle: const Text('إظهار شاشة استلام البضاعة (الشحنة الجديدة) وتحديث كميات المخزن'),
+              value: _config.allowGoodsIntake,
+              onChanged: (v) => _update(_config.copyWith(allowGoodsIntake: v)),
+            ),
+            const Divider(height: 1),
+            SwitchListTile(
+              title: const Text('السماح بإضافة وتعديل بيانات العملاء'),
+              subtitle: const Text('إتاحة شاشة سجل العملاء للكاشير لتسجيل عميل جديد أو تحديث بياناته'),
+              value: _config.allowManageCustomers,
+              onChanged: (v) => _update(_config.copyWith(allowManageCustomers: v)),
+            ),
+            const Divider(height: 1),
+            SwitchListTile(
+              title: const Text('السماح بتسجيل مصروفات نثرية من الدرج'),
+              subtitle: const Text('تمكين الكاشير من إثبات مصاريف يومية صغيرة (بوفيه/نظافة) تخصم من الدرج'),
+              value: _config.allowCashExpenses,
+              onChanged: (v) => _update(_config.copyWith(allowCashExpenses: v)),
+            ),
+            const Divider(height: 1),
+            SwitchListTile(
+              title: const Text('السماح بالاطلاع على سجل الفواتير العامة'),
+              subtitle: const Text('إتاحة فواتير المحل والورديات السابقة كاملة (بدلاً من الاقتصار على فواتير ورديته)'),
+              value: _config.allowViewInvoicesHistory,
+              onChanged: (v) => _update(_config.copyWith(allowViewInvoicesHistory: v)),
+            ),
+            const Divider(height: 1),
+            SwitchListTile(
+              title: const Text('السماح بخصم يدوي استثنائي على الفاتورة'),
+              subtitle: const Text('تمكين الكاشير من إدخال خصم يدوي إضافي دون طلب موافقة المدير'),
+              value: _config.allowManualDiscount,
+              onChanged: (v) => _update(_config.copyWith(allowManualDiscount: v)),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

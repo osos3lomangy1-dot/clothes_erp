@@ -366,29 +366,27 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                 title: 'إجمالي العقد',
                 value: '${Money(contract.totalPiasters).toDisplay()} ج.م',
                 icon: Icons.receipt_long_rounded,
-                iconColor: AppColors.primary,
-                bgColor: const Color(0xFFF6F3FF),
+                iconColor: AppColors.onSurfaceVariant,
               );
               final card2 = _buildMetricCard(
                 title: 'الدفعة المقدمة',
                 value: '${Money(contract.downPaymentPiasters).toDisplay()} ج.م',
                 icon: Icons.payments_outlined,
-                iconColor: const Color(0xFF0284C7),
-                bgColor: const Color(0xFFF0F9FF),
+                iconColor: AppColors.onSurfaceVariant,
               );
               final card3 = _buildMetricCard(
                 title: 'المدفوع حتى الآن',
                 value: '${Money(totalPaidPiasters).toDisplay()} ج.م',
                 icon: Icons.check_circle_outline_rounded,
                 iconColor: AppColors.success,
-                bgColor: AppColors.successContainer.withValues(alpha: 0.5),
+                valueColor: AppColors.success,
               );
               final card4 = _buildMetricCard(
                 title: 'المتبقي',
                 value: '${Money(contract.remainingPiasters).toDisplay()} ج.م',
                 icon: Icons.pending_actions_rounded,
                 iconColor: AppColors.warning,
-                bgColor: AppColors.warningContainer.withValues(alpha: 0.5),
+                valueColor: AppColors.warning,
               );
 
               if (isWide) {
@@ -478,25 +476,27 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
     required String value,
     required IconData icon,
     required Color iconColor,
-    required Color bgColor,
+    Color? valueColor,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: bgColor,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: iconColor.withValues(alpha: 0.15)),
+        border: Border.all(color: AppColors.outlineVariant),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            width: 36,
+            height: 36,
+            alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: const Color(0xFFF1F5F9),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: iconColor, size: 22),
+            child: Icon(icon, color: iconColor, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -509,7 +509,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                   style: TextStyle(
                     fontFamily: 'Cairo',
                     fontSize: 12,
-                    color: Colors.grey.shade700,
+                    color: AppColors.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -523,7 +523,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                       fontFamily: 'Cairo',
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.onSurface,
+                      color: valueColor ?? AppColors.onSurface,
                     ),
                   ),
                 ),
@@ -578,7 +578,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
-              elevation: 2,
+              elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -604,11 +604,10 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
             },
           ),
         if (canPay)
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.teal.shade700,
-              foregroundColor: Colors.white,
-              elevation: 2,
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.onSurface,
+              side: const BorderSide(color: AppColors.outlineVariant),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -620,7 +619,6 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                     height: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Colors.white,
                     ),
                   )
                 : const Icon(Icons.bolt_rounded, size: 20),
@@ -646,8 +644,8 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
           if (contract.status != 'legal_case')
             OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.amber.shade900,
-                side: BorderSide(color: Colors.amber.shade800),
+                foregroundColor: AppColors.error.withValues(alpha: 0.8),
+                side: BorderSide(color: AppColors.error.withValues(alpha: 0.3)),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 20,
                   vertical: 14,
@@ -670,8 +668,8 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
           else
             OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.teal.shade800,
-                side: BorderSide(color: Colors.teal.shade700),
+                foregroundColor: AppColors.onSurface,
+                side: const BorderSide(color: AppColors.outlineVariant),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 20,
                   vertical: 14,
@@ -693,8 +691,8 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
             ),
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.error,
-              side: BorderSide(color: AppColors.error.withValues(alpha: 0.6)),
+              foregroundColor: AppColors.error.withValues(alpha: 0.8),
+              side: BorderSide(color: AppColors.error.withValues(alpha: 0.3)),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -1095,33 +1093,33 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
 
                     if (isPaid && alloc.isPaidOnlyFromExcess) {
                       statusLabel = 'مدفوع (ترحيل زيادة)';
-                      statusColor = Colors.teal.shade700;
-                      statusBg = Colors.teal.shade50;
+                      statusColor = AppColors.success;
+                      statusBg = const Color(0xFFF1F5F9);
                       statusIcon = Icons.fast_rewind_rounded;
                     } else if (isPaid) {
-                      statusLabel = 'مدفوع';
+                      statusLabel = 'مدفوع بالكامل';
                       statusColor = AppColors.success;
-                      statusBg = AppColors.successContainer;
+                      statusBg = const Color(0xFFECFDF5);
                       statusIcon = Icons.check_circle_rounded;
                     } else if (isOverdue) {
                       statusLabel = isPartiallyPaid ? 'متأخر (جزئي)' : 'متأخر';
                       statusColor = AppColors.error;
-                      statusBg = AppColors.errorContainer;
+                      statusBg = const Color(0xFFFEF2F2);
                       statusIcon = Icons.warning_amber_rounded;
                     } else if (isExcessOnlyPartial) {
                       statusLabel = 'مرحّل له زيادة';
-                      statusColor = Colors.purple.shade700;
-                      statusBg = Colors.purple.shade50;
+                      statusColor = const Color(0xFF334155);
+                      statusBg = const Color(0xFFF1F5F9);
                       statusIcon = Icons.savings_outlined;
                     } else if (isPartiallyPaid) {
                       statusLabel = 'مدفوع جزئياً';
                       statusColor = const Color(0xFFD97706);
-                      statusBg = const Color(0xFFFEF3C7);
+                      statusBg = const Color(0xFFFFFBEB);
                       statusIcon = Icons.hourglass_bottom_rounded;
                     } else {
                       statusLabel = 'مستحق';
-                      statusColor = const Color(0xFF2563EB);
-                      statusBg = const Color(0xFFEFF6FF);
+                      statusColor = const Color(0xFF334155);
+                      statusBg = const Color(0xFFF1F5F9);
                       statusIcon = Icons.schedule_rounded;
                     }
 
@@ -1583,38 +1581,38 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
 
     switch (status) {
       case 'active':
-        color = const Color(0xFF1D4ED8);
-        bg = const Color(0xFFEFF6FF);
+        color = const Color(0xFF334155);
+        bg = const Color(0xFFF1F5F9);
         label = 'عقد نشط';
         icon = Icons.verified_rounded;
         break;
       case 'overdue':
         color = AppColors.error;
-        bg = AppColors.errorContainer;
+        bg = const Color(0xFFFEF2F2);
         label = 'متأخر في السداد';
         icon = Icons.error_rounded;
         break;
       case 'legal_case':
         color = const Color(0xFFC2410C);
-        bg = const Color(0xFFFFEDD5);
+        bg = const Color(0xFFFFFBEB);
         label = 'إجراء قانوني (قضايا)';
         icon = Icons.gavel_rounded;
         break;
       case 'completed':
         color = AppColors.success;
-        bg = AppColors.successContainer;
+        bg = const Color(0xFFECFDF5);
         label = 'عقد مكتمل';
         icon = Icons.task_alt_rounded;
         break;
       case 'cancelled':
-        color = Colors.grey.shade800;
-        bg = Colors.grey.shade200;
+        color = Colors.grey.shade700;
+        bg = const Color(0xFFF1F5F9);
         label = 'عقد ملغي';
         icon = Icons.block_rounded;
         break;
       default:
         color = Colors.grey.shade700;
-        bg = Colors.grey.shade100;
+        bg = const Color(0xFFF1F5F9);
         label = status;
         icon = Icons.info_outline_rounded;
     }
@@ -1624,7 +1622,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1657,15 +1655,15 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFFF0FDF4),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFBBF7D0)),
+          border: Border.all(color: AppColors.outlineVariant),
         ),
         child: Row(
           children: [
             const Icon(
               Icons.verified_rounded,
-              color: Color(0xFF16A34A),
+              color: AppColors.success,
               size: 18,
             ),
             const SizedBox(width: 8),
@@ -1678,7 +1676,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                   fontFamily: 'Cairo',
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF15803D),
+                  color: AppColors.onSurface,
                 ),
               ),
             ),
@@ -1690,26 +1688,26 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFBEB),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFFDE68A)),
+        border: Border.all(color: AppColors.outlineVariant),
       ),
       child: Row(
         children: [
-          Icon(
+          const Icon(
             Icons.inventory_2_outlined,
-            color: Colors.amber.shade800,
+            color: AppColors.onSurfaceVariant,
             size: 18,
           ),
           const SizedBox(width: 8),
-          Expanded(
+          const Expanded(
             child: Text(
               'وصل الأمانة في الخزينة (لم يُسلَّم للعميل بعد)',
               style: TextStyle(
                 fontFamily: 'Cairo',
                 fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: Colors.amber.shade900,
+                fontWeight: FontWeight.w600,
+                color: AppColors.onSurface,
               ),
             ),
           ),
@@ -1718,13 +1716,14 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: Colors.amber.shade800,
+                color: const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: AppColors.outlineVariant),
               ),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.check_rounded, color: Colors.white, size: 14),
+                  Icon(Icons.check_rounded, color: AppColors.onSurface, size: 14),
                   SizedBox(width: 4),
                   Text(
                     'تسليم الوصل للعميل',
@@ -1732,7 +1731,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                       fontFamily: 'Cairo',
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: AppColors.onSurface,
                     ),
                   ),
                 ],

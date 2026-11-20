@@ -35,237 +35,63 @@
 
 ## 📋 خطة المهام التنفيذية (Tasks Roadmap)
 
-- [x] **المهمة 1 (الحالية):** ضبط محرك الألوان وثيم التطبيق الموحد (`app_colors.dart` + `app_theme.dart`).
-- [ ] **المهمة 2:** إعادة هندسة الشريط الجانبي والهيدر العلوي (`main_layout.dart`) ليكون شريطاً رشيقاً ومريحاً.
-- [ ] **المهمة 3:** تحديث شاشة نقطة البيع (POS) وحل أخطاء الطفح (Overflow) وضبط ألوان الكروت والسلة.
-- [ ] **المهمة 4:** دمج وتوحيد شاشات المنتجات والمخزون في شاشة موحدة.
-- [ ] **المهمة 5:** دمج سجل الفواتير والمرتجعات في مركز معاملات موحد.
-- [ ] **المهمة 6:** توحيد مركز التقارير والإعدادات.
+- [x] **المهمة 1:** ضبط محرك الألوان وثيم التطبيق الموحد (`app_colors.dart` + `app_theme.dart`). *(تم)*
+- [x] **المهمة 2:** التطهير البصري لشاشات المخزون والعملاء ودليل المنتجات. *(تم)*
+- [x] **المهمة 3:** ضبط السايد بار وتطهير المشتريات والشركاء. *(تم)*
+- [x] **المهمة 4:** تطهير شاشة تفاصيل عقد التقسيط وسجل حركات المخزن من الخلفيات والبادجات الملونة. *(تم)*
+- [ ] **المهمة 5:** ضبط شاشة البيع (POS) وتخطيط السلة وحل الـ Overflows.
 
 ---
 
-## 🚀 المهمة 1: ضبط محرك الألوان وهندسة الثيم الموحد
-
-### الملف الأول: `lib/core/constants/app_colors.dart`
-**الهدف:** منع خلط اللون الأساسي مع ألوان الأسطح لحماية الخلفيات من الصبغ العشوائي، وتثبيت الدرجات الحيادية المريحة للعين.
-
-#### الكود المستهدف لملف `lib/core/constants/app_colors.dart`:
-```dart
-import 'package:flutter/material.dart';
-
-class AppColors {
-  // Brand Dynamic Accent (10% Usage)
-  static Color primary = const Color(0xFF6366F1); // Indigo / Modern Accent
-  static Color primaryContainer = const Color(0xFF818CF8);
-  static const Color onPrimary = Color(0xFFFFFFFF);
-  static const Color onPrimaryContainer = Color(0xFFFFFFFF);
-
-  // Neutral Surfaces (60% Usage - Eye Relaxing)
-  static const Color surface = Color(0xFFF8FAFC); // Slate 50 (Calm Canvas)
-  static const Color surfaceContainer = Color(0xFFF1F5F9); // Slate 100
-  static const Color surfaceContainerLow = Color(0xFFF8FAFC);
-  static const Color surfaceContainerLowest = Color(0xFFFFFFFF); // Pure White Cards
-  
-  // Slate Typography & Icons (30% Usage)
-  static const Color onSurface = Color(0xFF0F172A); // Slate 900
-  static const Color onSurfaceVariant = Color(0xFF475569); // Slate 600
-  static const Color outline = Color(0xFF94A3B8); // Slate 400
-  static const Color outlineVariant = Color(0xFFE2E8F0); // Slate 200 (Soft Dividers)
-
-  // Functional Semantic Colors (Muted & Accessible)
-  static const Color success = Color(0xFF10B981);
-  static const Color successContainer = Color(0xFFECFDF5);
-  static const Color warning = Color(0xFFF59E0B);
-  static const Color warningContainer = Color(0xFFFFFBEB);
-  static const Color error = Color(0xFFEF4444);
-  static const Color errorContainer = Color(0xFFFEF2F2);
-  static const Color onError = Color(0xFFFFFFFF);
-
-  // Backward Compatibility
-  static Color get secondary => primaryContainer;
-  static Color get background => surface;
-
-  /// Apply custom user palette safely without polluting the clean neutral surfaces
-  static void applyPalette({
-    required Color primaryColor,
-    required Color secondaryColor,
-  }) {
-    primary = primaryColor;
-    primaryContainer = secondaryColor;
-    // We intentionally keep surface & surfaceContainerLowest neutral (white & light slate)
-    // to maintain maximum eye comfort and prevent visual clutter.
-  }
-}
-```
+## 🚀 المهمة 4: تطهير شاشة تفاصيل التقسيط وسجل حركات المخزن
 
 ---
 
-### الملف الثاني: `lib/core/theme/app_theme.dart`
-**الهدف:** 
-1. جعل الهيدر العلوي (`AppBar`) أبيض ناصعاً بنصوص فحيمة هادئة بدلاً من الشريط الداكن المجهد للعين.
-2. جعل البطاقات (`Card`) عصرية ومسطحة (`elevation: 0`) بحدود رمادية رقيقة وناعمة.
-3. توحيد أنماط حقول الإدخال والأزرار.
+### 1. شاشة تفاصيل عقد التقسيط: `lib/features/installments/presentation/screens/installment_detail_screen.dart`
 
-#### الكود المستهدف لملف `lib/core/theme/app_theme.dart`:
-```dart
-import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
+#### أ) كروت القياس العلوية الأربعة (`_buildMetricCard`):
+* **المشكلة:** كارت بنفسجي (`0xFFF6F3FF`)، كارت سماوي (`0xFFF0F9FF`)، كارت أخضر، كارت برتقالي!
+* **الحل المطلوب:**
+  * جميع الكروت الأربعة تكون **خلفيتها بيضاء ناصعة `Colors.white`** دائماً (اجعل `bgColor = Colors.white`).
+  * الحدود: إطار رمادي ناعم `AppColors.outlineVariant` (أو `Colors.grey.shade200`).
+  * الأيقونة: داخل دائرة رمادية هادئة `#F1F5F9` بحجم 36x36 وأيقونة بلون `AppColors.onSurfaceVariant`.
+  * الأرقام: بخط واضح كبير بلون رمادي فحمي `AppColors.onSurface`.
+  * فقط رقم "المتبقي" يمكن أن يظهر بلون برتقالي هادئ `AppColors.warning` للتنبيه، ورقم "المدفوع" بنص أخضر هادئ `AppColors.success`.
 
-class AppTheme {
-  static ThemeData get light => build(
-        primary: AppColors.primary,
-        secondary: AppColors.primaryContainer,
-      );
+#### ب) بانر إيصال الأمانة (`_buildPromissoryNoteBanner`):
+* إزالة اللون الأصفر/البرتقالي الصارخ الذي يغطي البانر.
+* تحويله إلى حاوية بيضاء خفيفة بحدود رمادية ناعمة وأيقونة رمادية/برتقالية هادئة مع نص رمادي واضح.
 
-  static ThemeData build({
-    required Color primary,
-    required Color secondary,
-  }) {
-    const fontFamily = 'Cairo';
+#### ج) أزرار الإجراءات (تضارب الألوان: أسود، زيتي، برتقالي، أحمر):
+* **زر "تسجيل دفعة جديدة":** هو الإجراء الأساسي الوحيد؛ اجعل خلفيته `AppColors.primary` بنص أبيض وأيقونة بيضاء.
+* **زر "سداد مبكر / تسوية العقد":** اجعله `OutlinedButton` خفيفاً وأنيقاً بنص رمادي داكن وإطار خفيف.
+* **زري "تحويل لإجراء قانوني" و "إلغاء العقد":** اجعلهما `OutlinedButton` خفيفين جداً بلون أحمر رمادي هادئ (`AppColors.error.withValues(alpha: 0.8)`).
 
-    final textTheme = ThemeData.light().textTheme.apply(
-          fontFamily: fontFamily,
-          bodyColor: AppColors.onSurface,
-          displayColor: AppColors.onSurface,
-        );
-
-    final colorScheme = ColorScheme.light(
-      primary: primary,
-      onPrimary: AppColors.onPrimary,
-      primaryContainer: secondary,
-      onPrimaryContainer: AppColors.onPrimaryContainer,
-      secondary: secondary,
-      surface: AppColors.surface,
-      onSurface: AppColors.onSurface,
-      surfaceContainer: AppColors.surfaceContainer,
-      surfaceContainerLow: AppColors.surfaceContainerLow,
-      surfaceContainerLowest: AppColors.surfaceContainerLowest,
-      error: AppColors.error,
-      onError: AppColors.onError,
-      outline: AppColors.outline,
-      outlineVariant: AppColors.outlineVariant,
-    );
-
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: colorScheme,
-      scaffoldBackgroundColor: AppColors.surface,
-      fontFamily: fontFamily,
-      textTheme: textTheme,
-      
-      // Modern Light AppBar
-      appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.surfaceContainerLowest,
-        foregroundColor: AppColors.onSurface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: true,
-        shape: Border(
-          bottom: BorderSide(color: AppColors.outlineVariant, width: 1.0),
-        ),
-        titleTextStyle: TextStyle(
-          fontFamily: fontFamily,
-          fontSize: 17,
-          fontWeight: FontWeight.w700,
-          color: AppColors.onSurface,
-        ),
-        iconTheme: IconThemeData(color: AppColors.onSurface),
-      ),
-
-      // Modern Flat Card with soft border
-      cardTheme: CardThemeData(
-        elevation: 0,
-        color: AppColors.surfaceContainerLowest,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: AppColors.outlineVariant, width: 1.0),
-        ),
-        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-      ),
-
-      // Clean Accessible Input Fields
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: AppColors.surfaceContainerLowest,
-        labelStyle: const TextStyle(
-          fontFamily: fontFamily,
-          fontSize: 13.5,
-          color: AppColors.onSurfaceVariant,
-        ),
-        floatingLabelStyle: TextStyle(
-          fontFamily: fontFamily,
-          fontSize: 13.5,
-          fontWeight: FontWeight.w700,
-          color: primary,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.outlineVariant, width: 1.0),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.outlineVariant, width: 1.0),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: primary, width: 1.8),
-        ),
-        errorBorder: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(10)),
-          borderSide: BorderSide(color: AppColors.error, width: 1.2),
-        ),
-        focusedErrorBorder: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(10)),
-          borderSide: BorderSide(color: AppColors.error, width: 1.8),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      ),
-
-      // Buttons Styling
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: primary,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          textStyle: const TextStyle(fontFamily: fontFamily, fontWeight: FontWeight.w700, fontSize: 14),
-        ),
-      ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.onSurface,
-          side: const BorderSide(color: AppColors.outlineVariant, width: 1.2),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          textStyle: const TextStyle(fontFamily: fontFamily, fontWeight: FontWeight.w600, fontSize: 13.5),
-        ),
-      ),
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: primary,
-          textStyle: const TextStyle(fontFamily: fontFamily, fontWeight: FontWeight.w600, fontSize: 13.5),
-        ),
-      ),
-      floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: primary,
-        foregroundColor: Colors.white,
-        elevation: 2,
-      ),
-      dividerTheme: const DividerThemeData(
-        color: AppColors.outlineVariant,
-        thickness: 1.0,
-        space: 1.0,
-      ),
-    );
-  }
-}
-```
+#### د) جدول الأقساط وبادج "مستحق":
+* تحويل بادج "مستحق" من اللون الأزرق الفاقع إلى بادج رمادي ناعم موحد:
+  - الخلفية: `#F1F5F9`.
+  - النص: رمادي فحمي `#334155`.
+  - أيقونة الساعة صغيرة جداً بحجم 12px بلون `#64748B`.
+* القسط "المدفوع بالكامل": بادج `#ECFDF5` بنص أخضر هادئ `AppColors.success`.
 
 ---
 
-### ✅ التحقق واختبار التنفيذ:
-بعد تطبيق الكود أعلاه:
-1. تأكد من تشغيل `flutter test` أو بناء التطبيق للتأكد من عدم وجود أي خطأ في البناء.
-2. تأكد من أن شاشات التطبيق تعمل بخلفية ثلجية مريحة وأن الكروت بيضاء محددة بإطار هادئ.
+### 2. شاشة سجل حركات المخزن: `lib/features/inventory/presentation/screens/inventory_logs_screen.dart`
+
+#### أ) بادجات نوع الحركة (بيع، توريد، مرتجع، تسوية):
+* **المشكلة:** ألوان متعددة (وردي، أزرق، برتقالي، موف) تظهر متكررة في كل سطر.
+* **الحل المطلوب في ويدجت بادج نوع الحركة (حوالي السطر 380–430):**
+  * توحيد **خلفية البادج لتكون دائماً رمادية ناعمة `#F1F5F9`** بدون صبغ الخلفية بألوان الطيف.
+  * لون النص الصغير والأيقونة فقط هو الذي يوضح نوع الحركة:
+    - `بيع`: نص أحمر هادئ `AppColors.error`.
+    - `توريد / استلام`: نص أخضر هادئ `AppColors.success`.
+    - `مرتجع مبيعات`: نص رمادي فحمي مائل للأزرق الهادئ `#2563EB`.
+    - `جرد / تسوية`: نص رمادي متزن `#475569`.
+  * بهذا التعديل يتحول السجل إلى مظهر "كشف حساب بنكي" راقٍ ومنظم ومريح للعين 100%.
+
+---
+
+### ✅ معيار النجاح للمهمة 4:
+1. اختفاء الكروت الأربعة الملونة في شاشة التقسيط وتحولها لكروت بيضاء ناصعة هادئة كأنظمة Apple و Stripe.
+2. تناسق أزرار تفاصيل القسط دون صراخ لوني.
+3. مظهر بنكي نظيف وسلس لجدول حركات المخزن.

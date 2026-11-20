@@ -389,8 +389,6 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
                       title: 'إجمالي المشتريات',
                       value: '${totalPurchases.toStringAsFixed(2)} ج.م',
                       icon: Icons.shopping_bag_outlined,
-                      color: Colors.blue.shade700,
-                      bgColor: Colors.blue.shade50,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -399,8 +397,6 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
                       title: 'المبالغ المسددة',
                       value: '${totalPaid.toStringAsFixed(2)} ج.م',
                       icon: Icons.check_circle_outline_rounded,
-                      color: Colors.green.shade700,
-                      bgColor: Colors.green.shade50,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -409,8 +405,7 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
                       title: 'إجمالي ديون الموردين',
                       value: '${totalDebt.toStringAsFixed(2)} ج.م',
                       icon: Icons.warning_amber_rounded,
-                      color: totalDebt > 0 ? Colors.red.shade700 : Colors.grey.shade700,
-                      bgColor: totalDebt > 0 ? Colors.red.shade50 : Colors.grey.shade100,
+                      isDebt: totalDebt > 0,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -419,8 +414,6 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
                       title: 'إجمالي المرتجعات',
                       value: '${totalReturns.toStringAsFixed(2)} ج.م',
                       icon: Icons.assignment_return_rounded,
-                      color: Colors.orange.shade800,
-                      bgColor: Colors.orange.shade50,
                     ),
                   ),
                 ],
@@ -436,31 +429,48 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
     required String title,
     required String value,
     required IconData icon,
-    required Color color,
-    required Color bgColor,
+    bool isDebt = false,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: bgColor,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        border: Border.all(color: AppColors.outlineVariant),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
-            child: Icon(icon, color: color, size: 24),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: AppColors.onSurfaceVariant, size: 22),
           ),
           const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
-              const SizedBox(height: 2),
-              Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: color)),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15.5,
+                    color: isDebt ? AppColors.error : AppColors.onSurface,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -687,28 +697,32 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
     Color statusColor;
     String statusText;
     if (p.paymentStatus == 'paid') {
-      statusColor = Colors.green;
+      statusColor = AppColors.success;
       statusText = 'مدفوعة بالكامل';
     } else if (p.paymentStatus == 'partial') {
-      statusColor = Colors.amber.shade800;
+      statusColor = AppColors.warning;
       statusText = 'سداد جزئي';
     } else {
-      statusColor = Colors.red;
+      statusColor = AppColors.error;
       statusText = 'آجل (غير مدفوعة)';
     }
 
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 1,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppColors.outlineVariant),
+      ),
+      elevation: 0,
       child: ExpansionTile(
         shape: const Border(),
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: statusColor.withValues(alpha: 0.1),
+            color: const Color(0xFFF1F5F9),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(Icons.inventory_rounded, color: statusColor),
+          child: const Icon(Icons.inventory_rounded, color: AppColors.onSurfaceVariant),
         ),
         title: Row(
           children: [
@@ -716,13 +730,13 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
               p.invoiceNumber != null && p.invoiceNumber!.isNotEmpty
                   ? 'فاتورة #${p.invoiceNumber}'
                   : 'فاتورة شراء #${p.id.substring(0, 8)}',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.onSurface),
             ),
             const SizedBox(width: 10),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: statusColor.withValues(alpha: 0.15),
+                color: const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(

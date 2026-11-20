@@ -270,14 +270,7 @@ class _InventoryLogCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: AppColors.outlineVariant),
       ),
       padding: const EdgeInsets.all(14),
       child: Row(
@@ -287,7 +280,7 @@ class _InventoryLogCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: typeBadge.backgroundColor,
+              color: const Color(0xFFF1F5F9),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(typeBadge.icon, color: typeBadge.color, size: 24),
@@ -313,8 +306,9 @@ class _InventoryLogCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: typeBadge.backgroundColor,
+                        color: const Color(0xFFF1F5F9),
                         borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: AppColors.outlineVariant),
                       ),
                       child: Text(
                         typeBadge.label,
@@ -357,18 +351,16 @@ class _InventoryLogCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: isIn ? Colors.green.shade50 : Colors.red.shade50,
+              color: const Color(0xFFF1F5F9),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: isIn ? Colors.green.shade200 : Colors.red.shade200,
-              ),
+              border: Border.all(color: AppColors.outlineVariant),
             ),
             child: Text(
               '$sign${log.quantity}',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
-                color: isIn ? Colors.green.shade800 : Colors.red.shade800,
+                color: isIn ? AppColors.success : AppColors.error,
               ),
             ),
           ),
@@ -383,52 +375,52 @@ class _InventoryLogCard extends StatelessWidget {
       case 'in':
         return _TypeBadge(
           label: 'توريد / استلام',
-          color: Colors.green.shade700,
-          backgroundColor: Colors.green.shade50,
+          color: AppColors.success,
+          backgroundColor: const Color(0xFFF1F5F9),
           icon: Icons.arrow_downward_rounded,
         );
       case 'sale':
       case 'out':
         return _TypeBadge(
           label: 'بيع',
-          color: Colors.red.shade700,
-          backgroundColor: Colors.red.shade50,
+          color: AppColors.error,
+          backgroundColor: const Color(0xFFF1F5F9),
           icon: Icons.arrow_upward_rounded,
         );
       case 'return':
       case 'return_':
         return _TypeBadge(
           label: 'مرتجع مبيعات',
-          color: Colors.blue.shade700,
-          backgroundColor: Colors.blue.shade50,
+          color: const Color(0xFF2563EB),
+          backgroundColor: const Color(0xFFF1F5F9),
           icon: Icons.replay_rounded,
         );
       case 'purchase_return':
         return _TypeBadge(
           label: 'مرتجع مشتريات',
-          color: Colors.deepOrange.shade700,
-          backgroundColor: Colors.deepOrange.shade50,
+          color: const Color(0xFFD97706),
+          backgroundColor: const Color(0xFFF1F5F9),
           icon: Icons.assignment_return_rounded,
         );
       case 'adjustment':
         return _TypeBadge(
           label: 'تسوية رصيد',
-          color: Colors.orange.shade700,
-          backgroundColor: Colors.orange.shade50,
+          color: const Color(0xFF475569),
+          backgroundColor: const Color(0xFFF1F5F9),
           icon: Icons.tune_rounded,
         );
       case 'stocktake':
         return _TypeBadge(
           label: 'جرد مخزني',
-          color: Colors.purple.shade700,
-          backgroundColor: Colors.purple.shade50,
+          color: const Color(0xFF475569),
+          backgroundColor: const Color(0xFFF1F5F9),
           icon: Icons.fact_check_rounded,
         );
       default:
         return _TypeBadge(
           label: type,
-          color: Colors.grey.shade700,
-          backgroundColor: Colors.grey.shade100,
+          color: const Color(0xFF475569),
+          backgroundColor: const Color(0xFFF1F5F9),
           icon: Icons.sync_alt_rounded,
         );
     }

@@ -23,6 +23,7 @@ import 'features/dashboard/presentation/screens/admin_dashboard_screen.dart';
 import 'features/dashboard/presentation/screens/cashier_dashboard_screen.dart';
 import 'features/invoices/data/services/receipt_settings_service.dart';
 import 'features/barcode_printing/services/barcode_settings_service.dart';
+import 'features/auth/services/cashier_permissions_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -205,6 +206,7 @@ Future<void> _startNormalApp() async {
   await AppBranding.loadFromFeatureGate(gate);
   await ReceiptSettingsService.loadFromFeatureGate(gate);
   await BarcodeSettingsService.loadFromFeatureGate(gate);
+  await CashierPermissionsService.loadFromFeatureGate(gate);
   // Silent daily local SQLite auto-backup + Google Drive auto-upload (non-blocking)
   unawaited(getIt<LocalBackupService>().runAutoBackupIfDue());
   unawaited(getIt<GoogleDriveBackupService>().runAutoDriveBackupIfDue());

@@ -706,17 +706,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
     final lineCostPiasters = item.quantity * item.costPrice;
 
     return Card(
-      elevation: 0.5,
+      elevation: 0,
       margin: const EdgeInsets.only(bottom: 10),
+      color: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isOut
-              ? AppColors.error.withValues(alpha: 0.35)
-              : (isLow
-                    ? Colors.orange.withValues(alpha: 0.45)
-                    : Colors.grey.shade200),
-        ),
+        side: const BorderSide(color: AppColors.outlineVariant, width: 1.0),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -724,19 +719,18 @@ class _InventoryScreenState extends State<InventoryScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             CircleAvatar(
-              radius: 22,
-              backgroundColor: isOut
-                  ? Colors.red.shade50
-                  : (isLow ? Colors.orange.shade50 : AppColors.surfaceContainer),
+              radius: 20,
+              backgroundColor: const Color(0xFFF1F5F9),
               child: Icon(
                 isOut
-                    ? Icons.error_outline
+                    ? Icons.error_outline_rounded
                     : (isLow
                           ? Icons.warning_amber_rounded
-                          : Icons.check_circle_outline),
+                          : Icons.inventory_2_outlined),
                 color: isOut
                     ? AppColors.error
-                    : (isLow ? Colors.orange.shade800 : AppColors.primary),
+                    : (isLow ? AppColors.warning : AppColors.primary),
+                size: 20,
               ),
             ),
             const SizedBox(width: 12),
@@ -754,14 +748,15 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 15.5,
+                          color: AppColors.onSurface,
                         ),
                       ),
                       if (item.categoryName != null &&
                           item.categoryName!.isNotEmpty)
                         _badge(
                           item.categoryName!,
-                          bg: Colors.blue.shade50,
-                          fg: Colors.blue.shade900,
+                          bg: const Color(0xFFF1F5F9),
+                          fg: const Color(0xFF475569),
                         ),
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -770,10 +765,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: isOut
-                              ? AppColors.error.withValues(alpha: 0.1)
+                              ? const Color(0xFFFEF2F2)
                               : (isLow
-                                    ? Colors.orange.withValues(alpha: 0.12)
-                                    : Colors.green.withValues(alpha: 0.1)),
+                                    ? const Color(0xFFFFFBEB)
+                                    : const Color(0xFFF1F5F9)),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -784,8 +779,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
                             color: isOut
                                 ? AppColors.error
                                 : (isLow
-                                      ? Colors.orange.shade900
-                                      : Colors.green.shade800),
+                                      ? AppColors.warning
+                                      : const Color(0xFF475569)),
                           ),
                         ),
                       ),
@@ -793,33 +788,48 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   ),
                   const SizedBox(height: 6),
                   Wrap(
-                    spacing: 6,
+                    spacing: 8,
                     runSpacing: 6,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       _badge('SKU: ${item.productCode}'),
-                      _badge('اللون: ${item.color}'),
-                      _badge('المقاس: ${item.size}'),
-                      _badge(
+                      if (item.color.isNotEmpty) _badge('اللون: ${item.color}'),
+                      if (item.size.isNotEmpty) _badge('المقاس: ${item.size}'),
+                      Text(
                         'البيع: ${Money(item.salePrice).toDisplay()} ج.م',
-                        bg: Colors.teal.shade50,
-                        fg: Colors.teal.shade900,
+                        style: const TextStyle(
+                          fontFamily: 'Cairo',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                          color: AppColors.onSurface,
+                        ),
                       ),
                       if (item.wholesalePrice > 0)
-                        _badge(
-                          'جملة: ${Money(item.wholesalePrice).toDisplay()} ج.م',
-                          bg: Colors.purple.shade50,
-                          fg: Colors.purple.shade800,
+                        Text(
+                          'الجملة: ${Money(item.wholesalePrice).toDisplay()} ج.م',
+                          style: const TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 12,
+                            color: Color(0xFF64748B),
+                          ),
                         ),
                       if (isAdmin) ...[
-                        _badge(
+                        Text(
                           'التكلفة: ${Money(item.costPrice).toDisplay()} ج.م',
+                          style: const TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 12,
+                            color: Color(0xFF64748B),
+                          ),
                         ),
                         if (item.quantity > 0)
-                          _badge(
+                          Text(
                             'قيمة الرصيد: ${Money(lineCostPiasters).toDisplay()} ج.م',
-                            bg: Colors.amber.shade50,
-                            fg: Colors.amber.shade900,
+                            style: const TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 12,
+                              color: Color(0xFF64748B),
+                            ),
                           ),
                       ],
                     ],
@@ -832,15 +842,30 @@ class _InventoryScreenState extends State<InventoryScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  '${item.quantity} قطعة',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 17,
-                    color: isOut
-                        ? AppColors.error
-                        : (isLow ? Colors.orange.shade900 : AppColors.primary),
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isLow)
+                      const Padding(
+                        padding: EdgeInsets.only(left: 4),
+                        child: Icon(Icons.warning_amber_rounded,
+                            size: 16, color: AppColors.warning),
+                      )
+                    else if (isOut)
+                      const Padding(
+                        padding: EdgeInsets.only(left: 4),
+                        child: Icon(Icons.error_outline_rounded,
+                            size: 16, color: AppColors.error),
+                      ),
+                    Text(
+                      '${item.quantity} قطعة',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                  ],
                 ),
                 InkWell(
                   onTap: isAdmin
@@ -958,19 +983,19 @@ class _InventoryScreenState extends State<InventoryScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.outlineVariant),
       ),
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.1),
+              color: const Color(0xFFF1F5F9),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, size: 20, color: accent),
+            child: Icon(icon, size: 20, color: AppColors.onSurfaceVariant),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -980,17 +1005,17 @@ class _InventoryScreenState extends State<InventoryScreen> {
               children: [
                 Text(
                   title,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade600,
+                    color: Color(0xFF64748B),
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: AppColors.onSurface,
@@ -1000,10 +1025,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 const SizedBox(height: 1),
                 Text(
                   subtitle,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 11,
-                    color: accent.withValues(alpha: 0.9),
-                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF64748B),
+                    fontWeight: FontWeight.w500,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1080,15 +1105,15 @@ class _InventoryScreenState extends State<InventoryScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        color: bg ?? Colors.grey.shade100,
+        color: bg ?? const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(5),
       ),
       child: Text(
         text,
         style: TextStyle(
           fontSize: 11.5,
-          fontWeight: bg != null ? FontWeight.w600 : FontWeight.normal,
-          color: fg ?? Colors.grey.shade800,
+          fontWeight: FontWeight.w500,
+          color: fg ?? const Color(0xFF475569),
         ),
       ),
     );
