@@ -31,6 +31,11 @@ import '../../domain/entities/payment_split.dart';
 import '../../domain/entities/sale_entity.dart';
 import '../widgets/installment_checkout_dialog.dart';
 import '../widgets/split_payment_dialog.dart';
+import '../../../products/presentation/widgets/simple_product_form_dialog.dart';
+import '../../../delivery/domain/entities/delivery_order_entity.dart';
+import '../../../delivery/domain/repositories/delivery_repository.dart';
+import '../../../delivery/presentation/screens/delivery_orders_screen.dart';
+import '../../../delivery/presentation/widgets/delivery_checkout_dialog.dart';
 
 Color _getCategoryColor(String? categoryId) {
   if (categoryId == null || categoryId.isEmpty) return const Color(0xFF673AB7);
@@ -279,6 +284,17 @@ class _PosViewState extends State<_PosView> {
                       ),
                     ),
                   ),
+                IconButton(
+                  icon: const Icon(Icons.moped_rounded, color: Colors.white, size: 22),
+                  tooltip: 'إدارة وتتبع الدليفري والطيارين',
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const DeliveryOrdersScreen(),
+                      ),
+                    );
+                  },
+                ),
                 // Cashier Badge & Financial Summary Quick Access
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -589,6 +605,26 @@ class _ProductPanelState extends State<_ProductPanel> {
     return true;
   }
 
+  Future<void> _openQuickAddProduct(BuildContext context, {String? initialQuery}) async {
+    final posCubit = context.read<PosCubit>();
+    final barcodeOrResult = await showDialog<dynamic>(
+      context: context,
+      builder: (_) => SimpleProductFormDialog(
+        initialQuery: initialQuery ?? _searchCtrl.text.trim(),
+      ),
+    );
+    if (!mounted) return;
+    if (barcodeOrResult != null && barcodeOrResult != false) {
+      await posCubit.init();
+      if (barcodeOrResult is String && barcodeOrResult.isNotEmpty) {
+        posCubit.addByBarcode(barcodeOrResult);
+      }
+      _searchCtrl.clear();
+      posCubit.searchProducts('');
+      if (mounted) setState(() {});
+    }
+  }
+
   @override
   void dispose() {
     _searchCtrl.dispose();
@@ -611,80 +647,105 @@ class _ProductPanelState extends State<_ProductPanel> {
   Widget _buildContent(BuildContext context) {
     return Column(
       children: [
-        // Search Bar: clean search input with F2 shortcut
+        // Search Bar: clean search input with F2 shortcut & Quick Add Product button
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.6)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.02),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: TextField(
-              controller: _searchCtrl,
-              focusNode: widget.searchFocusNode,
-              autofocus: true,
-              style: TextStyle(fontFamily: 'Cairo', fontSize: 14),
-              decoration: InputDecoration(
-                hintText: 'بحث بالاسم أو كود الصنف أو المقاس... [F2]',
-                hintStyle: TextStyle(fontFamily: 'Cairo', color: Colors.grey.shade500, fontSize: 13),
-                prefixIcon: Icon(Icons.search_rounded, color: AppColors.primary),
-                suffixIcon: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_searchCtrl.text.isNotEmpty)
-                      IconButton(
-                        icon: const Icon(Icons.clear, size: 18),
-                        onPressed: () {
+          child: Row(
+            children: [
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.6)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.02),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: _searchCtrl,
+                    focusNode: widget.searchFocusNode,
+                    autofocus: true,
+                    style: const TextStyle(fontFamily: 'Cairo', fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: 'بحث بالاسم أو كود الصنف أو المقاس... [F2]',
+                      hintStyle: TextStyle(fontFamily: 'Cairo', color: Colors.grey.shade500, fontSize: 13),
+                      prefixIcon: Icon(Icons.search_rounded, color: AppColors.primary),
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_searchCtrl.text.isNotEmpty)
+                            IconButton(
+                              icon: const Icon(Icons.clear, size: 18),
+                              onPressed: () {
+                                _searchCtrl.clear();
+                                context.read<PosCubit>().searchProducts('');
+                                setState(() {});
+                              },
+                            ),
+                          Container(
+                            margin: const EdgeInsets.only(left: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceContainer,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.outlineVariant),
+                            ),
+                            child: Text(
+                              'F2',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.onSurface,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                    onChanged: (val) {
+                      context.read<PosCubit>().searchProducts(val);
+                      setState(() {});
+                    },
+                    onSubmitted: (val) {
+                      if (val.trim().isNotEmpty) {
+                        final added = context.read<PosCubit>().addByBarcode(val.trim());
+                        if (added) {
                           _searchCtrl.clear();
                           context.read<PosCubit>().searchProducts('');
                           setState(() {});
-                        },
-                      ),
-                    Container(
-                      margin: const EdgeInsets.only(left: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceContainer,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.outlineVariant),
-                      ),
-                      child: Text(
-                        'F2',
-                        style: TextStyle(fontFamily: 'Cairo', fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.onSurface,),
-                      ),
-                    ),
-                  ],
+                        }
+                      }
+                    },
+                  ),
                 ),
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
-              onChanged: (val) {
-                context.read<PosCubit>().searchProducts(val);
-                setState(() {});
-              },
-              onSubmitted: (val) {
-                if (val.trim().isNotEmpty) {
-                  final added = context.read<PosCubit>().addByBarcode(val.trim());
-                  if (added) {
-                    _searchCtrl.clear();
-                    context.read<PosCubit>().searchProducts('');
-                    setState(() {});
-                  }
-                }
-              },
-            ),
+              const SizedBox(width: 8),
+              FilledButton.icon(
+                onPressed: () => _openQuickAddProduct(context),
+                icon: const Icon(Icons.add_rounded, size: 20),
+                label: const Text(
+                  'صنف جديد',
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  elevation: 0,
+                ),
+              ),
+            ],
           ),
         ),
 
@@ -771,16 +832,34 @@ class _ProductPanelState extends State<_ProductPanel> {
                   );
                 }
                 if (state.filteredVariants.isEmpty) {
+                  final query = _searchCtrl.text.trim();
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey.shade400),
+                        Icon(Icons.inventory_2_outlined, size: 56, color: Colors.grey.shade400),
                         const SizedBox(height: 12),
                         Text(
                           'لا توجد منتجات مطابقة للبحث',
                           style: TextStyle(fontFamily: 'Cairo', color: Colors.grey.shade600, fontSize: 15),
                         ),
+                        if (query.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          ElevatedButton.icon(
+                            onPressed: () => _openQuickAddProduct(context, initialQuery: query),
+                            icon: const Icon(Icons.add_rounded, size: 18),
+                            label: Text(
+                              'إضافة "$query" كصنف جديد',
+                              style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   );
@@ -1581,6 +1660,35 @@ class _CartPanelState extends State<_CartPanel> {
   bool _installmentAvailable = false;
   bool _creditAvailable = true;
   bool _isWholesaleMode = false;
+  DeliveryOrderEntity? _deliveryOrder;
+
+  Future<void> _toggleDeliveryMode(PosState state) async {
+    if (_deliveryOrder != null) {
+      setState(() => _deliveryOrder = null);
+      return;
+    }
+
+    final couriersRes = await getIt<DeliveryRepository>().getCouriers();
+    final couriers = couriersRes.getOrElse(() => []);
+    if (!mounted) return;
+
+    final result = await showDialog<DeliveryOrderEntity>(
+      context: context,
+      builder: (_) => DeliveryCheckoutDialog(
+        branchId: 'default',
+        orderRef: 'ORD-${DateTime.now().millisecondsSinceEpoch % 100000}',
+        customerId: state.customer?.id,
+        initialCustomerName: state.customer?.name ?? '',
+        initialCustomerPhone: state.customer?.phone ?? '',
+        orderTotalPiasters: state.total,
+        couriers: couriers,
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() => _deliveryOrder = result);
+    }
+  }
 
   void triggerCheckout() {
     if (!mounted) return;
@@ -1719,6 +1827,17 @@ class _CartPanelState extends State<_CartPanel> {
       InvoiceDetailsEntity? latestInvoice;
       res.fold((_) {}, (list) => latestInvoice = list.isNotEmpty ? list.first : null);
 
+      if (_deliveryOrder != null) {
+        final deliveryRepo = getIt<DeliveryRepository>();
+        final orderRef = latestInvoice?.shortRef ?? 'ORD-${DateTime.now().millisecondsSinceEpoch % 100000}';
+        await deliveryRepo.createDeliveryOrder(_deliveryOrder!.copyWith(
+          saleId: latestInvoice?.id,
+          orderRef: orderRef,
+          orderTotalPiasters: latestInvoice?.total ?? state.total,
+        ));
+        setState(() => _deliveryOrder = null);
+      }
+
       if (latestInvoice != null && mounted) {
         showDialog(
           context: context,
@@ -1774,6 +1893,17 @@ class _CartPanelState extends State<_CartPanel> {
       final res = await invoicesRepo.getInvoices(limit: 1);
       InvoiceDetailsEntity? latestInvoice;
       res.fold((_) {}, (list) => latestInvoice = list.isNotEmpty ? list.first : null);
+
+      if (_deliveryOrder != null) {
+        final deliveryRepo = getIt<DeliveryRepository>();
+        final orderRef = latestInvoice?.shortRef ?? 'ORD-${DateTime.now().millisecondsSinceEpoch % 100000}';
+        await deliveryRepo.createDeliveryOrder(_deliveryOrder!.copyWith(
+          saleId: latestInvoice?.id,
+          orderRef: orderRef,
+          orderTotalPiasters: latestInvoice?.total ?? state.total,
+        ));
+        setState(() => _deliveryOrder = null);
+      }
 
       if (latestInvoice != null && mounted) {
         showDialog(
@@ -1951,6 +2081,17 @@ class _CartPanelState extends State<_CartPanel> {
       final res = await invoicesRepo.getInvoices(limit: 1);
       InvoiceDetailsEntity? latestInvoice;
       res.fold((_) {}, (list) => latestInvoice = list.isNotEmpty ? list.first : null);
+
+      if (_deliveryOrder != null) {
+        final deliveryRepo = getIt<DeliveryRepository>();
+        final orderRef = latestInvoice?.shortRef ?? 'ORD-${DateTime.now().millisecondsSinceEpoch % 100000}';
+        await deliveryRepo.createDeliveryOrder(_deliveryOrder!.copyWith(
+          saleId: latestInvoice?.id,
+          orderRef: orderRef,
+          orderTotalPiasters: latestInvoice?.total ?? state.total,
+        ));
+        setState(() => _deliveryOrder = null);
+      }
 
       if (latestInvoice != null && mounted) {
         showDialog(
@@ -2681,6 +2822,57 @@ class _CartPanelState extends State<_CartPanel> {
                         ),
                       ),
                       SizedBox(height: isCompact ? 4 : 8),
+
+                      // Delivery Order Toggle
+                      Row(
+                        children: [
+                          Text(
+                            'طريقة الدفع:',
+                            style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey.shade700),
+                          ),
+                          const Spacer(),
+                          Flexible(
+                            child: InkWell(
+                              onTap: () => _toggleDeliveryMode(state),
+                              borderRadius: BorderRadius.circular(6),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: _deliveryOrder != null ? AppColors.primary : AppColors.surfaceContainerLow,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: _deliveryOrder != null ? AppColors.primary : AppColors.outlineVariant),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.delivery_dining_rounded, size: 15, color: _deliveryOrder != null ? Colors.white : AppColors.primary),
+                                    const SizedBox(width: 4),
+                                    Flexible(
+                                      child: Text(
+                                        _deliveryOrder != null
+                                            ? 'طلب دليفري (+${Money(_deliveryOrder!.deliveryFeePiasters).toDisplay()} ج.م)'
+                                            : 'طلب دليفري',
+                                        style: TextStyle(
+                                          fontFamily: 'Cairo',
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: _deliveryOrder != null ? Colors.white : AppColors.onSurface,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    if (_deliveryOrder != null) ...[
+                                      const SizedBox(width: 4),
+                                      const Icon(Icons.close_rounded, size: 12, color: Colors.white),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: isCompact ? 3 : 5),
 
                       // Payment Method Buttons: crisp single-line uniform height
                       Row(

@@ -19,8 +19,13 @@ import '../cubits/product_form_state.dart';
 
 class SimpleProductFormDialog extends StatelessWidget {
   final ProductEntity? product;
+  final String? initialQuery;
 
-  const SimpleProductFormDialog({super.key, this.product});
+  const SimpleProductFormDialog({
+    super.key,
+    this.product,
+    this.initialQuery,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +36,10 @@ class SimpleProductFormDialog extends StatelessWidget {
         constraints: const BoxConstraints(maxWidth: 720, maxHeight: 820),
         child: BlocProvider(
           create: (context) => getIt<ProductFormCubit>()..init(product),
-          child: _SimpleProductFormInternal(product: product),
+          child: _SimpleProductFormInternal(
+            product: product,
+            initialQuery: initialQuery,
+          ),
         ),
       ),
     );
@@ -40,8 +48,12 @@ class SimpleProductFormDialog extends StatelessWidget {
 
 class _SimpleProductFormInternal extends StatefulWidget {
   final ProductEntity? product;
+  final String? initialQuery;
 
-  const _SimpleProductFormInternal({this.product});
+  const _SimpleProductFormInternal({
+    this.product,
+    this.initialQuery,
+  });
 
   @override
   State<_SimpleProductFormInternal> createState() =>
@@ -82,7 +94,17 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
     if (p != null) {
       _loadExistingVariant(p.id);
     } else {
-      _generateBarcode();
+      final query = widget.initialQuery?.trim();
+      if (query != null && query.isNotEmpty) {
+        if (RegExp(r'^[0-9]+$').hasMatch(query)) {
+          _barcodeCtrl.text = query;
+        } else {
+          _nameCtrl.text = query;
+          _generateBarcode();
+        }
+      } else {
+        _generateBarcode();
+      }
     }
   }
 
@@ -207,7 +229,7 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
             backgroundColor: Colors.green.shade800,
           ),
         );
-        Navigator.of(context).pop(true);
+        Navigator.of(context).pop(cleanBarcode);
       } else {
         // Editing existing simple product
         final prod = widget.product!;
@@ -255,7 +277,7 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
             backgroundColor: Colors.green.shade800,
           ),
         );
-        Navigator.of(context).pop(true);
+        Navigator.of(context).pop(cleanBarcode);
       }
     } catch (e) {
       if (!mounted) return;

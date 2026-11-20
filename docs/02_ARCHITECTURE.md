@@ -1,40 +1,89 @@
-# Architecture
+# 02 — المعمارية البرمجية والأنماط المعمارية (Architecture & Patterns)
 
-## Clean Architecture Layers
-Each feature under `lib/features/<feature_name>/` is organized into:
-- **Presentation:** Screens, Cubits/States, Widgets
-- **Domain:** Entities, Repository/Facade Interfaces, Domain Services (e.g., `InstallmentCalculator`, `PromotionEngine`), Use Cases
-- **Data:** Drift Local Data Sources, Repository/Facade Implementations, Services (`ManagerPinService`, Printing Services)
+يعتمد نظام **Bay3ah ERP** على نمط **المعمارية النظيفة (Clean Architecture)** مقترناً بنمط إدارة الحالة **BLoC / Cubit** وحقن التبعيات التلقائي عبر **GetIt + Injectable**، لضمان استقلالية منطق الأعمال التامة عن أطر العمل والواجهات وقواعد البيانات.
 
-## Core Infrastructure (`lib/core/`)
-- **`TxWriter` (Atomic Transactions):** Every write operation executes inside a single Drift transaction:
-  1. `writeFn()` — the actual database mutations
-  2. `beforeAuditWrite` hook (test injection point for atomicity tests)
-  3. Insert into `sync_queue`
-  4. Insert into `audit_logs`
-  If any step throws, the entire transaction rolls back cleanly.
-- **`Money` Value Object:** All monetary values are stored strictly as **integer piasters** (1 EGP = 100 piasters) to eliminate floating-point rounding bugs.
-- **`FeatureGate`:** Dynamic feature flagging backed by `app_meta` (e.g., `installments`, `promotions`, `loyalty`, `shifts`).
-- **`ArabicTextHelper`:** Normalizes Arabic strings (unifying Alef variants `[أإآٱ] -> ا`, Yaa `ى -> ي`, Taa Marbuta `ة -> ه`, stripping Tashkeel, collapsing whitespace) for accurate duplicate detection and real-time similarity matching.
-- **`ManagerPinService`:** Salted SHA-256 PIN verification with failed-attempt tracking and 15-minute lockout protection.
+```mermaid
+flowchart TD
+    subgraph Presentation ["طبقة الواجهات (Presentation Layer)"]
+        UI["Screens & Widgets (RTL / Cairo)"] --> Cubit["Bloc / Cubit State Handlers"]
+    end
 
-## Single Quantity Path Rule
-`product_variants.quantity` changes flow through auditable transactional paths (`InventoryLocalDataSource.applyStockMovement()` or atomic variant creation / purchase receipt / supplier return transactions). Every stock delta writes a corresponding `inventory_logs` row with `refType`, `refId`, `reason`, and `userId`.
+    subgraph Domain ["طبقة الأعمال المجردة (Domain Layer)"]
+        Cubit --> RepoInterface["Repository Interfaces"]
+        Cubit --> ValueObjects["Value Objects (Money, RetailSector)"]
+    end
 
-Movement types: `sale`, `return`, `receive`, `purchase_return`, `adjustment`, `stocktake`.
+    subgraph Data ["طبقة البيانات والتنفيذ (Data Layer)"]
+        RepoInterface --> RepoImpl["Repository Implementations"]
+        RepoImpl --> DataSource["Local DataSources (Drift DAOs)"]
+        DataSource --> TxWriter["TxWriter (Atomic Transactions)"]
+        TxWriter --> AppDB["AppDatabase (Drift / SQLite 3.53.4)"]
+    end
 
-## Cash Drawer Integrity (`cash_movements`)
-Every cash-affecting operation writes an atomic `cash_movements` record linked to the active `shiftId`:
-- Sales & Split Payments (`sale`)
-- Customer Returns (`return`)
-- Installment Down Payments (`installment_down`)
-- Individual & Bulk FIFO Installment Payments (`installment_payment`)
-- Expenses (`expense`)
-- Supplier Payments & Supplier Purchase Return Cash Refunds (`supplier_payment`, `purchase_return`)
+    subgraph CrossCutting ["الخدمات العابرة المشتركة (Cross-Cutting Services)"]
+        FeatureGate["FeatureGate (Feature Toggles)"]
+        ManagerPin["ManagerPinService (Security PIN)"]
+        AppBranding["AppBranding (Dynamic Theme)"]
+        UpgradeSafety["Upgrade Safety Engine (Marker & Backup)"]
+    end
 
-## Hardware Integration
-- **POS Barcode Scanner:** Global keyboard event listener in `PosScreen` captures rapid hardware scanner keystrokes + Enter terminator and automatically looks up and adds the matching variant SKU to the cart, with smart autofocus management.
-- **Label & Receipt Printing:** Dedicated PDF/printing services supporting thermal barcode label rolls (50×30mm, 38×25mm), A4 label grids, and 80mm/58mm thermal receipts.
+    DataSource -.-> CrossCutting
+    UI -.-> CrossCutting
+```
 
-## Navigation Strategy
-`MainLayout` provides a persistent collapsible RTL sidebar with role-based menu filtering. Full-screen operational screens like POS can be launched directly while keeping state clean and responsive.
+---
+
+## 1. الطبقات المعمارية (Architectural Layers)
+
+### أ. طبقة العرض والواجهات (Presentation Layer)
+- **الشاشات والمكونات (Screens & Widgets)**: واجهات عربية أصيلة تدعم توجيه النصوص من اليمين لليسار (RTL) مع خط Cairo.
+- **إدارة الحالة (Cubit / Bloc)**: تعتمد كل ميزة على Cubit مخصص (مثل `PosCubit`, `ProductFormCubit`, `ShiftCubit`, `InstallmentsCubit`) لفصل دورة حياة الواجهة عن معالجة البيانات، واستقبال حالات واضحة (`Loading`, `Success`, `Failure`).
+
+### ب. طبقة النطاق والأعمال (Domain Layer)
+- **الكائنات والكيانات (Entities & Value Objects)**:
+  - كائن المبالغ المالية (`Money`): يتعامل مع العملات بالوحدات الصغرى (القروش - Piasters كأعداد صحيحة `int`) لمنع أخطاء التقريب الشائعة في الأعداد العشرية العائمة (`Floating Point Drift`).
+  - قطاعات التجزئة (`RetailSector`): يحدد سلوك الحقول وشاشات الإدخال بناءً على نشاط المتجر.
+- **عقود المستودعات (Repository Interfaces)**: واجهات مجردة تعيد كائنات `Either<Failure, T>` باستخدام مكتبة `dartz` لضمان المعالجة الوظيفية للأخطاء.
+
+### ج. طبقة البيانات والتخزين (Data Layer)
+- **مصادر البيانات المحلية (Local DataSources)**: تتعامل مباشرة مع جداول ومكتبات Drift.
+- **منفذ المعاملات الذرية (`TxWriter`)**: يضمن تنفيذ العمليات المركبة (مثل: حفظ الفاتورة + خصم المخزون + تسجيل حركة الخزينة + تسجيل سجل التدقيق) داخل معاملة قاعدة بيانات واحدة لا تتجزأ.
+- **قاعدة البيانات (`AppDatabase`)**:
+  - مشغلة بواسطة محرك SQLite المدمج عالي الأداء (`3.53.4`).
+  - تعمل بنمط `WAL` (`Write-Ahead Logging`) لتحقيق أعلى سرعة قراءة وكتابة متزامنة.
+
+---
+
+## 2. المكونات الهندسية الأساسية (Core Cross-Cutting Components)
+
+### 1. منفذ المعاملات الذرية (`TxWriter`)
+يُعد صمام الأمان لمنع أي تلوث أو تجزئة في البيانات. عند تنفيذ أي عملية مالية أو مخزنية، يتم استخدام نمط:
+```dart
+await txWriter.write((tx) async {
+  // 1. إنشاء سجل الفاتورة
+  // 2. إدخال عناصر الفاتورة
+  // 3. خصم أرصدة المخزون
+  // 4. إضافة النقدية إلى حركة الخزينة
+  // 5. كتابة سجل تدقيق الحركات
+});
+```
+إذا تعثرت أي خطوة، تتراجع SQLite تلقائياً وبشكل فوري عن كافة الخطوات.
+
+### 2. محدد سياق الفرع (`BranchProvider`)
+يوفر عزل بيانات المتجر وربط كافة السجلات بمعرف الفرع النشط (`branchId`)، مما يضمن أمان وسلامة البيانات حتى في حال الانتقال لمزامنة فروع متعددة مستقبلاً.
+
+### 3. بوابة الميزات (`FeatureGate`)
+تتحكم ديناميكياً في الميزات المتاحة للمتجر بناءً على إعدادات الإدارة أو نوع النشاط (تفعيل/تعطيل الأقساط، تفعيل/تعطيل الموردين، تحديد وضع البيع البسيط، إلخ).
+
+### 4. محرك الهوية البصرية الديناميكية (`AppBranding`)
+يتيح تغيير اسم النظام وألوانه بالكامل في وقت التشغيل (Runtime) دون الحاجة لإعادة ترجمة التطبيق، مع إشعار كافة شاشات التطبيق بالتحديث فوراً عبر `ValueNotifier`.
+
+### 5. حارس رمز الأمان للمدير (`ManagerPinService`)
+طبقة حماية أمنية تقفل العمليات الحساسة (مثل فتح الدرج، حذف فاتورة، استرجاع نسخة احتياطية، جدولة أقساط) برقم سري مع قفل تدريجي عند المحاولات الخاطئة المتكررة.
+
+### 6. منظومة أمان الترقية والمتانة (Upgrade Safety & Durability Engine)
+مدمجة في قلب دورة إقلاع التطبيق [lib/main.dart](file:///e:/flutter%20projects/erp%20systems/clothes_erp/lib/main.dart#L150-L200):
+- فحص ما قبل الإقلاع: يفحص علامات الترقية وسلامة الهيدر قبل تشغيل التبعيات.
+- النسخ الاحتياطي الفيزيائي: ينفذ لقطة ذرية بـ `VACUUM INTO` مع فحص الهاش الكنسي `canonical SHA-256`.
+- إلغاء نافذة الخطر بعد الاعتماد: ينفذ ترقيات `onUpgrade` داخل معاملة واحدة متضمنة `PRAGMA user_version`.
+- متانة فواتير الكاشير: ينفذ `PRAGMA wal_checkpoint(PASSIVE)` فور اكتمال الدفع لحفظ الفاتورة على القرص فوراً.

@@ -1,33 +1,77 @@
-# Testing Strategy — Orkeed Clothes ERP
+# 08 — استراتيجية الاختبارات الآلية وضمان الجودة (Testing Strategy)
 
-## Current Test Suite Status
-- **Total Passing Tests:** **474** automated tests across **60+ test files**.
-- **Static Analysis:** **0 issues** (`flutter analyze`).
+---
 
-## Test Categories
-1. **Schema & Migration Safety Tests (`schema_test.dart`, `migration_safety_test.dart`, `schema_migration_test.dart`, `promotions_migration_v10_test.dart`):**
-   - CHECK constraints, unique indexes, foreign keys, and idempotent schema upgrades.
-2. **Atomicity & Transaction Tests (`cash_movements_test.dart`, `inventory_local_test.dart`, `pos_local_test.dart`):**
-   - Inject failures via `beforeAuditWrite` hook and verify full rollback across all tables.
-3. **Domain & Business Logic Tests:**
-   - **Product Duplicate Prevention (`product_duplicate_prevention_test.dart`):** 13 tests verifying `ArabicTextHelper` normalization, DB duplicate blocking (`createProduct`, `createProductWithVariants`, `updateProduct`), and `ProductFormCubit` real-time similarity & duplicate states.
-   - **Bulk Installment FIFO Payment (`bulk_installment_payment_test.dart`):** 5 tests verifying FIFO allocation across multiple contracts, exact total completion, overpayment rejection, zero/negative rejection, wrong Manager PIN rejection, and `cash_movements` / `shiftId` drawer sync.
-   - **Installments & PIN (`installments_facade_test.dart`, `installments_cash_movement_test.dart`, `manager_pin_service_test.dart`, `installment_calculator_test.dart`):** Full lifecycle, schedule math, overdue detection, and PIN lockout.
-   - **Purchases & Returns (`purchase_returns_test.dart`, `supplier_payment_logic_test.dart`, `goods_receipt_cycle_test.dart`):** Stock movements, FIFO supplier payments, purchase returns & balance reconciliation.
-   - **Promotions & POS (`promotion_engine_test.dart`, `pos_promotions_integration_test.dart`, `phase3_split_payment_test.dart`, `barcode_search_test.dart`, `barcode_label_printing_test.dart`):** Split payments, promo evaluation, barcode search, and label printing.
-   - **Dashboard, Shifts, Payroll & Security (`dashboard_local_test.dart`, `shift_local_test.dart`, `cashier_payroll_test.dart`, `purchases_role_security_test.dart`, `feature_gate_test.dart`).**
-4. **Widget Tests (`installments_grouped_widget_test.dart`, `installments_list_screen_test.dart`, `record_payment_screen_test.dart`, `promotions_admin_ui_test.dart`, `main_layout_sidebar_test.dart`).**
+## 1. الموقف الإجمالي لجودة الكود (Quality & Test Suite Status)
 
-## How to Run
-```bash
-flutter analyze
-flutter test
-flutter test --reporter expanded
+```text
+======================================================================
+  إجمالي الاختبارات الآلية المنفذة: 581 اختباراً ناجحاً بنسبة 100%
+  الأخطاء أو الإخفاقات: 0 FAILED
+  الاختبارات المعلقة: 0 SKIPPED
+  التحليل الكودي الساكن (flutter analyze): 0 issues found!
+======================================================================
 ```
 
-## Guidelines for Adding New Tests
-1. Use in-memory Drift DB: `AppDatabase(NativeDatabase.memory())`.
-2. Initialize `BranchProvider`, `TxWriter`, `FeatureGate`, and DataSource/Facade.
-3. Clean up hooks and close DB in `tearDown(() async => await db.close())`.
-4. Use `await expectLater(..., throwsA(...))` for async exception assertions.
-5. Never depend on external mocking libraries not listed in `pubspec.yaml`; use clean lightweight Fakes.
+تخضع كافة ميزات **Bay3ah ERP** لشبكة اختبارات مؤتمتة متكاملة تشمل اختبارات الوحدة (Unit)، اختبارات التكامل (Integration)، اختبارات واجهات المستخدم (Widget Tests)، واختبارات الترقية ومحاكاة انقطاع الطاقة في البيئات الحقيقية.
+
+---
+
+## 2. تصنيف حزم الاختبارات الـ 581 (Test Suites Breakdown)
+
+### أ. حزمة أمان الترقية ومتانة قواعد البيانات (Upgrade Safety & Durability Suite) — 29 اختباراً
+1. **اختبارات مؤشر الترقية (`test/migration_marker_service_test.dart` - 11 اختباراً):**
+   - الكتابة الذرية عبر الملف المؤقت `.tmp` وتدفق `flush()`.
+   - الاستبدال المباشر على ويندوز عبر `File.rename()` دون حذف مسبق.
+   - ترقية وتحديث الحالات (`verified`, `restoreInProgress`).
+   - الرفض الصارم للمؤشرات التالفة أو القيم المجهولة أو الإصدارات غير المدعومة.
+   - تنظيف الملفات المؤقتة اليتيمة بأمان.
+2. **اختبارات النسخ الاحتياطي الذري (`test/pre_migration_backup_service_test.dart` - 3 اختبارات):**
+   - النسخ بـ `VACUUM INTO`، فحص `quick_check`، ومطابقة الهاش الكنسي `canonical SHA-256`.
+   - ترقية النسخ المعلقة دون إعادة استهلاك موارد القرص.
+   - سياسة الاحتفاظ بالنسخ (Retention Policy) وحماية النسخة النشطة والوحيدة.
+3. **اختبارات استرجاع الطوارئ (`test/emergency_recovery_service_test.dart` - 4 اختبارات):**
+   - كشف مؤشرات الترقية المعلقة أو تلف هيدر قاعدة البيانات عند الإقلاع.
+   - الاسترجاع اليدوي الآمن وتنظيف المؤشرات.
+   - تصدير التقرير التشخيصي المشفر الخالي تماماً من بيانات العملاء والمبيعات.
+4. **اختبارات واجهة شاشة الطوارئ (`test/emergency_recovery_screen_test.dart` - 2 اختباران):**
+   - عرض واجهة الطوارئ وتفاصيل النسخة الاحتياطية المعتمدة.
+   - منع الاسترجاع إلا بعد إدخال رمز الأمان للمدير (Manager PIN).
+5. **اختبارات الترقية الحقيقية (`test/real_v1_to_v11_migration_test.dart` - 5 اختبارات):**
+   - قراءة إصدار محرك SQLite النشط (3.53.4).
+   - ترقية حقيقية لقواعد بيانات `AppDatabase` من V1 إلى V11 و V6 إلى V11 مع تطابق الهاش 100%.
+   - إثبات انعدام نافذة الخطر بعد الـ commit بنقل `user_version` داخل المعاملة.
+   - إثبات الاسترجاع اليدوي ومطابقة الهاش الصارم 100%.
+6. **اختبارات محاكاة انقطاع الطاقة (`test/upgrade_kill_harness_test.dart` - 4 اختبارات):**
+   - فحص خوارزمية الهاش الكنسي وتمييز القيم الفارغة والمعدومة.
+   - محاكاة فصل الطاقة قبل الـ commit والتراجع التلقائي في SQLite.
+   - محاكاة فصل الطاقة بعد الـ commit وثبات المعاملة المكتملة.
+
+### ب. حزمة نطاق الأعمال والمنطق المحاسبي (Domain & Business Logic) — 240+ اختباراً
+- **منع تكرار المنتجات والأكواد (`product_duplicate_prevention_test.dart`):** تطبيع الأسماء العربية، الحظر الصارم للمكررات، والتنبيه اللحظي بالمتشابهات.
+- **السداد المجمع للأقساط بنظام FIFO (`bulk_installment_payment_test.dart`):** السداد بنظام الأقدم فالأحدث، رفض المبالغ الزائدة، وحماية رمز المدير.
+- **عقود الأقساط والجدولة (`installments_facade_test.dart`, `installment_calculator_test.dart`, `manager_pin_service_test.dart`):** دورة حياة القسط، كشف التأخير، وفترات القفل المؤقت.
+- **المشتريات والموردين (`purchase_returns_test.dart`, `supplier_payment_logic_test.dart`, `goods_receipt_cycle_test.dart`):** تسوية الحسابات، رد النقدية للدرج، وحركات المخزون.
+- **محرك العروض والخصومات (`promotion_engine_test.dart`, `pos_promotions_integration_test.dart`):** حساب الخصومات بالقروش وطباعتها على الإيصالات.
+
+### ج. حزمة نقطة البيع والورديات والخزينة (POS & Cash Durability) — 180+ اختباراً
+- **الدفع المجزأ (`phase3_split_payment_test.dart`):** تقسيم الفاتورة بين نقدي، فيزا، إنستاباي ومحافظ.
+- **متانة الخزينة والوردية (`shift_local_test.dart`, `cash_movements_test.dart`):** مطابقة الدرج وحساب العجز والزيادة وربط الحركات بالوردية.
+- **قارئ الباركود والطباعة (`barcode_search_test.dart`, `barcode_label_printing_test.dart`):** استماع الهاردوير والطباعة الحرارية.
+
+### د. حزمة واجهات المستخدم والمكونات (Widget Tests) — 130+ اختباراً
+- اختبارات شاشات الأقساط المجمعة، شاشات البيع، القائمة الجانبية الثابتة، وشاشات الإعدادات والتقارير.
+
+---
+
+## 3. إرشادات وقواعد كتابة الاختبارات الجديدة (Guidelines for New Tests)
+
+1. **العزل التام (Test Isolation):**
+   - في اختبارات منطق الأعمال: استخدم قاعدة بيانات Drift بالذاكرة `AppDatabase(NativeDatabase.memory())`.
+   - في اختبارات الترقية والملفات: استخدم مجلد مؤقت آمن ينظف نفسه في `tearDown()`.
+2. **منع الأقفال المؤقتة على ويندوز:**
+   - تأكد دائماً من إغلاق اتصالات قاعدة البيانات والملفات عبر `await db.close()` أو `await executor.close()` في `tearDown()`.
+3. **التعامل مع الاستثناءات غير المتزامنة:**
+   - استخدم `await expectLater(..., throwsA(isA<SpecificException>()))` لتوثيق حالات الفشل المتوقعة بوضوح.
+4. **عدم الاعتماد على مكتبات Mocking ثقيلة:**
+   - اعتمد على كائنات الفحص الخفيفة (Lightweight Fakes) المنشأة ذاتياً لضمان استقرار وسرعة الاختبارات.

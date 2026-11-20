@@ -213,5 +213,40 @@ class InstallmentDetailCubit extends Cubit<InstallmentDetailState> {
       },
     );
   }
+
+  Future<bool> updateLegalStatus(bool isLegalCase) async {
+    final res = await _facade.updateLegalStatus(
+      contractId: contractId,
+      isLegalCase: isLegalCase,
+    );
+    return res.fold(
+      (failure) {
+        emit(state.copyWith(errorMessage: failure.message));
+        return false;
+      },
+      (_) {
+        load();
+        return true;
+      },
+    );
+  }
+
+  Future<bool> markPromissoryNoteDelivered(bool delivered) async {
+    final res = await _facade.markPromissoryNoteDelivered(
+      contractId: contractId,
+      delivered: delivered,
+      deliveredAt: delivered ? DateTime.now() : null,
+    );
+    return res.fold(
+      (failure) {
+        emit(state.copyWith(errorMessage: failure.message));
+        return false;
+      },
+      (_) {
+        load();
+        return true;
+      },
+    );
+  }
 }
 

@@ -182,6 +182,11 @@ class _InstallmentsListViewState extends State<_InstallmentsListView> {
                               selected: state.filter == 'overdue'),
                           const SizedBox(width: 8),
                           _filterChip(context,
+                              label: 'إجراء قانوني',
+                              value: 'legal_case',
+                              selected: state.filter == 'legal_case'),
+                          const SizedBox(width: 8),
+                          _filterChip(context,
                               label: 'مكتمل',
                               value: 'completed',
                               selected: state.filter == 'completed'),
@@ -190,6 +195,79 @@ class _InstallmentsListViewState extends State<_InstallmentsListView> {
                               label: 'ملغي',
                               value: 'cancelled',
                               selected: state.filter == 'cancelled'),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+                BlocBuilder<InstallmentsListCubit, InstallmentsListState>(
+                  builder: (context, state) {
+                    return SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          Icon(Icons.date_range_rounded, size: 16, color: AppColors.primary),
+                          const SizedBox(width: 8),
+                          _dateFilterChip(context,
+                              label: 'كل المواعيد',
+                              value: 'all_dates',
+                              selected: state.dateFilter == 'all_dates'),
+                          const SizedBox(width: 6),
+                          _dateFilterChip(context,
+                              label: 'مستحق اليوم',
+                              value: 'today',
+                              selected: state.dateFilter == 'today'),
+                          const SizedBox(width: 6),
+                          _dateFilterChip(context,
+                              label: 'مستحق هذا الأسبوع',
+                              value: 'this_week',
+                              selected: state.dateFilter == 'this_week'),
+                          const SizedBox(width: 6),
+                          _dateFilterChip(context,
+                              label: 'مستحق هذا الشهر',
+                              value: 'this_month',
+                              selected: state.dateFilter == 'this_month'),
+                          const SizedBox(width: 6),
+                          _dateFilterChip(context,
+                              label: state.dateFilter == 'custom' &&
+                                      state.customFromDate != null &&
+                                      state.customToDate != null
+                                  ? 'من ${state.customFromDate!.day}/${state.customFromDate!.month} إلى ${state.customToDate!.day}/${state.customToDate!.month}'
+                                  : 'فترة مخصصة 📅',
+                              value: 'custom',
+                              selected: state.dateFilter == 'custom',
+                              onCustomTap: () async {
+                                final now = DateTime.now();
+                                final range = await showDateRangePicker(
+                                  context: context,
+                                  firstDate: DateTime(now.year - 2),
+                                  lastDate: DateTime(now.year + 5),
+                                  initialDateRange: state.customFromDate != null && state.customToDate != null
+                                      ? DateTimeRange(start: state.customFromDate!, end: state.customToDate!)
+                                      : DateTimeRange(start: now, end: now.add(const Duration(days: 7))),
+                                  builder: (context, child) {
+                                    return Theme(
+                                      data: Theme.of(context).copyWith(
+                                        colorScheme: ColorScheme.light(
+                                          primary: AppColors.primary,
+                                          onPrimary: Colors.white,
+                                          surface: Colors.white,
+                                          onSurface: AppColors.onSurface,
+                                        ),
+                                      ),
+                                      child: child!,
+                                    );
+                                  },
+                                );
+                                if (range != null && context.mounted) {
+                                  context.read<InstallmentsListCubit>().setDateFilter(
+                                    'custom',
+                                    customFrom: range.start,
+                                    customTo: range.end,
+                                  );
+                                }
+                              }),
                         ],
                       ),
                     );
@@ -312,6 +390,47 @@ class _InstallmentsListViewState extends State<_InstallmentsListView> {
       labelStyle: TextStyle(
         color: selected ? AppColors.primary : Colors.black87,
         fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+      ),
+    );
+  }
+
+  Widget _dateFilterChip(
+    BuildContext context, {
+    required String label,
+    required String value,
+    required bool selected,
+    VoidCallback? onCustomTap,
+  }) {
+    return InkWell(
+      onTap: () {
+        if (value == 'custom' && onCustomTap != null) {
+          onCustomTap();
+        } else {
+          context.read<InstallmentsListCubit>().setDateFilter(value);
+        }
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.primary
+              : AppColors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: selected ? AppColors.primary : AppColors.outlineVariant,
+            width: 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontFamily: 'Cairo',
+            color: selected ? Colors.white : AppColors.onSurface,
+            fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+          ),
+        ),
       ),
     );
   }
@@ -688,25 +807,41 @@ class _CustomerInstallmentsCardState extends State<CustomerInstallmentsCard> {
                       ),
                 subtitle: Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: Wrap(
-                    spacing: 12,
-                    runSpacing: 6,
-                    children: [
-                      _metricChip(
-                        Icons.description_rounded,
-                        s.contractsCount == 1
-                            ? 'المدة: ${s.contracts.first.durationMonths} شهور'
-                            : '${s.contractsCount} عقود',
-                      ),
-                      _metricChip(
-                        Icons.money_off_rounded,
-                        'متبقي: ${Money(s.totalRemainingPiasters).toDisplay()} ج.م',
-                      ),
-                      _metricChip(
-                        Icons.calendar_month_rounded,
-                        'قسط شهري: ${Money(s.totalMonthlyAmountPiasters).toDisplay()} ج.م',
-                      ),
-                    ],
+                  child: Builder(
+                    builder: (context) {
+                      final upcomingDates = s.contracts
+                          .map((c) => c.nextDueDate)
+                          .whereType<DateTime>()
+                          .toList()
+                        ..sort();
+                      final earliestDue = upcomingDates.isNotEmpty ? upcomingDates.first : null;
+
+                      return Wrap(
+                        spacing: 12,
+                        runSpacing: 6,
+                        children: [
+                          _metricChip(
+                            Icons.description_rounded,
+                            s.contractsCount == 1
+                                ? 'المدة: ${s.contracts.first.durationMonths} شهور'
+                                : '${s.contractsCount} عقود',
+                          ),
+                          _metricChip(
+                            Icons.money_off_rounded,
+                            'متبقي: ${Money(s.totalRemainingPiasters).toDisplay()} ج.م',
+                          ),
+                          _metricChip(
+                            Icons.calendar_month_rounded,
+                            'قسط شهري: ${Money(s.totalMonthlyAmountPiasters).toDisplay()} ج.م',
+                          ),
+                          if (earliestDue != null)
+                            _metricChip(
+                              Icons.event_rounded,
+                              'استحقاق القادم: ${earliestDue.year}/${earliestDue.month.toString().padLeft(2, '0')}/${earliestDue.day.toString().padLeft(2, '0')}',
+                            ),
+                        ],
+                      );
+                    },
                   ),
                 ),
                 trailing: IconButton(
@@ -724,6 +859,10 @@ class _CustomerInstallmentsCardState extends State<CustomerInstallmentsCard> {
                   final shortId = contract.id.length > 8
                       ? contract.id.substring(0, 8)
                       : contract.id;
+                  final nextDue = contract.nextDueDate;
+                  final nextDueStr = nextDue != null
+                      ? ' | استحقاق: ${nextDue.year}/${nextDue.month.toString().padLeft(2, '0')}/${nextDue.day.toString().padLeft(2, '0')}'
+                      : '';
                   return ListTile(
                     dense: true,
                     leading: Icon(Icons.receipt_long_rounded,
@@ -731,7 +870,7 @@ class _CustomerInstallmentsCardState extends State<CustomerInstallmentsCard> {
                     title: Text('عقد #$shortId',
                         style: const TextStyle(fontWeight: FontWeight.w600)),
                     subtitle: Text(
-                      'المدة: ${contract.durationMonths} شهور | متبقي: ${Money(contract.remainingPiasters).toDisplay()} ج.م | قسط: ${Money(contract.monthlyAmountPiasters).toDisplay()} ج.م',
+                      'المدة: ${contract.durationMonths} شهور | متبقي: ${Money(contract.remainingPiasters).toDisplay()} ج.م | قسط: ${Money(contract.monthlyAmountPiasters).toDisplay()} ج.م$nextDueStr',
                       style: const TextStyle(fontSize: 12),
                     ),
                     trailing: Container(
@@ -789,6 +928,12 @@ class _CustomerInstallmentsCardState extends State<CustomerInstallmentsCard> {
           label: 'متأخر',
           color: Colors.red.shade800,
           backgroundColor: Colors.red.shade50,
+        );
+      case 'legal_case':
+        return _StatusBadge(
+          label: 'إجراء قانوني',
+          color: Colors.amber.shade900,
+          backgroundColor: Colors.amber.shade50,
         );
       case 'completed':
         return _StatusBadge(

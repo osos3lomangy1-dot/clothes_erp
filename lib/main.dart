@@ -1,10 +1,15 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:path_provider/path_provider.dart';
 import 'core/constants/app_colors.dart';
+import 'core/database/emergency_recovery_service.dart';
+import 'core/database/migration_marker_service.dart';
 import 'core/di/injection.dart';
 import 'core/features/feature_gate.dart';
+import 'core/presentation/screens/emergency_recovery_screen.dart';
 import 'core/services/crash_logger_service.dart';
 import 'core/services/google_drive_backup_service.dart';
 import 'core/services/local_backup_service.dart';
@@ -16,6 +21,8 @@ import 'features/auth/presentation/cubits/auth_state.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/dashboard/presentation/screens/admin_dashboard_screen.dart';
 import 'features/dashboard/presentation/screens/cashier_dashboard_screen.dart';
+import 'features/invoices/data/services/receipt_settings_service.dart';
+import 'features/barcode_printing/services/barcode_settings_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -145,8 +152,59 @@ void main() async {
   // Firebase intentionally disabled on Windows.
   // See Phase 0 decision + TD for full removal.
   Logging.info('🛡️ [Safe Mode] Running without Firebase');
+
+  // Emergency Recovery Pre-Flight Check
+  try {
+    final supportDir = await getApplicationSupportDirectory();
+    if (!supportDir.existsSync()) {
+      await supportDir.create(recursive: true);
+    }
+    final activeDbFile = File('${supportDir.path}/clothes_erp.sqlite');
+    final markerService = MigrationMarkerService(supportDir);
+    final recoveryService = EmergencyRecoveryService(
+      activeDbFile: activeDbFile,
+      markerService: markerService,
+    );
+
+    final emergencyStatus = await recoveryService.checkRecoveryNeeded();
+    if (emergencyStatus.isEmergency) {
+      Logging.error('🚨 [Emergency State Detected] Reason: ${emergencyStatus.reason}');
+      runApp(
+        Directionality(
+          textDirection: TextDirection.rtl,
+          child: MaterialApp(
+            title: 'طوارئ النظام - Bay3ah ERP',
+            debugShowCheckedModeBanner: false,
+            theme: ThemeData(
+              fontFamily: 'Cairo',
+              colorSchemeSeed: AppColors.primary,
+              useMaterial3: true,
+            ),
+            home: EmergencyRecoveryScreen(
+              recoveryService: recoveryService,
+              status: emergencyStatus,
+              onRestored: () async {
+                await _startNormalApp();
+              },
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+  } catch (e, stack) {
+    Logging.error('Failed to run emergency recovery check: $e\n$stack');
+  }
+
+  await _startNormalApp();
+}
+
+Future<void> _startNormalApp() async {
   await configureDependencies();
-  await AppBranding.loadFromFeatureGate(getIt<FeatureGate>());
+  final gate = getIt<FeatureGate>();
+  await AppBranding.loadFromFeatureGate(gate);
+  await ReceiptSettingsService.loadFromFeatureGate(gate);
+  await BarcodeSettingsService.loadFromFeatureGate(gate);
   // Silent daily local SQLite auto-backup + Google Drive auto-upload (non-blocking)
   unawaited(getIt<LocalBackupService>().runAutoBackupIfDue());
   unawaited(getIt<GoogleDriveBackupService>().runAutoDriveBackupIfDue());

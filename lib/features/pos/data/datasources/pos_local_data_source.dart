@@ -246,6 +246,8 @@ class PosLocalDataSource {
       operation: 'insert',
       userId: cashierId,
     );
+    // Flush committed WAL pages to disk to guarantee printed receipt durability on power-cut
+    await _db.flushWal();
     return effectiveSaleId;
   }
 }

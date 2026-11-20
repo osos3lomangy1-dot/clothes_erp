@@ -11,6 +11,8 @@ import '../cubits/shift_cubit.dart';
 import '../cubits/shift_state.dart';
 import '../widgets/close_shift_dialog.dart';
 import '../widgets/open_shift_dialog.dart';
+import '../widgets/z_report_dialog.dart';
+import '../../domain/repositories/shift_repository.dart';
 
 class ShiftScreen extends StatelessWidget {
   const ShiftScreen({super.key});
@@ -63,12 +65,13 @@ class _ShiftView extends StatelessWidget {
       currentUserId = authState.user.id;
     }
 
-    if (state.activeSummary == null) return;
+    final activeSummary = state.activeSummary;
+    if (activeSummary == null) return;
 
-    showDialog(
+    showDialog<bool>(
       context: context,
       builder: (_) => CloseShiftDialog(
-        summary: state.activeSummary!,
+        summary: activeSummary,
         onClose: (countedPiasters) async {
           final cubit = context.read<ShiftCubit>();
           final ok = await cubit.closeShift(
@@ -81,6 +84,41 @@ class _ShiftView extends StatelessWidget {
           return null;
         },
       ),
+    ).then((closed) async {
+      if (closed == true && context.mounted) {
+        final shiftId = activeSummary.shift.id;
+        final repo = getIt<ShiftRepository>();
+        final res = await repo.getShiftSummary(shiftId);
+        if (!context.mounted) return;
+        res.fold((_) {}, (summary) {
+          showDialog(
+            context: context,
+            builder: (_) => ZReportDialog(summary: summary),
+          );
+        });
+      }
+    });
+  }
+
+  void _showZReportForShift(BuildContext context, String shiftId) async {
+    final repo = getIt<ShiftRepository>();
+    final res = await repo.getShiftSummary(shiftId);
+    if (!context.mounted) return;
+    res.fold(
+      (failure) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('تعذر تحميل تقرير الوردية: ${failure.message}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      },
+      (summary) {
+        showDialog(
+          context: context,
+          builder: (_) => ZReportDialog(summary: summary),
+        );
+      },
     );
   }
 
@@ -572,6 +610,7 @@ class _ShiftView extends StatelessWidget {
                     DataColumn(label: Text('الفعلي (المعدود)', style: TextStyle(fontWeight: FontWeight.bold))),
                     DataColumn(label: Text('الفارق (العجز/الزيادة)', style: TextStyle(fontWeight: FontWeight.bold))),
                     DataColumn(label: Text('الحالة', style: TextStyle(fontWeight: FontWeight.bold))),
+                    DataColumn(label: Text('تقرير Z', style: TextStyle(fontWeight: FontWeight.bold))),
                   ],
                   rows: shifts.map((s) {
                     final diff = s.difference ?? 0;
@@ -617,6 +656,15 @@ class _ShiftView extends StatelessWidget {
                               ),
                             ),
                           ),
+                        ),
+                        DataCell(
+                          s.isOpen
+                              ? const SizedBox.shrink()
+                              : IconButton(
+                                  icon: Icon(Icons.receipt_long_rounded, color: AppColors.primary, size: 20),
+                                  tooltip: 'عرض وطباعة تقرير Z-Report',
+                                  onPressed: () => _showZReportForShift(context, s.id),
+                                ),
                         ),
                       ],
                     );

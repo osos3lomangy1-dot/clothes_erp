@@ -1,24 +1,69 @@
-# Orkeed Clothes ERP — Project Overview
+# 01 — نظرة عامة على المشروع (Bay3ah ERP Overview)
 
-## Project Name
-Orkeed Clothes ERP (`clothes_erp`)
+## 1. الهوية والاسم التجاري (Identity & Naming)
+- **الاسم التجاري الرسمي:** **Bay3ah ERP (نظام بيعة لإدارة المتاجر ونقاط البيع)**
+- **اسم الملف التنفيذي المترجم على ويندوز:** `bay3ah.exe` (تم ضبطه في `windows/CMakeLists.txt`)
+- **المعرف الداخلي للمستودع:** `clothes_erp` (في `pubspec.yaml`)
+- **المنصة الأساسية الأولى:** **Windows Desktop (Windows 10 / 11 64-bit)**
+- **نوع بيئة التشغيل:** متجر أحادي الجهاز / أحادي الفرع (Single-Device / Single-Branch Store)
 
-## Business Goal
-A production-grade, offline-first Point-of-Sale (POS), Inventory, Installments, Purchases, and Accounting ERP system built specifically for clothing retail stores. The application works 100% offline with local SQLite persistence via Drift, atomic transaction guarantees (`TxWriter`), comprehensive audit logging, and sync queue support.
+---
 
-## Tech Stack
-- **Framework:** Flutter (Windows Desktop primary target, RTL Arabic UI with Cairo font)
-- **Database:** Drift (local SQLite, offline-first, versioned migrations)
-- **State Management:** Bloc / Cubit (`flutter_bloc`)
-- **Dependency Injection:** GetIt + Injectable
-- **Functional Error Handling:** `dartz` (`Either<Failure, T>`)
-- **Printing & Barcodes:** `pdf`, `printing`, `barcode` (thermal roll 50×30mm, 38×25mm, A4 label sheets, thermal receipts)
-- **Design System:** Material 3 with Purple primary theme (`#673AB7`)
+## 2. فلسفة النظام والرؤية الهندسية (Core Engineering Philosophy)
 
-## Completed Full Drift Migration
-All operational modules have been fully migrated to Drift (local SQLite) with zero reliance on Firebase for core operations:
-- **Catalog & Inventory:** Categories, Products (with Arabic duplicate prevention & real-time similarity warnings), Product Variants (Color/Size matrix), Inventory Logs (`applyStockMovement`), Barcode Label Printing.
-- **POS & Sales:** Hardware Barcode Scanner Listener, Split Payments, Installment Sales, Promotions Engine, Returns & Exchanges, Thermal Receipts.
-- **Installments:** Grouped Customer View, Individual & Bulk FIFO Quick Payments, Manager PIN Protection, Overdue Tracking, Shift Cash Drawer Sync.
-- **Purchases & Suppliers:** Purchase Invoices, Goods Receipt, Supplier FIFO Payments, Supplier Purchase Returns with stock & drawer reconciliation.
-- **Finance & HR:** Executive Dashboard, Shift Management & Drawer Reconciliation (`cash_movements`), Expenses, Employees, Payroll/Advances/Bonuses, Audit Logs, Feature Gates, and RBAC.
+### أ. العمل دون إنترنت كأولوية قصوى (Offline-First Architecture)
+صُمم نظام **Bay3ah ERP** ليعمل بكفاءة مطلقة واستقلالية تامة عن الاتصال بالإنترنت. كافة العمليات التشغيلية الحرجة:
+- البيع وإصدار الفواتير،
+- قراءة وتوليد الباركود،
+- فحص وحركة المخزون،
+- تحصيل وإدارة الأقساط،
+- حسابات الموردين والمصروفات،
+- تقارير الورديات والخزينة،
+تتم بالكامل على قاعدة بيانات محلية مدمجة فائقة السرعة (`SQLite 3.53.4` عبر محرك `Drift`)، مما يمنع توقف حركة البيع في المحل نهائياً تحت أي ظرف من ظروف انقطاع شبكة الإنترنت.
+
+### ب. المتانة ومقاومة انقطاع التيار الكهربائي (Durability & Power-Cut Resilience)
+نظراً لطبيعة البيئة التشغيلية في المتاجر والمحلات وتعرضها لانقطاعات مفاجئة في التيار الكهربائي:
+1. **معاملات ذرية شاملة عبر `TxWriter`**: لا يمكن كتابة نصف فاتورة أو نصف حركة خزينة.
+2. **تدفق فوري لفريمات الـ WAL (`flushWal`)**: عند إنهاء الفاتورة وطباعة الإيصال للكاشير، يستدعي النظام فورياً `PRAGMA wal_checkpoint(PASSIVE)` لضمان تسجيل الفاتورة على القرص الصلب دون تأخير.
+3. **أمان الترقية الشامل (Upgrade Safety Engine)**: لف ترقيات قاعدة البيانات بالكامل في معاملة واحدة وتحديث رقم الإصدار داخل المعاملة ليتحقق مبدأ **Zero Post-Commit Kill Window**.
+
+---
+
+## 3. قطاعات المتاجر المدعومة (Universal Retail Sectors)
+
+يدعم النظام التبديل السلس أو التخصيص حسب نشاط المتجر من خلال محدد القطاعات (`RetailSector`):
+
+| القطاع | طبيعة الأصناف والمخزون | الميزات التشغيلية المخصصة |
+|---|---|---|
+| **الملابس والأحذية (Clothes & Footwear)** | مصفوفة المقاسات والألوان (Variants Matrix: Sizes & Colors) | باركود لكل مقاس ولون، جرد مفصل بالمقاس، ومبيعات مدمجة بالمقاس |
+| **التجزئة العامة والسوبرماركت (Simple Retail & Grocery)** | أصناف مفردة مباشرة بدون تعقيد (Single Unit Items) | بيع بالباركود فائق السرعة، كروت شبكية سريعة، وأسعار جملة وقطاعي |
+| **الأجهزة والإلكترونيات (Electronics & Appliances)** | أرقام تسلسلية وضمانات (Serial Numbers & Warranty) | متابعة الأقساط مع عقود الضمان والرقم القومي للمشتري |
+
+---
+
+## 4. الوحدات التشغيلية المكتملة في النظام (Functional Modules)
+
+1. **نقطة البيع (POS)**:
+   - دعم كامل لقارئ الباركود اللاسلكي والسلكي بدون الحاجة للنقر على حقول البحث.
+   - كروت منتجات سريعة وأزرار دفع سريعة.
+   - طرق دفع متعددة (كاش، فيزا، إنستاباي، محافظ، آجل، تقسيط).
+   - محرك العروض والخصومات وطباعة الإيصالات الحرارية.
+2. **المخازن والباركود**:
+   - منع تكرار المنتجات والأسماء بالذكاء العربي (`ArabicTextHelper`).
+   - طباعة ملصقات الباركود على طابعات الرول الحرارية (50×30 و 38×25) والورق العادي.
+   - تتبع حركات المخزون بسجل تدقيق موحد `inventory_logs`.
+3. **الأقساط والمتابعة**:
+   - شاشة تجميع مديونيات العملاء والسداد المجمع الذكي (FIFO).
+   - حماية تعديلات وجدولة الأقساط برمز الأمان للمدير (Manager PIN).
+4. **المشتريات والموردين**:
+   - دورة المشتريات الكاملة، استلام البضاعة، وسداد دفعات الموردين.
+   - مرتجعات المشتريات مع رد النقدية للدرج وتسوية الأرصدة.
+5. **الورديات والمالية**:
+   - دورة فتح وإغلاق الوردية ومطابقة العهدة النقدية.
+   - تتبع تدفقات الخزينة وسلف ومصروفات الموظفين.
+   - لوحة تحكم تنفيذية بمؤشرات الأداء اللحظية.
+6. **أمان الترقية والطوارئ**:
+   - لقطات احتياطية فيزيائية قبل كل ترقية بـ `VACUUM INTO`.
+   - شاشة استرجاع طوارئ محمية برقم سري تفتح تلقائياً عند أي تلف محتمل.
+7. **النسخ الاحتياطي السحابي الصامت**:
+   - نسخ احتياطي يومي تلقائي إلى Google Drive ومجلد النسخ الاحتياطي المحلي في الخلفية دون تعطيل الكاشير.

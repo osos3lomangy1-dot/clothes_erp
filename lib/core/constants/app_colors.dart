@@ -1,46 +1,46 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Dynamic primary/secondary theme palette (customizable from Admin Settings)
-  static Color primary = const Color(0xFF0A2E5C);
-  static Color primaryContainer = const Color(0xFF1FB5A8);
+  // Brand Dynamic Accent (10% Usage)
+  static Color primary = const Color(0xFF6366F1); // Indigo / Modern Accent
+  static Color primaryContainer = const Color(0xFF818CF8);
   static const Color onPrimary = Color(0xFFFFFFFF);
   static const Color onPrimaryContainer = Color(0xFFFFFFFF);
 
-  static Color surface = const Color(0xFFF6F9FC);
-  static Color surfaceContainer = const Color(0xFFEAF1F7);
-  static Color surfaceContainerLow = const Color(0xFFF2F6FA);
-  static const Color surfaceContainerLowest = Color(0xFFFFFFFF);
-  static const Color onSurface = Color(0xFF1D192A);
+  // Neutral Surfaces (60% Usage - Eye Relaxing)
+  static const Color surface = Color(0xFFF8FAFC); // Slate 50 (Calm Canvas)
+  static const Color surfaceContainer = Color(0xFFF1F5F9); // Slate 100
+  static const Color surfaceContainerLow = Color(0xFFF8FAFC);
+  static const Color surfaceContainerLowest = Color(0xFFFFFFFF); // Pure White Cards
+  
+  // Slate Typography & Icons (30% Usage)
+  static const Color onSurface = Color(0xFF0F172A); // Slate 900
+  static const Color onSurfaceVariant = Color(0xFF475569); // Slate 600
+  static const Color outline = Color(0xFF94A3B8); // Slate 400
+  static const Color outlineVariant = Color(0xFFE2E8F0); // Slate 200 (Soft Dividers)
 
-  static const Color error = Color(0xFFBA1A1A);
+  // Functional Semantic Colors (Muted & Accessible)
+  static const Color success = Color(0xFF10B981);
+  static const Color successContainer = Color(0xFFECFDF5);
+  static const Color warning = Color(0xFFF59E0B);
+  static const Color warningContainer = Color(0xFFFFFBEB);
+  static const Color error = Color(0xFFEF4444);
+  static const Color errorContainer = Color(0xFFFEF2F2);
   static const Color onError = Color(0xFFFFFFFF);
 
-  static const Color outline = Color(0xFF7A7585);
-  static const Color outlineVariant = Color(0xFFE2DCEB);
-
-  // Status colors
-  static const Color success = Color(0xFF2E7D32);
-  static const Color successContainer = Color(0xFFE8F5E9);
-  static const Color warning = Color(0xFFE65100);
-  static const Color warningContainer = Color(0xFFFFF3E0);
-  static const Color errorContainer = Color(0xFFFFEBEE);
-
-  // Backward compatibility
+  // Backward Compatibility
   static Color get secondary => primaryContainer;
   static Color get background => surface;
+  static const Color textMuted = onSurfaceVariant;
 
+  /// Apply custom user palette safely without polluting the clean neutral surfaces
   static void applyPalette({
     required Color primaryColor,
     required Color secondaryColor,
   }) {
     primary = primaryColor;
     primaryContainer = secondaryColor;
-    // Gently tint light surfaces to harmonize with the chosen primary color
-    surface = Color.lerp(Colors.white, primaryColor, 0.025) ?? const Color(0xFFFDF7FF);
-    surfaceContainer =
-        Color.lerp(Colors.white, primaryColor, 0.08) ?? const Color(0xFFF2EAFF);
-    surfaceContainerLow =
-        Color.lerp(Colors.white, primaryColor, 0.045) ?? const Color(0xFFF7F2FA);
+    // We intentionally keep surface & surfaceContainerLowest neutral (white & light slate)
+    // to maintain maximum eye comfort and prevent visual clutter.
   }
 }

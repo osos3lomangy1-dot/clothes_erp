@@ -149,7 +149,7 @@ class _ReturnScreenState extends State<ReturnScreen> {
                 child: TextField(
                   controller: _searchCtrl,
                   decoration: InputDecoration(
-                    hintText: 'ابحث برقم الفاتورة (#S...) أو اسم العميل أو رقم الهاتف...',
+                    hintText: 'ابحث برقم الفاتورة (#S...) أو المبلغ أو اسم العميل أو الهاتف...',
                     filled: true,
                     fillColor: Colors.white,
                     isDense: true,
@@ -591,14 +591,21 @@ class _ReturnScreenState extends State<ReturnScreen> {
 
   Widget _buildReturnsHistoryTab(BuildContext context, ReturnsState state) {
     final q = _historyQuery.trim().toLowerCase().replaceFirst(RegExp(r'^#'), '');
+    final numVal = double.tryParse(q.replaceAll(',', ''));
     final filtered = q.isEmpty
         ? state.returnsHistory
         : state.returnsHistory.where((ret) {
+            final matchAmount = numVal != null &&
+                ((ret.refundAmount == (numVal * 100).round()) ||
+                    (ret.refundAmount.toString() == q) ||
+                    ((ret.refundAmount / 100).toStringAsFixed(2).contains(q)) ||
+                    ((ret.refundAmount / 100).toString().contains(q)));
             return ret.id.toLowerCase().contains(q) ||
                 (ret.saleShortRef?.toLowerCase().contains(q) ?? false) ||
                 (ret.customerName?.toLowerCase().contains(q) ?? false) ||
                 (ret.customerPhone?.toLowerCase().contains(q) ?? false) ||
-                ret.reason.toLowerCase().contains(q);
+                ret.reason.toLowerCase().contains(q) ||
+                matchAmount;
           }).toList();
 
     return Column(
@@ -608,7 +615,7 @@ class _ReturnScreenState extends State<ReturnScreen> {
           child: TextField(
             controller: _historySearchCtrl,
             decoration: InputDecoration(
-              hintText: 'ابحث في سجل المرتجعات باسم العميل، الهاتف، رقم الفاتورة، أو السبب...',
+              hintText: 'ابحث في سجل المرتجعات برقم الفاتورة، المبلغ، اسم العميل، الهاتف، أو السبب...',
               prefixIcon: Icon(Icons.search_rounded, color: AppColors.primary),
               suffixIcon: _historyQuery.isNotEmpty
                   ? IconButton(

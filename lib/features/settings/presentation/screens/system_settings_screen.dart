@@ -9,6 +9,12 @@ import '../../../../core/theme/app_branding.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../../installments/data/services/manager_pin_service.dart';
+import '../../../invoices/data/services/receipt_settings_service.dart';
+import '../../../invoices/domain/entities/receipt_config.dart';
+import '../../../invoices/presentation/screens/receipt_customizer_screen.dart';
+import '../../../barcode_printing/domain/models/barcode_config.dart';
+import '../../../barcode_printing/presentation/screens/barcode_customizer_screen.dart';
+import '../../../barcode_printing/services/barcode_settings_service.dart';
 import '../cubits/settings_cubit.dart';
 import '../widgets/excel_migration_card.dart';
 import '../widgets/google_drive_backup_card.dart';
@@ -83,6 +89,11 @@ class _SystemSettingsView extends StatelessWidget {
               const SizedBox(height: 20),
               _sectionTitle('هوية النظام والألوان (الاسم والمظهر)'),
               _BrandingSettingsCard(userId: _userId(context)),
+              const SizedBox(height: 20),
+              _sectionTitle('إعدادات الطباعة (الفواتير وملصقات الباركود)'),
+              _ReceiptCustomizerSettingsCard(userId: _userId(context)),
+              const SizedBox(height: 12),
+              _BarcodeCustomizerSettingsCard(userId: _userId(context)),
               const SizedBox(height: 20),
               _sectionTitle('الميزات'),
               Card(
@@ -997,6 +1008,176 @@ class _BrandingSettingsCardState extends State<_BrandingSettingsCard> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ReceiptCustomizerSettingsCard extends StatelessWidget {
+  final String userId;
+
+  const _ReceiptCustomizerSettingsCard({required this.userId});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<ReceiptConfig>(
+      valueListenable: ReceiptSettingsService.notifier,
+      builder: (context, cfg, _) {
+        return Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: const BorderSide(color: Colors.black12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.receipt_long_rounded,
+                    color: AppColors.primary,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'الفاتورة الحرارية: ${cfg.storeName}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'مقاس: ${cfg.paperWidthMm} مم | هاتف: ${cfg.storePhone} | عنوان: ${cfg.storeAddress}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ReceiptCustomizerScreen(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.tune_rounded, size: 16),
+                  label: const Text('تخصيص وبرمجة الفاتورة'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _BarcodeCustomizerSettingsCard extends StatelessWidget {
+  final String userId;
+
+  const _BarcodeCustomizerSettingsCard({required this.userId});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<BarcodeConfig>(
+      valueListenable: BarcodeSettingsService.notifier,
+      builder: (context, cfg, _) {
+        return Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: const BorderSide(color: Colors.black12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.qr_code_2_rounded,
+                    color: AppColors.primary,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'ملصقات الباركود والأسعار: ${cfg.storeName}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'المقاس: ${cfg.selectedSize.name} | السعر: ${cfg.showPrice ? "مفعل" : "معطل"} | المقاس واللون: ${cfg.showColorAndSize ? "مفعل" : "معطل"}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const BarcodeCustomizerScreen(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.tune_rounded, size: 16),
+                  label: const Text('تخصيص ملصق الباركود'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

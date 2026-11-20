@@ -20,7 +20,10 @@ class InstallmentsListState extends Equatable {
   final List<CustomerInstallmentsSummary> allGrouped;
   final List<CustomerInstallmentsSummary> groupedByCustomer;
   final Map<String, String> customerNames;
-  final String filter; // 'all', 'active', 'completed', 'overdue', 'cancelled'
+  final String filter; // 'all', 'active', 'completed', 'overdue', 'legal_case', 'cancelled'
+  final String dateFilter; // 'all_dates', 'today', 'this_week', 'this_month', 'custom'
+  final DateTime? customFromDate;
+  final DateTime? customToDate;
   final String searchQuery;
   final String? errorMessage;
 
@@ -32,6 +35,9 @@ class InstallmentsListState extends Equatable {
     this.groupedByCustomer = const [],
     this.customerNames = const {},
     this.filter = 'all',
+    this.dateFilter = 'all_dates',
+    this.customFromDate,
+    this.customToDate,
     this.searchQuery = '',
     this.errorMessage,
   });
@@ -44,6 +50,9 @@ class InstallmentsListState extends Equatable {
     List<CustomerInstallmentsSummary>? groupedByCustomer,
     Map<String, String>? customerNames,
     String? filter,
+    String? dateFilter,
+    DateTime? customFromDate,
+    DateTime? customToDate,
     String? searchQuery,
     String? errorMessage,
   }) {
@@ -55,6 +64,9 @@ class InstallmentsListState extends Equatable {
       groupedByCustomer: groupedByCustomer ?? this.groupedByCustomer,
       customerNames: customerNames ?? this.customerNames,
       filter: filter ?? this.filter,
+      dateFilter: dateFilter ?? this.dateFilter,
+      customFromDate: customFromDate ?? this.customFromDate,
+      customToDate: customToDate ?? this.customToDate,
       searchQuery: searchQuery ?? this.searchQuery,
       errorMessage: errorMessage,
     );
@@ -69,6 +81,9 @@ class InstallmentsListState extends Equatable {
         groupedByCustomer,
         customerNames,
         filter,
+        dateFilter,
+        customFromDate,
+        customToDate,
         searchQuery,
         errorMessage,
       ];
@@ -123,12 +138,18 @@ class InstallmentsListCubit extends Cubit<InstallmentsListState> {
           contracts,
           state.searchQuery,
           state.filter,
+          state.dateFilter,
+          state.customFromDate,
+          state.customToDate,
           customerMap,
         );
         final filteredGroups = _applyGroupFilters(
           groups,
           state.searchQuery,
           state.filter,
+          state.dateFilter,
+          state.customFromDate,
+          state.customToDate,
         );
         emit(state.copyWith(
           status: InstallmentsListStatus.success,
@@ -171,15 +192,50 @@ class InstallmentsListCubit extends Cubit<InstallmentsListState> {
       state.allContracts,
       state.searchQuery,
       status,
+      state.dateFilter,
+      state.customFromDate,
+      state.customToDate,
       state.customerNames,
     );
     final filteredGroups = _applyGroupFilters(
       state.allGrouped,
       state.searchQuery,
       status,
+      state.dateFilter,
+      state.customFromDate,
+      state.customToDate,
     );
     emit(state.copyWith(
       filter: status,
+      contracts: filteredContracts,
+      groupedByCustomer: filteredGroups,
+    ));
+  }
+
+  void setDateFilter(String dateFilter, {DateTime? customFrom, DateTime? customTo}) {
+    final from = customFrom ?? (dateFilter == 'all_dates' ? null : state.customFromDate);
+    final to = customTo ?? (dateFilter == 'all_dates' ? null : state.customToDate);
+    final filteredContracts = _applyFilters(
+      state.allContracts,
+      state.searchQuery,
+      state.filter,
+      dateFilter,
+      from,
+      to,
+      state.customerNames,
+    );
+    final filteredGroups = _applyGroupFilters(
+      state.allGrouped,
+      state.searchQuery,
+      state.filter,
+      dateFilter,
+      from,
+      to,
+    );
+    emit(state.copyWith(
+      dateFilter: dateFilter,
+      customFromDate: from,
+      customToDate: to,
       contracts: filteredContracts,
       groupedByCustomer: filteredGroups,
     ));
@@ -192,12 +248,18 @@ class InstallmentsListCubit extends Cubit<InstallmentsListState> {
         state.allContracts,
         query,
         state.filter,
+        state.dateFilter,
+        state.customFromDate,
+        state.customToDate,
         state.customerNames,
       );
       final filteredGroups = _applyGroupFilters(
         state.allGrouped,
         query,
         state.filter,
+        state.dateFilter,
+        state.customFromDate,
+        state.customToDate,
       );
       emit(state.copyWith(
         searchQuery: query,
@@ -207,10 +269,58 @@ class InstallmentsListCubit extends Cubit<InstallmentsListState> {
     });
   }
 
+  static bool _matchesDateFilter(
+    CustomerInstallmentEntity c,
+    String dateFilter,
+    DateTime now, {
+    DateTime? customFrom,
+    DateTime? customTo,
+  }) {
+    if (dateFilter == 'all_dates') return true;
+    final due = c.nextDueDate;
+    if (due == null) return false;
+
+    final dueDateOnly = DateTime(due.year, due.month, due.day);
+    final today = DateTime(now.year, now.month, now.day);
+
+    switch (dateFilter) {
+      case 'today':
+        return dueDateOnly.isAtSameMomentAs(today);
+
+      case 'this_week':
+        // Include any contract due this current calendar week or next 7 days
+        final daysFromSat = (now.weekday == DateTime.saturday) ? 0 : (now.weekday % 7) + 1;
+        final startOfWeek = today.subtract(Duration(days: daysFromSat));
+        final endOfWeek = startOfWeek.add(const Duration(days: 6, hours: 23, minutes: 59, seconds: 59));
+        final next7Days = today.add(const Duration(days: 7, hours: 23, minutes: 59, seconds: 59));
+        final weekEnd = endOfWeek.isAfter(next7Days) ? endOfWeek : next7Days;
+        return !due.isBefore(startOfWeek) && !due.isAfter(weekEnd);
+
+      case 'this_month':
+        final isSameMonth = due.year == now.year && due.month == now.month;
+        final next30Days = today.add(const Duration(days: 30, hours: 23, minutes: 59, seconds: 59));
+        return isSameMonth || (!due.isBefore(today) && !due.isAfter(next30Days));
+
+      case 'custom':
+        if (customFrom != null && customTo != null) {
+          final from = DateTime(customFrom.year, customFrom.month, customFrom.day);
+          final to = DateTime(customTo.year, customTo.month, customTo.day, 23, 59, 59);
+          return !due.isBefore(from) && !due.isAfter(to);
+        }
+        return true;
+
+      default:
+        return true;
+    }
+  }
+
   List<CustomerInstallmentEntity> _applyFilters(
     List<CustomerInstallmentEntity> list,
     String query,
     String filter,
+    String dateFilter,
+    DateTime? customFrom,
+    DateTime? customTo,
     Map<String, String> names,
   ) {
     var result = list;
@@ -224,7 +334,20 @@ class InstallmentsListCubit extends Cubit<InstallmentsListState> {
       }).toList();
     }
 
-    // 2. Search Query (Customer name or contract ID)
+    // 2. Date Filter
+    if (dateFilter != 'all_dates') {
+      result = result.where((c) {
+        return _matchesDateFilter(
+          c,
+          dateFilter,
+          now,
+          customFrom: customFrom,
+          customTo: customTo,
+        );
+      }).toList();
+    }
+
+    // 3. Search Query (Customer name or contract ID)
     final q = query.trim().toLowerCase();
     if (q.isNotEmpty) {
       result = result.where((c) {
@@ -241,6 +364,9 @@ class InstallmentsListCubit extends Cubit<InstallmentsListState> {
     List<CustomerInstallmentsSummary> list,
     String query,
     String filter,
+    String dateFilter,
+    DateTime? customFrom,
+    DateTime? customTo,
   ) {
     var result = list;
     final now = DateTime.now();
@@ -252,7 +378,20 @@ class InstallmentsListCubit extends Cubit<InstallmentsListState> {
       }).toList();
     }
 
-    // 2. Search Query (Customer name or customer ID or contract ID)
+    // 2. Date Filter
+    if (dateFilter != 'all_dates') {
+      result = result.where((summary) {
+        return summary.contracts.any((c) => _matchesDateFilter(
+          c,
+          dateFilter,
+          now,
+          customFrom: customFrom,
+          customTo: customTo,
+        ));
+      }).toList();
+    }
+
+    // 3. Search Query (Customer name or customer ID or contract ID)
     final q = query.trim().toLowerCase();
     if (q.isNotEmpty) {
       result = result.where((summary) {

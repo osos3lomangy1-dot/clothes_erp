@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 
 enum BarcodeLabelSize {
   roll50x30(name: 'بكرة حرارية 50 × 30 مم (الأكثر شيوعاً)', widthMm: 50, heightMm: 30),
+  roll40x25(name: 'بكرة حرارية 40 × 25 مم (متوسطة)', widthMm: 40, heightMm: 25),
   roll38x25(name: 'بكرة حرارية 38 × 25 مم (صغيرة)', widthMm: 38, heightMm: 25),
   sheetA4(name: 'ورق عادي A4 (شبكة ملصقات)', widthMm: 210, heightMm: 297);
 

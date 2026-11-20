@@ -1,24 +1,97 @@
-# Database Schema
+# 03 — هيكل ومخطط قاعدة البيانات (Database Schema — Version 11)
 
-## Tables
-- users, branches, app_meta
-- products (catalog), product_variants (SKU/stock)
-- categories, customers, employees
-- sales, sale_items, returns, return_items
-- expenses, shifts, inventory_logs
-- sync_queue, audit_logs, daily_stats
+يعتمد نظام **Bay3ah ERP** على قاعدة بيانات محلية مدمجة عبر مكتبة **Drift** ومحرك **SQLite 3.53.4**.
+الإصدار الحالي للشيما هو **الإصدار 11 (Schema Version 11)**، ويعمل بنمط سجلات التدوين المسبق **WAL (`Write-Ahead Logging`)**.
 
-## Product vs Variant (Hybrid Model)
-- Product = catalog entry (name, category, description, minStock, isActive)
-- Variant = SKU (sku, color, size, quantity, costPrice, sellPrice)
-- A product can have many variants; soft-delete cascades to variants.
+---
 
-## sync_queue
-Queues every write operation for cloud sync (entity, entityId, operation, payload).
+## 1. المبادئ العامة لتصميم البيانات (Core Design Principles)
 
-## audit_logs
-Records every write with oldValue/newValue, userId, timestamp for auditability.
+1. **التعامل المالي بالقروش (Integer Piasters Money Pattern)**:
+   - كافة الحقول المالية (الأسعار، الخصومات، المبالغ، التكاليف، والأرصدة) تُخزن كأعداد صحيحة (`INTEGER`) معبرة عن القروش (أصغر وحدة نقدية: 1 جنيه = 100 قرش).
+   - لا توجد قيم عشرية عائمة (`REAL` أو `FLOAT`) في قاعدة البيانات على الإطلاق منعاً لأخطاء الحسابات المحاسبية.
+2. **النموذج الهجين للمنتجات والمخزون (Hybrid Product-Variant Model)**:
+   - **المنتج الأساسي (`Products`)**: يمثل الكتالوج العام (الاسم، التصنيف، الوصف، حد الطلب، حالة التفعيل).
+   - **المتغير أو الكود (`ProductVariants`)**: يمثل وحدة التخزين الفعلية (`SKU`) التي تحمل المقاس، اللون، الباركود، الكمية المتاحة، سعر الشراء، وسعر البيع.
+   - في قطاع التجزئة البسيطة، يمتلك المنتج متغيراً واحداً تلقائياً، بينما في قطاع الملابس يمتلك عدة متغيرات (مصفوفة مقاسات وألوان).
+3. **الحذف الآمن (Soft Deletes)**:
+   - الجداول الرئيسية (المنتجات، المتغيرات، العملاء، المستخدمين، التصنيفات) تعتمد على عمود `deleted_at`. السجلات المحذوفة لا تُحذف فيزيائياً لضمان سلامة الروابط مع الفواتير والتقارير التاريخية.
+4. **سجل تدقيق المخزون الموحد (`InventoryLogs`)**:
+   - لا يمكن تعديل رصيد المخزون في `ProductVariants` مباشرة؛ بل يمر أي تغيير إجبارياً عبر `applyStockMovement` الذي ينشئ حركة تدقيق في `InventoryLogs` بنوع الحركة (`sale`, `return`, `purchase`, `purchase_return`, `adjustment`, `stocktake`).
 
-## Money
-Stored as int minor units (piasters) via `Money` class. No floating point in DB.
-EOF
+---
+
+## 2. فهرس الجداول الرئيسية (Schema Tables — Version 11)
+
+### أ. المستخدمين والإعدادات والتهيئة
+| الجدول | الغرض التشغيلي | المفاتيح والعلاقات |
+|---|---|---|
+| `users` | الموظفون والمستخدمون، الأدوار (`admin`, `manager`, `cashier`)، الرواتب، وتجزئة كلمات المرور ورموز الـ PIN | Primary Key: `id` |
+| `branches` | الفروع والمتاجر وبيانات الاتصال والترخيص | Primary Key: `id` |
+| `app_meta` | المتغيرات الوصفية، حالة الميجريشن، وإعدادات الهوية والبوابة | Primary Key: `key` |
+
+### ب. الكتالوج والمنتجات والباركود
+| الجدول | الغرض التشغيلي | المفاتيح والعلاقات |
+|---|---|---|
+| `categories` | تصنيفات المنتجات وترتيب العرض | Primary Key: `id` |
+| `products` | الكتالوج العام للمنتجات ومنع التكرار | `categoryId` -> `categories(id)` |
+| `product_variants` | وحدات التخزين (`SKU`)، الباركود، المقاس، اللون، الرصيد، والتكلفة والبيع | `productId` -> `products(id)` (Unique: `sku`) |
+| `inventory_logs` | السجل التاريخي الشامل لحركات المخزون والتسويات | `variantId` -> `product_variants(id)` |
+
+### ج. المبيعات ونقطة البيع (POS)
+| الجدول | الغرض التشغيلي | المفاتيح والعلاقات |
+|---|---|---|
+| `sales` | رؤوس الفواتير، الإجمالي، الخصم، العميل، الكاشير، والوردية | `branchId`, `shiftId`, `customerId` |
+| `sale_items` | بنود الفاتورة المباعة، الكميات، الأسعار، وخصومات العروض | `saleId` -> `sales(id)`, `variantId` |
+| `sale_payments` | تفاصيل الدفع المجزأ (كاش، فيزا، إنستاباي، محافظ، آجل، تقسيط) | `saleId` -> `sales(id)` |
+| `returns` | رؤوس فواتير المرتجعات وربطها بالفاتورة الأصلية | `saleId` -> `sales(id)` |
+| `return_items` | الأصناف المرتجعة وحالتها وإعادتها للمخزون | `returnId` -> `returns(id)` |
+
+### د. العروض والخصومات (Promotions Engine)
+| الجدول | الغرض التشغيلي | المفاتيح والعلاقات |
+|---|---|---|
+| `promotions` | قواعد العروض، فترات الصلاحية، ونوع العرض (نسبة، مبلغ، BOGO) | Primary Key: `id` |
+| `promotion_targets` | استهداف العرض لأصناف محددة أو تصنيفات بالكامل | `promotionId` -> `promotions(id)` |
+
+### هـ. الأقساط والتحصيل (Installments)
+| الجدول | الغرض التشغيلي | المفاتيح والعلاقات |
+|---|---|---|
+| `installment_plans` | خطط وقوالب الأقساط ونسب الفائدة وعدد الأشهر | Primary Key: `id` |
+| `customer_installments` | عقود الأقساط، إجمالي العقد، المقدم، وحالة العقد | `customerId`, `saleId` |
+| `installment_payments` | الأقساط الشهرية المجدولة وتواريخ الاستحقاق وحالة السداد | `installmentId` -> `customer_installments(id)` |
+
+### و. المشتريات والموردين
+| الجدول | الغرض التشغيلي | المفاتيح والعلاقات |
+|---|---|---|
+| `suppliers` | بيانات الموردين وأرصدة المديونيات | Primary Key: `id` |
+| `purchases` | فواتير الشراء، التكلفة، وطرق الدفع للمورد | `supplierId` -> `suppliers(id)` |
+| `purchase_items` | أصناف فاتورة الشراء وأسعار التكلفة الجديدة | `purchaseId` -> `purchases(id)` |
+| `supplier_payments` | دفعات سداد الموردين بنظام FIFO | `supplierId` -> `suppliers(id)` |
+| `goods_receipts` & `items` | محاضر فحص واستلام البضائع الفعلية في المخزن | `purchaseId` -> `purchases(id)` |
+
+### ز. الورديات والخزينة والجرد
+| الجدول | الغرض التشغيلي | المفاتيح والعلاقات |
+|---|---|---|
+| `shifts` | فترات عمل الكاشير، الرصيد الافتتاحي، والفعلي، والعجز/الزيادة | `userId`, `branchId` |
+| `cash_movements` | الحركات النقدية التفصيلية داخل الدرج مصنفة بالوردية | `shiftId` -> `shifts(id)` |
+| `expenses` | المصروفات النثرية وسلف الموظفين ومسحوبات الشركاء | `branchId`, `shiftId` |
+| `stocktakes` & `items` | جلسات الجرد الدوري والمفاجئ للمخازن وحساب الفروقات | `branchId` |
+
+### ح. التدقيق والمزامنة
+| الجدول | الغرض التشغيلي | المفاتيح والعلاقات |
+|---|---|---|
+| `audit_logs` | السجل الأمني لكل عمليات التعديل والحذف والقيم السابقة والجديدة | Primary Key: `id` |
+| `sync_queue` | طابور العمليات المجدولة للمزامنة السحابية | Primary Key: `id` |
+| `daily_stats` | مجاميع إحصائية ملخصة لتسريع لوحة التحكم التنفيذية | Primary Key: `date` |
+
+---
+
+## 3. المتانة والأمان الفيزيائي (Durability & WAL Mode)
+
+```sql
+PRAGMA journal_mode = WAL;
+PRAGMA synchronous = NORMAL;
+PRAGMA foreign_keys = ON;
+```
+- **نمط WAL**: يتيح للقارئ القراءة دون حجب الكاتب، وللكاتب الكتابة دون حجب القارئ، مما يعطي أداءً فائقاً في نقطة البيع.
+- **`flushWal()`**: عند اكتمال بيع الفاتورة، يُستدعى `PRAGMA wal_checkpoint(PASSIVE);` لضمان ضخ صفحات المعاملة مباشرة إلى ملف `.sqlite` الأساسي.

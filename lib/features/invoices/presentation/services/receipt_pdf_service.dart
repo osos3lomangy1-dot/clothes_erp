@@ -7,7 +7,9 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../../../../core/theme/app_branding.dart';
 import '../../../../core/utils/money.dart';
+import '../../data/services/receipt_settings_service.dart';
 import '../../domain/entities/invoice_details_entity.dart';
+import '../../domain/entities/receipt_config.dart';
 
 class ReceiptPdfService {
   static Future<pw.Font> _loadArabicFont() async {
@@ -56,27 +58,38 @@ class ReceiptPdfService {
 
   static Future<Uint8List> generateReceiptPdf(
     InvoiceDetailsEntity invoice, {
+    ReceiptConfig? config,
     String? storeName,
-    String storePhone = '01000000000',
-    String storeAddress = 'بني سويف  ',
-    String returnPolicy = 'الاستبدال والاسترجاع خلال 14 يوماً بالفاتورة وأصل التكت',
+    String? storePhone,
+    String? storeAddress,
+    String? returnPolicy,
   }) async {
-    final effectiveStoreName = storeName ?? AppBranding.current.appName;
+    final cfg = config ?? ReceiptSettingsService.current;
+    final effectiveStoreName =
+        storeName ??
+        (cfg.storeName.isNotEmpty
+            ? cfg.storeName
+            : AppBranding.current.appName);
+    final effectiveStorePhone = storePhone ?? cfg.storePhone;
+    final effectiveStoreAddress = storeAddress ?? cfg.storeAddress;
+    final effectiveReturnPolicy = returnPolicy ?? cfg.returnPolicy;
+    final effectiveFooterGreeting = cfg.footerGreeting;
+
     final doc = pw.Document();
     final font = await _loadArabicFont();
     final boldFont = await _loadArabicBoldFont();
 
-    const roll80 = PdfPageFormat(
-      80 * PdfPageFormat.mm,
+    final rollFormat = PdfPageFormat(
+      (cfg.paperWidthMm == 58 ? 58 : 80) * PdfPageFormat.mm,
       double.infinity,
-      marginAll: 4 * PdfPageFormat.mm,
+      marginAll: (cfg.paperWidthMm == 58 ? 2 : 4) * PdfPageFormat.mm,
     );
 
     final dateFormat = DateFormat('yyyy/MM/dd - hh:mm a');
 
     doc.addPage(
       pw.Page(
-        pageFormat: roll80,
+        pageFormat: rollFormat,
         theme: pw.ThemeData.withFont(base: font, bold: boldFont),
         build: (pw.Context context) {
           return pw.Directionality(
@@ -88,28 +101,65 @@ class ReceiptPdfService {
                 // Store Header
                 pw.Text(
                   effectiveStoreName,
-                  style: pw.TextStyle(font: boldFont, fontSize: 16, fontWeight: pw.FontWeight.bold),
+                  style: pw.TextStyle(
+                    font: boldFont,
+                    fontSize: 16,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
                   textAlign: pw.TextAlign.center,
                 ),
-                pw.SizedBox(height: 2),
-                pw.Text(
-                  'أحدث صيحات الملابس الجاهزة',
-                  style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
-                  textAlign: pw.TextAlign.center,
-                ),
-                if (storeAddress.isNotEmpty) ...[
-                  pw.SizedBox(height: 1),
+                if (cfg.storeActivity.isNotEmpty) ...[
+                  pw.SizedBox(height: 2),
                   pw.Text(
-                    storeAddress,
-                    style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
+                    cfg.storeActivity,
+                    style: const pw.TextStyle(
+                      fontSize: 9,
+                      color: PdfColors.grey700,
+                    ),
                     textAlign: pw.TextAlign.center,
                   ),
                 ],
-                if (storePhone.isNotEmpty) ...[
+                if (effectiveStoreAddress.isNotEmpty) ...[
                   pw.SizedBox(height: 1),
                   pw.Text(
-                    'هاتف: $storePhone',
-                    style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
+                    effectiveStoreAddress,
+                    style: const pw.TextStyle(
+                      fontSize: 8,
+                      color: PdfColors.grey700,
+                    ),
+                    textAlign: pw.TextAlign.center,
+                  ),
+                ],
+                if (effectiveStorePhone.isNotEmpty) ...[
+                  pw.SizedBox(height: 1),
+                  pw.Text(
+                    'هاتف: $effectiveStorePhone',
+                    style: const pw.TextStyle(
+                      fontSize: 8,
+                      color: PdfColors.grey700,
+                    ),
+                    textAlign: pw.TextAlign.center,
+                  ),
+                ],
+                if (cfg.storePhoneSecondary.isNotEmpty) ...[
+                  pw.SizedBox(height: 1),
+                  pw.Text(
+                    'هاتف إضافي: ${cfg.storePhoneSecondary}',
+                    style: const pw.TextStyle(
+                      fontSize: 8,
+                      color: PdfColors.grey700,
+                    ),
+                    textAlign: pw.TextAlign.center,
+                  ),
+                ],
+                if (cfg.taxNumber.isNotEmpty) ...[
+                  pw.SizedBox(height: 1),
+                  pw.Text(
+                    'س.ت / ضريبي: ${cfg.taxNumber}',
+                    style: const pw.TextStyle(
+                      fontSize: 8,
+                      color: PdfColors.grey700,
+                    ),
                     textAlign: pw.TextAlign.center,
                   ),
                 ],
@@ -122,8 +172,14 @@ class ReceiptPdfService {
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text('رقم الفاتورة:', style: pw.TextStyle(fontSize: 9, font: boldFont)),
-                    pw.Text('#${invoice.shortRef}', style: pw.TextStyle(fontSize: 10, font: boldFont)),
+                    pw.Text(
+                      'رقم الفاتورة:',
+                      style: pw.TextStyle(fontSize: 9, font: boldFont),
+                    ),
+                    pw.Text(
+                      '#${invoice.shortRef}',
+                      style: pw.TextStyle(fontSize: 10, font: boldFont),
+                    ),
                   ],
                 ),
                 pw.SizedBox(height: 3),
@@ -131,35 +187,64 @@ class ReceiptPdfService {
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text('التاريخ:', style: const pw.TextStyle(fontSize: 8)),
-                    pw.Text(dateFormat.format(invoice.date), style: const pw.TextStyle(fontSize: 8)),
+                    pw.Text(
+                      dateFormat.format(invoice.date),
+                      style: const pw.TextStyle(fontSize: 8),
+                    ),
                   ],
                 ),
-                pw.SizedBox(height: 3),
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text('الكاشير:', style: const pw.TextStyle(fontSize: 8)),
-                    pw.Text(invoice.cashierName.isNotEmpty ? invoice.cashierName : invoice.cashierId, style: const pw.TextStyle(fontSize: 8)),
-                  ],
-                ),
-                if (invoice.customerName != null && invoice.customerName!.isNotEmpty) ...[
+                if (cfg.showCashierName) ...[
                   pw.SizedBox(height: 3),
                   pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
-                      pw.Text('العميل:', style: const pw.TextStyle(fontSize: 8)),
-                      pw.Text(invoice.customerName!, style: const pw.TextStyle(fontSize: 8)),
+                      pw.Text(
+                        'الكاشير:',
+                        style: const pw.TextStyle(fontSize: 8),
+                      ),
+                      pw.Text(
+                        invoice.cashierName.isNotEmpty
+                            ? invoice.cashierName
+                            : invoice.cashierId,
+                        style: const pw.TextStyle(fontSize: 8),
+                      ),
                     ],
                   ),
                 ],
-                pw.SizedBox(height: 3),
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text('طريقة الدفع:', style: const pw.TextStyle(fontSize: 8)),
-                    pw.Text(invoice.paymentMethod, style: const pw.TextStyle(fontSize: 8)),
-                  ],
-                ),
+                if (cfg.showCustomerInfo &&
+                    invoice.customerName != null &&
+                    invoice.customerName!.isNotEmpty) ...[
+                  pw.SizedBox(height: 3),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text(
+                        'العميل:',
+                        style: const pw.TextStyle(fontSize: 8),
+                      ),
+                      pw.Text(
+                        invoice.customerName!,
+                        style: const pw.TextStyle(fontSize: 8),
+                      ),
+                    ],
+                  ),
+                ],
+                if (cfg.showPaymentMethod) ...[
+                  pw.SizedBox(height: 3),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text(
+                        'طريقة الدفع:',
+                        style: const pw.TextStyle(fontSize: 8),
+                      ),
+                      pw.Text(
+                        invoice.paymentMethod,
+                        style: const pw.TextStyle(fontSize: 8),
+                      ),
+                    ],
+                  ),
+                ],
 
                 pw.SizedBox(height: 6),
                 _dashedLine(),
@@ -168,10 +253,37 @@ class ReceiptPdfService {
                 // Table Header
                 pw.Row(
                   children: [
-                    pw.Expanded(flex: 5, child: pw.Text('الصنف', style: pw.TextStyle(font: boldFont, fontSize: 8))),
-                    pw.Expanded(flex: 2, child: pw.Text('ك', textAlign: pw.TextAlign.center, style: pw.TextStyle(font: boldFont, fontSize: 8))),
-                    pw.Expanded(flex: 3, child: pw.Text('السعر', textAlign: pw.TextAlign.center, style: pw.TextStyle(font: boldFont, fontSize: 8))),
-                    pw.Expanded(flex: 3, child: pw.Text('الإجمالي', textAlign: pw.TextAlign.left, style: pw.TextStyle(font: boldFont, fontSize: 8))),
+                    pw.Expanded(
+                      flex: 5,
+                      child: pw.Text(
+                        'الصنف',
+                        style: pw.TextStyle(font: boldFont, fontSize: 8),
+                      ),
+                    ),
+                    pw.Expanded(
+                      flex: 2,
+                      child: pw.Text(
+                        'ك',
+                        textAlign: pw.TextAlign.center,
+                        style: pw.TextStyle(font: boldFont, fontSize: 8),
+                      ),
+                    ),
+                    pw.Expanded(
+                      flex: 3,
+                      child: pw.Text(
+                        'السعر',
+                        textAlign: pw.TextAlign.center,
+                        style: pw.TextStyle(font: boldFont, fontSize: 8),
+                      ),
+                    ),
+                    pw.Expanded(
+                      flex: 3,
+                      child: pw.Text(
+                        'الإجمالي',
+                        textAlign: pw.TextAlign.left,
+                        style: pw.TextStyle(font: boldFont, fontSize: 8),
+                      ),
+                    ),
                   ],
                 ),
                 pw.SizedBox(height: 4),
@@ -180,21 +292,47 @@ class ReceiptPdfService {
 
                 // Items Rows
                 ...invoice.items.map((it) {
+                  final itemLabel =
+                      cfg.showItemDetails &&
+                          (it.color.isNotEmpty || it.size.isNotEmpty)
+                      ? '${it.productName} (${it.color} - ${it.size})'
+                      : it.productName;
                   return pw.Padding(
                     padding: const pw.EdgeInsets.symmetric(vertical: 2),
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
                         pw.Text(
-                          '${it.productName} (${it.color} - ${it.size})',
+                          itemLabel,
                           style: pw.TextStyle(fontSize: 8, font: boldFont),
                         ),
                         pw.Row(
                           children: [
                             pw.Expanded(flex: 5, child: pw.SizedBox()),
-                            pw.Expanded(flex: 2, child: pw.Text('${it.qty}', textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 8))),
-                            pw.Expanded(flex: 3, child: pw.Text(Money(it.price).toDisplay(), textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 8))),
-                            pw.Expanded(flex: 3, child: pw.Text(Money(it.lineTotal).toDisplay(), textAlign: pw.TextAlign.left, style: const pw.TextStyle(fontSize: 8))),
+                            pw.Expanded(
+                              flex: 2,
+                              child: pw.Text(
+                                '${it.qty}',
+                                textAlign: pw.TextAlign.center,
+                                style: const pw.TextStyle(fontSize: 8),
+                              ),
+                            ),
+                            pw.Expanded(
+                              flex: 3,
+                              child: pw.Text(
+                                Money(it.price).toDisplay(),
+                                textAlign: pw.TextAlign.center,
+                                style: const pw.TextStyle(fontSize: 8),
+                              ),
+                            ),
+                            pw.Expanded(
+                              flex: 3,
+                              child: pw.Text(
+                                Money(it.lineTotal).toDisplay(),
+                                textAlign: pw.TextAlign.left,
+                                style: const pw.TextStyle(fontSize: 8),
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -210,8 +348,14 @@ class ReceiptPdfService {
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text('المجموع الفرعي:', style: const pw.TextStyle(fontSize: 9)),
-                    pw.Text('${Money(invoice.subtotal).toDisplay()} ج.م', style: const pw.TextStyle(fontSize: 9)),
+                    pw.Text(
+                      'المجموع الفرعي:',
+                      style: const pw.TextStyle(fontSize: 9),
+                    ),
+                    pw.Text(
+                      '${Money(invoice.subtotal).toDisplay()} ج.م',
+                      style: const pw.TextStyle(fontSize: 9),
+                    ),
                   ],
                 ),
                 if (invoice.totalPromotionDiscount > 0) ...[
@@ -219,8 +363,20 @@ class ReceiptPdfService {
                   pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
-                      pw.Text('خصم العروض:', style: const pw.TextStyle(fontSize: 9, color: PdfColors.green700)),
-                      pw.Text('-${Money(invoice.totalPromotionDiscount).toDisplay()} ج.م', style: const pw.TextStyle(fontSize: 9, color: PdfColors.green700)),
+                      pw.Text(
+                        'خصم العروض:',
+                        style: const pw.TextStyle(
+                          fontSize: 9,
+                          color: PdfColors.green700,
+                        ),
+                      ),
+                      pw.Text(
+                        '-${Money(invoice.totalPromotionDiscount).toDisplay()} ج.م',
+                        style: const pw.TextStyle(
+                          fontSize: 9,
+                          color: PdfColors.green700,
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -229,57 +385,94 @@ class ReceiptPdfService {
                   pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
-                      pw.Text('خصم:', style: const pw.TextStyle(fontSize: 9, color: PdfColors.red700)),
-                      pw.Text('-${Money(invoice.discountAmount).toDisplay()} ج.م', style: const pw.TextStyle(fontSize: 9, color: PdfColors.red700)),
+                      pw.Text(
+                        'خصم:',
+                        style: const pw.TextStyle(
+                          fontSize: 9,
+                          color: PdfColors.red700,
+                        ),
+                      ),
+                      pw.Text(
+                        '-${Money(invoice.discountAmount).toDisplay()} ج.م',
+                        style: const pw.TextStyle(
+                          fontSize: 9,
+                          color: PdfColors.red700,
+                        ),
+                      ),
                     ],
                   ),
                 ],
                 pw.SizedBox(height: 4),
                 pw.Container(
-                  padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                  decoration: const pw.BoxDecoration(
-                    color: PdfColors.grey200,
+                  padding: const pw.EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 4,
                   ),
+                  decoration: const pw.BoxDecoration(color: PdfColors.grey200),
                   child: pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
-                      pw.Text('الإجمالي المطلوب:', style: pw.TextStyle(font: boldFont, fontSize: 11, fontWeight: pw.FontWeight.bold)),
-                      pw.Text('${Money(invoice.total).toDisplay()} ج.م', style: pw.TextStyle(font: boldFont, fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                      pw.Text(
+                        'الإجمالي المطلوب:',
+                        style: pw.TextStyle(
+                          font: boldFont,
+                          fontSize: 11,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                      pw.Text(
+                        '${Money(invoice.total).toDisplay()} ج.م',
+                        style: pw.TextStyle(
+                          font: boldFont,
+                          fontSize: 12,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                 ),
 
-                pw.SizedBox(height: 10),
-
-                // Barcode of invoice shortRef
-                pw.Container(
-                  height: 35,
-                  child: pw.BarcodeWidget(
-                    data: invoice.shortRef,
-                    barcode: pw.Barcode.code128(),
-                    drawText: false,
+                if (cfg.showBarcode) ...[
+                  pw.SizedBox(height: 10),
+                  pw.Container(
+                    height: 35,
+                    child: pw.BarcodeWidget(
+                      data: invoice.shortRef,
+                      barcode: pw.Barcode.code128(),
+                      drawText: false,
+                    ),
                   ),
-                ),
-                pw.SizedBox(height: 2),
-                pw.Text(invoice.shortRef, style: const pw.TextStyle(fontSize: 7)),
+                  pw.SizedBox(height: 2),
+                  pw.Text(
+                    invoice.shortRef,
+                    style: const pw.TextStyle(fontSize: 7),
+                  ),
+                ],
 
                 pw.SizedBox(height: 8),
                 _dashedLine(),
                 pw.SizedBox(height: 6),
 
                 // Footer Policy & Greeting
-                pw.Text(
-                  returnPolicy,
-                  style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey700),
-                  textAlign: pw.TextAlign.center,
-                ),
-                pw.SizedBox(height: 4),
-                pw.Text(
-                  'شكراً لزيارتكم ونتمنى لكم يوماً سعيداً',
-                  style: pw.TextStyle(font: boldFont, fontSize: 8),
-                  textAlign: pw.TextAlign.center,
-                ),
-                pw.SizedBox(height: 8),
+                if (effectiveReturnPolicy.isNotEmpty) ...[
+                  pw.Text(
+                    effectiveReturnPolicy,
+                    style: const pw.TextStyle(
+                      fontSize: 7,
+                      color: PdfColors.grey700,
+                    ),
+                    textAlign: pw.TextAlign.center,
+                  ),
+                  pw.SizedBox(height: 4),
+                ],
+                if (effectiveFooterGreeting.isNotEmpty) ...[
+                  pw.Text(
+                    effectiveFooterGreeting,
+                    style: pw.TextStyle(font: boldFont, fontSize: 8),
+                    textAlign: pw.TextAlign.center,
+                  ),
+                  pw.SizedBox(height: 8),
+                ],
               ],
             ),
           );
@@ -327,7 +520,9 @@ class ReceiptPdfService {
     );
 
     if (savePath != null) {
-      final finalPath = savePath.toLowerCase().endsWith('.pdf') ? savePath : '$savePath.pdf';
+      final finalPath = savePath.toLowerCase().endsWith('.pdf')
+          ? savePath
+          : '$savePath.pdf';
       final file = File(finalPath);
       await file.writeAsBytes(pdfBytes);
       return file.path;
@@ -335,4 +530,3 @@ class ReceiptPdfService {
     return null;
   }
 }
-

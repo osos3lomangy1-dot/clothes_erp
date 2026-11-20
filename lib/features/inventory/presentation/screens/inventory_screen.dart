@@ -14,6 +14,7 @@ import '../cubits/inventory_cubit.dart';
 import '../cubits/inventory_state.dart';
 import '../widgets/inventory_action_dialogs.dart';
 import 'blind_receive_screen.dart';
+import '../../../reports/presentation/screens/smart_inventory_reports_screen.dart';
 
 enum _InventoryStatusFilter { all, inStock, lowStock, outOfStock }
 
@@ -202,6 +203,18 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 ],
               ),
               actions: [
+                IconButton(
+                  icon: Icon(Icons.analytics_rounded, color: AppColors.primary),
+                  tooltip: 'تقارير المخزون الذكية (النواقص والرواكد وحركة الأصناف)',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const SmartInventoryReportsScreen(),
+                      ),
+                    );
+                  },
+                ),
                 if (isAdmin)
                   Padding(
                     padding: const EdgeInsets.symmetric(

@@ -4,6 +4,7 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/common.dart';
+import '../utils/logging.dart';
 import 'tables/promotions.dart';
 import 'tables/promotion_targets.dart';
 
@@ -652,6 +653,12 @@ void _setupSqlite(CommonDatabase rawDb) {
   rawDb.execute('PRAGMA journal_mode = WAL;');
   rawDb.execute('PRAGMA synchronous = NORMAL;');
   rawDb.execute('PRAGMA busy_timeout = 5000;');
+  try {
+    final v = rawDb.select('SELECT sqlite_version() AS v;');
+    if (v.isNotEmpty) {
+      Logging.info('📦 [SQLite Runtime Version] ${v.first['v']}');
+    }
+  } catch (_) {}
 }
 
 QueryExecutor _openConnection() {
@@ -776,6 +783,14 @@ class AppDatabase extends _$AppDatabase {
 
   @override
   int get schemaVersion => 11;
+
+  /// Checkpoints committed WAL frames into the main database file.
+  /// Called after POS checkout to guarantee zero receipt loss on sudden power cuts.
+  Future<void> flushWal() async {
+    try {
+      await customStatement('PRAGMA wal_checkpoint(PASSIVE);');
+    } catch (_) {}
+  }
 
   @visibleForTesting
   Future<void> migrateToV6(Migrator m) async {
@@ -1123,95 +1138,100 @@ class AppDatabase extends _$AppDatabase {
       );
     },
     onUpgrade: (Migrator m, int from, int to) async {
-      if (from < 2) {
-        Future<void> safeAddColumn(
-          String tableName,
-          String columnName,
-          TableInfo table,
-          GeneratedColumn col,
-        ) async {
-          final result = await customSelect(
-            'PRAGMA table_info("$tableName")',
-          ).get();
-          final cols = result
-              .map((r) => (r.data['name'] as String).toLowerCase())
-              .toSet();
-          if (!cols.contains(columnName.toLowerCase())) {
-            await m.addColumn(table, col);
+      await m.database.transaction(() async {
+        if (from < 2) {
+          Future<void> safeAddColumn(
+            String tableName,
+            String columnName,
+            TableInfo table,
+            GeneratedColumn col,
+          ) async {
+            final result = await customSelect(
+              'PRAGMA table_info("$tableName")',
+            ).get();
+            final cols = result
+                .map((r) => (r.data['name'] as String).toLowerCase())
+                .toSet();
+            if (!cols.contains(columnName.toLowerCase())) {
+              await m.addColumn(table, col);
+            }
           }
+
+          await safeAddColumn(
+            'product_variants',
+            'wholesale_price',
+            productVariants,
+            productVariants.wholesalePrice,
+          );
+          await safeAddColumn(
+            'customers',
+            'discount_percent',
+            customers,
+            customers.discountPercent,
+          );
+          await safeAddColumn(
+            'customers',
+            'customer_type',
+            customers,
+            customers.customerType,
+          );
+          await safeAddColumn('users', 'salary', users, users.salary);
         }
 
-        await safeAddColumn(
-          'product_variants',
-          'wholesale_price',
-          productVariants,
-          productVariants.wholesalePrice,
-        );
-        await safeAddColumn(
-          'customers',
-          'discount_percent',
-          customers,
-          customers.discountPercent,
-        );
-        await safeAddColumn(
-          'customers',
-          'customer_type',
-          customers,
-          customers.customerType,
-        );
-        await safeAddColumn('users', 'salary', users, users.salary);
-      }
+        if (from < 3) {
+          await m.createTable(suppliers);
+          await m.createTable(purchases);
+          await m.createTable(purchaseItems);
+          await m.createTable(supplierPayments);
+          await m.createTable(loyaltyTransactions);
 
-      if (from < 3) {
-        await m.createTable(suppliers);
-        await m.createTable(purchases);
-        await m.createTable(purchaseItems);
-        await m.createTable(supplierPayments);
-        await m.createTable(loyaltyTransactions);
+          final nowMs = DateTime.now().millisecondsSinceEpoch;
+          await customStatement(
+            'INSERT OR IGNORE INTO app_meta ("key", "value", "updated_at") VALUES '
+            "('loyalty_earn_rate', '10', $nowMs), "
+            "('loyalty_redeem_rate', '10', $nowMs), "
+            "('loyalty_max_redeem_percent', '30', $nowMs);",
+          );
+        }
 
-        final nowMs = DateTime.now().millisecondsSinceEpoch;
-        await customStatement(
-          'INSERT OR IGNORE INTO app_meta ("key", "value", "updated_at") VALUES '
-          "('loyalty_earn_rate', '10', $nowMs), "
-          "('loyalty_redeem_rate', '10', $nowMs), "
-          "('loyalty_max_redeem_percent', '30', $nowMs);",
-        );
-      }
+        if (from < 4) {
+          await m.createTable(goodsReceipts);
+          await m.createTable(goodsReceiptItems);
+        }
 
-      if (from < 4) {
-        await m.createTable(goodsReceipts);
-        await m.createTable(goodsReceiptItems);
-      }
+        if (from < 5) {
+          await m.createTable(installmentPlans);
+          await m.createTable(customerInstallments);
+          await m.createTable(installmentPayments);
+        }
 
-      if (from < 5) {
-        await m.createTable(installmentPlans);
-        await m.createTable(customerInstallments);
-        await m.createTable(installmentPayments);
-      }
+        if (from < 6 && to >= 6) {
+          await migrateToV6(m);
+        }
 
-      if (from < 6 && to >= 6) {
-        await migrateToV6(m);
-      }
+        if (from < 7 && to >= 7) {
+          await migrateToV7(m);
+        }
 
-      if (from < 7 && to >= 7) {
-        await migrateToV7(m);
-      }
+        if (from < 8 && to >= 8) {
+          await migrateToV8(m);
+        }
 
-      if (from < 8 && to >= 8) {
-        await migrateToV8(m);
-      }
+        if (from < 9 && to >= 9) {
+          await migrateToV9(m);
+        }
 
-      if (from < 9 && to >= 9) {
-        await migrateToV9(m);
-      }
+        if (from < 10 && to >= 10) {
+          await migrateToV10(m);
+        }
 
-      if (from < 10 && to >= 10) {
-        await migrateToV10(m);
-      }
+        if (from < 11 && to >= 11) {
+          await migrateToV11(m);
+        }
 
-      if (from < 11 && to >= 11) {
-        await migrateToV11(m);
-      }
+        // Commit target user_version inside the transaction to eliminate the post-commit window
+        await m.database.customStatement('PRAGMA user_version = $to;');
+      });
     },
     beforeOpen: (details) async {
       Future<void> addColumnIfNotExists(

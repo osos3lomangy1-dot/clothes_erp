@@ -31,6 +31,8 @@ class BarcodeLabelService {
     bool showStoreName = true,
     bool showPrice = true,
     bool showColorAndSize = true,
+    bool showProductName = true,
+    bool showBarcodeText = true,
   }) async {
     await _loadFonts();
 
@@ -78,6 +80,8 @@ class BarcodeLabelService {
                 showStoreName: showStoreName,
                 showPrice: showPrice,
                 showColorAndSize: showColorAndSize,
+                showProductName: showProductName,
+                showBarcodeText: showBarcodeText,
                 isSheet: true,
               )).toList(),
             ),
@@ -105,6 +109,8 @@ class BarcodeLabelService {
                 showStoreName: showStoreName,
                 showPrice: showPrice,
                 showColorAndSize: showColorAndSize,
+                showProductName: showProductName,
+                showBarcodeText: showBarcodeText,
                 isSheet: false,
               ),
             ),
@@ -123,6 +129,8 @@ class BarcodeLabelService {
     required bool showPrice,
     required bool showColorAndSize,
     required bool isSheet,
+    bool showProductName = true,
+    bool showBarcodeText = true,
   }) {
     final priceStr = '${Money(item.salePricePiasters).toDisplay()} ج.م';
     final colorSizeStr = '${item.color} - مقاس ${item.size}';
@@ -151,16 +159,18 @@ class BarcodeLabelService {
             ),
             pw.SizedBox(height: 1),
           ],
-          pw.Text(
-            item.productName,
-            style: pw.TextStyle(
-              fontSize: 8,
-              fontWeight: pw.FontWeight.bold,
+          if (showProductName) ...[
+            pw.Text(
+              item.productName,
+              style: pw.TextStyle(
+                fontSize: 8,
+                fontWeight: pw.FontWeight.bold,
+              ),
+              maxLines: 1,
+              overflow: pw.TextOverflow.clip,
             ),
-            maxLines: 1,
-            overflow: pw.TextOverflow.clip,
-          ),
-          if (showColorAndSize) ...[
+          ],
+          if (showColorAndSize && (item.color.isNotEmpty || item.size.isNotEmpty)) ...[
             pw.Text(
               colorSizeStr,
               style: const pw.TextStyle(fontSize: 6.5, color: PdfColors.grey700),
@@ -173,7 +183,7 @@ class BarcodeLabelService {
             child: pw.BarcodeWidget(
               barcode: pw.Barcode.code128(),
               data: item.sku.isNotEmpty ? item.sku : '000000000000',
-              drawText: true,
+              drawText: showBarcodeText,
               textStyle: const pw.TextStyle(fontSize: 6.5),
             ),
           ),
@@ -200,6 +210,8 @@ class BarcodeLabelService {
     bool showStoreName = true,
     bool showPrice = true,
     bool showColorAndSize = true,
+    bool showProductName = true,
+    bool showBarcodeText = true,
   }) async {
     final pdfBytes = await generatePdf(
       items: items,
@@ -208,6 +220,8 @@ class BarcodeLabelService {
       showStoreName: showStoreName,
       showPrice: showPrice,
       showColorAndSize: showColorAndSize,
+      showProductName: showProductName,
+      showBarcodeText: showBarcodeText,
     );
 
     await Printing.layoutPdf(

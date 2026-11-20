@@ -3,9 +3,16 @@ import 'package:injectable/injectable.dart';
 import 'injection.config.dart';
 import '../../features/auth/data/datasources/auth_local_data_source.dart';
 import '../../features/customers/data/services/customer_ledger_service.dart';
+import '../../features/delivery/data/datasources/delivery_local_data_source.dart';
+import '../../features/delivery/data/repositories/delivery_repository_impl.dart';
+import '../../features/delivery/domain/repositories/delivery_repository.dart';
+import '../../features/delivery/presentation/cubits/delivery_cubit.dart';
 import '../../features/employees/domain/repositories/employee_repository.dart';
 import '../../features/employees/presentation/cubits/cashier_payroll_cubit.dart';
 import '../../features/installments/data/services/manager_pin_service.dart';
+import '../../features/reports/data/repositories/smart_inventory_repository_impl.dart';
+import '../../features/reports/domain/repositories/smart_inventory_repository.dart';
+import '../../features/reports/presentation/cubits/smart_inventory_cubit.dart';
 import '../../features/settings/presentation/cubits/settings_cubit.dart';
 import '../database/app_database.dart';
 import '../database/branch_provider.dart';
@@ -77,6 +84,37 @@ Future<void> configureDependencies() async {
   if (!getIt.isRegistered<CustomerLedgerService>()) {
     getIt.registerLazySingleton<CustomerLedgerService>(
       () => CustomerLedgerService(getIt<AppDatabase>()),
+    );
+  }
+  if (!getIt.isRegistered<SmartInventoryRepository>()) {
+    getIt.registerLazySingleton<SmartInventoryRepository>(
+      () => SmartInventoryRepositoryImpl(getIt<AppDatabase>()),
+    );
+  }
+  if (!getIt.isRegistered<SmartInventoryCubit>()) {
+    getIt.registerFactory<SmartInventoryCubit>(
+      () => SmartInventoryCubit(getIt<SmartInventoryRepository>()),
+    );
+  }
+  if (!getIt.isRegistered<DeliveryLocalDataSource>()) {
+    getIt.registerLazySingleton<DeliveryLocalDataSource>(
+      () => DeliveryLocalDataSourceImpl(
+        getIt<AppDatabase>(),
+        getIt<BranchProvider>(),
+      ),
+    );
+  }
+  if (!getIt.isRegistered<DeliveryRepository>()) {
+    getIt.registerLazySingleton<DeliveryRepository>(
+      () => DeliveryRepositoryImpl(getIt<DeliveryLocalDataSource>()),
+    );
+  }
+  if (!getIt.isRegistered<DeliveryCubit>()) {
+    getIt.registerFactory<DeliveryCubit>(
+      () => DeliveryCubit(
+        getIt<DeliveryRepository>(),
+        getIt<BranchProvider>(),
+      ),
     );
   }
 }

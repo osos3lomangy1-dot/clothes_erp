@@ -54,6 +54,15 @@ abstract class InstallmentsFacade {
     required String contractId,
     required String pin,
   });
+  Future<Either<Failure, Unit>> updateLegalStatus({
+    required String contractId,
+    required bool isLegalCase,
+  });
+  Future<Either<Failure, Unit>> markPromissoryNoteDelivered({
+    required String contractId,
+    required bool delivered,
+    DateTime? deliveredAt,
+  });
 
   // Payments
   Future<Either<Failure, InstallmentPaymentEntity>> recordPayment({

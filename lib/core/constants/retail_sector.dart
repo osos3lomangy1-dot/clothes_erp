@@ -35,3 +35,4 @@ class RetailSector {
     return mode == supermarket || mode == houseware;
   }
 }
+

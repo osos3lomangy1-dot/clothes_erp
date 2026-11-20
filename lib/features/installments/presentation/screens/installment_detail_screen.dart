@@ -20,10 +20,7 @@ import 'record_payment_screen.dart';
 class InstallmentDetailScreen extends StatelessWidget {
   final String contractId;
 
-  const InstallmentDetailScreen({
-    super.key,
-    required this.contractId,
-  });
+  const InstallmentDetailScreen({super.key, required this.contractId});
 
   @override
   Widget build(BuildContext context) {
@@ -53,14 +50,16 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
   }
 
   Future<void> _guardFeature() async {
-    final enabled = await getIt<FeatureGate>().isEnabled(FeatureKeys.installments);
+    final enabled = await getIt<FeatureGate>().isEnabled(
+      FeatureKeys.installments,
+    );
     if (!enabled && mounted) {
       if (Navigator.canPop(context)) {
         Navigator.of(context).pop();
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('ميزة التقسيط غير مفعلة')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('ميزة التقسيط غير مفعلة')));
     }
   }
 
@@ -76,15 +75,21 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
         surfaceTintColor: Colors.transparent,
         shape: const Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.onSurface),
+          icon: const Icon(
+            Icons.arrow_back_rounded,
+            color: AppColors.onSurface,
+          ),
           tooltip: 'رجوع',
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: Text(
           'تفاصيل عقد التقسيط',
-          style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
+          style: TextStyle(
+            fontFamily: 'Cairo',
+            fontWeight: FontWeight.bold,
             fontSize: 18,
-            color: AppColors.onSurface,),
+            color: AppColors.onSurface,
+          ),
         ),
         actions: [
           IconButton(
@@ -99,7 +104,10 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
         listener: (context, state) {
           if (state.errorMessage != null && state.errorMessage!.isNotEmpty) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.errorMessage!), backgroundColor: Colors.red),
+              SnackBar(
+                content: Text(state.errorMessage!),
+                backgroundColor: Colors.red,
+              ),
             );
           }
         },
@@ -108,12 +116,17 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (state.status == InstallmentDetailStatus.error || state.contract == null) {
+          if (state.status == InstallmentDetailStatus.error ||
+              state.contract == null) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.error_outline_rounded, color: Colors.red, size: 48),
+                  const Icon(
+                    Icons.error_outline_rounded,
+                    color: Colors.red,
+                    size: 48,
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     'خطأ: ${state.errorMessage ?? "تعذر تحميل تفاصيل العقد"}',
@@ -132,7 +145,10 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
           final contract = state.contract!;
           final now = DateTime.now();
           final computedStatus = contract.statusAt(now);
-          final canPay = computedStatus == 'active' || computedStatus == 'overdue';
+          final canPay =
+              computedStatus == 'active' ||
+              computedStatus == 'overdue' ||
+              computedStatus == 'legal_case';
 
           return SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
@@ -143,7 +159,15 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     // Header KPI & Customer Overview Card
-                    _buildHeaderCard(context, contract, state.customerName, computedStatus, state.payments, state.schedule),
+                    _buildHeaderCard(
+                      context,
+                      cubit,
+                      contract,
+                      state.customerName,
+                      computedStatus,
+                      state.payments,
+                      state.schedule,
+                    ),
                     const SizedBox(height: 16),
 
                     // Actions Bar
@@ -169,13 +193,15 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
 
   Widget _buildHeaderCard(
     BuildContext context,
+    InstallmentDetailCubit cubit,
     CustomerInstallmentEntity contract,
     String? customerName,
     String computedStatus,
     List<InstallmentPaymentEntity> payments,
     List<InstallmentScheduleEntry> schedule,
   ) {
-    final displayName = customerName ?? 'عميل #${contract.customerId.substring(0, 8)}';
+    final displayName =
+        customerName ?? 'عميل #${contract.customerId.substring(0, 8)}';
     final startStr = DateFormat('yyyy/MM/dd').format(contract.startDate);
     final firstDueDate = schedule.isNotEmpty
         ? schedule.first.dueDate
@@ -185,17 +211,30 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
 
     // Total cash actually paid across down payment and installments (excluding waived interest)
     final totalWaivedPiasters = payments
-        .where((p) => p.receiptNumber == 'INTEREST_WAIVER' || p.paymentMethod == 'waiver')
+        .where(
+          (p) =>
+              p.receiptNumber == 'INTEREST_WAIVER' ||
+              p.paymentMethod == 'waiver',
+        )
         .fold<int>(0, (sum, p) => sum + p.amountPiasters);
     final totalPaidPiasters = payments
-        .where((p) => p.receiptNumber != 'INTEREST_WAIVER' && p.paymentMethod != 'waiver')
+        .where(
+          (p) =>
+              p.receiptNumber != 'INTEREST_WAIVER' &&
+              p.paymentMethod != 'waiver',
+        )
         .fold<int>(0, (sum, p) => sum + p.amountPiasters);
-    final totalScheduledPiasters = schedule.fold<int>(0, (sum, e) => sum + e.amountPiasters);
-    final totalContractObligation = contract.downPaymentPiasters + totalScheduledPiasters;
+    final totalScheduledPiasters = schedule.fold<int>(
+      0,
+      (sum, e) => sum + e.amountPiasters,
+    );
+    final totalContractObligation =
+        contract.downPaymentPiasters + totalScheduledPiasters;
 
     // Progress calculation (cash paid + waived settlement closes out 100%)
     final progress = totalContractObligation > 0
-        ? ((totalPaidPiasters + totalWaivedPiasters) / totalContractObligation).clamp(0.0, 1.0)
+        ? ((totalPaidPiasters + totalWaivedPiasters) / totalContractObligation)
+              .clamp(0.0, 1.0)
         : 0.0;
     final percentDisplay = (progress * 100).toInt();
 
@@ -240,15 +279,21 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                   children: [
                     Text(
                       displayName,
-                      style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontWeight: FontWeight.bold,
                         fontSize: 22,
-                        color: AppColors.onSurface,),
+                        color: AppColors.onSurface,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'عقد تقسيط رقم: #${contract.id.substring(0, 8).toUpperCase()}',
-                      style: TextStyle(fontFamily: 'Cairo', fontSize: 12,
-                        color: Colors.grey.shade600,),
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
                     ),
                   ],
                 ),
@@ -273,16 +318,22 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                   children: [
                     Text(
                       'نسبة السداد: $percentDisplay%',
-                      style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontWeight: FontWeight.bold,
                         fontSize: 13,
-                        color: AppColors.primary,),
+                        color: AppColors.primary,
+                      ),
                     ),
                     Text(
                       totalWaivedPiasters > 0
                           ? '${Money(totalPaidPiasters).toDisplay()} ج.م مسدد + ${Money(totalWaivedPiasters).toDisplay()} ج.م إعفاء سداد مبكر'
                           : '${Money(totalPaidPiasters).toDisplay()} ج.م مسدد من إجمالي ${Money(totalContractObligation).toDisplay()} ج.م',
-                      style: TextStyle(fontFamily: 'Cairo', fontSize: 12,
-                        color: Colors.grey.shade700,),
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 12,
+                        color: Colors.grey.shade700,
+                      ),
                     ),
                   ],
                 ),
@@ -293,12 +344,18 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                     value: progress,
                     minHeight: 8,
                     backgroundColor: Colors.grey.shade200,
-                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppColors.primary,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 14),
+
+          // Promissory Note status banner
+          _buildPromissoryNoteBanner(context, cubit, contract),
           const SizedBox(height: 20),
 
           // 4 Metric Stat Cards
@@ -383,10 +440,26 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
               runSpacing: 10,
               alignment: WrapAlignment.start,
               children: [
-                _buildMetaItem(Icons.calendar_today_rounded, 'تاريخ الشراء (المقدم)', startStr),
-                _buildMetaItem(Icons.event_note_rounded, 'تاريخ أول قسط', firstDueStr),
-                _buildMetaItem(Icons.event_available_rounded, 'تاريخ آخر قسط', endStr),
-                _buildMetaItem(Icons.schedule_rounded, 'المدة', '${contract.durationMonths} شهور'),
+                _buildMetaItem(
+                  Icons.calendar_today_rounded,
+                  'تاريخ الشراء (المقدم)',
+                  startStr,
+                ),
+                _buildMetaItem(
+                  Icons.event_note_rounded,
+                  'تاريخ أول قسط',
+                  firstDueStr,
+                ),
+                _buildMetaItem(
+                  Icons.event_available_rounded,
+                  'تاريخ آخر قسط',
+                  endStr,
+                ),
+                _buildMetaItem(
+                  Icons.schedule_rounded,
+                  'المدة',
+                  '${contract.durationMonths} شهور',
+                ),
                 _buildMetaItem(
                   Icons.timelapse_rounded,
                   'القسط الشهري التقديري',
@@ -433,9 +506,12 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
               children: [
                 Text(
                   title,
-                  style: TextStyle(fontFamily: 'Cairo', fontSize: 12,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 12,
                     color: Colors.grey.shade700,
-                    fontWeight: FontWeight.w600,),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 FittedBox(
@@ -443,9 +519,12 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                   alignment: Alignment.centerRight,
                   child: Text(
                     value,
-                    style: TextStyle(fontFamily: 'Cairo', fontSize: 15,
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 15,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.onSurface,),
+                      color: AppColors.onSurface,
+                    ),
                   ),
                 ),
               ],
@@ -464,13 +543,20 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
         const SizedBox(width: 6),
         Text(
           '$label: ',
-          style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade600),
+          style: TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 12,
+            color: Colors.grey.shade600,
+          ),
         ),
         Text(
           value,
-          style: TextStyle(fontFamily: 'Cairo', fontSize: 12,
+          style: TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 12,
             fontWeight: FontWeight.bold,
-            color: AppColors.onSurface,),
+            color: AppColors.onSurface,
+          ),
         ),
       ],
     );
@@ -494,12 +580,18 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
               foregroundColor: Colors.white,
               elevation: 2,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             icon: const Icon(Icons.payment_rounded, size: 20),
             label: const Text(
               'تسجيل دفعة جديدة',
-              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 14),
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
             ),
             onPressed: () async {
               final saved = await showRecordPaymentDialog(
@@ -518,38 +610,108 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
               foregroundColor: Colors.white,
               elevation: 2,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             icon: state.isSettling
                 ? const SizedBox(
                     width: 18,
                     height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
                   )
                 : const Icon(Icons.bolt_rounded, size: 20),
             label: const Text(
               'سداد مبكر / تسوية العقد',
-              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 14),
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
             ),
             onPressed: state.isSettling
                 ? null
-                : () => _openEarlySettlementDialog(context, cubit, state, contract),
+                : () => _openEarlySettlementDialog(
+                    context,
+                    cubit,
+                    state,
+                    contract,
+                  ),
           ),
-        if (contract.status != 'cancelled' && contract.status != 'completed')
+        if (contract.status != 'cancelled' &&
+            contract.status != 'completed') ...[
+          if (contract.status != 'legal_case')
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.amber.shade900,
+                side: BorderSide(color: Colors.amber.shade800),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 14,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(Icons.gavel_rounded, size: 20),
+              label: const Text(
+                'تحويل لإجراء قانوني',
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              onPressed: () => _confirmToggleLegalCase(context, cubit, true),
+            )
+          else
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.teal.shade800,
+                side: BorderSide(color: Colors.teal.shade700),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 14,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(Icons.undo_rounded, size: 20),
+              label: const Text(
+                'إلغاء الإجراء القانوني (إعادة لنشط)',
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              onPressed: () => _confirmToggleLegalCase(context, cubit, false),
+            ),
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.error,
               side: BorderSide(color: AppColors.error.withValues(alpha: 0.6)),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             icon: const Icon(Icons.cancel_outlined, size: 20),
             label: const Text(
               'إلغاء العقد',
-              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 14),
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
             ),
             onPressed: () => _confirmCancelContract(context, cubit),
           ),
+        ],
       ],
     );
   }
@@ -569,7 +731,8 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
 
     final isPinRequired = getIt.isRegistered<ManagerPinService>()
         ? await getIt<ManagerPinService>().isPinRequired()
-        : (await getIt<FeatureGate>().getMeta('installments.pin.require')) != '0';
+        : (await getIt<FeatureGate>().getMeta('installments.pin.require')) !=
+              '0';
 
     if (!context.mounted) return;
 
@@ -596,6 +759,49 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
     );
 
     if (ok && context.mounted) {
+      final delivered = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogCtx) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.inventory_2_rounded, color: AppColors.primary),
+              const SizedBox(width: 8),
+              const Text(
+                'تسليم وصل الأمانة',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ],
+          ),
+          content: const Text(
+            'تمت تسوية العقد بالكامل بنجاح وأصبح الرصيد 0 ج.م.\n\nهل تم تسليم أصل وصل الأمانة للعميل الآن؟',
+            style: TextStyle(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(false),
+              child: const Text('لا، سيتم تسليمه لاحقاً'),
+            ),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.of(dialogCtx).pop(true),
+              icon: const Icon(Icons.check_rounded, size: 18),
+              label: const Text('نعم، تم التسليم'),
+            ),
+          ],
+        ),
+      );
+      if (delivered != null && context.mounted) {
+        await cubit.markPromissoryNoteDelivered(delivered);
+      }
+
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: Colors.teal.shade700,
@@ -607,7 +813,10 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
     }
   }
 
-  void _confirmCancelContract(BuildContext context, InstallmentDetailCubit cubit) async {
+  void _confirmCancelContract(
+    BuildContext context,
+    InstallmentDetailCubit cubit,
+  ) async {
     final featureGate = getIt<FeatureGate>();
     final isAdmin = await featureGate.isCurrentUserAdmin();
     if (!context.mounted) return;
@@ -653,7 +862,9 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                 decoration: InputDecoration(
                   labelText: 'الرقم السري للمدير (PIN)',
                   labelStyle: const TextStyle(fontFamily: 'Cairo'),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   prefixIcon: const Icon(Icons.lock_outline_rounded),
                 ),
               ),
@@ -663,19 +874,29 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(),
-            child: Text('رجوع', style: TextStyle(fontFamily: 'Cairo', color: Colors.grey.shade700)),
+            child: Text(
+              'رجوع',
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                color: Colors.grey.shade700,
+              ),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             onPressed: () async {
               final pin = isPinRequired ? pinController.text.trim() : '';
               if (isPinRequired && pin.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('الرجاء إدخال الرقم السري للمدير')),
+                  const SnackBar(
+                    content: Text('الرجاء إدخال الرقم السري للمدير'),
+                  ),
                 );
                 return;
               }
@@ -683,11 +904,20 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
               final success = await cubit.cancelContract(pin);
               if (success && context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('تم إلغاء العقد بنجاح'), backgroundColor: Colors.green),
+                  const SnackBar(
+                    content: Text('تم إلغاء العقد بنجاح'),
+                    backgroundColor: Colors.green,
+                  ),
                 );
               }
             },
-            child: Text('تأكيد الإلغاء', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
+            child: Text(
+              'تأكيد الإلغاء',
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -699,7 +929,8 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
     List<InstallmentScheduleAllocation> allocations,
     CustomerInstallmentEntity contract,
   ) {
-    final isContractCompleted = contract.status == 'completed' || contract.remainingPiasters <= 0;
+    final isContractCompleted =
+        contract.status == 'completed' || contract.remainingPiasters <= 0;
     final today = DateTime.now();
     final todayDateOnly = DateTime(today.year, today.month, today.day);
 
@@ -732,7 +963,11 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                         color: AppColors.primary.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(Icons.table_chart_rounded, color: AppColors.primary, size: 20),
+                      child: Icon(
+                        Icons.table_chart_rounded,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -741,11 +976,19 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                         children: [
                           Text(
                             'جدول الأقساط والاستحقاقات',
-                            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 16),
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           ),
                           Text(
                             'أول قسط يبدأ الشهر التالي للشراء • أي زيادة عن القسط تُرحَّل تلقائياً لآخر قسط',
-                            style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey.shade600),
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 11,
+                              color: Colors.grey.shade600,
+                            ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -757,14 +1000,22 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
               ),
               const SizedBox(width: 10),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF3F4F6),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   '${allocations.length} أقساط مجدولة',
-                  style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 12,
+                    color: Colors.grey.shade700,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -790,220 +1041,285 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
-                    headingRowColor: WidgetStateProperty.all(const Color(0xFFF8F9FC)),
-                    headingTextStyle: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      color: AppColors.onSurface,),
-                    dataTextStyle: TextStyle(fontFamily: 'Cairo', fontSize: 13, color: AppColors.onSurface),
-                    dataRowMinHeight: 52,
-                    dataRowMaxHeight: 68,
-                    columnSpacing: 20,
-                    horizontalMargin: 16,
-                    columns: const [
-                      DataColumn(label: Text('#')),
-                      DataColumn(label: Text('تاريخ الاستحقاق')),
-                      DataColumn(label: Text('قيمة القسط')),
-                      DataColumn(label: Text('المدفوع / المرحّل')),
-                      DataColumn(label: Text('المتبقي')),
-                      DataColumn(label: Text('تاريخ السداد الفعلي')),
-                      DataColumn(label: Text('الحالة')),
-                    ],
-                    rows: allocations.asMap().entries.map((mapEntry) {
-                      final index = mapEntry.key;
-                      final alloc = mapEntry.value;
-                      final entry = alloc.entry;
+                  headingRowColor: WidgetStateProperty.all(
+                    const Color(0xFFF8F9FC),
+                  ),
+                  headingTextStyle: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: AppColors.onSurface,
+                  ),
+                  dataTextStyle: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 13,
+                    color: AppColors.onSurface,
+                  ),
+                  dataRowMinHeight: 52,
+                  dataRowMaxHeight: 68,
+                  columnSpacing: 20,
+                  horizontalMargin: 16,
+                  columns: const [
+                    DataColumn(label: Text('#')),
+                    DataColumn(label: Text('تاريخ الاستحقاق')),
+                    DataColumn(label: Text('قيمة القسط')),
+                    DataColumn(label: Text('المدفوع / المرحّل')),
+                    DataColumn(label: Text('المتبقي')),
+                    DataColumn(label: Text('تاريخ السداد الفعلي')),
+                    DataColumn(label: Text('الحالة')),
+                  ],
+                  rows: allocations.asMap().entries.map((mapEntry) {
+                    final index = mapEntry.key;
+                    final alloc = mapEntry.value;
+                    final entry = alloc.entry;
 
-                      final bool isPaid = isContractCompleted || alloc.isPaid;
-                      final bool isExcessOnlyPartial =
-                          !isPaid && alloc.paidFromExcessPiasters > 0 && alloc.paidRegularPiasters == 0;
-                      final bool isPartiallyPaid = !isPaid && alloc.isPartiallyPaid;
-                      final dueDateOnly = DateTime(entry.dueDate.year, entry.dueDate.month, entry.dueDate.day);
-                      final bool isOverdue = !isPaid && todayDateOnly.isAfter(dueDateOnly);
+                    final bool isPaid = isContractCompleted || alloc.isPaid;
+                    final bool isExcessOnlyPartial =
+                        !isPaid &&
+                        alloc.paidFromExcessPiasters > 0 &&
+                        alloc.paidRegularPiasters == 0;
+                    final bool isPartiallyPaid =
+                        !isPaid && alloc.isPartiallyPaid;
+                    final dueDateOnly = DateTime(
+                      entry.dueDate.year,
+                      entry.dueDate.month,
+                      entry.dueDate.day,
+                    );
+                    final bool isOverdue =
+                        !isPaid && todayDateOnly.isAfter(dueDateOnly);
 
-                      final String statusLabel;
-                      final Color statusColor;
-                      final Color statusBg;
-                      final IconData statusIcon;
+                    final String statusLabel;
+                    final Color statusColor;
+                    final Color statusBg;
+                    final IconData statusIcon;
 
-                      if (isPaid && alloc.isPaidOnlyFromExcess) {
-                        statusLabel = 'مدفوع (ترحيل زيادة)';
-                        statusColor = Colors.teal.shade700;
-                        statusBg = Colors.teal.shade50;
-                        statusIcon = Icons.fast_rewind_rounded;
-                      } else if (isPaid) {
-                        statusLabel = 'مدفوع';
-                        statusColor = AppColors.success;
-                        statusBg = AppColors.successContainer;
-                        statusIcon = Icons.check_circle_rounded;
-                      } else if (isOverdue) {
-                        statusLabel = isPartiallyPaid ? 'متأخر (جزئي)' : 'متأخر';
-                        statusColor = AppColors.error;
-                        statusBg = AppColors.errorContainer;
-                        statusIcon = Icons.warning_amber_rounded;
-                      } else if (isExcessOnlyPartial) {
-                        statusLabel = 'مرحّل له زيادة';
-                        statusColor = Colors.purple.shade700;
-                        statusBg = Colors.purple.shade50;
-                        statusIcon = Icons.savings_outlined;
-                      } else if (isPartiallyPaid) {
-                        statusLabel = 'مدفوع جزئياً';
-                        statusColor = const Color(0xFFD97706);
-                        statusBg = const Color(0xFFFEF3C7);
-                        statusIcon = Icons.hourglass_bottom_rounded;
+                    if (isPaid && alloc.isPaidOnlyFromExcess) {
+                      statusLabel = 'مدفوع (ترحيل زيادة)';
+                      statusColor = Colors.teal.shade700;
+                      statusBg = Colors.teal.shade50;
+                      statusIcon = Icons.fast_rewind_rounded;
+                    } else if (isPaid) {
+                      statusLabel = 'مدفوع';
+                      statusColor = AppColors.success;
+                      statusBg = AppColors.successContainer;
+                      statusIcon = Icons.check_circle_rounded;
+                    } else if (isOverdue) {
+                      statusLabel = isPartiallyPaid ? 'متأخر (جزئي)' : 'متأخر';
+                      statusColor = AppColors.error;
+                      statusBg = AppColors.errorContainer;
+                      statusIcon = Icons.warning_amber_rounded;
+                    } else if (isExcessOnlyPartial) {
+                      statusLabel = 'مرحّل له زيادة';
+                      statusColor = Colors.purple.shade700;
+                      statusBg = Colors.purple.shade50;
+                      statusIcon = Icons.savings_outlined;
+                    } else if (isPartiallyPaid) {
+                      statusLabel = 'مدفوع جزئياً';
+                      statusColor = const Color(0xFFD97706);
+                      statusBg = const Color(0xFFFEF3C7);
+                      statusIcon = Icons.hourglass_bottom_rounded;
+                    } else {
+                      statusLabel = 'مستحق';
+                      statusColor = const Color(0xFF2563EB);
+                      statusBg = const Color(0xFFEFF6FF);
+                      statusIcon = Icons.schedule_rounded;
+                    }
+
+                    // Actual payment date cell
+                    Widget paidDateWidget;
+                    if (alloc.paidAt == null) {
+                      paidDateWidget = Text(
+                        '—',
+                        style: TextStyle(color: Colors.grey.shade400),
+                      );
+                    } else {
+                      final paidDateStr = DateFormat(
+                        'yyyy/MM/dd',
+                      ).format(alloc.paidAt!);
+                      final diffDays = alloc.daysFromDueDate ?? 0;
+                      String timingText;
+                      Color timingColor;
+                      if (isExcessOnlyPartial || alloc.isPaidOnlyFromExcess) {
+                        timingText = 'ترحيل زيادة';
+                        timingColor = Colors.purple.shade700;
+                      } else if (diffDays < 0) {
+                        timingText = 'قبل الموعد (${diffDays.abs()} ي)';
+                        timingColor = Colors.teal.shade700;
+                      } else if (diffDays == 0) {
+                        timingText = 'في الموعد';
+                        timingColor = AppColors.success;
                       } else {
-                        statusLabel = 'مستحق';
-                        statusColor = const Color(0xFF2563EB);
-                        statusBg = const Color(0xFFEFF6FF);
-                        statusIcon = Icons.schedule_rounded;
+                        timingText = 'بعد الموعد ($diffDays ي)';
+                        timingColor = AppColors.error;
                       }
-
-                      // Actual payment date cell
-                      Widget paidDateWidget;
-                      if (alloc.paidAt == null) {
-                        paidDateWidget = Text('—', style: TextStyle(color: Colors.grey.shade400));
-                      } else {
-                        final paidDateStr = DateFormat('yyyy/MM/dd').format(alloc.paidAt!);
-                        final diffDays = alloc.daysFromDueDate ?? 0;
-                        String timingText;
-                        Color timingColor;
-                        if (isExcessOnlyPartial || alloc.isPaidOnlyFromExcess) {
-                          timingText = 'ترحيل زيادة';
-                          timingColor = Colors.purple.shade700;
-                        } else if (diffDays < 0) {
-                          timingText = 'قبل الموعد (${diffDays.abs()} ي)';
-                          timingColor = Colors.teal.shade700;
-                        } else if (diffDays == 0) {
-                          timingText = 'في الموعد';
-                          timingColor = AppColors.success;
-                        } else {
-                          timingText = 'بعد الموعد ($diffDays ي)';
-                          timingColor = AppColors.error;
-                        }
-                        paidDateWidget = Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              paidDateStr,
-                              style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 12),
-                            ),
-                            Text(
-                              timingText,
-                              style: TextStyle(fontFamily: 'Cairo', fontSize: 10, fontWeight: FontWeight.w600, color: timingColor),
-                            ),
-                          ],
-                        );
-                      }
-
-                      return DataRow(
-                        color: WidgetStateProperty.resolveWith<Color?>((states) {
-                          if (index.isOdd) return const Color(0xFFFAFAFC);
-                          return Colors.white;
-                        }),
-                        cells: [
-                          DataCell(
-                            Container(
-                              width: 28,
-                              height: 28,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: isPaid ? AppColors.successContainer : const Color(0xFFF3F4F6),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Text(
-                                '${entry.installmentNumber}',
-                                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                  color: isPaid ? AppColors.success : Colors.grey.shade800,),
-                              ),
+                      paidDateWidget = Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            paidDateStr,
+                            style: const TextStyle(
+                              fontFamily: 'Cairo',
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
                             ),
                           ),
-                          DataCell(
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.event_outlined, size: 15, color: Colors.grey),
-                                const SizedBox(width: 6),
-                                Text(DateFormat('yyyy/MM/dd').format(entry.dueDate)),
-                              ],
-                            ),
-                          ),
-                          DataCell(
-                            Text(
-                              '${Money(entry.amountPiasters).toDisplay()} ج.م',
-                              style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          DataCell(
-                            alloc.totalPaidPiasters <= 0
-                                ? Text('0.00 ج.م', style: TextStyle(color: Colors.grey.shade500, fontSize: 12))
-                                : Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        '${Money(alloc.totalPaidPiasters).toDisplay()} ج.م',
-                                        style: TextStyle(
-                                          fontFamily: 'Cairo',
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                          color: alloc.hasExcessCarryOver ? Colors.purple.shade700 : AppColors.success,
-                                        ),
-                                      ),
-                                      if (alloc.hasExcessCarryOver)
-                                        Text(
-                                          'منها زيادة مرحّلة: ${Money(alloc.paidFromExcessPiasters).toDisplay()} ج.م',
-                                          style: TextStyle(
-                                            fontFamily: 'Cairo',
-                                            fontSize: 10,
-                                            color: Colors.purple.shade700,
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                          ),
-                          DataCell(
-                            Text(
-                              '${Money(isContractCompleted ? 0 : alloc.remainingPiasters).toDisplay()} ج.م',
-                              style: TextStyle(
-                                fontFamily: 'Cairo',
-                                fontWeight: FontWeight.bold,
-                                color: (isContractCompleted || alloc.remainingPiasters == 0)
-                                    ? AppColors.success
-                                    : AppColors.onSurface,
-                              ),
-                            ),
-                          ),
-                          DataCell(paidDateWidget),
-                          DataCell(
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: statusBg,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: statusColor.withValues(alpha: 0.3)),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(statusIcon, size: 14, color: statusColor),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    statusLabel,
-                                    style: TextStyle(fontFamily: 'Cairo', color: statusColor,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 11,),
-                                  ),
-                                ],
-                              ),
+                          Text(
+                            timingText,
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: timingColor,
                             ),
                           ),
                         ],
                       );
-                    }).toList(),
-                  ),
+                    }
+
+                    return DataRow(
+                      color: WidgetStateProperty.resolveWith<Color?>((states) {
+                        if (index.isOdd) return const Color(0xFFFAFAFC);
+                        return Colors.white;
+                      }),
+                      cells: [
+                        DataCell(
+                          Container(
+                            width: 28,
+                            height: 28,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: isPaid
+                                  ? AppColors.successContainer
+                                  : const Color(0xFFF3F4F6),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              '${entry.installmentNumber}',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                color: isPaid
+                                    ? AppColors.success
+                                    : Colors.grey.shade800,
+                              ),
+                            ),
+                          ),
+                        ),
+                        DataCell(
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.event_outlined,
+                                size: 15,
+                                color: Colors.grey,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                DateFormat('yyyy/MM/dd').format(entry.dueDate),
+                              ),
+                            ],
+                          ),
+                        ),
+                        DataCell(
+                          Text(
+                            '${Money(entry.amountPiasters).toDisplay()} ج.م',
+                            style: const TextStyle(
+                              fontFamily: 'Cairo',
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        DataCell(
+                          alloc.totalPaidPiasters <= 0
+                              ? Text(
+                                  '0.00 ج.م',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade500,
+                                    fontSize: 12,
+                                  ),
+                                )
+                              : Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${Money(alloc.totalPaidPiasters).toDisplay()} ج.م',
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                        color: alloc.hasExcessCarryOver
+                                            ? Colors.purple.shade700
+                                            : AppColors.success,
+                                      ),
+                                    ),
+                                    if (alloc.hasExcessCarryOver)
+                                      Text(
+                                        'منها زيادة مرحّلة: ${Money(alloc.paidFromExcessPiasters).toDisplay()} ج.م',
+                                        style: TextStyle(
+                                          fontFamily: 'Cairo',
+                                          fontSize: 10,
+                                          color: Colors.purple.shade700,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                        ),
+                        DataCell(
+                          Text(
+                            '${Money(isContractCompleted ? 0 : alloc.remainingPiasters).toDisplay()} ج.م',
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontWeight: FontWeight.bold,
+                              color:
+                                  (isContractCompleted ||
+                                      alloc.remainingPiasters == 0)
+                                  ? AppColors.success
+                                  : AppColors.onSurface,
+                            ),
+                          ),
+                        ),
+                        DataCell(paidDateWidget),
+                        DataCell(
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: statusBg,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: statusColor.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(statusIcon, size: 14, color: statusColor),
+                                const SizedBox(width: 4),
+                                Text(
+                                  statusLabel,
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    color: statusColor,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  }).toList(),
                 ),
               ),
+            ),
         ],
       ),
     );
@@ -1041,24 +1357,40 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                       color: AppColors.success.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.receipt_long_rounded, color: AppColors.success, size: 20),
+                    child: const Icon(
+                      Icons.receipt_long_rounded,
+                      color: AppColors.success,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Text(
                     'سجل الدفعات والمتحصلات',
-                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 16),
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
                   ),
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF3F4F6),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   '${payments.length} دفعات مسجلة',
-                  style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 12,
+                    color: Colors.grey.shade700,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -1079,50 +1411,55 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: payments.length,
-              separatorBuilder: (_, index) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
+              separatorBuilder: (_, index) =>
+                  const Divider(height: 1, color: Color(0xFFF3F4F6)),
               itemBuilder: (context, index) {
                 final payment = payments[index];
-                final dateStr = DateFormat('yyyy/MM/dd • HH:mm').format(payment.paidAt);
+                final dateStr = DateFormat(
+                  'yyyy/MM/dd • HH:mm',
+                ).format(payment.paidAt);
                 final isDownPayment = payment.receiptNumber == 'DOWN_PAYMENT';
                 final isWaiver =
-                    payment.receiptNumber == 'INTEREST_WAIVER' || payment.paymentMethod == 'waiver';
-                final isEarlySettlement = payment.receiptNumber == 'EARLY_SETTLEMENT';
+                    payment.receiptNumber == 'INTEREST_WAIVER' ||
+                    payment.paymentMethod == 'waiver';
+                final isEarlySettlement =
+                    payment.receiptNumber == 'EARLY_SETTLEMENT';
                 final payMethodAr = isWaiver
                     ? 'إعفاء فائدة (لا يدخل الدرج)'
                     : payment.paymentMethod == 'cash'
-                        ? 'نقدي'
-                        : payment.paymentMethod == 'card'
-                            ? 'بطاقة / فيزا'
-                            : payment.paymentMethod;
+                    ? 'نقدي'
+                    : payment.paymentMethod == 'card'
+                    ? 'بطاقة / فيزا'
+                    : payment.paymentMethod;
 
                 final Color iconBg = isWaiver
                     ? Colors.purple.shade50
                     : isEarlySettlement
-                        ? Colors.teal.shade50
-                        : isDownPayment
-                            ? const Color(0xFFE0F2FE)
-                            : const Color(0xFFDCFCE7);
+                    ? Colors.teal.shade50
+                    : isDownPayment
+                    ? const Color(0xFFE0F2FE)
+                    : const Color(0xFFDCFCE7);
                 final Color iconColor = isWaiver
                     ? Colors.purple.shade700
                     : isEarlySettlement
-                        ? Colors.teal.shade700
-                        : isDownPayment
-                            ? const Color(0xFF0369A1)
-                            : AppColors.success;
+                    ? Colors.teal.shade700
+                    : isDownPayment
+                    ? const Color(0xFF0369A1)
+                    : AppColors.success;
                 final IconData iconData = isWaiver
                     ? Icons.local_offer_rounded
                     : isEarlySettlement
-                        ? Icons.bolt_rounded
-                        : isDownPayment
-                            ? Icons.account_balance_wallet_rounded
-                            : Icons.check_circle_rounded;
+                    ? Icons.bolt_rounded
+                    : isDownPayment
+                    ? Icons.account_balance_wallet_rounded
+                    : Icons.check_circle_rounded;
                 final String titleText = isWaiver
                     ? 'إعفاء فائدة سداد مبكر'
                     : isEarlySettlement
-                        ? 'سداد مبكر / تسوية نهائية: ${Money(payment.amountPiasters).toDisplay()} ج.م'
-                        : isDownPayment
-                            ? 'دفعة مقدمة'
-                            : 'دفعة قسط: ${Money(payment.amountPiasters).toDisplay()} ج.م';
+                    ? 'سداد مبكر / تسوية نهائية: ${Money(payment.amountPiasters).toDisplay()} ج.م'
+                    : isDownPayment
+                    ? 'دفعة مقدمة'
+                    : 'دفعة قسط: ${Money(payment.amountPiasters).toDisplay()} ج.م';
 
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
@@ -1135,11 +1472,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                           color: iconBg,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Icon(
-                          iconData,
-                          color: iconColor,
-                          size: 22,
-                        ),
+                        child: Icon(iconData, color: iconColor, size: 22),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -1148,15 +1481,23 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                           children: [
                             Text(
                               titleText,
-                              style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
+                              style: const TextStyle(
+                                fontFamily: 'Cairo',
+                                fontWeight: FontWeight.bold,
                                 fontSize: 14,
-                                color: AppColors.onSurface,),
+                                color: AppColors.onSurface,
+                              ),
                             ),
-                            if (payment.notes != null && payment.notes!.trim().isNotEmpty) ...[
+                            if (payment.notes != null &&
+                                payment.notes!.trim().isNotEmpty) ...[
                               const SizedBox(height: 1),
                               Text(
                                 payment.notes!,
-                                style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey.shade700),
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 11,
+                                  color: Colors.grey.shade700,
+                                ),
                               ),
                             ],
                             const SizedBox(height: 2),
@@ -1165,17 +1506,35 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                               children: [
                                 Text(
                                   'الطريقة: $payMethodAr',
-                                  style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey.shade600),
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 11,
+                                    color: Colors.grey.shade600,
+                                  ),
                                 ),
-                                Text('•', style: TextStyle(color: Colors.grey.shade400)),
+                                Text(
+                                  '•',
+                                  style: TextStyle(color: Colors.grey.shade400),
+                                ),
                                 Text(
                                   'بواسطة: ${payment.recordedBy}',
-                                  style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey.shade600),
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 11,
+                                    color: Colors.grey.shade600,
+                                  ),
                                 ),
-                                Text('•', style: TextStyle(color: Colors.grey.shade400)),
+                                Text(
+                                  '•',
+                                  style: TextStyle(color: Colors.grey.shade400),
+                                ),
                                 Text(
                                   dateStr,
-                                  style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey.shade600),
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 11,
+                                    color: Colors.grey.shade600,
+                                  ),
                                 ),
                               ],
                             ),
@@ -1183,7 +1542,10 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: iconBg,
                           borderRadius: BorderRadius.circular(8),
@@ -1195,7 +1557,9 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                           isWaiver
                               ? '-${Money(payment.amountPiasters).toDisplay()} ج.م (إعفاء)'
                               : '${Money(payment.amountPiasters).toDisplay()} ج.م',
-                          style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontWeight: FontWeight.bold,
                             fontSize: 13,
                             color: iconColor,
                           ),
@@ -1230,6 +1594,12 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
         label = 'متأخر في السداد';
         icon = Icons.error_rounded;
         break;
+      case 'legal_case':
+        color = const Color(0xFFC2410C);
+        bg = const Color(0xFFFFEDD5);
+        label = 'إجراء قانوني (قضايا)';
+        icon = Icons.gavel_rounded;
+        break;
       case 'completed':
         color = AppColors.success;
         bg = AppColors.successContainer;
@@ -1263,10 +1633,233 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
           const SizedBox(width: 6),
           Text(
             label,
-            style: TextStyle(fontFamily: 'Cairo', color: color, fontWeight: FontWeight.bold, fontSize: 12),
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildPromissoryNoteBanner(
+    BuildContext context,
+    InstallmentDetailCubit cubit,
+    CustomerInstallmentEntity contract,
+  ) {
+    if (contract.promissoryNoteDelivered) {
+      final deliveredDate = contract.promissoryNoteDeliveredAt != null
+          ? DateFormat('yyyy/MM/dd').format(contract.promissoryNoteDeliveredAt!)
+          : null;
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF0FDF4),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFBBF7D0)),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.verified_rounded,
+              color: Color(0xFF16A34A),
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                deliveredDate != null
+                    ? 'تم تسليم وصل الأمانة للعميل بتاريخ $deliveredDate'
+                    : 'تم تسليم وصل الأمانة للعميل',
+                style: const TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF15803D),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFFDE68A)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.inventory_2_outlined,
+            color: Colors.amber.shade800,
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'وصل الأمانة في الخزينة (لم يُسلَّم للعميل بعد)',
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.amber.shade900,
+              ),
+            ),
+          ),
+          InkWell(
+            onTap: () => _confirmDeliverPromissoryNote(context, cubit),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade800,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check_rounded, color: Colors.white, size: 14),
+                  SizedBox(width: 4),
+                  Text(
+                    'تسليم الوصل للعميل',
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmDeliverPromissoryNote(
+    BuildContext context,
+    InstallmentDetailCubit cubit,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.inventory_2_rounded, color: AppColors.primary),
+            const SizedBox(width: 8),
+            const Text(
+              'تسليم وصل الأمانة',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ],
+        ),
+        content: const Text(
+          'هل تريد تأكيد تسليم أصل وصل الأمانة للعميل الآن؟\nسيتم توثيق تاريخ ووقت التسليم على العقد.',
+          style: TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(false),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(dialogCtx).pop(true),
+            icon: const Icon(Icons.check_rounded, size: 18),
+            label: const Text('تأكيد التسليم'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      final success = await cubit.markPromissoryNoteDelivered(true);
+      if (success && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تم توثيق تسليم وصل الأمانة للعميل بنجاح'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _confirmToggleLegalCase(
+    BuildContext context,
+    InstallmentDetailCubit cubit,
+    bool isLegalCase,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(
+              isLegalCase ? Icons.gavel_rounded : Icons.undo_rounded,
+              color: isLegalCase ? Colors.amber.shade800 : AppColors.primary,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              isLegalCase
+                  ? 'تحويل العقد لإجراء قانوني'
+                  : 'إلغاء الإجراء القانوني',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ],
+        ),
+        content: Text(
+          isLegalCase
+              ? 'هل أنت متأكد من تحويل هذا العقد إلى "إجراء قانوني"؟\nسيتم نقله من قائمة المتأخرات العادية إلى قسم الإجراءات القانونية.'
+              : 'هل تريد إعادة العقد إلى الحالة النشطة الطبيعية؟',
+          style: const TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(false),
+            child: const Text('تراجع'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isLegalCase
+                  ? Colors.amber.shade800
+                  : AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(dialogCtx).pop(true),
+            child: Text(isLegalCase ? 'تأكيد التحويل' : 'تأكيد الإعادة'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      final success = await cubit.updateLegalStatus(isLegalCase);
+      if (success && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isLegalCase
+                  ? 'تم تحويل العقد للإجراءات القانونية بنجاح'
+                  : 'تمت إعادة العقد للحالة النشطة بنجاح',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    }
   }
 }

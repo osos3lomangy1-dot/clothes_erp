@@ -1,61 +1,94 @@
-# Business Rules — Orkeed Clothes ERP
+# 07 — قواعد الأعمال المحاسبية والتشغيلية (Business Rules)
 
-## 1. Products, Variants & Duplicate Prevention
-- **Product vs Variant:**
-  - `Product` = catalog entity (`name`, `categoryId`, `description`, `minStock`).
-  - `ProductVariant` = SKU entity (`sku`, `color`, `size`, `quantity`, `costPrice`, `sellPrice`).
-  - Soft-deleting a product soft-deletes its variants in the same atomic transaction.
-  - A product with existing `sale_items` cannot be deleted; it may only be deactivated.
-- **Duplicate Product Prevention (Strict UI + Cubit + DB Enforcement):**
-  - All product names are normalized via `ArabicTextHelper.normalize()`:
-    - Strips Arabic diacritics / Tashkeel (`[\u064B-\u065F\u0670]`).
-    - Unifies Alef variants (`أ`, `إ`, `آ`, `ٱ` -> `ا`).
-    - Unifies Yaa (`ى` -> `ي`) and Taa Marbuta (`ة` -> `ه`).
-    - Collapses multiple spaces and trims boundaries.
-  - **Exact / Normalized Duplicate:** Strictly **BLOCKED** from saving at all three layers (`ProductFormScreen`, `ProductFormCubit`, and `ProductLocalDataSource.createProduct`, `createProductWithVariants`, `updateProduct`). Editing a product ignores its own ID during duplicate checks.
-  - **Real-Time Similarity Warning:** While typing a product name, any existing products matching by substring or word overlap (`ArabicTextHelper.isSimilar`) are immediately displayed as warning chips under the name field.
-  - **Accidental Save Protection:** If similar products exist when clicking Save, an explicit confirmation dialog intercepts the save listing the similar products so accidental duplicate creation is prevented.
-- **Duplicate SKU / Code Prevention (Strict UI + Cubit + DB Enforcement):**
-  - Variant SKUs are compared case-insensitively and trimmed (`sku.trim().toLowerCase()`).
-  - Duplicate SKUs are blocked in real-time inside `ProductFormScreen` (both within the variants table and against existing active DB SKUs) and `VariantFormScreen`, as well as enforced at the database layer in `ProductLocalDataSource.createProductWithVariants`, `VariantLocalDataSource.createVariant`, and `VariantLocalDataSource.updateVariant`.
-  - Soft-deleted variants free their SKU for reuse.
+---
 
-## 2. POS, Hardware Scanner & Payments
-- Checkout creates `Sale` + `SaleItems` + `SalePayments` + `CashMovements` in one atomic transaction.
-- Each sold item deducts stock via `applyStockMovement(type: sale, qtyDelta: -qty)`. Insufficient stock rolls back the entire transaction.
-- **Split Payments:** Total of payment splits (`cash`, `card`, `wallet`) must match sale total (or down payment for installments).
-- **Hardware Barcode Scanner:** Global keyboard listener detects rapid SKU scan bursts terminated by Enter and adds matching variants directly to the POS cart without manual focus switching.
-- **Cashier Security:** Cashier projections never expose `costPrice` or net profit margins.
-- **Price Editing:** Admin edits to `sellPrice` / `costPrice` are recorded in `audit_logs` with `oldValue`/`newValue`.
+## 1. المنتجات والمخزون ومنع التكرار (Catalog & Anti-Duplicate Rules)
 
-## 3. Installments & Bulk Customer FIFO Payment
-- **Contract Creation:** Creates `customer_installments` contract with integer-piaster schedule. Any down payment writes `sale_payments` and `cash_movements` (`type: 'installment_down'`, `direction: 'in'`, linked to active `shiftId`).
-- **Single Contract Payment (`recordPayment`):** Rejects zero/negative amounts, cancelled/completed contracts, and overpayments exceeding `contract.remainingPiasters`.
-- **Bulk Customer Quick Payment (`recordBulkCustomerPayment` — FIFO):**
-  - Available directly beside each customer's name on the Installments screen when `totalRemainingPiasters > 0`.
-  - **Amount Validation:** Must be `> 0` and `<= totalRemainingPiasters` across all active/overdue contracts for that customer. Overpayments exceeding total customer debt are strictly rejected.
-  - **FIFO Allocation Order:** Active/overdue contracts with `remainingPiasters > 0` are ordered ascending by `startDate` then `createdAt` (oldest contract first).
-  - **Distribution Loop:** Payment is applied to the oldest contract first; if that contract reaches `0` remaining, its status automatically transitions to `completed`, and any leftover amount cascades to the next oldest contract until fully allocated.
-  - **Atomicity & Drawer Sync:** All `installment_payments`, contract balance updates, and `cash_movements` (`type: 'installment_payment'`, `direction: 'in'`, linked to active `shiftId`) execute inside a single `TxWriter` atomic transaction with audit logging.
-- **Manager PIN Protection:** Enforced via `ManagerPinService` whenever `installments.pin.require` is enabled (5 failed attempts trigger a 15-minute lockout).
+- **النموذج الهجين للمنتج والمتغير:**
+  - `Product` = بطاقة الكتالوج (`name`, `categoryId`, `description`, `minStock`).
+  - `ProductVariant` = وحدة التخزين (`sku`, `color`, `size`, `quantity`, `costPrice`, `sellPrice`).
+  - عند حذف منتج، تُحذف متغيراته المرتبطة تلقائياً في نفس المعاملة (Soft Delete).
+  - لا يمكن حذف أي منتج أو متغير دخل في فواتير بيع سابقة؛ بل يتم تعطيله فقط (`isActive = false`) للحفاظ على سلامة القيود والتقارير.
+- **القواعد الصارمة لمنع تكرار المنتجات والأسماء باللغة العربية:**
+  - يتم تطبيع كافة الأسماء آلياً عبر `ArabicTextHelper.normalize()`:
+    - إزالة التشكيل والتنوين بالكامل (`[\u064B-\u065F\u0670]`).
+    - توحيد صور الألف (`أ`, `إ`, `آ`, `ٱ` -> `ا`).
+    - توحيد الياء والتاء المربوطة (`ى` -> `ي`, `ة` -> `ه`).
+    - ضغط المسافات المتعددة وإزالة الفراغات في الأطراف.
+  - **منع التكرار المطابق أو المطبّع:** ممنوع تماماً على مستوى شاشات الواجهة، الـ Cubit، وقاعدة البيانات.
+  - **التنبيه الفوري بالمنتجات المتشابهة:** أثناء كتابة اسم المنتج، تظهر شرائح تنبيهية فورية بالمنتجات المشابهة لتنبيه المستخدم قبل الحفظ.
+- **قواعد منع تكرار الأكواد والباركود (`SKU`):**
+  - مقارنة الأكواد غير حساسة لحالة الأحرف والمسافات (`sku.trim().toLowerCase()`).
+  - يُمنع تكرار أي كود نشط على مستوى المتغيرات أو قاعدة البيانات.
 
-## 4. Customer Returns
-- Refund is calculated from the original sale item price (accounting for applied discounts).
-- Stock is restored atomically via `applyStockMovement(type: return, qtyDelta: +qty)`.
-- Refund cash outflow is recorded in `cash_movements` linked to the active shift.
+---
 
-## 5. Purchases, Supplier Payments & Purchase Returns
-- **Supplier Balance Equation:** `supplier_balance = SUM(purchases) - SUM(payments) - SUM(purchase_returns)`.
-- **Supplier Payments (FIFO):** General payments allocate automatically to the oldest open purchase invoices first. Overpayment on a specific invoice is rejected.
-- **Supplier Purchase Returns:**
-  - Deducts returned quantities from `product_variants` and logs `inventory_logs` (`type: 'purchase_return'`).
-  - Reconciles supplier balance and updates invoice status.
-  - If refunded in cash, records an inflow in `cash_movements` linked to the active `shiftId`.
+## 2. نقطة البيع ومتانة الفاتورة (POS & Checkout Durability)
 
-## 6. Shifts & Drawer Reconciliation
-- Expected closing cash = `openingBalance + SUM(cash_movements where method='cash' & direction='in') - SUM(cash_movements where method='cash' & direction='out')`.
-- Includes cash sales, installment down payments, individual & bulk installment collections, supplier return cash refunds, minus cash customer returns, expenses, and cash supplier payments.
+- **المعاملة الذرية للفاتورة:**
+  - عند الضغط على إنهاء البيع، يتم إنشاء: `Sale` + `SaleItems` + `SalePayments` + `CashMovements` + `InventoryLogs` داخل معاملة واحدة لا تتجزأ عبر `TxWriter`.
+- **وسائل وطرق الدفع المعتمدة:**
+  - يدعم النظام: **نقدي (كاش)**، **بطاقة (فيزا / ماستركارد)**، **إنستاباي (InstaPay)**، **محافظ إلكترونية (فودافون كاش وغيرها)**، **آجل (على الحساب)**، و **تقسيط**.
+  - مجموع قيم وسائل الدفع في الدفع المجزأ يجب أن يطابق تماماً صافي قيمة الفاتورة.
+- **متانة الفاتورة بعد الطباعة (Durability Checkpoint):**
+  - فور اكتمال حفظ الفاتورة، يُطلق النظام أمر `await _db.flushWal();` لتنفيذ `PRAGMA wal_checkpoint(PASSIVE);` لضمان كتابة الفاتورة المطبوعة مباشرة على وسيط التخزين الفيزيائي وحمايتها من انقطاع الكهرباء المفاجئ.
+- **خصم المخزون اللحظي:**
+  - كل بند يُباع يخصم رصيده فوراً عبر `applyStockMovement(type: sale, qtyDelta: -qty)`. إذا كانت الكمية المتاحة لا تكفي، تفشل المعاملة وتتراجع تلقائياً.
 
-## 7. Promotions Engine
-- Evaluates active, date-valid promotions targeting specific products, categories, or whole orders.
-- Discounts are calculated cleanly in integer piasters and printed on thermal receipts.
+---
+
+## 3. الأقساط والتحصيل السريع (Installments & FIFO Allocation)
+
+- **إنشاء العقد:**
+  - يُنشئ العقد في `customer_installments` بجدول أقساط محسوب بالقروش الصحيحة.
+  - أي دفعة مقدمة تُسجل فوراً في `sale_payments` و `cash_movements` بنوع `installment_down` وربطها بالوردية المفتوحة.
+- **السداد المجمع السريع للعميل (Bulk FIFO Payment):**
+  - يظهر حقل سداد فوري بجوار اسم كل عميل في شاشة الأقساط للمديونيات المتبقية.
+  - **التحقق من القيمة:** يجب أن يكون المبلغ أكبر من صفر ولا يتجاوز إجمالي مديونية العميل عبر كافة عقوده.
+  - **آلية التوزيع (FIFO):** تُفرز عقود العميل تصاعدياً بالأقدم تاريخاً (`startDate`, `createdAt`)، ويُطبق السداد على العقد الأقدم أولاً حتى اكتماله ثم ينتقل للعقد التالي تلقائياً.
+  - **مزامنة الدرج:** كل دفعة تفرز حركة نقدية في `cash_movements` مربوطة بوردية الكاشير الحالية.
+
+---
+
+## 4. المرتجعات والاستبدال (Returns Policy)
+
+- لا يتم قبول مرتجع إلا بالرجوع لرقم الفاتورة الأصلية.
+- يُحسب المبلغ المسترد بناءً على سعر البيع الفعلي المسجل في الفاتورة بعد خصم أي عروض تم تطبيقها.
+- يُعاد الصنف للمخزون ذرياً عبر `applyStockMovement(type: return, qtyDelta: +qty)`.
+- يُخصم المبلغ المسترد نقداً من حركة الخزينة في الوردية النشطة بنوع `sale_refund`.
+
+---
+
+## 5. المشتريات والموردين (Purchases & Suppliers)
+
+- **معادلة مديونية المورد:**
+  `رصيد المورد = إجمالي المشتريات - إجمالي المسدد - إجمالي مرتجعات المشتريات`.
+- **سداد الموردين بنظام الأقدم فالأحدث:**
+  تُوزع الدفعات العامة تلقائياً على فواتير الشراء الأقدم أولاً.
+- **مرتجعات المشتريات:**
+  تخصم البضاعة المرتجعة فوراً من المخزن، وتسوي مديونية المورد، وتسجل استرداد النقدية للدرج في حال الاسترداد النقدي.
+
+---
+
+## 6. معادلة مطابقة الخزينة والوردية (Shift Cash Drawer Equation)
+
+عند إغلاق الوردية، يتم حساب **النقدية المتوقعة في الدرج** تلقائياً عبر المعادلة المحاسبية الصارمة:
+
+$$\text{النقدية المتوقعة} = \text{الرصيد الافتتاحي} + \sum (\text{المقبوضات النقدية}) - \sum (\text{المدفوعات النقدية})$$
+
+حيث تشمل **المقبوضات النقدية**:
+- مبيعات الكاش.
+- مقدمات الأقساط النقدية.
+- تحصيلات الأقساط الفردية والمجمعة النقدية.
+- المبالغ المستردة نقداً من مرتجعات الموردين.
+
+وتشمل **المدفوعات النقدية**:
+- مرتجعات مبيعات العملاء النقدية.
+- المصروفات النثرية وسلف الموظفين.
+- المدفوعات النقدية للموردين.
+
+**حساب الفارق:**
+- $\text{الفارق} = \text{النقدية الفعلية المدخلة} - \text{النقدية المتوقعة}$.
+- إذا كان الفارق موجباً = **زيادة في الدرج**.
+- إذا كان الفارق سالباً = **عجز في الدرج**.
+- إذا كان الفارق صفراً = **الدرج مطابق تماماً 100%**.

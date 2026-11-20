@@ -491,6 +491,37 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
     return Right(contract);
   }
 
+  static const String _promissoryNotesStorageKey = 'installment_promissory_notes';
+
+  Future<Map<String, Map<String, dynamic>>> _loadPromissoryNotes() async {
+    final row = await (_db.select(_db.appMeta)
+          ..where((t) => t.key.equals(_promissoryNotesStorageKey)))
+        .getSingleOrNull();
+    if (row == null || row.value.isEmpty) return {};
+    try {
+      final decoded = jsonDecode(row.value) as Map<String, dynamic>;
+      return decoded.map((k, v) => MapEntry(k, Map<String, dynamic>.from(v as Map)));
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> _savePromissoryNote(String contractId, bool delivered, DateTime? deliveredAt) async {
+    final notes = await _loadPromissoryNotes();
+    notes[contractId] = {
+      'delivered': delivered,
+      'deliveredAt': deliveredAt?.toIso8601String(),
+    };
+    final now = DateTime.now();
+    await _db.into(_db.appMeta).insertOnConflictUpdate(
+      AppMetaCompanion.insert(
+        key: _promissoryNotesStorageKey,
+        value: jsonEncode(notes),
+        updatedAt: now,
+      ),
+    );
+  }
+
   @override
   Future<Either<Failure, CustomerInstallmentEntity>> getContract(String id) async {
     final row = await (_db.select(_db.customerInstallments)
@@ -499,7 +530,8 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
     if (row == null) {
       return const Left(ServerFailure('العقد غير موجود'));
     }
-    return Right(_mapContract(row));
+    final notes = await _loadPromissoryNotes();
+    return Right(_mapContract(row, notes));
   }
 
   @override
@@ -523,17 +555,19 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
       query = query..where((t) => t.startDate.isSmallerOrEqualValue(toDate));
     }
     final rows = await (query..orderBy([(t) => OrderingTerm.desc(t.createdAt)])).get();
-    return Right(rows.map(_mapContract).toList());
+    final notes = await _loadPromissoryNotes();
+    return Right(rows.map((r) => _mapContract(r, notes)).toList());
   }
 
   @override
   Future<Either<Failure, List<CustomerInstallmentEntity>>> listOverdueContracts() async {
     final rows = await (_db.select(_db.customerInstallments)
-      ..where((t) => t.deletedAt.isNull() & t.status.isNotIn(['completed', 'cancelled']) & t.remainingPiasters.isBiggerThanValue(0)))
+      ..where((t) => t.deletedAt.isNull() & t.status.isNotIn(['completed', 'cancelled', 'legal_case']) & t.remainingPiasters.isBiggerThanValue(0)))
       .get();
     final now = DateTime.now();
+    final notes = await _loadPromissoryNotes();
     final overdue = rows
-      .map(_mapContract)
+      .map((r) => _mapContract(r, notes))
       .where((c) => c.statusAt(now) == 'overdue')
       .toList();
     return Right(overdue);
@@ -548,10 +582,11 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
             ..where((c) => c.deletedAt.isNull()))
           .get();
 
-      final allEntities = allRows.map(_mapContract).toList();
+      final notes = await _loadPromissoryNotes();
+      final allEntities = allRows.map((r) => _mapContract(r, notes)).toList();
       final activeOrOverdue = allEntities.where((c) {
         final status = c.statusAt(now);
-        return status == 'active' || status == 'overdue';
+        return status == 'active' || status == 'overdue' || status == 'legal_case';
       }).toList();
 
       if (activeOrOverdue.isEmpty) return const Right([]);
@@ -647,6 +682,66 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
       payload: jsonEncode({'contractId': contractId}),
     );
 
+    return const Right(unit);
+  }
+
+  @override
+  Future<Either<Failure, Unit>> updateLegalStatus({
+    required String contractId,
+    required bool isLegalCase,
+  }) async {
+    if (!await _featureGate.isEnabled(FeatureKeys.installments)) {
+      return Left(FeatureDisabledFailure(FeatureKeys.installments));
+    }
+    final contract = await (_db.select(_db.customerInstallments)
+      ..where((t) => t.id.equals(contractId) & t.deletedAt.isNull()))
+      .getSingleOrNull();
+    if (contract == null) {
+      return const Left(ServerFailure('العقد غير موجود'));
+    }
+    if (contract.status == 'completed' || contract.status == 'cancelled') {
+      return const Left(ServerFailure('لا يمكن تغيير حالة عقد مكتمل أو ملغي'));
+    }
+
+    final newStatus = isLegalCase ? 'legal_case' : 'active';
+    final now = DateTime.now();
+    final branchId = await _branchProvider.getBranchId();
+    final user = await _auth.getCachedUser();
+    final userId = user?.id ?? 'admin';
+
+    await _txWriter.write(
+      writeFn: () async {
+        await (_db.update(_db.customerInstallments)..where((t) => t.id.equals(contractId))).write(
+          CustomerInstallmentsCompanion(
+            status: Value(newStatus),
+            updatedAt: Value(now),
+          ),
+        );
+      },
+      branchId: branchId,
+      entity: 'customer_installments',
+      entityId: contractId,
+      operation: isLegalCase ? 'mark_legal_case' : 'unmark_legal_case',
+      userId: userId,
+      oldValue: contract.status,
+      newValue: newStatus,
+      auditAction: isLegalCase ? 'installment_legal_case_opened' : 'installment_legal_case_closed',
+      payload: jsonEncode({'contractId': contractId, 'isLegalCase': isLegalCase}),
+    );
+
+    return const Right(unit);
+  }
+
+  @override
+  Future<Either<Failure, Unit>> markPromissoryNoteDelivered({
+    required String contractId,
+    required bool delivered,
+    DateTime? deliveredAt,
+  }) async {
+    if (!await _featureGate.isEnabled(FeatureKeys.installments)) {
+      return Left(FeatureDisabledFailure(FeatureKeys.installments));
+    }
+    await _savePromissoryNote(contractId, delivered, deliveredAt);
     return const Right(unit);
   }
 
@@ -1169,10 +1264,11 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
           .fold<int>(0, (sum, p) => sum + p.amountPiasters);
 
       final rows = await (_db.select(_db.customerInstallments)
-        ..where((t) => t.deletedAt.isNull() & t.status.isNotIn(['completed', 'cancelled']) & t.remainingPiasters.isBiggerThanValue(0)))
+        ..where((t) => t.deletedAt.isNull() & t.status.isNotIn(['completed', 'cancelled', 'legal_case']) & t.remainingPiasters.isBiggerThanValue(0)))
         .get();
+      final notes = await _loadPromissoryNotes();
       final overdueContracts = rows
-        .map(_mapContract)
+        .map((r) => _mapContract(r, notes))
         .where((c) => c.statusAt(current) == 'overdue')
         .toList();
       final overdueTotal = overdueContracts.fold<int>(0, (sum, c) => sum + c.remainingPiasters);
@@ -1226,27 +1322,40 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
         deletedAt: row.deletedAt,
       );
 
-  CustomerInstallmentEntity _mapContract(CustomerInstallment row) => CustomerInstallmentEntity(
-        id: row.id,
-        branchId: row.branchId,
-        saleId: row.saleId,
-        customerId: row.customerId,
-        planId: row.planId,
-        totalPiasters: row.totalPiasters,
-        downPaymentPiasters: row.downPaymentPiasters,
-        principalPiasters: row.principalPiasters,
-        interestBp: row.interestBp,
-        monthlyAmountPiasters: row.monthlyAmountPiasters,
-        remainingPiasters: row.remainingPiasters,
-        durationMonths: row.durationMonths,
-        startDate: row.startDate,
-        endDate: row.endDate,
-        status: row.status,
-        createdBy: row.createdBy,
-        createdAt: row.createdAt,
-        updatedAt: row.updatedAt,
-        deletedAt: row.deletedAt,
-      );
+  CustomerInstallmentEntity _mapContract(
+    CustomerInstallment row, [
+    Map<String, Map<String, dynamic>>? notesMap,
+  ]) {
+    final noteInfo = notesMap?[row.id];
+    final bool noteDelivered = noteInfo?['delivered'] == true;
+    final DateTime? noteDeliveredAt = noteInfo?['deliveredAt'] != null
+        ? DateTime.tryParse(noteInfo!['deliveredAt'] as String)
+        : null;
+
+    return CustomerInstallmentEntity(
+      id: row.id,
+      branchId: row.branchId,
+      saleId: row.saleId,
+      customerId: row.customerId,
+      planId: row.planId,
+      totalPiasters: row.totalPiasters,
+      downPaymentPiasters: row.downPaymentPiasters,
+      principalPiasters: row.principalPiasters,
+      interestBp: row.interestBp,
+      monthlyAmountPiasters: row.monthlyAmountPiasters,
+      remainingPiasters: row.remainingPiasters,
+      durationMonths: row.durationMonths,
+      startDate: row.startDate,
+      endDate: row.endDate,
+      status: row.status,
+      createdBy: row.createdBy,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      deletedAt: row.deletedAt,
+      promissoryNoteDelivered: noteDelivered,
+      promissoryNoteDeliveredAt: noteDeliveredAt,
+    );
+  }
 
   InstallmentPaymentEntity _mapPayment(InstallmentPayment row) => InstallmentPaymentEntity(
         id: row.id,

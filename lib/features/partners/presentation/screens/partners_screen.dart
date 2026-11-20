@@ -45,6 +45,11 @@ class _PartnersScreenState extends State<PartnersScreen> {
     final nameCtrl = TextEditingController(text: partner?.name ?? '');
     final phoneCtrl = TextEditingController(text: partner?.phone ?? '');
     final percentageCtrl = TextEditingController(text: partner != null ? '${partner.percentage}' : '');
+    final capitalPercentageCtrl = TextEditingController(
+      text: partner?.capitalPercentage != null
+          ? '${partner!.capitalPercentage}'
+          : (partner != null && partner.capital > 0 ? '${partner.percentage}' : ''),
+    );
     final capitalCtrl = TextEditingController(text: partner != null && partner.capital > 0 ? '${partner.capital / 100}' : '');
     final roiCtrl = TextEditingController(text: partner != null && partner.roiPercentage > 0 ? '${partner.roiPercentage}' : '15');
     final salaryCtrl = TextEditingController(text: partner != null && partner.monthlySalary > 0 ? '${partner.monthlySalary / 100}' : '');
@@ -125,7 +130,7 @@ class _PartnersScreenState extends State<PartnersScreen> {
                           Expanded(
                             child: _buildTypeOption(
                               title: 'بالمال والمجهود',
-                              subtitle: 'رأس مال + إدارة',
+                              subtitle: 'نسبة مئوية أو رأس مال',
                               icon: Icons.business_center_rounded,
                               isSelected: partnershipType == 'capital_and_effort',
                               onTap: () => setDialogState(() => partnershipType = 'capital_and_effort'),
@@ -167,21 +172,54 @@ class _PartnersScreenState extends State<PartnersScreen> {
                           controller: capitalCtrl,
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           decoration: InputDecoration(
-                            labelText: 'رأس المال المستثمر (ج.م) *',
-                            hintText: 'مثال: 100000',
+                            labelText: 'رأس المال المستثمر (اختياري)',
+                            hintText: 'مثال: 100000 (اتركه فارغاً إذا كان الاتفاق بالنسبة المباشرة)',
+                            helperText: 'اختياري: إذا كانت الشراكة بالنسبة المئوية مباشرة (مثل 50% أو 40%) دون تقييد برأس مال أولي، اتركه فارغاً',
+                            helperMaxLines: 2,
                             suffixText: 'ج.م',
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                             prefixIcon: Icon(Icons.monetization_on_outlined, color: AppColors.primary),
                           ),
                           validator: (val) {
-                            if (val == null || val.trim().isEmpty) return 'يرجى إدخال مبلغ رأس المال';
+                            if (isFixedRoi) {
+                              if (val == null || val.trim().isEmpty) return 'يرجى إدخال رأس المال لاحتساب العائد الاستثماري الثابت';
+                              final num = double.tryParse(val.trim());
+                              if (num == null || num <= 0) return 'المبلغ يجب أن يكون أكبر من الصفر';
+                              return null;
+                            }
+                            if (val == null || val.trim().isEmpty) return null; // Optional for percentage sharing
                             final num = double.tryParse(val.trim());
-                            if (num == null || num <= 0) return 'المبلغ يجب أن يكون أكبر من الصفر';
+                            if (num == null || num < 0) return 'يرجى إدخال مبلغ صحيح (صفر أو أكثر)';
                             return null;
                           },
                           onChanged: (_) {
                             if (showSmartCalculator) setDialogState(() {});
                           },
+                        ),
+                        const SizedBox(height: 10),
+
+                        // Capital Equity Share Input (حصة رأس المال / الملكية)
+                        TextFormField(
+                          controller: capitalPercentageCtrl,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: InputDecoration(
+                            labelText: 'حصة رأس المال / الملكية (%) (اختياري)',
+                            hintText: 'مثال: 50 (حصة الشريك في ملكية رأس مال المحل)',
+                            helperText: 'يمكن كتابتها يدوياً أو حسابها تلقائياً بالأسفل، وقد تختلف عن نسبة الأرباح',
+                            helperMaxLines: 2,
+                            suffixText: '%',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            prefixIcon: const Icon(Icons.pie_chart_outline_rounded, color: Colors.blueGrey),
+                          ),
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) return null;
+                            final num = double.tryParse(val.trim());
+                            if (num == null || num < 0 || num > 100) {
+                              return 'يرجى إدخال نسبة صحيحة بين 0 و 100%';
+                            }
+                            return null;
+                          },
+                          onChanged: (_) => setDialogState(() {}),
                         ),
                         const SizedBox(height: 8),
 
@@ -204,7 +242,7 @@ class _PartnersScreenState extends State<PartnersScreen> {
                           },
                           icon: Icon(showSmartCalculator ? Icons.keyboard_arrow_up_rounded : Icons.calculate_outlined, size: 18),
                           label: Text(
-                            showSmartCalculator ? 'إخفاء الحاسبة الذكية' : '⚡ احسب النسبة المئوية تلقائياً من رأس المال',
+                            showSmartCalculator ? 'إخفاء الحاسبة الذكية' : 'احسب النسبة المئوية تلقائياً من رأس المال',
                             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                           ),
                         ),
@@ -273,7 +311,10 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                           onPressed: calcPercent > 0
                                               ? () {
                                                   setDialogState(() {
-                                                    percentageCtrl.text = calcPercent.toStringAsFixed(2);
+                                                    capitalPercentageCtrl.text = calcPercent.toStringAsFixed(2);
+                                                    if (percentageCtrl.text.isEmpty) {
+                                                      percentageCtrl.text = calcPercent.toStringAsFixed(2);
+                                                    }
                                                     showSmartCalculator = false;
                                                   });
                                                 }
@@ -359,6 +400,7 @@ class _PartnersScreenState extends State<PartnersScreen> {
                           decoration: InputDecoration(
                             labelText: 'نسبة الشريك من صافي الأرباح (%) *',
                             hintText: 'الحد الأقصى المتاح حالياً: ${maxAllowed.toStringAsFixed(1)}%',
+                            helperText: 'النسبة الفعلية التي يُحسب عليها نصيب الشريك عند توزيع الأرباح (مثال: 60%)',
                             suffixText: '%',
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                           ),
@@ -372,6 +414,28 @@ class _PartnersScreenState extends State<PartnersScreen> {
                             return null;
                           },
                         ),
+                        if (capitalPercentageCtrl.text.trim().isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton.icon(
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                visualDensity: VisualDensity.compact,
+                              ),
+                              onPressed: () {
+                                setDialogState(() {
+                                  percentageCtrl.text = capitalPercentageCtrl.text.trim();
+                                });
+                              },
+                              icon: const Icon(Icons.sync_rounded, size: 16),
+                              label: Text(
+                                'مطابقة نسبة الأرباح مع حصة رأس المال (${capitalPercentageCtrl.text.trim()}%)',
+                                style: const TextStyle(fontSize: 11),
+                              ),
+                            ),
+                          ),
+                        ],
                       ] else ...[
                         TextFormField(
                           controller: roiCtrl,
@@ -434,6 +498,7 @@ class _PartnersScreenState extends State<PartnersScreen> {
                 onPressed: () async {
                   if (formKey.currentState?.validate() != true) return;
                   final percent = double.tryParse(percentageCtrl.text.trim()) ?? 0.0;
+                  final capPercent = double.tryParse(capitalPercentageCtrl.text.trim());
                   final capPounds = double.tryParse(capitalCtrl.text.trim()) ?? 0.0;
                   final roiVal = double.tryParse(roiCtrl.text.trim()) ?? 0.0;
                   final salPounds = double.tryParse(salaryCtrl.text.trim()) ?? 0.0;
@@ -448,6 +513,7 @@ class _PartnersScreenState extends State<PartnersScreen> {
                     name: nameCtrl.text.trim(),
                     phone: phoneCtrl.text.trim().isNotEmpty ? phoneCtrl.text.trim() : null,
                     percentage: isFixedRoi ? 0.0 : percent,
+                    capitalPercentage: isEffortOnly ? 0.0 : capPercent,
                     capital: isEffortOnly ? 0 : (capPounds * 100).toInt(),
                     partnershipType: partnershipType,
                     profitMode: profitMode,
@@ -565,25 +631,58 @@ class _PartnersScreenState extends State<PartnersScreen> {
 
                   const Text('نوع الصرف:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                   const SizedBox(height: 6),
-                  Row(
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
                     children: [
-                      Expanded(
-                        child: ChoiceChip(
-                          label: const Text('صرف من الأرباح المستحقة'),
-                          selected: withdrawalType == 'profit',
-                          onSelected: (val) => setDialogState(() => withdrawalType = 'profit'),
-                        ),
+                      ChoiceChip(
+                        label: const Text('صرف من الأرباح المستحقة'),
+                        selected: withdrawalType == 'profit',
+                        onSelected: (val) => setDialogState(() => withdrawalType = 'profit'),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: ChoiceChip(
-                          label: const Text('استرداد من رأس المال'),
-                          selected: withdrawalType == 'capital',
-                          onSelected: (val) => setDialogState(() => withdrawalType = 'capital'),
+                      ChoiceChip(
+                        avatar: const Icon(Icons.handshake_outlined, size: 16),
+                        label: const Text('سلفة شخصية مؤقتة (لا تؤثر على الأرباح)'),
+                        selected: withdrawalType == 'advance',
+                        onSelected: (val) => setDialogState(() => withdrawalType = 'advance'),
+                      ),
+                      if (partner.remainingDeposited > 0)
+                        ChoiceChip(
+                          avatar: const Icon(Icons.arrow_downward_rounded, size: 16),
+                          label: Text('استرداد تمويل الجيب (${Money(partner.remainingDeposited).toDisplay()} ج.م)'),
+                          selected: withdrawalType == 'deposit_refund',
+                          onSelected: (val) => setDialogState(() => withdrawalType = 'deposit_refund'),
                         ),
+                      ChoiceChip(
+                        label: const Text('استرداد من رأس المال'),
+                        selected: withdrawalType == 'capital',
+                        onSelected: (val) => setDialogState(() => withdrawalType = 'capital'),
                       ),
                     ],
                   ),
+                  if (withdrawalType == 'advance') ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.amber.shade300),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_outline_rounded, color: Colors.amber.shade900, size: 16),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'سلفة مؤقتة من الدرج لظرف شخصي، لا تخصم من أرباحك ولا رأس مالك، وتُسوى عند ردها.',
+                              style: TextStyle(fontSize: 11, color: Colors.amber.shade900),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 14),
 
                   TextFormField(
@@ -599,6 +698,10 @@ class _PartnersScreenState extends State<PartnersScreen> {
                       if (val == null || val.trim().isEmpty) return 'يرجى إدخال المبلغ';
                       final num = double.tryParse(val.trim());
                       if (num == null || num <= 0) return 'المبلغ يجب أن يكون أكبر من الصفر';
+                      final piasters = (num * 100).toInt();
+                      if (withdrawalType == 'deposit_refund' && piasters > partner.remainingDeposited) {
+                        return 'المبلغ يتجاوز رصيد تمويل الجيب المتبقي (${Money(partner.remainingDeposited).toDisplay()} ج.م)';
+                      }
                       return null;
                     },
                   ),
@@ -631,12 +734,21 @@ class _PartnersScreenState extends State<PartnersScreen> {
                 final pounds = double.tryParse(amountCtrl.text.trim()) ?? 0.0;
                 final piasters = (pounds * 100).toInt();
 
-                final ok = await cubit.recordWithdrawal(
-                  partnerId: partner.id,
-                  amount: piasters,
-                  type: withdrawalType,
-                  note: noteCtrl.text.trim().isNotEmpty ? noteCtrl.text.trim() : null,
-                );
+                final bool ok;
+                if (withdrawalType == 'deposit_refund') {
+                  ok = await cubit.refundDeposit(
+                    partnerId: partner.id,
+                    amount: piasters,
+                    note: noteCtrl.text.trim().isNotEmpty ? noteCtrl.text.trim() : null,
+                  );
+                } else {
+                  ok = await cubit.recordWithdrawal(
+                    partnerId: partner.id,
+                    amount: piasters,
+                    type: withdrawalType,
+                    note: noteCtrl.text.trim().isNotEmpty ? noteCtrl.text.trim() : null,
+                  );
+                }
 
                 if (ok && dialogCtx.mounted) {
                   Navigator.pop(dialogCtx);
@@ -656,80 +768,842 @@ class _PartnersScreenState extends State<PartnersScreen> {
     );
   }
 
-  // Withdrawals history dialog
-  void _showWithdrawalHistoryDialog(BuildContext context, PartnerEntity partner) {
+  // Deposit / Personal funding dialog (دفع من الجيب)
+  void _openDepositDialog(
+    BuildContext context,
+    PartnerEntity partner, {
+    String initialCategory = 'goods',
+  }) {
+    final formKey = GlobalKey<FormState>();
+    final initialAmount = (initialCategory == 'advance_repayment' && partner.remainingAdvance > 0)
+        ? (partner.remainingAdvance / 100.0).toStringAsFixed(partner.remainingAdvance % 100 == 0 ? 0 : 2)
+        : '';
+    final amountCtrl = TextEditingController(text: initialAmount);
+    final noteCtrl = TextEditingController(
+      text: initialCategory == 'advance_repayment' ? 'رد السلفة الشخصية للدرج' : '',
+    );
+    final cubit = context.read<PartnersCubit>();
+    String depositCategory = initialCategory;
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.history_rounded, color: AppColors.primary),
-            const SizedBox(width: 8),
-            Text('سجل مسحوبات: ${partner.name}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+      barrierDismissible: false,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Icon(
+                depositCategory == 'advance_repayment' ? Icons.assignment_return_outlined : Icons.add_card_rounded,
+                color: depositCategory == 'advance_repayment' ? Colors.amber.shade900 : AppColors.primary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  depositCategory == 'advance_repayment'
+                      ? 'رد سلفة شخصية مؤقتة: ${partner.name}'
+                      : 'تمويل ودفع من الجيب: ${partner.name}',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainer,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('إجمالي المدفوع سابقاً من الجيب', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                            Text('${Money(partner.totalDeposited).toDisplay()} ج.م', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary)),
+                          ],
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            const Text('رأس المال النشط', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                            Text('${Money(partner.currentCapital).toDisplay()} ج.م', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  const Text('الغرض من التمويل / الدفع من الجيب:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ChoiceChip(
+                        avatar: const Icon(Icons.inventory_2_outlined, size: 16),
+                        label: const Text('تكملة / شراء بضاعة'),
+                        selected: depositCategory == 'goods',
+                        onSelected: (val) => setDialogState(() => depositCategory = 'goods'),
+                      ),
+                      ChoiceChip(
+                        avatar: const Icon(Icons.receipt_long_outlined, size: 16),
+                        label: const Text('سداد مصروفات / إيجار'),
+                        selected: depositCategory == 'expenses',
+                        onSelected: (val) => setDialogState(() => depositCategory = 'expenses'),
+                      ),
+                      ChoiceChip(
+                        avatar: const Icon(Icons.point_of_sale_outlined, size: 16),
+                        label: const Text('سيولة نقدية بالدرج'),
+                        selected: depositCategory == 'cash',
+                        onSelected: (val) => setDialogState(() => depositCategory = 'cash'),
+                      ),
+                      ChoiceChip(
+                        avatar: const Icon(Icons.assignment_return_outlined, size: 16),
+                        label: Text(
+                          partner.remainingAdvance > 0
+                              ? 'رد سلفة شخصية مؤقتة (${Money(partner.remainingAdvance).toDisplay()} ج.م)'
+                              : 'رد سلفة شخصية مؤقتة',
+                        ),
+                        selected: depositCategory == 'advance_repayment',
+                        onSelected: (val) => setDialogState(() => depositCategory = 'advance_repayment'),
+                      ),
+                    ],
+                  ),
+                  if (depositCategory == 'advance_repayment') ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.amber.shade300),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.check_circle_outline_rounded, color: Colors.amber.shade900, size: 16),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'إيداع رد السلفة المؤقتة في الخزينة: يسوي السلفة السابقة ويخلي ذمتك دون اعتباره تمويلاً أو ديناً جديداً على المحل.',
+                              style: TextStyle(fontSize: 11, color: Colors.amber.shade900),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 14),
+
+                  TextFormField(
+                    controller: amountCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(
+                      labelText: 'المبلغ المدفوع (ج.م) *',
+                      suffixText: 'ج.م',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      prefixIcon: Icon(Icons.attach_money_rounded, color: AppColors.primary),
+                    ),
+                    validator: (val) {
+                      if (val == null || val.trim().isEmpty) return 'يرجى إدخال المبلغ';
+                      final num = double.tryParse(val.trim());
+                      if (num == null || num <= 0) return 'المبلغ يجب أن يكون أكبر من الصفر';
+                      if (depositCategory == 'advance_repayment' && partner.remainingAdvance > 0) {
+                        final piasters = (num * 100).toInt();
+                        if (piasters > partner.remainingAdvance) {
+                          return 'المبلغ يتجاوز السلفة المستحقة عليك (${Money(partner.remainingAdvance).toDisplay()} ج.م)';
+                        }
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
+                  TextFormField(
+                    controller: noteCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'ملاحظة / تفاصيل الدفع (اختياري)',
+                      hintText: depositCategory == 'advance_repayment'
+                          ? 'مثال: رد كامل السلفة للدرج نقداً...'
+                          : 'مثال: دفع تكلفة شحنة قماش كاش من جيبي لعدم توفر سيولة...',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: depositCategory == 'advance_repayment' ? Colors.amber.shade800 : AppColors.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () async {
+                if (formKey.currentState?.validate() != true) return;
+                final pounds = double.tryParse(amountCtrl.text.trim()) ?? 0.0;
+                final piasters = (pounds * 100).toInt();
+
+                final ok = await cubit.recordDeposit(
+                  partnerId: partner.id,
+                  amount: piasters,
+                  category: depositCategory,
+                  note: noteCtrl.text.trim().isNotEmpty ? noteCtrl.text.trim() : null,
+                );
+
+                if (ok && dialogCtx.mounted) {
+                  Navigator.pop(dialogCtx);
+                  final msg = depositCategory == 'advance_repayment'
+                      ? 'تم تسجيل رد السلفة الشخصية للدرج بمبلغ ${Money(piasters).toDisplay()} ج.م وتسويتها بنجاح!'
+                      : 'تم تسجيل تمويل من جيب الشريك بمبلغ ${Money(piasters).toDisplay()} ج.م بنجاح!';
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(msg),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                }
+              },
+              child: Text(
+                depositCategory == 'advance_repayment' ? 'تأكيد رد السلفة' : 'تأكيد الإيداع',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ),
           ],
         ),
-        content: SizedBox(
-          width: 440,
-          height: 360,
-          child: partner.withdrawals.isEmpty
-              ? const Center(
-                  child: Text('لا توجد مسحوبات مسجلة لهذا الشريك حتى الآن', style: TextStyle(color: Colors.grey)),
-                )
-              : ListView.separated(
-                  itemCount: partner.withdrawals.length,
-                  separatorBuilder: (_, index) => const Divider(height: 1),
-                  itemBuilder: (context, idx) {
-                    final w = partner.withdrawals[idx];
-                    final isProfit = w.type == 'profit';
-                    return ListTile(
-                      dense: true,
-                      leading: CircleAvatar(
-                        backgroundColor: isProfit ? Colors.green.shade50 : Colors.blue.shade50,
-                        child: Icon(
-                          isProfit ? Icons.arrow_downward_rounded : Icons.account_balance_wallet_outlined,
-                          color: isProfit ? Colors.green.shade700 : Colors.blue.shade700,
-                          size: 18,
-                        ),
-                      ),
-                      title: Text(
-                        '${Money(w.amount).toDisplay()} ج.م (${isProfit ? "سحب أرباح" : "استرداد رأس مال"})',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                      ),
-                      subtitle: Text(
-                        '${w.date.year}-${w.date.month.toString().padLeft(2, '0')}-${w.date.day.toString().padLeft(2, '0')}${w.note != null ? " • ${w.note}" : ""}',
-                        style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                      ),
-                    );
-                  },
-                ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('إغلاق'),
-          ),
-        ],
       ),
     );
   }
 
-  // Confirm auto rebalancing
-  Future<void> _confirmAutoBalance(BuildContext context) async {
+  // Reinvest retained profit into capital dialog (تدوير الأرباح في رأس المال)
+  void _openReinvestDialog(BuildContext context, PartnerEntity partner, int unwithdrawnProfit) {
+    final formKey = GlobalKey<FormState>();
+    final amountCtrl = TextEditingController(text: (unwithdrawnProfit / 100.0).toStringAsFixed(2));
+    final noteCtrl = TextEditingController();
+    final cubit = context.read<PartnersCubit>();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.autorenew_rounded, color: Colors.teal),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'تدوير الأرباح كرأس مال: ${partner.name}',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.teal.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.teal.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'تدوير الأرباح يتيح للشريك ترك أرباحه في المحل وإضافتها تلقائياً إلى حصته في رأس المال بدلاً من سحبها.',
+                          style: TextStyle(fontSize: 12, color: Colors.teal),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 12,
+                          runSpacing: 4,
+                          children: [
+                            Text(
+                              'الأرباح المتبقية المتاحة: ${Money(unwithdrawnProfit).toDisplay()} ج.م',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                            Text(
+                              'رأس المال الحالي: ${Money(partner.currentCapital).toDisplay()} ج.م',
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  TextFormField(
+                    controller: amountCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(
+                      labelText: 'المبلغ المراد تدويره في رأس المال (ج.م) *',
+                      suffixText: 'ج.م',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      prefixIcon: const Icon(Icons.price_change_outlined, color: Colors.teal),
+                    ),
+                    validator: (val) {
+                      if (val == null || val.trim().isEmpty) return 'يرجى إدخال المبلغ';
+                      final num = double.tryParse(val.trim());
+                      if (num == null || num <= 0) return 'المبلغ يجب أن يكون أكبر من الصفر';
+                      final piasters = (num * 100).toInt();
+                      if (piasters > unwithdrawnProfit) return 'المبلغ لا يمكن أن يتجاوز الأرباح المتبقية (${Money(unwithdrawnProfit).toDisplay()} ج.م)';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
+                  TextFormField(
+                    controller: noteCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'ملاحظة (اختياري)',
+                      hintText: 'مثال: تدوير أرباح الفترة لزيادة حصة رأس المال...',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () async {
+                if (formKey.currentState?.validate() != true) return;
+                final pounds = double.tryParse(amountCtrl.text.trim()) ?? 0.0;
+                final piasters = (pounds * 100).toInt();
+
+                final ok = await cubit.reinvestProfitIntoCapital(
+                  partnerId: partner.id,
+                  amount: piasters,
+                  note: noteCtrl.text.trim().isNotEmpty ? noteCtrl.text.trim() : null,
+                );
+
+                if (ok && dialogCtx.mounted) {
+                  Navigator.pop(dialogCtx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('تم تدوير مبلغ ${Money(piasters).toDisplay()} ج.م وإضافته لرأس مال ${partner.name} بنجاح!'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                }
+              },
+              child: const Text('تأكيد التدوير كزيادة رأس مال', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Refund out-of-pocket funding dialog (استرداد فلوس الجيب كاش)
+  void _openRefundDepositDialog(BuildContext context, PartnerEntity partner) {
+    final formKey = GlobalKey<FormState>();
+    final amountCtrl = TextEditingController(text: (partner.remainingDeposited / 100.0).toStringAsFixed(2));
+    final noteCtrl = TextEditingController();
+    final cubit = context.read<PartnersCubit>();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.arrow_downward_rounded, color: Colors.teal),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'استرداد تمويل شخصي من الجيب: ${partner.name}',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.teal.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.teal.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'استرداد ما دفعته من جيبك كاش من سيولة المحل، ليتم سداد هذا الدين لك بالكامل دون المساس بأرباحك أو رأس مالك.',
+                          style: TextStyle(fontSize: 12, color: Colors.teal),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 12,
+                          runSpacing: 4,
+                          children: [
+                            Text(
+                              'الرصيد المتاح للاسترداد: ${Money(partner.remainingDeposited).toDisplay()} ج.م',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                            Text(
+                              'إجمالي المدفوع: ${Money(partner.totalDeposited).toDisplay()} ج.م',
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  TextFormField(
+                    controller: amountCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(
+                      labelText: 'المبلغ المسترد (ج.م) *',
+                      suffixText: 'ج.م',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      prefixIcon: const Icon(Icons.money_rounded, color: Colors.teal),
+                    ),
+                    validator: (val) {
+                      if (val == null || val.trim().isEmpty) return 'يرجى إدخال المبلغ';
+                      final num = double.tryParse(val.trim());
+                      if (num == null || num <= 0) return 'المبلغ يجب أن يكون أكبر من الصفر';
+                      final piasters = (num * 100).toInt();
+                      if (piasters > partner.remainingDeposited) {
+                        return 'المبلغ يتجاوز رصيد تمويل الجيب المتبقي (${Money(partner.remainingDeposited).toDisplay()} ج.م)';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
+                  TextFormField(
+                    controller: noteCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'ملاحظة (اختياري)',
+                      hintText: 'مثال: استرداد كاش من الدرج عن دفعة البضاعة...',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal.shade800,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () async {
+                if (formKey.currentState?.validate() != true) return;
+                final pounds = double.tryParse(amountCtrl.text.trim()) ?? 0.0;
+                final piasters = (pounds * 100).toInt();
+
+                final ok = await cubit.refundDeposit(
+                  partnerId: partner.id,
+                  amount: piasters,
+                  note: noteCtrl.text.trim().isNotEmpty ? noteCtrl.text.trim() : null,
+                );
+
+                if (ok && dialogCtx.mounted) {
+                  Navigator.pop(dialogCtx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('تم استرداد مبلغ ${Money(piasters).toDisplay()} ج.م من تمويل الجيب لـ ${partner.name} بنجاح!'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                }
+              },
+              child: const Text('تأكيد الاسترداد كاش', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Convert personal funding to capital dialog (تحويل تمويل الجيب لرأس مال)
+  void _openConvertDepositToCapitalDialog(BuildContext context, PartnerEntity partner) {
+    final formKey = GlobalKey<FormState>();
+    final amountCtrl = TextEditingController(text: (partner.remainingDeposited / 100.0).toStringAsFixed(2));
+    final noteCtrl = TextEditingController();
+    final cubit = context.read<PartnersCubit>();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.upgrade_rounded, color: Colors.indigo),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'تحويل تمويل الجيب لرأس مال: ${partner.name}',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.indigo.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.indigo.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'هذا الإجراء يقوم بنقل المبالغ المدفوعة من جيبك لتضاف رسمياً إلى رأس مالك بالمحل، مما يرفع من حصتك الاستثمارية وقيمة مساهمتك.',
+                          style: TextStyle(fontSize: 12, color: Colors.indigo),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 12,
+                          runSpacing: 4,
+                          children: [
+                            Text(
+                              'التمويل المتاح للتحويل: ${Money(partner.remainingDeposited).toDisplay()} ج.م',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                            Text(
+                              'رأس المال الحالي: ${Money(partner.currentCapital).toDisplay()} ج.م',
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  TextFormField(
+                    controller: amountCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(
+                      labelText: 'المبلغ المراد إضافته لرأس المال (ج.م) *',
+                      suffixText: 'ج.م',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      prefixIcon: const Icon(Icons.price_change_outlined, color: Colors.indigo),
+                    ),
+                    validator: (val) {
+                      if (val == null || val.trim().isEmpty) return 'يرجى إدخال المبلغ';
+                      final num = double.tryParse(val.trim());
+                      if (num == null || num <= 0) return 'المبلغ يجب أن يكون أكبر من الصفر';
+                      final piasters = (num * 100).toInt();
+                      if (piasters > partner.remainingDeposited) {
+                        return 'المبلغ يتجاوز رصيد تمويل الجيب المتبقي (${Money(partner.remainingDeposited).toDisplay()} ج.م)';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
+                  TextFormField(
+                    controller: noteCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'ملاحظة (اختياري)',
+                      hintText: 'مثال: ضم دفعة البضاعة لحصة رأس المال...',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.indigo.shade700,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () async {
+                if (formKey.currentState?.validate() != true) return;
+                final pounds = double.tryParse(amountCtrl.text.trim()) ?? 0.0;
+                final piasters = (pounds * 100).toInt();
+
+                final ok = await cubit.convertDepositToCapital(
+                  partnerId: partner.id,
+                  amount: piasters,
+                  note: noteCtrl.text.trim().isNotEmpty ? noteCtrl.text.trim() : null,
+                );
+
+                if (ok && dialogCtx.mounted) {
+                  Navigator.pop(dialogCtx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('تم تحويل مبلغ ${Money(piasters).toDisplay()} ج.م من تمويل الجيب وإضافته لرأس مال ${partner.name} بنجاح!'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                }
+              },
+              child: const Text('تأكيد التحويل لرأس المال', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Unified financial history dialog (سجل الحركات المالية: إيداعات ومسحوبات)
+  void _showFinancialHistoryDialog(BuildContext context, PartnerEntity partner) {
+    showDialog(
+      context: context,
+      builder: (ctx) => DefaultTabController(
+        length: 2,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Icon(Icons.history_rounded, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('سجل حركات الشريك: ${partner.name}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 480,
+            height: 420,
+            child: Column(
+              children: [
+                TabBar(
+                  labelColor: AppColors.primary,
+                  indicatorColor: AppColors.primary,
+                  tabs: [
+                    Tab(
+                      icon: const Icon(Icons.add_card_rounded, size: 18),
+                      text: 'تمويل ودفع من الجيب (${partner.deposits.length})',
+                    ),
+                    Tab(
+                      icon: const Icon(Icons.payments_outlined, size: 18),
+                      text: 'المسحوبات (${partner.withdrawals.length})',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      // Tab 1: Deposits
+                      partner.deposits.isEmpty
+                          ? const Center(
+                              child: Text('لا توجد دفعات أو تمويل من الجيب مسجل حتى الآن', style: TextStyle(color: Colors.grey)),
+                            )
+                          : ListView.separated(
+                              itemCount: partner.deposits.length,
+                              separatorBuilder: (_, index) => const Divider(height: 1),
+                              itemBuilder: (context, idx) {
+                                final d = partner.deposits[idx];
+                                final isAdvanceRepaid = d.category == 'advance_repayment';
+                                return ListTile(
+                                  dense: true,
+                                  leading: CircleAvatar(
+                                    backgroundColor: isAdvanceRepaid ? Colors.amber.shade50 : Colors.teal.shade50,
+                                    child: Icon(
+                                      isAdvanceRepaid ? Icons.assignment_return_outlined : Icons.add_circle_outline_rounded,
+                                      color: isAdvanceRepaid ? Colors.amber.shade800 : Colors.teal.shade700,
+                                      size: 18,
+                                    ),
+                                  ),
+                                  title: Row(
+                                    children: [
+                                      Text(
+                                        '${Money(d.amount).toDisplay()} ج.م',
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: isAdvanceRepaid ? Colors.amber.shade50 : Colors.teal.shade50,
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(color: isAdvanceRepaid ? Colors.amber.shade300 : Colors.teal.shade200),
+                                        ),
+                                        child: Text(
+                                          d.categoryLabel,
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: isAdvanceRepaid ? Colors.amber.shade900 : Colors.teal.shade900,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  subtitle: Text(
+                                    '${d.date.year}-${d.date.month.toString().padLeft(2, '0')}-${d.date.day.toString().padLeft(2, '0')}${d.note != null ? " • ${d.note}" : ""}',
+                                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                  ),
+                                  trailing: IconButton(
+                                    icon: const Icon(Icons.delete_outline_rounded, color: Colors.red, size: 20),
+                                    tooltip: 'حذف حركة الإيداع',
+                                    onPressed: () => _confirmDeleteDeposit(context, partner, d),
+                                  ),
+                                );
+                              },
+                            ),
+
+                      // Tab 2: Withdrawals
+                      partner.withdrawals.isEmpty
+                          ? const Center(
+                              child: Text('لا توجد مسحوبات مسجلة لهذا الشريك حتى الآن', style: TextStyle(color: Colors.grey)),
+                            )
+                          : ListView.separated(
+                              itemCount: partner.withdrawals.length,
+                              separatorBuilder: (_, index) => const Divider(height: 1),
+                              itemBuilder: (context, idx) {
+                                final w = partner.withdrawals[idx];
+                                final isProfit = w.type == 'profit';
+                                final isAdvance = w.type == 'advance';
+                                final isDepositRefund = w.type == 'deposit_refund';
+                                final isDepositToCap = w.type == 'deposit_to_capital';
+
+                                return ListTile(
+                                  dense: true,
+                                  leading: CircleAvatar(
+                                    backgroundColor: isProfit
+                                        ? Colors.green.shade50
+                                        : (isAdvance
+                                            ? Colors.amber.shade50
+                                            : (isDepositRefund || isDepositToCap ? Colors.teal.shade50 : Colors.blue.shade50)),
+                                    child: Icon(
+                                      isProfit
+                                          ? Icons.arrow_downward_rounded
+                                          : (isAdvance
+                                              ? Icons.handshake_outlined
+                                              : (isDepositRefund
+                                                  ? Icons.money_rounded
+                                                  : (isDepositToCap ? Icons.upgrade_rounded : Icons.account_balance_wallet_outlined))),
+                                      color: isProfit
+                                          ? Colors.green.shade700
+                                          : (isAdvance
+                                              ? Colors.amber.shade800
+                                              : (isDepositRefund || isDepositToCap ? Colors.teal.shade700 : Colors.blue.shade700)),
+                                      size: 18,
+                                    ),
+                                  ),
+                                  title: Text(
+                                    '${Money(w.amount).toDisplay()} ج.م (${w.typeLabel})',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                  subtitle: Text(
+                                    '${w.date.year}-${w.date.month.toString().padLeft(2, '0')}-${w.date.day.toString().padLeft(2, '0')}${w.note != null ? " • ${w.note}" : ""}',
+                                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                  ),
+                                  trailing: IconButton(
+                                    icon: const Icon(Icons.delete_outline_rounded, color: Colors.red, size: 20),
+                                    tooltip: 'حذف حركة الصرف',
+                                    onPressed: () => _confirmDeleteWithdrawal(context, partner, w),
+                                  ),
+                                );
+                              },
+                            ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('إغلاق'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Delete specific withdrawal with confirmation
+  Future<void> _confirmDeleteWithdrawal(
+    BuildContext context,
+    PartnerEntity partner,
+    PartnerWithdrawal withdrawal,
+  ) async {
     final cubit = context.read<PartnersCubit>();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
+        title: const Row(
           children: [
-            Icon(Icons.auto_mode_rounded, color: AppColors.primary),
+            Icon(Icons.warning_amber_rounded, color: AppColors.error),
             SizedBox(width: 8),
-            Text('موازنة جميع الحصص تلقائياً', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text('تأكيد حذف حركة الصرف', style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
-        content: const Text(
-          'سيقوم النظام تلقائياً بإعادة حساب نسبة كل شريك بناءً على نسبة رأس ماله من إجمالي رؤوس أموال الشركاء لتساوي 100% تماماً وبأعلى دقة.\n\nهل تريد تنفيذ الموازنة الآن؟',
+        content: Text(
+          'هل تريد حذف حركة الصرف بقيمة ${Money(withdrawal.amount).toDisplay()} ج.م (${withdrawal.typeLabel})؟\n\nسيتم إعادة احتساب أرصدة الشريك تلقائياً.',
         ),
         actions: [
           TextButton(
@@ -737,20 +1611,76 @@ class _PartnersScreenState extends State<PartnersScreen> {
             child: const Text('إلغاء'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('تنفيذ الموازنة التلقائية', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text('تأكيد الحذف', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     );
 
     if (confirmed == true && context.mounted) {
-      final ok = await cubit.autoBalancePercentagesByCapital();
+      final ok = await cubit.deleteWithdrawal(
+        partnerId: partner.id,
+        withdrawalId: withdrawal.id,
+      );
       if (ok && context.mounted) {
+        Navigator.pop(context); // close history dialog
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('تمت موازنة نسب جميع الشركاء تلقائياً بنجاح!'),
+            content: Text('تم حذف حركة الصرف وإعادة ضبط الأرصدة بنجاح!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    }
+  }
+
+  // Delete specific deposit with confirmation
+  Future<void> _confirmDeleteDeposit(
+    BuildContext context,
+    PartnerEntity partner,
+    PartnerDeposit deposit,
+  ) async {
+    final cubit = context.read<PartnersCubit>();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: AppColors.error),
+            SizedBox(width: 8),
+            Text('تأكيد حذف حركة الإيداع', style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(
+          'هل تريد حذف دفعة التمويل بقيمة ${Money(deposit.amount).toDisplay()} ج.م (${deposit.categoryLabel})؟\n\nسيتم إعادة احتساب أرصدة التمويل تلقائياً.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('تأكيد الحذف', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      final ok = await cubit.deleteDeposit(
+        partnerId: partner.id,
+        depositId: deposit.id,
+      );
+      if (ok && context.mounted) {
+        Navigator.pop(context); // close history dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تم حذف حركة الإيداع وإعادة ضبط رصيد التمويل بنجاح!'),
             backgroundColor: AppColors.success,
           ),
         );
@@ -969,15 +1899,23 @@ class _PartnersScreenState extends State<PartnersScreen> {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: Colors.grey.shade200),
                         ),
-                        child: Row(
+                        child: Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 12,
+                          runSpacing: 8,
                           children: [
-                            Icon(Icons.pie_chart_outline_rounded, color: AppColors.primary, size: 20),
-                            const SizedBox(width: 8),
-                            Text(
-                              'إجمالي رأس المال المسجل: ${Money(state.totalCapital).toDisplay()} ج.م',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.pie_chart_outline_rounded, color: AppColors.primary, size: 20),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'إجمالي رأس المال المسجل: ${Money(state.totalCapital).toDisplay()} ج.م',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 16),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
@@ -1002,20 +1940,6 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                 ),
                               ),
                             ),
-                            const Spacer(),
-                            if (state.partners.where((p) => p.capital > 0).length >= 2) ...[
-                              TextButton.icon(
-                                style: TextButton.styleFrom(
-                                  foregroundColor: AppColors.primary,
-                                  backgroundColor: AppColors.surfaceContainer,
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                ),
-                                onPressed: () => _confirmAutoBalance(context),
-                                icon: const Icon(Icons.auto_mode_rounded, size: 16),
-                                label: const Text('⚡ موازنة كل النسب حسب رأس المال', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                              ),
-                            ],
                           ],
                         ),
                       ),
@@ -1067,29 +1991,36 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                     final partner = state.partners[index];
                                     final partnerShare = partner.calculateProfitShare(netProfit, days: days);
                                     final totalWithdrawn = partner.totalProfitWithdrawn;
-                                    final remainingProfitToPayout = (partnerShare - totalWithdrawn).clamp(0, 100000000000);
 
                                     return Container(
                                       decoration: BoxDecoration(
                                         color: Colors.white,
                                         borderRadius: BorderRadius.circular(14),
                                         border: Border.all(color: Colors.grey.shade200),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(alpha: 0.02),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
                                       ),
-                                      padding: const EdgeInsets.all(16),
+                                      padding: const EdgeInsets.all(14),
                                       child: Column(
                                         children: [
+                                          // 1. Header: Avatar, Name, Clean Badges, Edit & Delete
                                           Row(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
                                               CircleAvatar(
-                                                radius: 24,
+                                                radius: 22,
                                                 backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                                                 child: Text(
                                                   partner.name.isNotEmpty ? partner.name[0] : 'ش',
-                                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primary),
+                                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary),
                                                 ),
                                               ),
-                                              const SizedBox(width: 14),
+                                              const SizedBox(width: 12),
                                               Expanded(
                                                 child: Column(
                                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1101,39 +2032,68 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                                       children: [
                                                         Text(partner.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                                                         Container(
-                                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                                           decoration: BoxDecoration(
                                                             color: AppColors.surfaceContainer,
                                                             borderRadius: BorderRadius.circular(8),
-                                                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                                                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
                                                           ),
                                                           child: Text(
                                                             partner.typeLabel,
                                                             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppColors.primary),
                                                           ),
                                                         ),
-                                                        Container(
-                                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                                          decoration: BoxDecoration(
-                                                            color: Colors.blue.shade50,
-                                                            borderRadius: BorderRadius.circular(8),
-                                                            border: Border.all(color: Colors.blue.shade200),
+                                                        if (partner.partnershipType != 'effort_only' && (partner.capital > 0 || partner.capitalPercentage != null))
+                                                          Container(
+                                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                            decoration: BoxDecoration(
+                                                              color: Colors.blueGrey.shade50,
+                                                              borderRadius: BorderRadius.circular(8),
+                                                              border: Border.all(color: Colors.blueGrey.shade200),
+                                                            ),
+                                                            child: Row(
+                                                              mainAxisSize: MainAxisSize.min,
+                                                              children: [
+                                                                const Icon(Icons.pie_chart_outline_rounded, size: 12, color: Colors.blueGrey),
+                                                                const SizedBox(width: 4),
+                                                                Text(
+                                                                  'حصة رأس المال: ${partner.effectiveCapitalPercentage.toStringAsFixed(1)}%',
+                                                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.blueGrey.shade800),
+                                                                ),
+                                                              ],
+                                                            ),
                                                           ),
-                                                          child: Text(
-                                                            partner.profitModeLabel,
-                                                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.blue.shade800),
+                                                        Container(
+                                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                          decoration: BoxDecoration(
+                                                            color: Colors.purple.shade50,
+                                                            borderRadius: BorderRadius.circular(8),
+                                                            border: Border.all(color: Colors.purple.shade200),
+                                                          ),
+                                                          child: Row(
+                                                            mainAxisSize: MainAxisSize.min,
+                                                            children: [
+                                                              const Icon(Icons.monetization_on_outlined, size: 12, color: Colors.purple),
+                                                              const SizedBox(width: 4),
+                                                              Text(
+                                                                partner.profitMode == 'fixed_roi'
+                                                                    ? 'عائد سنوي: ${partner.roiPercentage.toStringAsFixed(1)}%'
+                                                                    : 'نسبة الأرباح: ${partner.percentage.toStringAsFixed(1)}%',
+                                                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.purple.shade800),
+                                                              ),
+                                                            ],
                                                           ),
                                                         ),
                                                       ],
                                                     ),
-                                                    const SizedBox(height: 8),
+                                                    const SizedBox(height: 6),
                                                     Wrap(
                                                       spacing: 16,
                                                       runSpacing: 4,
                                                       children: [
-                                                        if (partner.capital > 0)
+                                                        if (partner.currentCapital > 0)
                                                           Text(
-                                                            'رأس المال المستثمر: ${Money(partner.capital).toDisplay()} ج.م',
+                                                            'رأس المال النشط: ${Money(partner.currentCapital).toDisplay()} ج.م',
                                                             style: TextStyle(fontSize: 12, color: Colors.grey.shade800, fontWeight: FontWeight.w600),
                                                           ),
                                                         if (partner.phone != null && partner.phone!.isNotEmpty)
@@ -1146,21 +2106,20 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                                             'بدل إدارة شهري: ${Money(partner.monthlySalary).toDisplay()} ج.م',
                                                             style: TextStyle(fontSize: 12, color: Colors.indigo.shade700, fontWeight: FontWeight.bold),
                                                           ),
+                                                        if (partner.notes != null && partner.notes!.isNotEmpty)
+                                                          Text(
+                                                            '• ${partner.notes!}',
+                                                            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                                          ),
                                                       ],
                                                     ),
-                                                    if (partner.notes != null && partner.notes!.isNotEmpty) ...[
-                                                      const SizedBox(height: 6),
-                                                      Text(
-                                                        partner.notes!,
-                                                        style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                                                      ),
-                                                    ],
                                                   ],
                                                 ),
                                               ),
                                               IconButton(
-                                                icon: Icon(Icons.edit_outlined, color: AppColors.primary),
+                                                icon: Icon(Icons.edit_outlined, color: AppColors.primary, size: 20),
                                                 tooltip: 'تعديل الشريك',
+                                                visualDensity: VisualDensity.compact,
                                                 onPressed: () => _openPartnerDialog(
                                                   context,
                                                   partner: partner,
@@ -1169,34 +2128,155 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                                 ),
                                               ),
                                               IconButton(
-                                                icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
+                                                icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 20),
                                                 tooltip: 'حذف الشريك',
+                                                visualDensity: VisualDensity.compact,
                                                 onPressed: () => _confirmDelete(context, partner),
                                               ),
                                             ],
                                           ),
-                                          const SizedBox(height: 12),
+                                          const SizedBox(height: 10),
                                           const Divider(height: 1),
                                           const SizedBox(height: 10),
 
-                                          // Financial summary bar for this partner
+                                          // 2. Compact Financial Strip for Funding & Advances (شريط التمويل والسلف المدمج)
+                                          if (partner.totalDeposited > 0 || partner.remainingAdvance > 0) ...[
+                                            Container(
+                                              margin: const EdgeInsets.only(bottom: 12),
+                                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                              decoration: BoxDecoration(
+                                                color: Colors.grey.shade50,
+                                                borderRadius: BorderRadius.circular(10),
+                                                border: Border.all(color: Colors.grey.shade200),
+                                              ),
+                                              child: Column(
+                                                children: [
+                                                  // Personal funding row
+                                                  if (partner.totalDeposited > 0) ...[
+                                                    Row(
+                                                      children: [
+                                                        Icon(Icons.account_balance_wallet_outlined, size: 16, color: Colors.teal.shade700),
+                                                        const SizedBox(width: 8),
+                                                        Text(
+                                                          'تمويل شخصي من الجيب (لك عند المحل):',
+                                                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Colors.teal.shade900),
+                                                        ),
+                                                        const SizedBox(width: 6),
+                                                        Text(
+                                                          '${Money(partner.remainingDeposited).toDisplay()} ج.م',
+                                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.teal.shade900),
+                                                        ),
+                                                        if (partner.totalDepositsRefunded > 0) ...[
+                                                          const SizedBox(width: 6),
+                                                          Text(
+                                                            '(متبقي من ${Money(partner.totalDeposited).toDisplay()} ج.م)',
+                                                            style: TextStyle(fontSize: 11, color: Colors.teal.shade700),
+                                                          ),
+                                                        ],
+                                                        const Spacer(),
+                                                        if (partner.remainingDeposited > 0) ...[
+                                                          ElevatedButton.icon(
+                                                            style: ElevatedButton.styleFrom(
+                                                              backgroundColor: Colors.teal.shade700,
+                                                              foregroundColor: Colors.white,
+                                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                                              minimumSize: Size.zero,
+                                                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                                            ),
+                                                            onPressed: () => _openRefundDepositDialog(context, partner),
+                                                            icon: const Icon(Icons.arrow_downward_rounded, size: 12),
+                                                            label: const Text('استرداد كاش', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                                          ),
+                                                          const SizedBox(width: 8),
+                                                          OutlinedButton.icon(
+                                                            style: OutlinedButton.styleFrom(
+                                                              foregroundColor: Colors.indigo.shade800,
+                                                              side: BorderSide(color: Colors.indigo.shade300),
+                                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                                              minimumSize: Size.zero,
+                                                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                                            ),
+                                                            onPressed: () => _openConvertDepositToCapitalDialog(context, partner),
+                                                            icon: const Icon(Icons.upgrade_rounded, size: 12),
+                                                            label: const Text('ضمه لرأس المال', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                                          ),
+                                                        ],
+                                                      ],
+                                                    ),
+                                                  ],
+                                                  if (partner.totalDeposited > 0 && partner.remainingAdvance > 0)
+                                                    const Padding(
+                                                      padding: EdgeInsets.symmetric(vertical: 6.0),
+                                                      child: Divider(height: 1),
+                                                    ),
+                                                  // Temporary advance row
+                                                  if (partner.remainingAdvance > 0) ...[
+                                                    Row(
+                                                      children: [
+                                                        Icon(Icons.handshake_outlined, size: 16, color: Colors.amber.shade900),
+                                                        const SizedBox(width: 8),
+                                                        Text(
+                                                          'سلفة شخصية مؤقتة (عليك للمحل):',
+                                                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Colors.amber.shade900),
+                                                        ),
+                                                        const SizedBox(width: 6),
+                                                        Text(
+                                                          '${Money(partner.remainingAdvance).toDisplay()} ج.م',
+                                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.amber.shade900),
+                                                        ),
+                                                        const Spacer(),
+                                                        ElevatedButton.icon(
+                                                          style: ElevatedButton.styleFrom(
+                                                            backgroundColor: Colors.amber.shade800,
+                                                            foregroundColor: Colors.white,
+                                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                                            minimumSize: Size.zero,
+                                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                                          ),
+                                                          onPressed: () => _openDepositDialog(
+                                                            context,
+                                                            partner,
+                                                            initialCategory: 'advance_repayment',
+                                                          ),
+                                                          icon: const Icon(Icons.assignment_return_outlined, size: 12),
+                                                          label: const Text('رد السلفة للدرج', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+
+                                          // 3. Financial Stat Grid (أرقام الأرباح والمسحوبات والمستحق)
                                           Row(
                                             children: [
                                               Expanded(
                                                 child: Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                                   decoration: BoxDecoration(
-                                                    color: netProfit >= 0 ? Colors.green.shade50 : Colors.red.shade50,
+                                                    color: Colors.white,
                                                     borderRadius: BorderRadius.circular(10),
+                                                    border: Border.all(color: Colors.green.shade200),
                                                   ),
                                                   child: Column(
                                                     crossAxisAlignment: CrossAxisAlignment.start,
                                                     children: [
-                                                      Text('نصيب الأرباح في الفترة ($days يوم)', style: TextStyle(fontSize: 10, color: netProfit >= 0 ? Colors.green.shade900 : Colors.red.shade900)),
-                                                      const SizedBox(height: 2),
+                                                      Row(
+                                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                        children: [
+                                                          Text('نصيب الأرباح ($days يوم)', style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
+                                                          Icon(Icons.trending_up_rounded, size: 14, color: Colors.green.shade700),
+                                                        ],
+                                                      ),
+                                                      const SizedBox(height: 4),
                                                       Text(
                                                         '${Money(partnerShare).toDisplay()} ج.م',
-                                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: netProfit >= 0 ? Colors.green.shade900 : Colors.red.shade900),
+                                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.green.shade800),
                                                       ),
                                                     ],
                                                   ),
@@ -1205,20 +2285,26 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                               const SizedBox(width: 8),
                                               Expanded(
                                                 child: Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                                   decoration: BoxDecoration(
-                                                    color: Colors.grey.shade50,
+                                                    color: Colors.white,
                                                     borderRadius: BorderRadius.circular(10),
-                                                    border: Border.all(color: Colors.grey.shade200),
+                                                    border: Border.all(color: Colors.grey.shade300),
                                                   ),
                                                   child: Column(
                                                     crossAxisAlignment: CrossAxisAlignment.start,
                                                     children: [
-                                                      const Text('المسحوبات المنصرفة', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                                                      const SizedBox(height: 2),
+                                                      Row(
+                                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                        children: [
+                                                          const Text('أرباح تم استلامها', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                                                          Icon(Icons.arrow_downward_rounded, size: 14, color: Colors.grey.shade600),
+                                                        ],
+                                                      ),
+                                                      const SizedBox(height: 4),
                                                       Text(
                                                         '${Money(totalWithdrawn).toDisplay()} ج.م',
-                                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.grey.shade800),
+                                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey.shade800),
                                                       ),
                                                     ],
                                                   ),
@@ -1227,45 +2313,111 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                               const SizedBox(width: 8),
                                               Expanded(
                                                 child: Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white,
+                                                    borderRadius: BorderRadius.circular(10),
+                                                    border: Border.all(color: Colors.amber.shade300),
+                                                  ),
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Row(
+                                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                        children: [
+                                                          Text('أرباح باقية بالمحل', style: TextStyle(fontSize: 11, color: Colors.amber.shade900)),
+                                                          Icon(Icons.savings_outlined, size: 14, color: Colors.amber.shade800),
+                                                        ],
+                                                      ),
+                                                      const SizedBox(height: 4),
+                                                      Text(
+                                                        '${Money(partner.getUnwithdrawnProfit(partnerShare)).toDisplay()} ج.م',
+                                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.amber.shade900),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                                   decoration: BoxDecoration(
                                                     color: AppColors.surfaceContainer,
                                                     borderRadius: BorderRadius.circular(10),
-                                                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                                                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.35), width: 1.2),
                                                   ),
                                                   child: Column(
                                                     crossAxisAlignment: CrossAxisAlignment.start,
                                                     children: [
-                                                      Text('صافي المستحق غير المصروف', style: TextStyle(fontSize: 10, color: AppColors.primary)),
-                                                      const SizedBox(height: 2),
+                                                      Row(
+                                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                        children: [
+                                                          Text('صافي المستحق الكلي', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                                                          Icon(Icons.account_balance_wallet_rounded, size: 14, color: AppColors.primary),
+                                                        ],
+                                                      ),
+                                                      const SizedBox(height: 4),
                                                       Text(
-                                                        '${Money(remainingProfitToPayout).toDisplay()} ج.م',
+                                                        '${Money(partner.calculateNetBalance(partnerShare)).toDisplay()} ج.م',
                                                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary),
                                                       ),
                                                     ],
                                                   ),
                                                 ),
                                               ),
-                                              const SizedBox(width: 8),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 12),
+
+                                          // 4. Action buttons row
+                                          Wrap(
+                                            spacing: 8,
+                                            runSpacing: 6,
+                                            crossAxisAlignment: WrapCrossAlignment.center,
+                                            children: [
                                               ElevatedButton.icon(
                                                 style: ElevatedButton.styleFrom(
                                                   backgroundColor: AppColors.primary,
-                                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                                 ),
                                                 onPressed: () => _openWithdrawalDialog(context, partner, partnerShare),
                                                 icon: const Icon(Icons.payments_outlined, color: Colors.white, size: 16),
-                                                label: const Text('صرف أرباح', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                                                label: const Text('صرف أرباح ومسحوبات', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                                               ),
-                                              const SizedBox(width: 6),
                                               OutlinedButton.icon(
                                                 style: OutlinedButton.styleFrom(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                                  foregroundColor: Colors.teal.shade800,
+                                                  side: BorderSide(color: Colors.teal.shade400),
+                                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                                 ),
-                                                onPressed: () => _showWithdrawalHistoryDialog(context, partner),
+                                                onPressed: () => _openDepositDialog(context, partner),
+                                                icon: const Icon(Icons.add_card_rounded, size: 16),
+                                                label: const Text('تمويل ودفع من الجيب', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                              ),
+                                              if (partner.getUnwithdrawnProfit(partnerShare) > 0)
+                                                OutlinedButton.icon(
+                                                  style: OutlinedButton.styleFrom(
+                                                    foregroundColor: Colors.indigo.shade800,
+                                                    side: BorderSide(color: Colors.indigo.shade300),
+                                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                                  ),
+                                                  onPressed: () => _openReinvestDialog(context, partner, partner.getUnwithdrawnProfit(partnerShare)),
+                                                  icon: const Icon(Icons.autorenew_rounded, size: 16),
+                                                  label: const Text('تدوير الأرباح كرأس مال', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                                ),
+                                              TextButton.icon(
+                                                style: TextButton.styleFrom(
+                                                  foregroundColor: Colors.grey.shade700,
+                                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                                ),
+                                                onPressed: () => _showFinancialHistoryDialog(context, partner),
                                                 icon: const Icon(Icons.history_rounded, size: 16),
-                                                label: const Text('السجل', style: TextStyle(fontSize: 11)),
+                                                label: const Text('سجل الحركات', style: TextStyle(fontSize: 11)),
                                               ),
                                             ],
                                           ),

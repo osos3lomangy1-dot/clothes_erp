@@ -336,12 +336,20 @@ class ReturnsLocalDataSourceImpl implements ReturnsLocalDataSource {
       ..orderBy([OrderingTerm.desc(_db.sales.date)]);
 
     if (clean.isNotEmpty) {
-      joinQuery.where(
-        _db.sales.id.contains(clean) |
-            _db.sales.shortRef.contains(clean) |
-            _db.customers.name.contains(clean) |
-            _db.customers.phone.contains(clean),
-      );
+      final numVal = double.tryParse(clean.replaceAll(',', ''));
+      Expression<bool> predicate = _db.sales.id.contains(clean) |
+          _db.sales.shortRef.contains(clean) |
+          _db.customers.name.contains(clean) |
+          _db.customers.phone.contains(clean);
+      if (numVal != null) {
+        final piasters = (numVal * 100).round();
+        predicate = predicate | _db.sales.total.equals(piasters);
+        final intVal = int.tryParse(clean);
+        if (intVal != null && intVal != piasters) {
+          predicate = predicate | _db.sales.total.equals(intVal);
+        }
+      }
+      joinQuery.where(predicate);
     }
 
     joinQuery.limit(limit);

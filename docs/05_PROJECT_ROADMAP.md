@@ -1,28 +1,58 @@
-# Project Roadmap — Orkeed Clothes ERP
+# 05 — خارطة طريق المشروع ومراحل التطوير (Project Roadmap)
 
-## ✅ COMPLETED MILESTONES
+---
 
-### Core Foundation & Offline-First Migration
-- **Phase 0:** Auth, RBAC, Clean Architecture stabilization.
-- **Phase 1:** Drift Local SQLite Database, `Money` (integer piasters), `BranchProvider`, `TxWriter` atomic transactions, `audit_logs`, `sync_queue`.
-- **Phase 2:** Categories, Products, and Product Variants (Color/Size matrix) on Drift.
-- **Phase 3:** Inventory Management & `inventory_logs` (`applyStockMovement` single path).
-- **Phase 4:** Complete POS Checkout, Split Payments (`sale_payments`), Customer Returns, Thermal Receipts.
-- **Phase 5:** Customers, Suppliers, Employees, Payroll/Advances/Bonuses, Expenses, and Comprehensive Reports on Drift.
-- **Phase 6:** Shifts & Cash Drawer Integrity (`cash_movements` linked to `shiftId`, shift open/close reconciliation).
-- **Phase 7:** Full Installments Module (Plans, Contracts, Manager PIN, Grouped Customer View, Overdue Tracking, Shift Installments Display).
-- **Phase 8:** Promotions & Discounts Engine (Product/Category targeted promos, BOGO, fixed/percentage discounts, coupon & report integration).
+## 1. سجل المراحل المنجزة (Completed Milestones)
 
-### Recent Production Upgrades (November 2026)
-- **Shift Installments Display (`abde249`):** Detailed breakdown of installment down payments and collections inside shift summary and closing reports.
-- **Executive Dashboard Upgrade (`c32c277`):** Real-time KPIs, daily/monthly revenue, net profit, installment collections, low-stock alerts, and top-selling items.
-- **Barcode Label Printing (`f18ef12`):** Thermal label rolls (50×30mm, 38×25mm) and A4 multi-label sheets directly from product variants.
-- **Supplier Purchase Returns (`befbd51`):** Return goods to suppliers with automatic stock deduction, `inventory_logs`, supplier balance reconciliation, and cash drawer refund sync.
-- **POS Hardware Barcode Scanner Listener (`46c0fb9`):** Global hardware keyboard listener and smart autofocus for seamless barcode scanning at checkout.
-- **Product Duplicate Prevention & Arabic Similarity Warning (`a8cf1eb`):** Real-time Arabic normalization (`ArabicTextHelper`), live similar-product warning chips while typing, confirmation barrier on similar names, and strict UI + DB blocking on exact/normalized duplicates.
-- **Bulk Customer Installment Payment with FIFO Allocation (`f767d26`):** Inline quick-payment field right next to each customer's name in Installments screen; validates against total customer debt, allocates automatically FIFO across active contracts (oldest first), enforces Manager PIN when enabled, and syncs all payments to `cash_movements` and the active shift drawer.
+| المرحلة | الوصف التقني والإنجاز الهندسي | الحالة |
+|---|---|:---:|
+| **المرحلة 0: التأسيس والمعمارية** | تدقيق المعمارية النظيفة، اعتماد نمط BLoC، واستقرار طبقات Domain/Data/Presentation. | **مكتملة 100%** |
+| **المرحلة 1: التحول إلى Drift SQLite** | الانتقال الكامل من Firebase إلى SQLite محلي، واعتماد `Money` (قروش صحيحة)، `TxWriter`، و `BranchProvider`. | **مكتملة 100%** |
+| **المرحلة 2: الكتالوج والباركود ومنع التكرار** | شجرة التصنيفات والمنتجات، طباعة ملصقات الباركود للرول و A4، ومنع التكرار الذكي باللغة العربية (`ArabicTextHelper`). | **مكتملة 100%** |
+| **المرحلة 3: إدارة المخزون الموحدة** | مسار `applyStockMovement` الإجباري، وتتبع حركات البضاعة في `inventory_logs`. | **مكتملة 100%** |
+| **المرحلة 4: نقطة البيع السريعة (POS)** | الدفع المجزأ، قراءة الباركود التلقائية بالهاردوير، الإيصالات الحرارية، والمرتجعات. | **مكتملة 100%** |
+| **المرحلة 5: المشتريات والموردين** | دورة الشراء، استلام البضائع، سداد الموردين، ومرتجعات المشتريات مع الخزينة والمخزن. | **مكتملة 100%** |
+| **المرحلة 6: الورديات والخزينة** | دورة فتح وإغلاق الوردية، مطابقة العهدة، وتتبع حركات النقدية `cash_movements`. | **مكتملة 100%** |
+| **المرحلة 7: الأقساط والتحصيل السريع** | شاشة تجميع العملاء، السداد المجمع بنظام الأقدم فالأحدث (FIFO)، وحماية رمز المدير (Manager PIN). | **مكتملة 100%** |
+| **المرحلة 8: محرك العروض والخصومات** | عروض الخصم المئوي والمبالغ الثابتة و BOGO وربطها التلقائي بالفواتير. | **مكتملة 100%** |
+| **المرحلة 9: لوحة التحكم التنفيذية والمصروفات** | مؤشرات الأداء اللحظية، الأرباح، حركة المبيعات، وإدارة سلف ورواتب الموظفين. | **مكتملة 100%** |
+| **المرحلة 10: منظومة أمان الترقية والمتانة** | تشمل المراحل (1.1 و 1.2 و 1.3): مؤشر الترقية الذري، النسخ بـ `VACUUM INTO`، المعاملة الواحدة، شاشة الطوارئ، وفلاش الـ WAL. | **مكتملة 100%** |
 
-## 🚀 FUTURE OPTIONAL ENHANCEMENTS
-- Cloud Multi-Branch Synchronization (REST / Cloud sync worker draining `sync_queue`)
-- Held Sales / Cart Parking & Resume
-- WhatsApp / SMS automated installment due reminders
+---
+
+## 2. الموقف الحالي للمشروع (Current Active State)
+
+- **حالة الاختبارات والتحليل:** **581 اختباراً آلياً ناجحاً (0 فاشل / 0 معلق)** و **0 أخطاء في `flutter analyze`**.
+- **إصدار الشيما الحالي:** **الإصدار 11 (V11)** مع اختبارات ترقية حقيقية وتطابق هاش كنسي 100% من V1 و V6 إلى V11.
+- **إصدار محرك SQLite:** **3.53.4**.
+- **جاهزية النواة:** النواة المحاسبية والمخزنية ومنظومة الأمان مكتملة ومختبرة ومحصنة ضد انقطاع الطاقة.
+
+---
+
+## 3. خطة تسليم الإصدار التجاري الأول (V1 Commercial Release Deliverables)
+
+نحن نقف الآن على أعتاب استكمال ميزات الإطلاق التجاري النهائي:
+
+### 1. تقرير الإغلاق اليومي للوردية/اليوم (End-of-Day Z-Report)
+- تجميع إيرادات الوردية واليوم مفصلة حسب وسائل الدفع (كاش، فيزا، إنستاباي، محافظ، آجل، تقسيط).
+- مطابقة النقدية في الدرج وحساب العجز أو الزيادة تلقائياً.
+- تصدير التقرير إلى **PDF** حراري / مقاس A4، وإمكانية المشاركة المباشرة عبر **WhatsApp** لمالك المتجر.
+
+### 2. مركز إكسيل الموحد للاستيراد والتصدير (Excel Center)
+- استيراد وتصدير كميات ضخمة من الأصناف والعملاء والأسعار عبر ملفات إكسيل (`.xlsx`).
+- شاشة فحص مرئية تكتشف الأخطاء الشائعة (الأكواد المكررة، الأسعار غير المنطقية، الحقول الفارغة) وتتيح تصحيحها قبل حفظها في قاعدة البيانات.
+
+### 3. مفتاح وضع التجزئة البسيطة (Simple Retail Mode Toggle)
+- مفتاح تحكم في إعدادات النظام يتيح للمحلات البسيطة (غير الخاضعة لمنظومة الضرائب أو الفاتورة الإلكترونية حالياً) إخفاء الحقول والتبويبات الضريبية المعقدة، والعمل بواجهة بيع سريعة فائقة البساطة.
+
+### 4. نظام الترخيص والتفعيل (Licensing & Activation Engine)
+- ربط النسخة بالبصمة العتادية للجهاز (`Machine Hardware ID`) لضمان حماية الملكية الفكرية، وتفعيل النسخ عبر مفتاح مشفر (Offline License Key).
+
+---
+
+## 4. خارطة طريق الإصدار الثاني (V2 Post-Release Scope — تجميد مؤقت)
+
+بناءً على التوافق الهندسي، تم تجميد الميزات التالية لتركز النسخة V1 على استقرار المتجر الأحادي على ويندوز:
+1. **تطبيق الموبايل المصاحب (Mobile Companion App)**: تطبيق Flutter للأندرويد و iOS يتيح لمالك المتجر متابعة المبيعات من الخارج.
+2. **وحدة الصيانة وخدمة ما بعد البيع (Maintenance Module)**: استلام الأجهزة المعيبة، تتبع مراحل الإصلاح، وقطع الغيار (تتطلب شيمات إضافية تم تأجيلها لـ V12).
+3. **المزامنة السحابية للفروع المتعددة (Multi-Branch Cloud Sync)**: تفعيل تفريغ طابور `sync_queue` للمزامنة مع خادم سحابي مركزي.
