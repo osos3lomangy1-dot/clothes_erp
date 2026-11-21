@@ -1,5 +1,6 @@
 import 'package:injectable/injectable.dart';
 
+import '../../domain/entities/pre_order_batch_entity.dart';
 import '../../domain/entities/pre_order_entity.dart';
 import '../../domain/repositories/pre_orders_repository.dart';
 import '../datasources/pre_orders_local_data_source.dart';
@@ -17,10 +18,12 @@ class PreOrdersRepositoryImpl implements PreOrdersRepository {
   Future<List<PreOrderEntity>> getPreOrders({
     String? status,
     String? searchQuery,
+    String? batchId,
   }) {
     return _dataSource.getPreOrders(
       status: status,
       searchQuery: searchQuery,
+      batchId: batchId,
     );
   }
 
@@ -120,6 +123,51 @@ class PreOrdersRepositoryImpl implements PreOrdersRepository {
   @override
   Future<void> deletePreOrder(String preOrderId) {
     return _dataSource.deletePreOrder(preOrderId);
+  }
+
+  // --- الشحنات المجمعة (Batches) ---
+
+  @override
+  Future<List<PreOrderBatchEntity>> getBatches({
+    String? status,
+    String? searchQuery,
+  }) {
+    return _dataSource.getBatches(
+      status: status,
+      searchQuery: searchQuery,
+    );
+  }
+
+  @override
+  Future<PreOrderBatchEntity?> getBatchById(String id) {
+    return _dataSource.getBatchById(id);
+  }
+
+  @override
+  Future<PreOrderBatchEntity> createBatch(
+    PreOrderBatchEntity batch,
+    List<PreOrderEntity> orders, {
+    String paymentMethod = 'cash',
+    String? shiftId,
+    String? cashierId,
+  }) {
+    return _dataSource.insertBatch(
+      batch,
+      orders,
+      paymentMethod: paymentMethod,
+      shiftId: shiftId,
+      cashierId: cashierId,
+    );
+  }
+
+  @override
+  Future<void> markBatchArrivedAtStore(String batchId) {
+    return _dataSource.markBatchArrivedAtStore(batchId);
+  }
+
+  @override
+  Future<void> deleteBatch(String batchId) {
+    return _dataSource.deleteBatch(batchId);
   }
 }
 

@@ -5,13 +5,18 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../../../core/database/branch_provider.dart';
+import '../../domain/entities/pre_order_batch_entity.dart';
 import '../../domain/entities/pre_order_entity.dart';
 import '../../domain/entities/pre_order_item_entity.dart';
 import '../../domain/entities/pre_order_payment_entity.dart';
 
 abstract class PreOrdersLocalDataSource {
   Future<void> ensureTablesExist();
-  Future<List<PreOrderEntity>> getPreOrders({String? status, String? searchQuery});
+  Future<List<PreOrderEntity>> getPreOrders({
+    String? status,
+    String? searchQuery,
+    String? batchId,
+  });
   Future<PreOrderEntity?> getPreOrderById(String id);
   Future<PreOrderEntity> insertPreOrder(
     PreOrderEntity order, {
@@ -49,6 +54,22 @@ abstract class PreOrdersLocalDataSource {
     String? cashierId,
   });
   Future<void> deletePreOrder(String preOrderId);
+
+  // --- الشحنات المجمعة (Batches) ---
+  Future<List<PreOrderBatchEntity>> getBatches({
+    String? status,
+    String? searchQuery,
+  });
+  Future<PreOrderBatchEntity?> getBatchById(String id);
+  Future<PreOrderBatchEntity> insertBatch(
+    PreOrderBatchEntity batch,
+    List<PreOrderEntity> orders, {
+    String paymentMethod = 'cash',
+    String? shiftId,
+    String? cashierId,
+  });
+  Future<void> markBatchArrivedAtStore(String batchId);
+  Future<void> deleteBatch(String batchId);
 }
 
 @LazySingleton(as: PreOrdersLocalDataSource)
@@ -69,6 +90,7 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
         id TEXT PRIMARY KEY,
         branch_id TEXT NOT NULL,
         order_number TEXT NOT NULL,
+        batch_id TEXT,
         customer_id TEXT,
         customer_name TEXT NOT NULL,
         customer_phone TEXT NOT NULL,
@@ -77,6 +99,7 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
         notes TEXT,
         expected_delivery_date INTEGER,
         total_piasters INTEGER NOT NULL,
+        allocated_shipping_piasters INTEGER NOT NULL DEFAULT 0,
         deposit_piasters INTEGER NOT NULL DEFAULT 0,
         status TEXT NOT NULL DEFAULT 'pendingProcessing',
         created_at INTEGER NOT NULL,
@@ -88,6 +111,23 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
         forfeited_revenue_piasters INTEGER,
         refunded_at INTEGER,
         refunded_piasters INTEGER,
+        deleted_at INTEGER
+      );
+    ''');
+
+    await _db.customStatement('''
+      CREATE TABLE IF NOT EXISTS pre_order_batches (
+        id TEXT PRIMARY KEY,
+        branch_id TEXT NOT NULL,
+        batch_number TEXT NOT NULL,
+        agent_name TEXT,
+        tracking_number TEXT,
+        total_shipping_piasters INTEGER NOT NULL DEFAULT 0,
+        shipping_split_method TEXT NOT NULL DEFAULT 'perItem',
+        status TEXT NOT NULL DEFAULT 'pendingProcessing',
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        arrived_at INTEGER,
         deleted_at INTEGER
       );
     ''');
@@ -149,6 +189,21 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
     } catch (_) {}
     try {
       await _db.customStatement(
+        'ALTER TABLE pre_orders ADD COLUMN batch_id TEXT;',
+      );
+    } catch (_) {}
+    try {
+      await _db.customStatement(
+        'ALTER TABLE pre_orders ADD COLUMN allocated_shipping_piasters INTEGER NOT NULL DEFAULT 0;',
+      );
+    } catch (_) {}
+    try {
+      await _db.customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_pre_orders_batch ON pre_orders(batch_id);',
+      );
+    } catch (_) {}
+    try {
+      await _db.customStatement(
         'ALTER TABLE pre_order_items ADD COLUMN cost_price_piasters INTEGER NOT NULL DEFAULT 0;',
       );
     } catch (_) {}
@@ -165,11 +220,17 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
   Future<List<PreOrderEntity>> getPreOrders({
     String? status,
     String? searchQuery,
+    String? batchId,
   }) async {
     await ensureTablesExist();
 
     final whereClauses = <String>['deleted_at IS NULL'];
     final variables = <Variable>[];
+
+    if (batchId != null && batchId.isNotEmpty) {
+      whereClauses.add('batch_id = ?');
+      variables.add(Variable.withString(batchId));
+    }
 
     if (status != null && status.isNotEmpty && status != 'all') {
       whereClauses.add('status = ?');
@@ -282,15 +343,16 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
     await _db.customInsert(
       '''
       INSERT INTO pre_orders (
-        id, branch_id, order_number, customer_id, customer_name, customer_phone,
+        id, branch_id, order_number, batch_id, customer_id, customer_name, customer_phone,
         agent_name, tracking_number, notes, expected_delivery_date,
-        total_piasters, deposit_piasters, status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        total_piasters, allocated_shipping_piasters, deposit_piasters, status, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ''',
       variables: [
         Variable.withString(orderId),
         Variable.withString(branchId),
         Variable.withString(orderNum),
+        Variable(order.batchId),
         Variable(order.customerId),
         Variable.withString(order.customerName),
         Variable.withString(order.customerPhone),
@@ -303,6 +365,7 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
               : null,
         ),
         Variable.withInt(order.totalPiasters),
+        Variable.withInt(order.allocatedShippingPiasters),
         Variable.withInt(totalDeposit),
         Variable.withString(order.status),
         Variable.withInt(nowSec),
@@ -689,6 +752,190 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
     await _db.customUpdate(
       'UPDATE pre_orders SET deleted_at = ? WHERE id = ?',
       variables: [Variable.withInt(nowSec), Variable.withString(preOrderId)],
+    );
+  }
+
+  // ==========================================
+  // --- الشحنات المجمعة (Batch Operations) ---
+  // ==========================================
+
+  @override
+  Future<List<PreOrderBatchEntity>> getBatches({
+    String? status,
+    String? searchQuery,
+  }) async {
+    await ensureTablesExist();
+
+    final whereClauses = <String>['deleted_at IS NULL'];
+    final variables = <Variable>[];
+
+    if (status != null && status.isNotEmpty && status != 'all') {
+      whereClauses.add('status = ?');
+      variables.add(Variable.withString(status));
+    }
+
+    if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+      final q = '%${searchQuery.trim()}%';
+      whereClauses.add(
+        '(batch_number LIKE ? OR agent_name LIKE ? OR tracking_number LIKE ?)',
+      );
+      variables.add(Variable.withString(q));
+      variables.add(Variable.withString(q));
+      variables.add(Variable.withString(q));
+    }
+
+    final query = '''
+      SELECT * FROM pre_order_batches
+      WHERE ${whereClauses.join(' AND ')}
+      ORDER BY created_at DESC
+    ''';
+
+    final rows = await _db.customSelect(query, variables: variables).get();
+    final results = <PreOrderBatchEntity>[];
+
+    for (final row in rows) {
+      final batchId = row.read<String>('id');
+      final orders = await getPreOrders(batchId: batchId);
+      results.add(PreOrderBatchEntity.fromMap(row.data, orders: orders));
+    }
+
+    return results;
+  }
+
+  @override
+  Future<PreOrderBatchEntity?> getBatchById(String id) async {
+    await ensureTablesExist();
+
+    final rows = await _db.customSelect(
+      'SELECT * FROM pre_order_batches WHERE id = ? AND deleted_at IS NULL LIMIT 1',
+      variables: [Variable.withString(id)],
+    ).get();
+
+    if (rows.isEmpty) return null;
+    final row = rows.first;
+    final orders = await getPreOrders(batchId: id);
+    return PreOrderBatchEntity.fromMap(row.data, orders: orders);
+  }
+
+  @override
+  Future<PreOrderBatchEntity> insertBatch(
+    PreOrderBatchEntity batch,
+    List<PreOrderEntity> orders, {
+    String paymentMethod = 'cash',
+    String? shiftId,
+    String? cashierId,
+  }) async {
+    await ensureTablesExist();
+
+    final branchId = batch.branchId.isNotEmpty
+        ? batch.branchId
+        : await _branchProvider.getBranchId();
+    final batchId = batch.id.isNotEmpty ? batch.id : _uuid.v4();
+    final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+    String batchNum = batch.batchNumber.trim();
+    if (batchNum.isEmpty) {
+      final countRow = await _db.customSelect('SELECT COUNT(*) as cnt FROM pre_order_batches').getSingle();
+      final count = (countRow.read<int>('cnt')) + 101;
+      batchNum = 'BATCH-$count';
+    }
+
+    await _db.customInsert(
+      '''
+      INSERT INTO pre_order_batches (
+        id, branch_id, batch_number, agent_name, tracking_number,
+        total_shipping_piasters, shipping_split_method, status,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ''',
+      variables: [
+        Variable.withString(batchId),
+        Variable.withString(branchId),
+        Variable.withString(batchNum),
+        Variable(batch.agentName),
+        Variable(batch.trackingNumber),
+        Variable.withInt(batch.totalShippingPiasters),
+        Variable.withString(batch.shippingSplitMethod),
+        Variable.withString(batch.status),
+        Variable.withInt(nowSec),
+        Variable.withInt(nowSec),
+      ],
+    );
+
+    final insertedOrders = <PreOrderEntity>[];
+    for (final order in orders) {
+      final updatedOrder = order.copyWith(
+        batchId: batchId,
+        agentName: order.agentName ?? batch.agentName,
+        trackingNumber: order.trackingNumber ?? batch.trackingNumber,
+      );
+      final created = await insertPreOrder(
+        updatedOrder,
+        initialDepositPiasters: updatedOrder.depositPiasters,
+        paymentMethod: paymentMethod,
+        shiftId: shiftId,
+        cashierId: cashierId,
+      );
+      insertedOrders.add(created);
+    }
+
+    return batch.copyWith(
+      id: batchId,
+      branchId: branchId,
+      batchNumber: batchNum,
+      orders: insertedOrders,
+    );
+  }
+
+  @override
+  Future<void> markBatchArrivedAtStore(String batchId) async {
+    await ensureTablesExist();
+    final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+    await _db.customUpdate(
+      '''
+      UPDATE pre_order_batches
+      SET status = ?, arrived_at = ?, updated_at = ?
+      WHERE id = ?
+      ''',
+      variables: [
+        Variable.withString(PreOrderStatuses.arrivedAtStore),
+        Variable.withInt(nowSec),
+        Variable.withInt(nowSec),
+        Variable.withString(batchId),
+      ],
+    );
+
+    // تحويل كافة الأوردرات الفرعية التابعة لهذه الشحنة إلى وصل للمحل
+    await _db.customUpdate(
+      '''
+      UPDATE pre_orders
+      SET status = ?, arrived_at = ?, updated_at = ?
+      WHERE batch_id = ? AND status = ? AND deleted_at IS NULL
+      ''',
+      variables: [
+        Variable.withString(PreOrderStatuses.arrivedAtStore),
+        Variable.withInt(nowSec),
+        Variable.withInt(nowSec),
+        Variable.withString(batchId),
+        Variable.withString(PreOrderStatuses.pendingProcessing),
+      ],
+    );
+  }
+
+  @override
+  Future<void> deleteBatch(String batchId) async {
+    await ensureTablesExist();
+    final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+    await _db.customUpdate(
+      'UPDATE pre_order_batches SET deleted_at = ? WHERE id = ?',
+      variables: [Variable.withInt(nowSec), Variable.withString(batchId)],
+    );
+
+    await _db.customUpdate(
+      'UPDATE pre_orders SET deleted_at = ? WHERE batch_id = ?',
+      variables: [Variable.withInt(nowSec), Variable.withString(batchId)],
     );
   }
 

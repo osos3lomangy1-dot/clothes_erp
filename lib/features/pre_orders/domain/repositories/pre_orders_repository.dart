@@ -1,11 +1,14 @@
+import '../entities/pre_order_batch_entity.dart';
 import '../entities/pre_order_entity.dart';
 
 abstract class PreOrdersRepository {
   Future<void> ensureTablesExist();
 
+  // --- الأوردرات الفردية ---
   Future<List<PreOrderEntity>> getPreOrders({
     String? status,
     String? searchQuery,
+    String? batchId,
   });
 
   Future<PreOrderEntity?> getPreOrderById(String id);
@@ -52,5 +55,24 @@ abstract class PreOrdersRepository {
   });
 
   Future<void> deletePreOrder(String preOrderId);
-}
 
+  // --- الشحنات المجمعة (Batches) ---
+  Future<List<PreOrderBatchEntity>> getBatches({
+    String? status,
+    String? searchQuery,
+  });
+
+  Future<PreOrderBatchEntity?> getBatchById(String id);
+
+  Future<PreOrderBatchEntity> createBatch(
+    PreOrderBatchEntity batch,
+    List<PreOrderEntity> orders, {
+    String paymentMethod = 'cash',
+    String? shiftId,
+    String? cashierId,
+  });
+
+  Future<void> markBatchArrivedAtStore(String batchId);
+
+  Future<void> deleteBatch(String batchId);
+}

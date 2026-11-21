@@ -30,6 +30,7 @@ class PreOrderEntity {
   final String id;
   final String branchId;
   final String orderNumber;
+  final String? batchId; // ربط بالشحنة المجمعة إن وُجدت
   final String? customerId;
   final String customerName;
   final String customerPhone;
@@ -38,6 +39,7 @@ class PreOrderEntity {
   final String? notes;
   final DateTime? expectedDeliveryDate;
   final int totalPiasters;
+  final int allocatedShippingPiasters; // نصيب العميل المحسوب من الشحن العام
   final int depositPiasters;
   final String status;
   final DateTime createdAt;
@@ -56,6 +58,7 @@ class PreOrderEntity {
     required this.id,
     required this.branchId,
     required this.orderNumber,
+    this.batchId,
     this.customerId,
     required this.customerName,
     required this.customerPhone,
@@ -64,6 +67,7 @@ class PreOrderEntity {
     this.notes,
     this.expectedDeliveryDate,
     required this.totalPiasters,
+    this.allocatedShippingPiasters = 0,
     this.depositPiasters = 0,
     this.status = PreOrderStatuses.pendingProcessing,
     required this.createdAt,
@@ -79,10 +83,18 @@ class PreOrderEntity {
     this.payments = const [],
   });
 
+  /// إجمالي المبلغ المطلوب من العميل شامل نصيبه من الشحن
+  int get totalWithShippingPiasters => totalPiasters + allocatedShippingPiasters;
+
+  /// المبلغ المتبقي على العميل عند الاستلام شامل الشحن
+  int get remainingWithShippingPiasters =>
+      (totalWithShippingPiasters - depositPiasters)
+          .clamp(0, totalWithShippingPiasters);
+
   int get remainingPiasters =>
       (totalPiasters - depositPiasters).clamp(0, totalPiasters);
 
-  bool get isFullyPaid => depositPiasters >= totalPiasters;
+  bool get isFullyPaid => depositPiasters >= totalWithShippingPiasters;
 
   /// إجمالي تكلفة المندوب للأوردر بالكامل
   int get totalCostPiasters =>
@@ -112,6 +124,7 @@ class PreOrderEntity {
     String? id,
     String? branchId,
     String? orderNumber,
+    String? batchId,
     String? customerId,
     String? customerName,
     String? customerPhone,
@@ -120,6 +133,7 @@ class PreOrderEntity {
     String? notes,
     DateTime? expectedDeliveryDate,
     int? totalPiasters,
+    int? allocatedShippingPiasters,
     int? depositPiasters,
     String? status,
     DateTime? createdAt,
@@ -138,6 +152,7 @@ class PreOrderEntity {
       id: id ?? this.id,
       branchId: branchId ?? this.branchId,
       orderNumber: orderNumber ?? this.orderNumber,
+      batchId: batchId ?? this.batchId,
       customerId: customerId ?? this.customerId,
       customerName: customerName ?? this.customerName,
       customerPhone: customerPhone ?? this.customerPhone,
@@ -146,6 +161,8 @@ class PreOrderEntity {
       notes: notes ?? this.notes,
       expectedDeliveryDate: expectedDeliveryDate ?? this.expectedDeliveryDate,
       totalPiasters: totalPiasters ?? this.totalPiasters,
+      allocatedShippingPiasters:
+          allocatedShippingPiasters ?? this.allocatedShippingPiasters,
       depositPiasters: depositPiasters ?? this.depositPiasters,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
@@ -168,6 +185,7 @@ class PreOrderEntity {
       'id': id,
       'branch_id': branchId,
       'order_number': orderNumber,
+      'batch_id': batchId,
       'customer_id': customerId,
       'customer_name': customerName,
       'customer_phone': customerPhone,
@@ -178,6 +196,7 @@ class PreOrderEntity {
           ? expectedDeliveryDate!.millisecondsSinceEpoch ~/ 1000
           : null,
       'total_piasters': totalPiasters,
+      'allocated_shipping_piasters': allocatedShippingPiasters,
       'deposit_piasters': depositPiasters,
       'status': status,
       'created_at': createdAt.millisecondsSinceEpoch ~/ 1000,
@@ -210,6 +229,7 @@ class PreOrderEntity {
       id: map['id'] as String,
       branchId: map['branch_id'] as String,
       orderNumber: map['order_number'] as String,
+      batchId: map['batch_id'] as String?,
       customerId: map['customer_id'] as String?,
       customerName: map['customer_name'] as String,
       customerPhone: map['customer_phone'] as String,
@@ -222,6 +242,8 @@ class PreOrderEntity {
             )
           : null,
       totalPiasters: (map['total_piasters'] as num?)?.toInt() ?? 0,
+      allocatedShippingPiasters:
+          (map['allocated_shipping_piasters'] as num?)?.toInt() ?? 0,
       depositPiasters: (map['deposit_piasters'] as num?)?.toInt() ?? 0,
       status: map['status'] as String? ?? PreOrderStatuses.pendingProcessing,
       createdAt: DateTime.fromMillisecondsSinceEpoch(

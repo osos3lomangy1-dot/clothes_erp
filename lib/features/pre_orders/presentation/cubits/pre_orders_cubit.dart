@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 
+import '../../domain/entities/pre_order_batch_entity.dart';
 import '../../domain/entities/pre_order_entity.dart';
 import '../../domain/repositories/pre_orders_repository.dart';
 import 'pre_orders_state.dart';
@@ -15,17 +16,23 @@ class PreOrdersCubit extends Cubit<PreOrdersState> {
     emit(state.copyWith(status: PreOrdersViewStatus.loading));
     try {
       final orders = await _repository.getPreOrders();
+      final batches = await _repository.getBatches();
       emit(state.copyWith(
         status: PreOrdersViewStatus.loaded,
         allOrders: orders,
+        allBatches: batches,
         errorMessage: null,
       ));
     } catch (e) {
       emit(state.copyWith(
         status: PreOrdersViewStatus.error,
-        errorMessage: 'فشل تحميل طلبات الحجز: $e',
+        errorMessage: 'فشل تحميل طلبات الحجز والشحنات: $e',
       ));
     }
+  }
+
+  void setMode(String mode) {
+    emit(state.copyWith(activeMode: mode));
   }
 
   void setTab(String tab) {
@@ -104,7 +111,7 @@ class PreOrdersCubit extends Cubit<PreOrdersState> {
     } catch (e) {
       emit(state.copyWith(
         isSubmitting: false,
-        errorMessage: 'فشل تحديث حالة الوصول: $e',
+        errorMessage: 'فشل تحديث حالة الحجز إلى وصل للمحل: $e',
       ));
       return false;
     }
@@ -132,7 +139,7 @@ class PreOrdersCubit extends Cubit<PreOrdersState> {
     } catch (e) {
       emit(state.copyWith(
         isSubmitting: false,
-        errorMessage: 'فشل تسليم الطلب: $e',
+        errorMessage: 'فشل إتمام تسليم الأوردر: $e',
       ));
       return false;
     }
@@ -184,21 +191,89 @@ class PreOrdersCubit extends Cubit<PreOrdersState> {
     } catch (e) {
       emit(state.copyWith(
         isSubmitting: false,
-        errorMessage: 'فشل إلغاء واسترداد الحجز: $e',
+        errorMessage: 'فشل إلغاء الحجز ورد المبلغ: $e',
       ));
       return false;
     }
   }
 
   Future<bool> deletePreOrder(String preOrderId) async {
+    emit(state.copyWith(isSubmitting: true));
     try {
       await _repository.deletePreOrder(preOrderId);
       await loadPreOrders();
+      emit(state.copyWith(isSubmitting: false));
       return true;
     } catch (e) {
-      emit(state.copyWith(errorMessage: 'فشل حذف الحجز: $e'));
+      emit(state.copyWith(
+        isSubmitting: false,
+        errorMessage: 'فشل حذف الحجز: $e',
+      ));
+      return false;
+    }
+  }
+
+  // ==========================================
+  // --- عمليات الشحنات المجمعة (Batches) ---
+  // ==========================================
+
+  Future<bool> createBatch(
+    PreOrderBatchEntity batch,
+    List<PreOrderEntity> orders, {
+    String paymentMethod = 'cash',
+    String? shiftId,
+    String? cashierId,
+  }) async {
+    emit(state.copyWith(isSubmitting: true));
+    try {
+      await _repository.createBatch(
+        batch,
+        orders,
+        paymentMethod: paymentMethod,
+        shiftId: shiftId,
+        cashierId: cashierId,
+      );
+      await loadPreOrders();
+      emit(state.copyWith(isSubmitting: false));
+      return true;
+    } catch (e) {
+      emit(state.copyWith(
+        isSubmitting: false,
+        errorMessage: 'فشل إنشاء الشحنة المجمعة: $e',
+      ));
+      return false;
+    }
+  }
+
+  Future<bool> markBatchArrivedAtStore(String batchId) async {
+    emit(state.copyWith(isSubmitting: true));
+    try {
+      await _repository.markBatchArrivedAtStore(batchId);
+      await loadPreOrders();
+      emit(state.copyWith(isSubmitting: false));
+      return true;
+    } catch (e) {
+      emit(state.copyWith(
+        isSubmitting: false,
+        errorMessage: 'فشل تحديث حالة الشحنة إلى وصلت للمحل: $e',
+      ));
+      return false;
+    }
+  }
+
+  Future<bool> deleteBatch(String batchId) async {
+    emit(state.copyWith(isSubmitting: true));
+    try {
+      await _repository.deleteBatch(batchId);
+      await loadPreOrders();
+      emit(state.copyWith(isSubmitting: false));
+      return true;
+    } catch (e) {
+      emit(state.copyWith(
+        isSubmitting: false,
+        errorMessage: 'فشل حذف الشحنة المجمعة: $e',
+      ));
       return false;
     }
   }
 }
-
