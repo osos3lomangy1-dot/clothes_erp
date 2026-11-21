@@ -423,60 +423,67 @@ class _PosViewState extends State<_PosView> {
               ),
             ],
           ),
-          body: Row(
-            children: [
-              // Right Panel in RTL: Products Catalog
-              Expanded(
-                child: Builder(
-                  builder: (ctx) {
-                    try {
-                      return _ProductPanel(
-                        key: _productPanelKey,
-                        searchFocusNode: _searchFocusNode,
-                      );
-                    } catch (e, st) {
-                      return SingleChildScrollView(
-                        padding: const EdgeInsets.all(16),
-                        child: Text(
-                          'ProductPanel error: $e\n$st',
-                          style: const TextStyle(
-                            color: Colors.red,
-                            fontSize: 12,
-                          ),
-                        ),
-                      );
-                    }
-                  },
-                ),
-              ),
-              const VerticalDivider(
-                width: 1,
-                thickness: 1,
-                color: AppColors.outlineVariant,
-              ),
-              // Left Panel in RTL: Cart (Fixed 440px)
-              SizedBox(
-                width: 440,
-                child: Builder(
-                  builder: (ctx) {
-                    try {
-                      return _CartPanel(key: _cartPanelKey);
-                    } catch (e, st) {
-                      return SingleChildScrollView(
-                        padding: const EdgeInsets.all(16),
-                        child: Text(
-                          'CartPanel error: $e\n$st',
-                          style: const TextStyle(
-                            color: Colors.red,
-                            fontSize: 12,
-                          ),
-                        ),
-                      );
-                    }
-                  },
-                ),
-              ),
-            ],
+          body: LayoutBuilder(
+            builder: (context, constraints) {
+              final cartWidth = constraints.maxWidth > 1200
+                  ? 440.0
+                  : (constraints.maxWidth * 0.38).clamp(340.0, 440.0);
+              return Row(
+                children: [
+                  // Right Panel in RTL: Products Catalog
+                  Expanded(
+                    child: Builder(
+                      builder: (ctx) {
+                        try {
+                          return _ProductPanel(
+                            key: _productPanelKey,
+                            searchFocusNode: _searchFocusNode,
+                          );
+                        } catch (e, st) {
+                          return SingleChildScrollView(
+                            padding: const EdgeInsets.all(16),
+                            child: Text(
+                              'ProductPanel error: $e\n$st',
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontSize: 12,
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                  const VerticalDivider(
+                    width: 1,
+                    thickness: 1,
+                    color: AppColors.outlineVariant,
+                  ),
+                  // Left Panel in RTL: Cart (Responsive Width)
+                  SizedBox(
+                    width: cartWidth,
+                    child: Builder(
+                      builder: (ctx) {
+                        try {
+                          return _CartPanel(key: _cartPanelKey);
+                        } catch (e, st) {
+                          return SingleChildScrollView(
+                            padding: const EdgeInsets.all(16),
+                            child: Text(
+                              'CartPanel error: $e\n$st',
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontSize: 12,
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         );
       },
@@ -2062,6 +2069,45 @@ class _CartPanelState extends State<_CartPanel> {
   bool _isWholesaleMode = false;
   DeliveryOrderEntity? _deliveryOrder;
 
+  Widget _buildPaymentBtn({
+    required String method,
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    final isSelected = _paymentMethod == method;
+    return ElevatedButton.icon(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(
+        elevation: isSelected ? 1 : 0,
+        backgroundColor: isSelected
+            ? AppColors.primary
+            : AppColors.surfaceContainerLowest,
+        foregroundColor: isSelected ? Colors.white : AppColors.onSurface,
+        side: BorderSide(
+          color: isSelected ? AppColors.primary : AppColors.outlineVariant,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        minimumSize: const Size(0, 36),
+      ),
+      icon: Icon(icon, size: 14),
+      label: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontFamily: 'Cairo',
+            fontWeight: FontWeight.bold,
+            fontSize: 11,
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _toggleDeliveryMode(PosState state) async {
     if (_deliveryOrder != null) {
       setState(() => _deliveryOrder = null);
@@ -2856,12 +2902,12 @@ class _CartPanelState extends State<_CartPanel> {
                             padding: const EdgeInsets.all(2),
                             decoration: BoxDecoration(
                               color: _isWholesaleMode
-                                  ? Colors.purple.shade50
+                                  ? AppColors.primary.withValues(alpha: 0.1)
                                   : AppColors.surfaceContainerLow,
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
                                 color: _isWholesaleMode
-                                    ? Colors.purple.shade300
+                                    ? AppColors.primary
                                     : AppColors.outlineVariant,
                               ),
                             ),
@@ -2894,7 +2940,7 @@ class _CartPanelState extends State<_CartPanel> {
                                         fontWeight: FontWeight.bold,
                                         color: !_isWholesaleMode
                                             ? Colors.white
-                                            : Colors.grey.shade700,
+                                            : AppColors.onSurfaceVariant,
                                       ),
                                     ),
                                   ),
@@ -2913,7 +2959,7 @@ class _CartPanelState extends State<_CartPanel> {
                                     ),
                                     decoration: BoxDecoration(
                                       color: _isWholesaleMode
-                                          ? Colors.purple.shade700
+                                          ? AppColors.primary
                                           : Colors.transparent,
                                       borderRadius: BorderRadius.circular(6),
                                     ),
@@ -2924,7 +2970,7 @@ class _CartPanelState extends State<_CartPanel> {
                                           size: 12,
                                           color: _isWholesaleMode
                                               ? Colors.white
-                                              : Colors.purple.shade700,
+                                              : AppColors.onSurfaceVariant,
                                         ),
                                         const SizedBox(width: 3),
                                         Text(
@@ -2935,7 +2981,7 @@ class _CartPanelState extends State<_CartPanel> {
                                             fontWeight: FontWeight.bold,
                                             color: _isWholesaleMode
                                                 ? Colors.white
-                                                : Colors.purple.shade700,
+                                                : AppColors.onSurfaceVariant,
                                           ),
                                         ),
                                       ],
@@ -3002,7 +3048,7 @@ class _CartPanelState extends State<_CartPanel> {
                                 CircleAvatar(
                                   radius: 16,
                                   backgroundColor: state.customer!.isWholesale
-                                      ? Colors.purple.shade100
+                                      ? AppColors.primary.withValues(alpha: 0.12)
                                       : AppColors.primary,
                                   child: Icon(
                                     state.customer!.isWholesale
@@ -3010,7 +3056,7 @@ class _CartPanelState extends State<_CartPanel> {
                                         : Icons.person_rounded,
                                     size: 18,
                                     color: state.customer!.isWholesale
-                                        ? Colors.purple.shade900
+                                        ? AppColors.primary
                                         : Colors.white,
                                   ),
                                 ),
@@ -3042,11 +3088,11 @@ class _CartPanelState extends State<_CartPanel> {
                                                     vertical: 1,
                                                   ),
                                               decoration: BoxDecoration(
-                                                color: Colors.purple.shade50,
+                                                color: AppColors.primary.withValues(alpha: 0.08),
                                                 borderRadius:
                                                     BorderRadius.circular(6),
                                                 border: Border.all(
-                                                  color: Colors.purple.shade200,
+                                                  color: AppColors.primary.withValues(alpha: 0.25),
                                                 ),
                                               ),
                                               child: Text(
@@ -3055,7 +3101,7 @@ class _CartPanelState extends State<_CartPanel> {
                                                   fontFamily: 'Cairo',
                                                   fontSize: 9,
                                                   fontWeight: FontWeight.bold,
-                                                  color: Colors.purple.shade800,
+                                                  color: AppColors.primary,
                                                 ),
                                               ),
                                             ),
@@ -3628,246 +3674,73 @@ class _CartPanelState extends State<_CartPanel> {
                           ),
                           SizedBox(height: isCompact ? 3 : 5),
 
-                          // Payment Method Buttons: crisp single-line uniform height
+                          // Payment Method Buttons: 2 clean rows preventing squeeze
                           Row(
                             children: [
                               Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: () =>
+                                child: _buildPaymentBtn(
+                                  method: 'cash',
+                                  label: 'كاش',
+                                  icon: Icons.payments_outlined,
+                                  onTap: () =>
                                       setState(() => _paymentMethod = 'cash'),
-                                  style: ElevatedButton.styleFrom(
-                                    elevation: _paymentMethod == 'cash' ? 2 : 0,
-                                    backgroundColor: _paymentMethod == 'cash'
-                                        ? AppColors.primary
-                                        : AppColors.surfaceContainerLowest,
-                                    foregroundColor: _paymentMethod == 'cash'
-                                        ? Colors.white
-                                        : AppColors.onSurface,
-                                    side: BorderSide(
-                                      color: _paymentMethod == 'cash'
-                                          ? AppColors.primary
-                                          : AppColors.outlineVariant,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 2,
-                                      vertical: 8,
-                                    ),
-                                    minimumSize: const Size(0, 36),
-                                  ),
-                                  icon: const Icon(
-                                    Icons.payments_outlined,
-                                    size: 14,
-                                  ),
-                                  label: const FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text(
-                                      'كاش',
-                                      style: TextStyle(
-                                        fontFamily: 'Cairo',
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                  ),
                                 ),
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 6),
                               Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: () =>
+                                child: _buildPaymentBtn(
+                                  method: 'card',
+                                  label: 'فيزا',
+                                  icon: Icons.credit_card_rounded,
+                                  onTap: () =>
                                       setState(() => _paymentMethod = 'card'),
-                                  style: ElevatedButton.styleFrom(
-                                    elevation: _paymentMethod == 'card' ? 2 : 0,
-                                    backgroundColor: _paymentMethod == 'card'
-                                        ? AppColors.primary
-                                        : AppColors.surfaceContainerLowest,
-                                    foregroundColor: _paymentMethod == 'card'
-                                        ? Colors.white
-                                        : AppColors.onSurface,
-                                    side: BorderSide(
-                                      color: _paymentMethod == 'card'
-                                          ? AppColors.primary
-                                          : AppColors.outlineVariant,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 2,
-                                      vertical: 8,
-                                    ),
-                                    minimumSize: const Size(0, 36),
-                                  ),
-                                  icon: const Icon(
-                                    Icons.credit_card_rounded,
-                                    size: 14,
-                                  ),
-                                  label: const FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text(
-                                      'فيزا',
-                                      style: TextStyle(
-                                        fontFamily: 'Cairo',
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                  ),
                                 ),
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 6),
                               Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: () =>
+                                child: _buildPaymentBtn(
+                                  method: 'split',
+                                  label: 'مجزأ',
+                                  icon: Icons.call_split_rounded,
+                                  onTap: () =>
                                       setState(() => _paymentMethod = 'split'),
-                                  style: ElevatedButton.styleFrom(
-                                    elevation: _paymentMethod == 'split'
-                                        ? 2
-                                        : 0,
-                                    backgroundColor: _paymentMethod == 'split'
-                                        ? AppColors.primary
-                                        : AppColors.surfaceContainerLowest,
-                                    foregroundColor: _paymentMethod == 'split'
-                                        ? Colors.white
-                                        : AppColors.onSurface,
-                                    side: BorderSide(
-                                      color: _paymentMethod == 'split'
-                                          ? AppColors.primary
-                                          : AppColors.outlineVariant,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 2,
-                                      vertical: 8,
-                                    ),
-                                    minimumSize: const Size(0, 36),
-                                  ),
-                                  icon: const Icon(
-                                    Icons.call_split_rounded,
-                                    size: 14,
-                                  ),
-                                  label: const FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text(
-                                      'مجزأ',
-                                      style: TextStyle(
-                                        fontFamily: 'Cairo',
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                  ),
                                 ),
                               ),
-                              if (_installmentAvailable) ...[
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: ElevatedButton.icon(
-                                    onPressed: () => setState(
-                                      () => _paymentMethod = 'installment',
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      elevation: _paymentMethod == 'installment'
-                                          ? 2
-                                          : 0,
-                                      backgroundColor:
-                                          _paymentMethod == 'installment'
-                                          ? AppColors.primary
-                                          : AppColors.surfaceContainerLowest,
-                                      foregroundColor:
-                                          _paymentMethod == 'installment'
-                                          ? Colors.white
-                                          : AppColors.onSurface,
-                                      side: BorderSide(
-                                        color: _paymentMethod == 'installment'
-                                            ? AppColors.primary
-                                            : AppColors.outlineVariant,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 2,
-                                        vertical: 8,
-                                      ),
-                                      minimumSize: const Size(0, 36),
-                                    ),
-                                    icon: const Icon(
-                                      Icons.payments_rounded,
-                                      size: 14,
-                                    ),
-                                    label: const FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      child: Text(
-                                        'تقسيط',
-                                        style: TextStyle(
-                                          fontFamily: 'Cairo',
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                              if (_creditAvailable) ...[
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: ElevatedButton.icon(
-                                    onPressed: () => setState(
-                                      () => _paymentMethod = 'credit',
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      elevation: _paymentMethod == 'credit'
-                                          ? 2
-                                          : 0,
-                                      backgroundColor:
-                                          _paymentMethod == 'credit'
-                                          ? AppColors.primary
-                                          : AppColors.surfaceContainerLowest,
-                                      foregroundColor:
-                                          _paymentMethod == 'credit'
-                                          ? Colors.white
-                                          : AppColors.onSurface,
-                                      side: BorderSide(
-                                        color: _paymentMethod == 'credit'
-                                            ? AppColors.primary
-                                            : AppColors.outlineVariant,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 2,
-                                        vertical: 8,
-                                      ),
-                                      minimumSize: const Size(0, 36),
-                                    ),
-                                    icon: const Icon(
-                                      Icons.account_balance_wallet_outlined,
-                                      size: 14,
-                                    ),
-                                    label: const FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      child: Text(
-                                        'آجل',
-                                        style: TextStyle(
-                                          fontFamily: 'Cairo',
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
                             ],
                           ),
+                          if (_installmentAvailable || _creditAvailable) ...[
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                if (_installmentAvailable) ...[
+                                  Expanded(
+                                    child: _buildPaymentBtn(
+                                      method: 'installment',
+                                      label: 'تقسيط',
+                                      icon: Icons.payments_rounded,
+                                      onTap: () => setState(
+                                        () => _paymentMethod = 'installment',
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                if (_installmentAvailable && _creditAvailable)
+                                  const SizedBox(width: 6),
+                                if (_creditAvailable) ...[
+                                  Expanded(
+                                    child: _buildPaymentBtn(
+                                      method: 'credit',
+                                      label: 'آجل',
+                                      icon: Icons.account_balance_wallet_outlined,
+                                      onTap: () => setState(
+                                        () => _paymentMethod = 'credit',
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
 
                           if (_paymentMethod == 'credit') ...[
                             SizedBox(height: isCompact ? 4 : 8),
@@ -3877,10 +3750,12 @@ class _CartPanelState extends State<_CartPanel> {
                           // Fast Cash Banknote Presets (when cash mode is active)
                           if (_paymentMethod == 'cash') ...[
                             SizedBox(height: isCompact ? 4 : 8),
-                            Row(
-                              children: [
-                                Text(
-                                  'الدفع السريع:',
+                            SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      'الدفع السريع:',
                                   style: TextStyle(
                                     fontFamily: 'Cairo',
                                     fontSize: 11,
@@ -3959,9 +3834,10 @@ class _CartPanelState extends State<_CartPanel> {
                                     ),
                                   );
                                 }),
-                              ],
-                            ),
-                            SizedBox(height: isCompact ? 4 : 6),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(height: isCompact ? 4 : 6),
                             Row(
                               children: [
                                 Text(
@@ -4991,16 +4867,14 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
                               leading: CircleAvatar(
                                 radius: 18,
                                 backgroundColor: isWholesale
-                                    ? Colors.purple.shade50
+                                    ? AppColors.primary.withValues(alpha: 0.1)
                                     : AppColors.surfaceContainer,
                                 child: Icon(
                                   isWholesale
                                       ? Icons.storefront_rounded
                                       : Icons.person_rounded,
                                   size: 18,
-                                  color: isWholesale
-                                      ? Colors.purple.shade700
-                                      : AppColors.primary,
+                                  color: AppColors.primary,
                                 ),
                               ),
                               title: Row(
@@ -5024,10 +4898,10 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
                                         vertical: 1,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.purple.shade50,
+                                        color: AppColors.primary.withValues(alpha: 0.08),
                                         borderRadius: BorderRadius.circular(6),
                                         border: Border.all(
-                                          color: Colors.purple.shade200,
+                                          color: AppColors.primary.withValues(alpha: 0.25),
                                         ),
                                       ),
                                       child: Text(
@@ -5036,7 +4910,7 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
                                           fontFamily: 'Cairo',
                                           fontSize: 9,
                                           fontWeight: FontWeight.bold,
-                                          color: Colors.purple.shade800,
+                                          color: AppColors.primary,
                                         ),
                                       ),
                                     ),
