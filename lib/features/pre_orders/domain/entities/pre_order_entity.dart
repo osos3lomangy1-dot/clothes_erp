@@ -33,6 +33,8 @@ class PreOrderEntity {
   final String? customerId;
   final String customerName;
   final String customerPhone;
+  final String? agentName; // اسم المندوب أو وسيط الشحن
+  final String? trackingNumber; // رقم بوليصة الشحن / كود التتبع
   final String? notes;
   final DateTime? expectedDeliveryDate;
   final int totalPiasters;
@@ -57,6 +59,8 @@ class PreOrderEntity {
     this.customerId,
     required this.customerName,
     required this.customerPhone,
+    this.agentName,
+    this.trackingNumber,
     this.notes,
     this.expectedDeliveryDate,
     required this.totalPiasters,
@@ -79,6 +83,14 @@ class PreOrderEntity {
       (totalPiasters - depositPiasters).clamp(0, totalPiasters);
 
   bool get isFullyPaid => depositPiasters >= totalPiasters;
+
+  /// إجمالي تكلفة المندوب للأوردر بالكامل
+  int get totalCostPiasters =>
+      items.fold(0, (sum, it) => sum + it.totalCostPiasters);
+
+  /// إجمالي عمولة التاجر (صافي الربح المتوقع للأوردر)
+  int get totalProfitPiasters =>
+      (totalPiasters - totalCostPiasters).clamp(0, totalPiasters);
 
   bool get canAddPayment =>
       status == PreOrderStatuses.pendingProcessing ||
@@ -103,6 +115,8 @@ class PreOrderEntity {
     String? customerId,
     String? customerName,
     String? customerPhone,
+    String? agentName,
+    String? trackingNumber,
     String? notes,
     DateTime? expectedDeliveryDate,
     int? totalPiasters,
@@ -127,6 +141,8 @@ class PreOrderEntity {
       customerId: customerId ?? this.customerId,
       customerName: customerName ?? this.customerName,
       customerPhone: customerPhone ?? this.customerPhone,
+      agentName: agentName ?? this.agentName,
+      trackingNumber: trackingNumber ?? this.trackingNumber,
       notes: notes ?? this.notes,
       expectedDeliveryDate: expectedDeliveryDate ?? this.expectedDeliveryDate,
       totalPiasters: totalPiasters ?? this.totalPiasters,
@@ -155,6 +171,8 @@ class PreOrderEntity {
       'customer_id': customerId,
       'customer_name': customerName,
       'customer_phone': customerPhone,
+      'agent_name': agentName,
+      'tracking_number': trackingNumber,
       'notes': notes,
       'expected_delivery_date': expectedDeliveryDate != null
           ? expectedDeliveryDate!.millisecondsSinceEpoch ~/ 1000
@@ -195,6 +213,8 @@ class PreOrderEntity {
       customerId: map['customer_id'] as String?,
       customerName: map['customer_name'] as String,
       customerPhone: map['customer_phone'] as String,
+      agentName: map['agent_name'] as String?,
+      trackingNumber: map['tracking_number'] as String?,
       notes: map['notes'] as String?,
       expectedDeliveryDate: map['expected_delivery_date'] != null
           ? DateTime.fromMillisecondsSinceEpoch(

@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/money.dart';
 import '../../../customers/data/services/customer_ledger_service.dart';
+import '../../data/services/pre_order_excel_service.dart';
 import '../../domain/entities/pre_order_entity.dart';
 import '../cubits/pre_orders_cubit.dart';
 import 'pre_order_forfeit_dialog.dart';
@@ -217,6 +218,41 @@ class PreOrderCard extends StatelessWidget {
                           color: Colors.grey.shade600,
                         ),
                       ),
+                      if (order.agentName != null || order.trackingNumber != null) ...[
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            if (order.agentName != null) ...[
+                              Icon(Icons.badge_outlined, size: 12, color: Colors.blueGrey.shade600),
+                              const SizedBox(width: 3),
+                              Text(
+                                order.agentName!,
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.blueGrey.shade700,
+                                ),
+                              ),
+                            ],
+                            if (order.agentName != null && order.trackingNumber != null)
+                              const Text(' • ', style: TextStyle(color: Colors.grey)),
+                            if (order.trackingNumber != null) ...[
+                              Icon(Icons.tag_rounded, size: 12, color: Colors.blueGrey.shade600),
+                              const SizedBox(width: 2),
+                              Text(
+                                order.trackingNumber!,
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.blueGrey.shade700,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -344,9 +380,15 @@ class PreOrderCard extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildAmountColumn('الإجمالي', Money(order.totalPiasters).toDisplay(), AppColors.onSurface),
+                _buildAmountColumn('الإجمالي للعميل', Money(order.totalPiasters).toDisplay(), AppColors.onSurface),
                 Container(width: 1, height: 22, color: AppColors.outlineVariant),
-                _buildAmountColumn('المسدد (عربون)', Money(order.depositPiasters).toDisplay(), AppColors.primary),
+                if (order.totalCostPiasters > 0) ...[
+                  _buildAmountColumn('تكلفة المندوب', Money(order.totalCostPiasters).toDisplay(), Colors.blueGrey.shade700),
+                  Container(width: 1, height: 22, color: AppColors.outlineVariant),
+                  _buildAmountColumn('الربح المتوقع', '+${Money(order.totalProfitPiasters).toDisplay()}', AppColors.primary),
+                  Container(width: 1, height: 22, color: AppColors.outlineVariant),
+                ],
+                _buildAmountColumn('المسدد (عربون)', Money(order.depositPiasters).toDisplay(), AppColors.success),
                 Container(width: 1, height: 22, color: AppColors.outlineVariant),
                 _buildAmountColumn(
                   'المتبقي',
@@ -413,7 +455,21 @@ class PreOrderCard extends StatelessWidget {
                     label: const Text('تسليم', style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5, fontWeight: FontWeight.bold)),
                     onPressed: onDeliver,
                   ),
+                  const SizedBox(width: 6),
                 ],
+
+                // Export to Agent Excel Button
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.teal.shade800,
+                    side: BorderSide(color: Colors.teal.shade400),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  icon: const Icon(Icons.file_download_outlined, size: 15),
+                  label: const Text('كشف المندوب', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold)),
+                  onPressed: () => _exportToAgent(context),
+                ),
 
                 const Spacer(),
 
@@ -423,7 +479,9 @@ class PreOrderCard extends StatelessWidget {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   onSelected: (val) async {
                     final cubit = context.read<PreOrdersCubit>();
-                    if (val == 'arrived') {
+                    if (val == 'export_agent') {
+                      _exportToAgent(context);
+                    } else if (val == 'arrived') {
                       await cubit.markArrivedAtStore(order.id);
                     } else if (val == 'forfeit') {
                       showDialog(
@@ -440,6 +498,16 @@ class PreOrderCard extends StatelessWidget {
                     }
                   },
                   itemBuilder: (ctx) => [
+                    const PopupMenuItem(
+                      value: 'export_agent',
+                      child: Row(
+                        children: [
+                          Icon(Icons.table_chart_outlined, size: 18, color: Colors.teal),
+                          SizedBox(width: 8),
+                          Text('تصدير كشف للمندوب (إكسيل)', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
+                        ],
+                      ),
+                    ),
                     if (order.status == PreOrderStatuses.pendingProcessing)
                       const PopupMenuItem(
                         value: 'arrived',
@@ -579,5 +647,32 @@ class PreOrderCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _exportToAgent(BuildContext context) async {
+    try {
+      final path = await PreOrderExcelService.exportAgentSheet(order);
+      if (path != null && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'تم تصدير كشف المندوب بنجاح في:\n$path',
+              style: const TextStyle(fontFamily: 'Cairo'),
+            ),
+            backgroundColor: AppColors.success,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('فشل تصدير كشف المندوب: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 }

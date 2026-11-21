@@ -72,6 +72,8 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
         customer_id TEXT,
         customer_name TEXT NOT NULL,
         customer_phone TEXT NOT NULL,
+        agent_name TEXT,
+        tracking_number TEXT,
         notes TEXT,
         expected_delivery_date INTEGER,
         total_piasters INTEGER NOT NULL,
@@ -99,6 +101,8 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
         quantity INTEGER NOT NULL DEFAULT 1,
         unit_price_piasters INTEGER NOT NULL,
         total_price_piasters INTEGER NOT NULL,
+        cost_price_piasters INTEGER NOT NULL DEFAULT 0,
+        commission_piasters INTEGER NOT NULL DEFAULT 0,
         item_url TEXT,
         notes TEXT,
         transferred_to_inventory INTEGER NOT NULL DEFAULT 0
@@ -132,6 +136,28 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
       CREATE INDEX IF NOT EXISTS idx_pre_order_payments_order ON pre_order_payments(pre_order_id);
     ''');
 
+    // Safe inline migrations for existing databases
+    try {
+      await _db.customStatement(
+        'ALTER TABLE pre_orders ADD COLUMN agent_name TEXT;',
+      );
+    } catch (_) {}
+    try {
+      await _db.customStatement(
+        'ALTER TABLE pre_orders ADD COLUMN tracking_number TEXT;',
+      );
+    } catch (_) {}
+    try {
+      await _db.customStatement(
+        'ALTER TABLE pre_order_items ADD COLUMN cost_price_piasters INTEGER NOT NULL DEFAULT 0;',
+      );
+    } catch (_) {}
+    try {
+      await _db.customStatement(
+        'ALTER TABLE pre_order_items ADD COLUMN commission_piasters INTEGER NOT NULL DEFAULT 0;',
+      );
+    } catch (_) {}
+
     _initialized = true;
   }
 
@@ -153,8 +179,10 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
     if (searchQuery != null && searchQuery.trim().isNotEmpty) {
       final q = '%${searchQuery.trim()}%';
       whereClauses.add(
-        '(order_number LIKE ? OR customer_name LIKE ? OR customer_phone LIKE ?)',
+        '(order_number LIKE ? OR customer_name LIKE ? OR customer_phone LIKE ? OR agent_name LIKE ? OR tracking_number LIKE ?)',
       );
+      variables.add(Variable.withString(q));
+      variables.add(Variable.withString(q));
       variables.add(Variable.withString(q));
       variables.add(Variable.withString(q));
       variables.add(Variable.withString(q));
@@ -255,9 +283,9 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
       '''
       INSERT INTO pre_orders (
         id, branch_id, order_number, customer_id, customer_name, customer_phone,
-        notes, expected_delivery_date, total_piasters, deposit_piasters, status,
-        created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        agent_name, tracking_number, notes, expected_delivery_date,
+        total_piasters, deposit_piasters, status, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ''',
       variables: [
         Variable.withString(orderId),
@@ -266,6 +294,8 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
         Variable(order.customerId),
         Variable.withString(order.customerName),
         Variable.withString(order.customerPhone),
+        Variable(order.agentName),
+        Variable(order.trackingNumber),
         Variable(order.notes),
         Variable(
           order.expectedDeliveryDate != null
@@ -287,8 +317,9 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
         '''
         INSERT INTO pre_order_items (
           id, pre_order_id, product_name, variant_description, quantity,
-          unit_price_piasters, total_price_piasters, item_url, notes, transferred_to_inventory
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          unit_price_piasters, total_price_piasters, cost_price_piasters,
+          commission_piasters, item_url, notes, transferred_to_inventory
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''',
         variables: [
           Variable.withString(itemId),
@@ -298,6 +329,8 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
           Variable.withInt(item.quantity),
           Variable.withInt(item.unitPricePiasters),
           Variable.withInt(item.totalPricePiasters),
+          Variable.withInt(item.costPricePiasters),
+          Variable.withInt(item.commissionPiasters),
           Variable(item.itemUrl),
           Variable(item.notes),
           Variable.withInt(0),
