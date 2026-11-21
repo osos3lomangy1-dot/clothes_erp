@@ -56,7 +56,8 @@ class _MainLayoutState extends State<MainLayout> {
   final GlobalKey<NavigatorState> _contentNavKey = GlobalKey<NavigatorState>();
   final Set<String> _collapsedSections = {};
   bool? _userCollapsedOverride;
-  bool _collapsedByPos = false;
+  bool? _savedCollapsedOverrideBeforePos;
+  bool _autoCollapsedForPos = false;
   bool _isSyncing = false;
   bool _cloudSyncEnabled = false;
   String _activeTitle = 'لوحة التحكم';
@@ -73,7 +74,8 @@ class _MainLayoutState extends State<MainLayout> {
     if (widget.currentRoute == '/pos' || widget.child is PosScreen) {
       _activeTitle = 'نقطة البيع (الكاشير)';
       _userCollapsedOverride = true;
-      _collapsedByPos = true;
+      _autoCollapsedForPos = true;
+      _savedCollapsedOverrideBeforePos = null;
     }
 
     final syncService = getIt<RestSyncService>();
@@ -164,8 +166,15 @@ class _MainLayoutState extends State<MainLayout> {
       _currentScreen = widget.child;
       if (widget.currentRoute == '/pos' || widget.child is PosScreen) {
         _activeTitle = 'نقطة البيع (الكاشير)';
-        _userCollapsedOverride = true;
-        _collapsedByPos = true;
+        if (!_isCollapsed) {
+          _savedCollapsedOverrideBeforePos = _userCollapsedOverride;
+          _autoCollapsedForPos = true;
+          _userCollapsedOverride = true;
+        } else {
+          _autoCollapsedForPos = false;
+          _savedCollapsedOverrideBeforePos = null;
+          _userCollapsedOverride = true;
+        }
       }
       _contentNavKey.currentState?.pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => widget.child),
@@ -239,7 +248,8 @@ class _MainLayoutState extends State<MainLayout> {
                                   ),
                                   tooltip: 'توسيع القائمة',
                                   onPressed: () => setState(() {
-                                    _collapsedByPos = false;
+                                    _autoCollapsedForPos = false;
+                                    _savedCollapsedOverrideBeforePos = null;
                                     _userCollapsedOverride = !collapsed;
                                   }),
                                 ),
@@ -290,7 +300,8 @@ class _MainLayoutState extends State<MainLayout> {
                                     ),
                                     tooltip: 'طي القائمة',
                                     onPressed: () => setState(() {
-                                      _collapsedByPos = false;
+                                      _autoCollapsedForPos = false;
+                                      _savedCollapsedOverrideBeforePos = null;
                                       _userCollapsedOverride = !collapsed;
                                     }),
                                   ),
@@ -1013,21 +1024,30 @@ class _MainLayoutState extends State<MainLayout> {
         if (isPosScreen && _userCollapsedOverride != true) {
           setState(() {
             _userCollapsedOverride = true;
-            _collapsedByPos = true;
+            _autoCollapsedForPos = true;
           });
         }
         return;
       }
       _ensureSectionExpandedFor(title);
+      final wasCollapsed = _isCollapsed;
       setState(() {
         _activeTitle = title;
         _currentScreen = screen;
         if (isPosScreen) {
-          _userCollapsedOverride = true;
-          _collapsedByPos = true;
-        } else if (_collapsedByPos) {
-          _userCollapsedOverride = null;
-          _collapsedByPos = false;
+          if (!wasCollapsed) {
+            _savedCollapsedOverrideBeforePos = _userCollapsedOverride;
+            _autoCollapsedForPos = true;
+            _userCollapsedOverride = true;
+          } else {
+            _autoCollapsedForPos = false;
+            _savedCollapsedOverrideBeforePos = null;
+            _userCollapsedOverride = true;
+          }
+        } else if (_autoCollapsedForPos) {
+          _userCollapsedOverride = _savedCollapsedOverrideBeforePos;
+          _autoCollapsedForPos = false;
+          _savedCollapsedOverrideBeforePos = null;
         }
       });
       _contentNavKey.currentState?.pushAndRemoveUntil(
