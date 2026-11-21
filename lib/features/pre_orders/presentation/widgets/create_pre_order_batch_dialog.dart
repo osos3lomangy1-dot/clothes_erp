@@ -194,6 +194,192 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
     });
   }
 
+  void _attachPendingOrders() {
+    final cubit = context.read<PreOrdersCubit>();
+    final pending = cubit.state.allOrders
+        .where((o) =>
+            o.batchId == null &&
+            o.status == PreOrderStatuses.pendingProcessing &&
+            !_customers.any((c) => c.nameCtrl.text.trim() == o.customerName))
+        .toList();
+
+    if (pending.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('لا توجد أوردرات فردية معلقة غير مدمجة حالياً لضمها'),
+          backgroundColor: AppColors.primary,
+        ),
+      );
+      return;
+    }
+
+    final selectedOrderIds = <String>{};
+
+    showDialog(
+      context: context,
+      builder: (dCtx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return AlertDialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(color: AppColors.outlineVariant),
+            ),
+            titlePadding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.link_rounded,
+                      size: 20, color: AppColors.primary),
+                ),
+                const SizedBox(width: 10),
+                const Text(
+                  'ضم أوردرات فردية معلقة للشحنة',
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 500,
+              height: 350,
+              child: ListView.separated(
+                itemCount: pending.length,
+                separatorBuilder: (_, _) =>
+                    const Divider(height: 1, color: AppColors.outlineVariant),
+                itemBuilder: (context, idx) {
+                  final po = pending[idx];
+                  final isChecked = selectedOrderIds.contains(po.id);
+                  return CheckboxListTile(
+                    value: isChecked,
+                    activeColor: AppColors.primary,
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    title: Row(
+                      children: [
+                        Text(
+                          po.orderNumber,
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          po.customerName,
+                          style: const TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    subtitle: Text(
+                      '${po.items.length} أصناف • إجمالي: ${Money(po.totalPiasters).toDisplay()} ج • عربون: ${Money(po.depositPiasters).toDisplay()} ج',
+                      style: const TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 11,
+                        color: AppColors.onSurfaceVariant,
+                      ),
+                    ),
+                    onChanged: (val) {
+                      setModalState(() {
+                        if (val == true) {
+                          selectedOrderIds.add(po.id);
+                        } else {
+                          selectedOrderIds.remove(po.id);
+                        }
+                      });
+                    },
+                  );
+                },
+              ),
+            ),
+            actionsPadding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dCtx),
+                child: const Text('إلغاء',
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
+                        color: AppColors.onSurfaceVariant)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: () {
+                  final toAttach = pending
+                      .where((o) => selectedOrderIds.contains(o.id))
+                      .toList();
+                  Navigator.pop(dCtx);
+                  if (toAttach.isNotEmpty) {
+                    setState(() {
+                      for (final order in toAttach) {
+                        final entry = _BatchCustomerEntry(
+                          id: order.id,
+                          name: order.customerName,
+                          phone: order.customerPhone,
+                          deposit: (order.depositPiasters / 100.0)
+                              .toStringAsFixed(1)
+                              .replaceAll('.0', ''),
+                        );
+                        for (final it in order.items) {
+                          entry.items.add(
+                            _BatchItemEntry(
+                              id: it.id,
+                              name: it.productName,
+                              desc: it.variantDescription ?? '',
+                              qty: it.quantity.toString(),
+                              cost: (it.costPricePiasters / 100.0)
+                                  .toStringAsFixed(1)
+                                  .replaceAll('.0', ''),
+                              commission: (it.commissionPiasters / 100.0)
+                                  .toStringAsFixed(1)
+                                  .replaceAll('.0', ''),
+                              price: (it.unitPricePiasters / 100.0)
+                                  .toStringAsFixed(1)
+                                  .replaceAll('.0', ''),
+                              url: it.itemUrl ?? '',
+                            ),
+                          );
+                        }
+                        _customers.add(entry);
+                      }
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                            'تم ضم ${toAttach.length} أوردرات للشحنة وحساب الشحن تلقائياً!'),
+                        backgroundColor: AppColors.success,
+                      ),
+                    );
+                  }
+                },
+                child: Text('ضم (${selectedOrderIds.length}) للشحنة',
+                    style: const TextStyle(
+                        fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   void _removeCustomer(int index) {
     if (_customers.length <= 1) return;
     setState(() {
@@ -301,12 +487,12 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.indigo.shade50,
+                        color: AppColors.primary.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
                         Icons.inventory_2_rounded,
-                        color: Colors.indigo.shade700,
+                        color: AppColors.primary,
                         size: 24,
                       ),
                     ),
@@ -329,14 +515,14 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                             style: TextStyle(
                               fontFamily: 'Cairo',
                               fontSize: 11.5,
-                              color: Colors.grey,
+                              color: AppColors.onSurfaceVariant,
                             ),
                           ),
                         ],
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close_rounded, color: Colors.grey),
+                      icon: const Icon(Icons.close_rounded, color: AppColors.onSurfaceVariant),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],
@@ -420,7 +606,7 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                                   fontFamily: 'Cairo',
                                   fontSize: 13,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.indigo.shade800,
+                                  color: AppColors.primary,
                                 ),
                                 decoration: _inputDecoration(
                                   label: 'إجمالي الشحن العام (ج.م) *',
@@ -506,25 +692,49 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                               'عملاء الشحنة (${_customers.length})',
                               Icons.groups_rounded,
                             ),
-                            ElevatedButton.icon(
-                              onPressed: _addCustomer,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.indigo.shade700,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 8),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8)),
-                              ),
-                              icon: const Icon(Icons.person_add_rounded,
-                                  size: 16),
-                              label: const Text(
-                                '+ إضافة عميل للشحنة',
-                                style: TextStyle(
-                                    fontFamily: 'Cairo',
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold),
-                              ),
+                            Row(
+                              children: [
+                                OutlinedButton.icon(
+                                  onPressed: _attachPendingOrders,
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.primary,
+                                    side: BorderSide(color: AppColors.primary),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 8),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                  icon: const Icon(Icons.link_rounded, size: 16),
+                                  label: const Text(
+                                    'ضم أوردرات فردية معلقة',
+                                    style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                ElevatedButton.icon(
+                                  onPressed: _addCustomer,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 14, vertical: 8),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                  icon: const Icon(Icons.person_add_rounded,
+                                      size: 16),
+                                  label: const Text(
+                                    '+ إضافة عميل للشحنة',
+                                    style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -574,82 +784,61 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
 
                         const SizedBox(height: 18),
 
-                        // 3. شريط الملخص المالي العام للشحنة بالكامل
+                        // 3. شريط الملخص المالي العام للشحنة بالكامل (متجاوب مع التمرير لمنع أي Overflow)
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 10),
                           decoration: BoxDecoration(
-                            color: Colors.indigo.shade50.withValues(alpha: 0.6),
+                            color: AppColors.surfaceContainerLow,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                                color:
-                                    Colors.indigo.shade200.withValues(alpha: 0.8)),
+                            border: Border.all(color: AppColors.outlineVariant),
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              _buildSummaryItem('العملاء',
-                                  '${_customers.length}', Colors.indigo.shade900),
-                              Container(
-                                  width: 1,
-                                  height: 28,
-                                  color: Colors.indigo.shade200),
-                              _buildSummaryItem(
-                                  'إجمالي القطع',
-                                  '$_allBatchPieces',
-                                  Colors.blueGrey.shade800),
-                              Container(
-                                  width: 1,
-                                  height: 28,
-                                  color: Colors.indigo.shade200),
-                              _buildSummaryItem(
-                                  'المبيعات',
-                                  Money(_batchTotalRetailPiasters).toDisplay(),
-                                  AppColors.onSurface),
-                              Container(
-                                  width: 1,
-                                  height: 28,
-                                  color: Colors.indigo.shade200),
-                              _buildSummaryItem(
-                                  'تكلفة المندوب',
-                                  Money(_batchTotalCostPiasters).toDisplay(),
-                                  Colors.blueGrey.shade700),
-                              Container(
-                                  width: 1,
-                                  height: 28,
-                                  color: Colors.indigo.shade200),
-                              _buildSummaryItem(
-                                  'الشحن العام',
-                                  Money(_totalShippingPiasters).toDisplay(),
-                                  Colors.orange.shade800),
-                              Container(
-                                  width: 1,
-                                  height: 28,
-                                  color: Colors.indigo.shade200),
-                              _buildSummaryItem(
-                                  'صافي أرباحك',
-                                  '+${Money(_batchTotalProfitPiasters).toDisplay()}',
-                                  AppColors.primary),
-                              Container(
-                                  width: 1,
-                                  height: 28,
-                                  color: Colors.indigo.shade200),
-                              _buildSummaryItem(
-                                  'إجمالي العربونات',
-                                  Money(_batchTotalDepositsPiasters).toDisplay(),
-                                  AppColors.success),
-                              Container(
-                                  width: 1,
-                                  height: 28,
-                                  color: Colors.indigo.shade200),
-                              _buildSummaryItem(
-                                'المتبقي تحصيله',
-                                Money(_batchTotalRemainingPiasters).toDisplay(),
-                                _batchTotalRemainingPiasters > 0
-                                    ? AppColors.error
-                                    : AppColors.success,
-                              ),
-                            ],
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                _buildSummaryItem('العملاء',
+                                    '${_customers.length}', AppColors.onSurface),
+                                _summaryDivider(),
+                                _buildSummaryItem(
+                                    'إجمالي القطع',
+                                    '$_allBatchPieces',
+                                    AppColors.onSurface),
+                                _summaryDivider(),
+                                _buildSummaryItem(
+                                    'المبيعات',
+                                    Money(_batchTotalRetailPiasters).toDisplay(),
+                                    AppColors.onSurface),
+                                _summaryDivider(),
+                                _buildSummaryItem(
+                                    'تكلفة المندوب',
+                                    Money(_batchTotalCostPiasters).toDisplay(),
+                                    AppColors.onSurfaceVariant),
+                                _summaryDivider(),
+                                _buildSummaryItem(
+                                    'الشحن العام',
+                                    Money(_totalShippingPiasters).toDisplay(),
+                                    AppColors.primary),
+                                _summaryDivider(),
+                                _buildSummaryItem(
+                                    'صافي أرباحك',
+                                    '+${Money(_batchTotalProfitPiasters).toDisplay()}',
+                                    AppColors.primary),
+                                _summaryDivider(),
+                                _buildSummaryItem(
+                                    'إجمالي العربونات',
+                                    Money(_batchTotalDepositsPiasters).toDisplay(),
+                                    AppColors.success),
+                                _summaryDivider(),
+                                _buildSummaryItem(
+                                  'المتبقي تحصيله',
+                                  Money(_batchTotalRemainingPiasters).toDisplay(),
+                                  _batchTotalRemainingPiasters > 0
+                                      ? AppColors.error
+                                      : AppColors.success,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -666,12 +855,14 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(),
                       child: const Text('إلغاء',
-                          style: TextStyle(fontFamily: 'Cairo')),
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
+                              color: AppColors.onSurfaceVariant)),
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.indigo.shade700,
+                        backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 24, vertical: 11),
@@ -711,9 +902,9 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.indigo.shade100),
+        border: Border.all(color: AppColors.outlineVariant),
       ),
       child: ExpansionTile(
         initiallyExpanded: true,
@@ -722,14 +913,14 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
             const EdgeInsets.only(left: 14, right: 14, bottom: 12, top: 4),
         leading: CircleAvatar(
           radius: 13,
-          backgroundColor: Colors.indigo.shade100,
+          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
           child: Text(
             '${cIdx + 1}',
             style: TextStyle(
               fontFamily: 'Cairo',
               fontSize: 11,
               fontWeight: FontWeight.bold,
-              color: Colors.indigo.shade900,
+              color: AppColors.primary,
             ),
           ),
         ),
@@ -743,31 +934,33 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                 fontFamily: 'Cairo',
                 fontSize: 13.5,
                 fontWeight: FontWeight.bold,
+                color: AppColors.onSurface,
               ),
             ),
             const SizedBox(width: 8),
             if (customer.phoneCtrl.text.isNotEmpty)
               Text(
                 '(${customer.phoneCtrl.text})',
-                style: TextStyle(
+                style: const TextStyle(
                     fontFamily: 'Cairo',
                     fontSize: 11,
-                    color: Colors.grey.shade600),
+                    color: AppColors.onSurfaceVariant),
               ),
             const Spacer(),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: Colors.indigo.shade50,
+                color: AppColors.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: AppColors.outlineVariant),
               ),
               child: Text(
                 'القطع: ${customer.totalPieces} | الشحن: ${Money(allocatedShipping).toDisplay()} ج | المتبقي: ${Money(remainingWithShipping).toDisplay()} ج',
-                style: TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Cairo',
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
-                  color: Colors.indigo.shade900,
+                  color: AppColors.onSurface,
                 ),
               ),
             ),
@@ -1082,119 +1275,137 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
     }
 
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.indigo.shade50.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.indigo.shade100),
+        color: AppColors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.outlineVariant),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            flex: 3,
-            child: TextFormField(
-              controller: customer.fastNameCtrl,
-              focusNode: customer.fastNameFocus,
-              style: const TextStyle(fontFamily: 'Cairo', fontSize: 11.5),
-              decoration: _compactInput(
-                label: 'اسم الصنف أو كود شي إن *',
-                hint: 'اكتب واضغط Enter...',
+          Row(
+            children: [
+              Expanded(
+                flex: 4,
+                child: TextFormField(
+                  controller: customer.fastNameCtrl,
+                  focusNode: customer.fastNameFocus,
+                  style: const TextStyle(fontFamily: 'Cairo', fontSize: 12),
+                  decoration: _compactInput(
+                    label: 'اسم الصنف أو كود شي إن *',
+                    hint: 'اكتب واضغط Enter...',
+                  ),
+                  onFieldSubmitted: (_) =>
+                      customer.fastDescFocus.requestFocus(),
+                ),
               ),
-              onFieldSubmitted: (_) => customer.fastDescFocus.requestFocus(),
-            ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 3,
+                child: TextFormField(
+                  controller: customer.fastDescCtrl,
+                  focusNode: customer.fastDescFocus,
+                  style: const TextStyle(fontFamily: 'Cairo', fontSize: 12),
+                  decoration:
+                      _compactInput(label: 'المقاس/اللون', hint: 'L - أسود'),
+                  onFieldSubmitted: (_) =>
+                      customer.fastQtyFocus.requestFocus(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 70,
+                child: TextFormField(
+                  controller: customer.fastQtyCtrl,
+                  focusNode: customer.fastQtyFocus,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold),
+                  decoration: _compactInput(label: 'الكمية'),
+                  onFieldSubmitted: (_) =>
+                      customer.fastCostFocus.requestFocus(),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 6),
-          Expanded(
-            flex: 2,
-            child: TextFormField(
-              controller: customer.fastDescCtrl,
-              focusNode: customer.fastDescFocus,
-              style: const TextStyle(fontFamily: 'Cairo', fontSize: 11.5),
-              decoration: _compactInput(label: 'المقاس/اللون', hint: 'L - أسود'),
-              onFieldSubmitted: (_) => customer.fastQtyFocus.requestFocus(),
-            ),
-          ),
-          const SizedBox(width: 6),
-          SizedBox(
-            width: 50,
-            child: TextFormField(
-              controller: customer.fastQtyCtrl,
-              focusNode: customer.fastQtyFocus,
-              keyboardType: TextInputType.number,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  fontFamily: 'Cairo',
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.bold),
-              decoration: _compactInput(label: 'الكمية'),
-              onFieldSubmitted: (_) => customer.fastCostFocus.requestFocus(),
-            ),
-          ),
-          const SizedBox(width: 6),
-          SizedBox(
-            width: 75,
-            child: TextFormField(
-              controller: customer.fastCostCtrl,
-              focusNode: customer.fastCostFocus,
-              keyboardType: TextInputType.number,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  fontFamily: 'Cairo',
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.bold),
-              decoration: _compactInput(label: 'التكلفة'),
-              onChanged: (_) => onCostOrCommissionChanged(),
-              onFieldSubmitted: (_) =>
-                  customer.fastCommissionFocus.requestFocus(),
-            ),
-          ),
-          const SizedBox(width: 6),
-          SizedBox(
-            width: 70,
-            child: TextFormField(
-              controller: customer.fastCommissionCtrl,
-              focusNode: customer.fastCommissionFocus,
-              keyboardType: TextInputType.number,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  fontFamily: 'Cairo',
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary),
-              decoration: _compactInput(label: 'العمولة'),
-              onChanged: (_) => onCostOrCommissionChanged(),
-              onFieldSubmitted: (_) =>
-                  customer.fastSalePriceFocus.requestFocus(),
-            ),
-          ),
-          const SizedBox(width: 6),
-          SizedBox(
-            width: 80,
-            child: TextFormField(
-              controller: customer.fastSalePriceCtrl,
-              focusNode: customer.fastSalePriceFocus,
-              keyboardType: TextInputType.number,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  fontFamily: 'Cairo',
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.bold),
-              decoration: _compactInput(label: 'سعر البيع'),
-              onChanged: onSalePriceChanged,
-              onFieldSubmitted: (_) => addFastItem(),
-            ),
-          ),
-          const SizedBox(width: 6),
-          IconButton.filled(
-            onPressed: addFastItem,
-            icon: const Icon(Icons.add_rounded, size: 16),
-            style: IconButton.styleFrom(
-              backgroundColor: Colors.indigo.shade700,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6)),
-            ),
-            tooltip: 'إضافة الصنف بالـ [Enter]',
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: customer.fastCostCtrl,
+                  focusNode: customer.fastCostFocus,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold),
+                  decoration: _compactInput(label: 'تكلفة المندوب'),
+                  onChanged: (_) => onCostOrCommissionChanged(),
+                  onFieldSubmitted: (_) =>
+                      customer.fastCommissionFocus.requestFocus(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextFormField(
+                  controller: customer.fastCommissionCtrl,
+                  focusNode: customer.fastCommissionFocus,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary),
+                  decoration: _compactInput(label: 'العمولة'),
+                  onChanged: (_) => onCostOrCommissionChanged(),
+                  onFieldSubmitted: (_) =>
+                      customer.fastSalePriceFocus.requestFocus(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextFormField(
+                  controller: customer.fastSalePriceCtrl,
+                  focusNode: customer.fastSalePriceFocus,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold),
+                  decoration: _compactInput(label: 'سعر البيع'),
+                  onChanged: onSalePriceChanged,
+                  onFieldSubmitted: (_) => addFastItem(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: addFastItem,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
+                icon: const Icon(Icons.add_rounded, size: 16),
+                label: const Text(
+                  'إضافة [Enter]',
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1366,7 +1577,7 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
   Widget _buildSectionHeader(String title, IconData icon) {
     return Row(
       children: [
-        Icon(icon, size: 16, color: Colors.indigo.shade700),
+        Icon(icon, size: 16, color: AppColors.primary),
         const SizedBox(width: 6),
         Text(
           title,
@@ -1381,13 +1592,22 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
     );
   }
 
+  Widget _summaryDivider() {
+    return Container(
+      width: 1,
+      height: 28,
+      margin: const EdgeInsets.symmetric(horizontal: 10),
+      color: AppColors.outlineVariant,
+    );
+  }
+
   Widget _buildSummaryItem(String label, String value, Color color) {
     return Column(
       children: [
         Text(
           label,
           style: const TextStyle(
-              fontFamily: 'Cairo', fontSize: 10, color: Colors.grey),
+              fontFamily: 'Cairo', fontSize: 10, color: AppColors.onSurfaceVariant),
         ),
         const SizedBox(height: 1),
         Text(
@@ -1411,10 +1631,10 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
     return InputDecoration(
       labelText: label,
       hintText: hint,
-      prefixIcon: Icon(icon, size: 18, color: Colors.indigo.shade700),
+      prefixIcon: Icon(icon, size: 18, color: AppColors.primary),
       labelStyle: const TextStyle(fontFamily: 'Cairo', fontSize: 12),
       hintStyle: const TextStyle(
-          fontFamily: 'Cairo', fontSize: 11, color: Colors.grey),
+          fontFamily: 'Cairo', fontSize: 11, color: AppColors.onSurfaceVariant),
       contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       enabledBorder: OutlineInputBorder(
@@ -1430,7 +1650,7 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
       hintText: hint,
       labelStyle: const TextStyle(fontFamily: 'Cairo', fontSize: 10.5),
       hintStyle: const TextStyle(
-          fontFamily: 'Cairo', fontSize: 10, color: Colors.grey),
+          fontFamily: 'Cairo', fontSize: 10, color: AppColors.onSurfaceVariant),
       contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
       enabledBorder: OutlineInputBorder(

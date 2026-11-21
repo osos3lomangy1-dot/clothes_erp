@@ -188,7 +188,7 @@ class _PreOrdersViewState extends State<_PreOrdersView> {
             // الزر 2: إنشاء شحنة مجمعة (Batch)
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.indigo.shade700,
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -319,9 +319,7 @@ class _PreOrdersViewState extends State<_PreOrdersView> {
                                   : state.totalCount,
                               tabId: 'all',
                               currentTab: state.selectedTab,
-                              activeColor: isBatchesMode
-                                  ? Colors.indigo.shade700
-                                  : AppColors.primary,
+                              activeColor: AppColors.primary,
                             ),
                             const SizedBox(width: 8),
                             _tabChip(
@@ -331,7 +329,7 @@ class _PreOrdersViewState extends State<_PreOrdersView> {
                                   : state.pendingCount,
                               tabId: PreOrderStatuses.pendingProcessing,
                               currentTab: state.selectedTab,
-                              activeColor: Colors.amber.shade800,
+                              activeColor: AppColors.primary,
                             ),
                             const SizedBox(width: 8),
                             _tabChip(
@@ -341,7 +339,7 @@ class _PreOrdersViewState extends State<_PreOrdersView> {
                                   : state.arrivedCount,
                               tabId: PreOrderStatuses.arrivedAtStore,
                               currentTab: state.selectedTab,
-                              activeColor: Colors.teal.shade700,
+                              activeColor: AppColors.primary,
                             ),
                             if (!isBatchesMode) ...[
                               const SizedBox(width: 8),
@@ -350,7 +348,7 @@ class _PreOrdersViewState extends State<_PreOrdersView> {
                                 count: state.deliveredCount,
                                 tabId: PreOrderStatuses.delivered,
                                 currentTab: state.selectedTab,
-                                activeColor: AppColors.success,
+                                activeColor: AppColors.primary,
                               ),
                               const SizedBox(width: 8),
                               _tabChip(
@@ -358,7 +356,7 @@ class _PreOrdersViewState extends State<_PreOrdersView> {
                                 count: state.defaultedCount,
                                 tabId: PreOrderStatuses.defaultedForfeited,
                                 currentTab: state.selectedTab,
-                                activeColor: Colors.orange.shade800,
+                                activeColor: AppColors.primary,
                               ),
                               const SizedBox(width: 8),
                               _tabChip(
@@ -366,7 +364,7 @@ class _PreOrdersViewState extends State<_PreOrdersView> {
                                 count: state.refundedCount,
                                 tabId: PreOrderStatuses.refundedCancelled,
                                 currentTab: state.selectedTab,
-                                activeColor: Colors.grey.shade600,
+                                activeColor: AppColors.primary,
                               ),
                             ],
                           ],
@@ -500,7 +498,7 @@ class _PreOrdersViewState extends State<_PreOrdersView> {
             Icon(
               icon,
               size: 15,
-              color: isSelected ? Colors.indigo.shade800 : Colors.grey.shade600,
+              color: isSelected ? AppColors.primary : AppColors.onSurfaceVariant,
             ),
             const SizedBox(width: 5),
             Text(
@@ -509,8 +507,9 @@ class _PreOrdersViewState extends State<_PreOrdersView> {
                 fontFamily: 'Cairo',
                 fontSize: 11.5,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                color:
-                    isSelected ? Colors.indigo.shade900 : Colors.grey.shade700,
+                color: isSelected
+                    ? AppColors.primary
+                    : AppColors.onSurfaceVariant,
               ),
             ),
           ],

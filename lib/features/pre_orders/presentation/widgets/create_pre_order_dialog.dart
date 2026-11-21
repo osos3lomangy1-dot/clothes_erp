@@ -759,6 +759,7 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
       ),
       child: Column(
         children: [
+          // السطر الأول: الاسم والمقاس والكمية
           Row(
             children: [
               // اسم الصنف أو الرابط
@@ -775,11 +776,11 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                   onFieldSubmitted: (_) => _fastDescFocus.requestFocus(),
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
 
               // المقاس واللون
               Expanded(
-                flex: 2,
+                flex: 3,
                 child: TextFormField(
                   controller: _fastDescCtrl,
                   focusNode: _fastDescFocus,
@@ -791,11 +792,11 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                   onFieldSubmitted: (_) => _fastQtyFocus.requestFocus(),
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
 
               // الكمية
               SizedBox(
-                width: 55,
+                width: 75,
                 child: TextFormField(
                   controller: _fastQtyCtrl,
                   focusNode: _fastQtyFocus,
@@ -806,11 +807,15 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                   onFieldSubmitted: (_) => _fastCostFocus.requestFocus(),
                 ),
               ),
-              const SizedBox(width: 6),
+            ],
+          ),
+          const SizedBox(height: 8),
 
+          // السطر الثاني: التكلفة والعمولة وسعر البيع وزر الإضافة
+          Row(
+            children: [
               // تكلفة المندوب
-              SizedBox(
-                width: 90,
+              Expanded(
                 child: TextFormField(
                   controller: _fastCostCtrl,
                   focusNode: _fastCostFocus,
@@ -822,11 +827,10 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                   onFieldSubmitted: (_) => _fastCommissionFocus.requestFocus(),
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
 
               // العمولة
-              SizedBox(
-                width: 80,
+              Expanded(
                 child: TextFormField(
                   controller: _fastCommissionCtrl,
                   focusNode: _fastCommissionFocus,
@@ -838,11 +842,10 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                   onFieldSubmitted: (_) => _fastSalePriceFocus.requestFocus(),
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
 
               // سعر البيع للعميل
-              SizedBox(
-                width: 90,
+              Expanded(
                 child: TextFormField(
                   controller: _fastSalePriceCtrl,
                   focusNode: _fastSalePriceFocus,
@@ -854,18 +857,19 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                   onFieldSubmitted: (_) => _addFastItem(),
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
 
               // زر إضافة بالـ Enter
-              IconButton.filled(
+              ElevatedButton.icon(
                 onPressed: _addFastItem,
-                icon: const Icon(Icons.add_rounded, size: 18),
-                style: IconButton.styleFrom(
+                style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-                tooltip: 'إضافة الصنف [Enter]',
+                icon: const Icon(Icons.add_rounded, size: 17),
+                label: const Text('إضافة [Enter]', style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5, fontWeight: FontWeight.bold)),
               ),
             ],
           ),

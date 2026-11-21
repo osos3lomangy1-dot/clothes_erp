@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../domain/entities/pre_order_batch_entity.dart';
 import '../../domain/entities/pre_order_entity.dart';
 import '../../domain/entities/pre_order_item_entity.dart';
 
@@ -251,6 +252,72 @@ class PreOrderExcelService {
 
     final fileName = 'اوردر_${safeOrderNum}_كشف_المندوب.xlsx';
     return await _saveFile(bytes, fileName, 'حفظ كشف الطلبية للمندوب');
+  }
+
+  /// 4. تصدير كشف كامل للشحنة المجمعة للمندوب / وسيط الشحن (بدون أسعار بيع العملاء وبدون أرباح التاجر)
+  static Future<String?> exportBatchToExcel(PreOrderBatchEntity batch) async {
+    final excel = Excel.createExcel();
+    final safeBatchNum = batch.batchNumber.replaceAll(RegExp(r'[^\w-]'), '_');
+    final sheetName = 'شحنة_$safeBatchNum';
+    final sheet = excel[sheetName];
+    excel.setDefaultSheet(sheetName);
+
+    // ترويسة الشحنة للمندوب
+    sheet.appendRow([TextCellValue('كشف شحنة مجمعة للمندوب / وسيط الاستيراد')]);
+    sheet.appendRow([TextCellValue('كود / اسم الشحنة:'), TextCellValue(batch.batchNumber)]);
+    sheet.appendRow([TextCellValue('اسم المندوب / الوسيط:'), TextCellValue(batch.agentName ?? 'غير محدد')]);
+    sheet.appendRow([TextCellValue('رقم البوليصة / التتبع:'), TextCellValue(batch.trackingNumber ?? 'غير محدد')]);
+    sheet.appendRow([TextCellValue('إجمالي عدد العملاء:'), IntCellValue(batch.totalOrdersCount)]);
+    sheet.appendRow([TextCellValue('إجمالي عدد القطع:'), IntCellValue(batch.totalPiecesCount)]);
+    sheet.appendRow([
+      TextCellValue('تاريخ إنشاء الشحنة:'),
+      TextCellValue(
+        '${batch.createdAt.year}-${batch.createdAt.month.toString().padLeft(2, '0')}-${batch.createdAt.day.toString().padLeft(2, '0')}',
+      ),
+    ]);
+    sheet.appendRow([TextCellValue('')]); // سطر فارغ
+
+    // رأس جدول أصناف الشحنة
+    sheet.appendRow([
+      TextCellValue('#'),
+      TextCellValue('اسم العميل'),
+      TextCellValue('هاتف العميل'),
+      TextCellValue('رقم الأوردر'),
+      TextCellValue('اسم الصنف أو كود شي إن'),
+      TextCellValue('المقاس واللون والمواصفات'),
+      TextCellValue('الكمية المطلوبة'),
+      TextCellValue('تكلفة المندوب للقطعة (ج.م)'),
+      TextCellValue('إجمالي التكلفة (ج.م)'),
+      TextCellValue('رابط المنتج على الموقع'),
+      TextCellValue('ملاحظات خاصة'),
+    ]);
+
+    int itemIndex = 1;
+    for (final order in batch.orders) {
+      for (final it in order.items) {
+        final costEach = it.costPricePiasters > 0 ? it.costPricePiasters / 100.0 : 0.0;
+        final totalCost = it.totalCostPiasters > 0 ? it.totalCostPiasters / 100.0 : costEach * it.quantity;
+        sheet.appendRow([
+          IntCellValue(itemIndex++),
+          TextCellValue(order.customerName),
+          TextCellValue(order.customerPhone),
+          TextCellValue(order.orderNumber),
+          TextCellValue(it.productName),
+          TextCellValue(it.variantDescription ?? '-'),
+          IntCellValue(it.quantity),
+          DoubleCellValue(costEach),
+          DoubleCellValue(totalCost),
+          TextCellValue(it.itemUrl ?? '-'),
+          TextCellValue(it.notes ?? '-'),
+        ]);
+      }
+    }
+
+    final bytes = excel.encode();
+    if (bytes == null) return null;
+
+    final fileName = 'شحنة_${safeBatchNum}_كشف_المندوب.xlsx';
+    return await _saveFile(bytes, fileName, 'حفظ كشف الشحنة للمندوب');
   }
 
   // --- دوال مساعدة لحفظ وقراءة الخلايا ---

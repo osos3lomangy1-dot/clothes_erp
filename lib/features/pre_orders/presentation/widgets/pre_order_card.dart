@@ -8,6 +8,7 @@ import '../../../customers/data/services/customer_ledger_service.dart';
 import '../../data/services/pre_order_excel_service.dart';
 import '../../domain/entities/pre_order_entity.dart';
 import '../cubits/pre_orders_cubit.dart';
+import 'bag_pickup_label_dialog.dart';
 import 'pre_order_forfeit_dialog.dart';
 import 'pre_order_payment_dialog.dart';
 
@@ -107,7 +108,7 @@ class PreOrderCard extends StatelessWidget {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.storefront_rounded, color: Colors.teal),
+                  leading: Icon(Icons.storefront_rounded, color: AppColors.primary),
                   title: const Text('إشعار وصول الشحنة للمحل', style: TextStyle(fontFamily: 'Cairo', fontSize: 13)),
                   subtitle: const Text('إبلاغ العميل بأن الشحنة جاهزة للاستلام بالفرع', style: TextStyle(fontFamily: 'Cairo', fontSize: 11)),
                   onTap: () {
@@ -116,7 +117,7 @@ class PreOrderCard extends StatelessWidget {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.alarm_rounded, color: Colors.orange),
+                  leading: const Icon(Icons.alarm_rounded, color: AppColors.error),
                   title: const Text('تذكير عاجل بالاستلام', style: TextStyle(fontFamily: 'Cairo', fontSize: 13)),
                   subtitle: const Text('تنبيه بالاستلام خلال 48 ساعة قبل مصادرة العربون', style: TextStyle(fontFamily: 'Cairo', fontSize: 11)),
                   onTap: () {
@@ -135,15 +136,15 @@ class PreOrderCard extends StatelessWidget {
   Color _getStatusColor(String status) {
     switch (status) {
       case PreOrderStatuses.pendingProcessing:
-        return Colors.amber.shade800;
+        return AppColors.primary;
       case PreOrderStatuses.arrivedAtStore:
-        return Colors.teal.shade700;
+        return AppColors.primary;
       case PreOrderStatuses.delivered:
         return AppColors.success;
       case PreOrderStatuses.defaultedForfeited:
-        return Colors.orange.shade800;
+        return AppColors.error;
       case PreOrderStatuses.refundedCancelled:
-        return Colors.grey.shade600;
+        return AppColors.onSurfaceVariant;
       default:
         return AppColors.primary;
     }
@@ -223,30 +224,30 @@ class PreOrderCard extends StatelessWidget {
                         Row(
                           children: [
                             if (order.agentName != null) ...[
-                              Icon(Icons.badge_outlined, size: 12, color: Colors.blueGrey.shade600),
+                              const Icon(Icons.badge_outlined, size: 12, color: AppColors.onSurfaceVariant),
                               const SizedBox(width: 3),
                               Text(
                                 order.agentName!,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontFamily: 'Cairo',
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.blueGrey.shade700,
+                                  color: AppColors.onSurfaceVariant,
                                 ),
                               ),
                             ],
                             if (order.agentName != null && order.trackingNumber != null)
-                              const Text(' • ', style: TextStyle(color: Colors.grey)),
+                              const Text(' • ', style: TextStyle(color: AppColors.onSurfaceVariant)),
                             if (order.trackingNumber != null) ...[
-                              Icon(Icons.tag_rounded, size: 12, color: Colors.blueGrey.shade600),
+                              const Icon(Icons.tag_rounded, size: 12, color: AppColors.onSurfaceVariant),
                               const SizedBox(width: 2),
                               Text(
                                 order.trackingNumber!,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontFamily: 'Cairo',
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.blueGrey.shade700,
+                                  color: AppColors.onSurfaceVariant,
                                 ),
                               ),
                             ],
@@ -285,6 +286,89 @@ class PreOrderCard extends StatelessWidget {
               ],
             ),
           ),
+
+          // عداد مهلة الاستلام وتنبيه المصادرة (Hold Expiry Counter)
+          if (order.status == PreOrderStatuses.arrivedAtStore) ...[
+            Builder(builder: (context) {
+              final arrivedDate = order.arrivedAt ?? order.updatedAt;
+              final daysElapsed = DateTime.now().difference(arrivedDate).inDays;
+              final isOverdue = daysElapsed >= 15;
+
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: isOverdue
+                      ? AppColors.error.withValues(alpha: 0.08)
+                      : AppColors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isOverdue
+                        ? AppColors.error.withValues(alpha: 0.3)
+                        : AppColors.outlineVariant,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isOverdue
+                          ? Icons.warning_rounded
+                          : Icons.schedule_rounded,
+                      size: 15,
+                      color: isOverdue
+                          ? AppColors.error
+                          : AppColors.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        isOverdue
+                            ? '⚠️ تجاوز مهلة الاستلام ($daysElapsed يوماً بالمحل)'
+                            : 'وصل للمحل منذ ${daysElapsed == 0 ? "اليوم" : "$daysElapsed أيام"}',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 11,
+                          fontWeight: isOverdue ? FontWeight.bold : FontWeight.w600,
+                          color: isOverdue ? AppColors.error : AppColors.onSurface,
+                        ),
+                      ),
+                    ),
+                    if (isOverdue) ...[
+                      InkWell(
+                        onTap: () => _sendWhatsApp(context, 'reminder'),
+                        borderRadius: BorderRadius.circular(6),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2.5),
+                          decoration: BoxDecoration(
+                            color: AppColors.error,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.notification_important_rounded,
+                                  size: 12, color: Colors.white),
+                              SizedBox(width: 4),
+                              Text(
+                                'إنذار واتساب نهائي',
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }),
+          ],
 
           const Divider(height: 1, color: AppColors.outlineVariant),
 
@@ -383,7 +467,7 @@ class PreOrderCard extends StatelessWidget {
                 _buildAmountColumn('الإجمالي للعميل', Money(order.totalPiasters).toDisplay(), AppColors.onSurface),
                 Container(width: 1, height: 22, color: AppColors.outlineVariant),
                 if (order.totalCostPiasters > 0) ...[
-                  _buildAmountColumn('تكلفة المندوب', Money(order.totalCostPiasters).toDisplay(), Colors.blueGrey.shade700),
+                  _buildAmountColumn('تكلفة المندوب', Money(order.totalCostPiasters).toDisplay(), AppColors.onSurfaceVariant),
                   Container(width: 1, height: 22, color: AppColors.outlineVariant),
                   _buildAmountColumn('الربح المتوقع', '+${Money(order.totalProfitPiasters).toDisplay()}', AppColors.primary),
                   Container(width: 1, height: 22, color: AppColors.outlineVariant),
@@ -399,132 +483,159 @@ class PreOrderCard extends StatelessWidget {
             ),
           ),
 
-          // 4. Quick Actions Row
+          // 4. Quick Actions Row (Scrollable to prevent any horizontal overflow)
           Padding(
             padding: const EdgeInsets.all(8),
-            child: Row(
-              children: [
-                // WhatsApp Button
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF25D366),
-                    side: const BorderSide(color: Color(0xFF25D366)),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  icon: const Icon(Icons.chat_rounded, size: 15),
-                  label: const Text('واتساب', style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5, fontWeight: FontWeight.bold)),
-                  onPressed: () => _showWhatsAppMenu(context),
-                ),
-                const SizedBox(width: 6),
-
-                // Add Payment Button
-                if (order.canAddPayment && remainingPiasters > 0) ...[
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  // WhatsApp Button
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                      side: BorderSide(color: AppColors.primary),
+                      foregroundColor: const Color(0xFF25D366),
+                      side: const BorderSide(color: Color(0xFF25D366)),
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                    icon: const Icon(Icons.add_card_rounded, size: 15),
-                    label: const Text('دفعة', style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5, fontWeight: FontWeight.bold)),
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (_) => BlocProvider.value(
-                          value: context.read<PreOrdersCubit>(),
-                          child: PreOrderPaymentDialog(order: order),
-                        ),
-                      );
-                    },
+                    icon: const Icon(Icons.chat_rounded, size: 15),
+                    label: const Text('واتساب', style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5, fontWeight: FontWeight.bold)),
+                    onPressed: () => _showWhatsAppMenu(context),
                   ),
                   const SizedBox(width: 6),
-                ],
 
-                // Deliver Button
-                if (order.canDeliver) ...[
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  // Add Payment Button
+                  if (order.canAddPayment && remainingPiasters > 0) ...[
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: BorderSide(color: AppColors.primary),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      icon: const Icon(Icons.add_card_rounded, size: 15),
+                      label: const Text('دفعة', style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5, fontWeight: FontWeight.bold)),
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (_) => BlocProvider.value(
+                            value: context.read<PreOrdersCubit>(),
+                            child: PreOrderPaymentDialog(order: order),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+
+                  // Deliver Button
+                  if (order.canDeliver) ...[
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      icon: const Icon(Icons.check_rounded, size: 15),
+                      label: const Text('تسليم', style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5, fontWeight: FontWeight.bold)),
+                      onPressed: onDeliver,
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+
+                  // Bag Label Button
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: BorderSide(color: AppColors.primary.withValues(alpha: 0.6)),
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                    icon: const Icon(Icons.check_rounded, size: 15),
-                    label: const Text('تسليم', style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5, fontWeight: FontWeight.bold)),
-                    onPressed: onDeliver,
+                    icon: const Icon(Icons.label_important_outline, size: 15),
+                    label: const Text('استيكر الكيس', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold)),
+                    onPressed: () => BagPickupLabelDialog.show(context, order),
                   ),
                   const SizedBox(width: 6),
-                ],
 
-                // Export to Agent Excel Button
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.teal.shade800,
-                    side: BorderSide(color: Colors.teal.shade400),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  icon: const Icon(Icons.file_download_outlined, size: 15),
-                  label: const Text('كشف المندوب', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold)),
-                  onPressed: () => _exportToAgent(context),
-                ),
-
-                const Spacer(),
-
-                // More Menu
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert_rounded, size: 20, color: Colors.grey),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  onSelected: (val) async {
-                    final cubit = context.read<PreOrdersCubit>();
-                    if (val == 'export_agent') {
-                      _exportToAgent(context);
-                    } else if (val == 'arrived') {
-                      await cubit.markArrivedAtStore(order.id);
-                    } else if (val == 'forfeit') {
-                      showDialog(
-                        context: context,
-                        builder: (_) => BlocProvider.value(
-                          value: cubit,
-                          child: PreOrderForfeitDialog(order: order),
-                        ),
-                      );
-                    } else if (val == 'cancel') {
-                      _showCancelDialog(context, cubit);
-                    } else if (val == 'delete') {
-                      cubit.deletePreOrder(order.id);
-                    }
-                  },
-                  itemBuilder: (ctx) => [
-                    const PopupMenuItem(
-                      value: 'export_agent',
-                      child: Row(
-                        children: [
-                          Icon(Icons.table_chart_outlined, size: 18, color: Colors.teal),
-                          SizedBox(width: 8),
-                          Text('تصدير كشف للمندوب (إكسيل)', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
-                        ],
-                      ),
+                  // Export to Agent Excel Button
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.onSurface,
+                      side: const BorderSide(color: AppColors.outlineVariant),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                    if (order.status == PreOrderStatuses.pendingProcessing)
-                      const PopupMenuItem(
-                        value: 'arrived',
+                    icon: const Icon(Icons.file_download_outlined, size: 15),
+                    label: const Text('كشف المندوب', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold)),
+                    onPressed: () => _exportToAgent(context),
+                  ),
+                  const SizedBox(width: 6),
+
+                  // More Menu
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert_rounded, size: 20, color: AppColors.onSurfaceVariant),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    onSelected: (val) async {
+                      final cubit = context.read<PreOrdersCubit>();
+                      if (val == 'bag_label') {
+                        BagPickupLabelDialog.show(context, order);
+                      } else if (val == 'export_agent') {
+                        _exportToAgent(context);
+                      } else if (val == 'arrived') {
+                        await cubit.markArrivedAtStore(order.id);
+                      } else if (val == 'forfeit') {
+                        showDialog(
+                          context: context,
+                          builder: (_) => BlocProvider.value(
+                            value: cubit,
+                            child: PreOrderForfeitDialog(order: order),
+                          ),
+                        );
+                      } else if (val == 'cancel') {
+                        _showCancelDialog(context, cubit);
+                      } else if (val == 'delete') {
+                        cubit.deletePreOrder(order.id);
+                      }
+                    },
+                    itemBuilder: (ctx) => [
+                      PopupMenuItem(
+                        value: 'bag_label',
                         child: Row(
                           children: [
-                            Icon(Icons.storefront_rounded, size: 18, color: Colors.teal),
-                            SizedBox(width: 8),
-                            Text('وصل للمحل جاهز للتسليم', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
+                            Icon(Icons.label_important_outline, size: 18, color: AppColors.primary),
+                            const SizedBox(width: 8),
+                            const Text('طباعة استيكر الكيس', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
                           ],
                         ),
                       ),
+                      PopupMenuItem(
+                        value: 'export_agent',
+                        child: Row(
+                          children: [
+                            Icon(Icons.table_chart_outlined, size: 18, color: AppColors.primary),
+                            const SizedBox(width: 8),
+                            const Text('تصدير كشف للمندوب (إكسيل)', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      if (order.status == PreOrderStatuses.pendingProcessing)
+                        PopupMenuItem(
+                          value: 'arrived',
+                          child: Row(
+                            children: [
+                              Icon(Icons.storefront_rounded, size: 18, color: AppColors.primary),
+                              const SizedBox(width: 8),
+                              const Text('وصل للمحل جاهز للتسليم', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
+                            ],
+                          ),
+                        ),
                     if (order.canForfeit)
                       PopupMenuItem(
                         value: 'forfeit',
                         child: Row(
                           children: [
-                            Icon(Icons.warning_amber_rounded, size: 18, color: Colors.orange.shade800),
+                            const Icon(Icons.warning_amber_rounded, size: 18, color: AppColors.error),
                             const SizedBox(width: 8),
                             const Text('مصادرة العربون ونقل للمخزن', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
                           ],
@@ -535,7 +646,7 @@ class PreOrderCard extends StatelessWidget {
                         value: 'cancel',
                         child: Row(
                           children: [
-                            Icon(Icons.cancel_outlined, size: 18, color: Colors.red),
+                            Icon(Icons.cancel_outlined, size: 18, color: AppColors.error),
                             SizedBox(width: 8),
                             Text('إلغاء واسترداد جزئي/كامل', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
                           ],
@@ -556,10 +667,11 @@ class PreOrderCard extends StatelessWidget {
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildAmountColumn(String label, String value, Color color) {
     return Column(

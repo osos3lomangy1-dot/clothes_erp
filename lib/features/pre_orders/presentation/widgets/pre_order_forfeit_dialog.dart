@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/money.dart';
 import '../../domain/entities/pre_order_entity.dart';
 import '../cubits/pre_orders_cubit.dart';
@@ -21,16 +22,20 @@ class _PreOrderForfeitDialogState extends State<PreOrderForfeitDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: AppColors.outlineVariant),
+      ),
       title: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.orange.shade100,
+              color: AppColors.error.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800, size: 22),
+            child: const Icon(Icons.warning_amber_rounded,
+                color: AppColors.error, size: 22),
           ),
           const SizedBox(width: 10),
           const Expanded(
@@ -40,6 +45,7 @@ class _PreOrderForfeitDialogState extends State<PreOrderForfeitDialog> {
                 fontFamily: 'Cairo',
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
+                color: AppColors.onSurface,
               ),
             ),
           ),
@@ -52,29 +58,36 @@ class _PreOrderForfeitDialogState extends State<PreOrderForfeitDialog> {
           children: [
             Text(
               'تأكيد رفض العميل (${widget.order.customerName}) للاستلام وتخلفه عن الموعد المحدد للأوردر #${widget.order.orderNumber}.',
-              style: const TextStyle(fontFamily: 'Cairo', fontSize: 13, height: 1.4),
+              style: const TextStyle(
+                fontFamily: 'Cairo',
+                fontSize: 13,
+                height: 1.4,
+                color: AppColors.onSurface,
+              ),
             ),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.orange.shade50,
+                color: AppColors.error.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.orange.shade200),
+                border: Border.all(
+                    color: AppColors.error.withValues(alpha: 0.25)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.monetization_on_rounded, size: 16, color: Colors.orange.shade900),
+                      const Icon(Icons.monetization_on_rounded,
+                          size: 16, color: AppColors.error),
                       const SizedBox(width: 6),
                       Text(
                         'مبلغ العربون المصادر: ${Money(widget.order.depositPiasters).toDisplay()} ج.م',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontFamily: 'Cairo',
                           fontWeight: FontWeight.bold,
-                          color: Colors.orange.shade900,
+                          color: AppColors.error,
                           fontSize: 13,
                         ),
                       ),
@@ -83,7 +96,11 @@ class _PreOrderForfeitDialogState extends State<PreOrderForfeitDialog> {
                   const SizedBox(height: 4),
                   const Text(
                     'يتم قيد المبلغ محاسبياً كـ "إيراد تشغيلي آخر" لتعويض تكاليف الشحن والمصنعية.',
-                    style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5, color: Colors.black87),
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 11.5,
+                      color: AppColors.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -93,13 +110,23 @@ class _PreOrderForfeitDialogState extends State<PreOrderForfeitDialog> {
             // Checkbox: Transfer items to general store inventory
             CheckboxListTile(
               contentPadding: EdgeInsets.zero,
+              activeColor: AppColors.primary,
               title: const Text(
                 'نقل بضاعة الأوردر للمخزن العام كبضاعة حاضرة للبيع الفوري',
-                style: TextStyle(fontFamily: 'Cairo', fontSize: 12.5, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.onSurface,
+                ),
               ),
               subtitle: Text(
                 'سيتم إدراج ${widget.order.items.length} أصناف في شبكة المنتجات بأسعار البيع الخاصة بها ليتمكن الكاشير من بيعها لأي عميل.',
-                style: const TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey),
+                style: const TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: 11,
+                  color: AppColors.onSurfaceVariant,
+                ),
               ),
               value: _transferToInventory,
               onChanged: (val) {
@@ -109,16 +136,21 @@ class _PreOrderForfeitDialogState extends State<PreOrderForfeitDialog> {
           ],
         ),
       ),
+      actionsPadding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('تراجع', style: TextStyle(fontFamily: 'Cairo')),
+          child: const Text('تراجع',
+              style: TextStyle(
+                  fontFamily: 'Cairo', color: AppColors.onSurfaceVariant)),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.orange.shade800,
+            backgroundColor: AppColors.error,
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
           onPressed: () async {
             final cubit = context.read<PreOrdersCubit>();
@@ -133,9 +165,10 @@ class _PreOrderForfeitDialogState extends State<PreOrderForfeitDialog> {
                 SnackBar(
                   content: Text(
                     'تمت مصادرة العربون (${Money(widget.order.depositPiasters).toDisplay()} ج.م)${_transferToInventory ? ' ونقل البضاعة للمخزن العام بنجاح' : ''}',
-                    style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        fontFamily: 'Cairo', fontWeight: FontWeight.bold),
                   ),
-                  backgroundColor: Colors.orange.shade800,
+                  backgroundColor: AppColors.error,
                 ),
               );
             }
