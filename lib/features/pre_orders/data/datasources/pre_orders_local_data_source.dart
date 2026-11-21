@@ -138,6 +138,7 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
         customer_phone TEXT NOT NULL,
         agent_name TEXT,
         tracking_number TEXT,
+        source_platform TEXT,
         notes TEXT,
         expected_delivery_date INTEGER,
         total_piasters INTEGER NOT NULL,
@@ -186,6 +187,7 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
         cost_price_piasters INTEGER NOT NULL DEFAULT 0,
         commission_piasters INTEGER NOT NULL DEFAULT 0,
         item_url TEXT,
+        source_platform TEXT,
         notes TEXT,
         transferred_to_inventory INTEGER NOT NULL DEFAULT 0
       );
@@ -272,6 +274,16 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
     try {
       await _db.customStatement(
         "ALTER TABLE pre_order_items ADD COLUMN status TEXT NOT NULL DEFAULT 'active';",
+      );
+    } catch (_) {}
+    try {
+      await _db.customStatement(
+        'ALTER TABLE pre_orders ADD COLUMN source_platform TEXT;',
+      );
+    } catch (_) {}
+    try {
+      await _db.customStatement(
+        'ALTER TABLE pre_order_items ADD COLUMN source_platform TEXT;',
       );
     } catch (_) {}
 
@@ -406,9 +418,9 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
       '''
       INSERT INTO pre_orders (
         id, branch_id, order_number, batch_id, customer_id, customer_name, customer_phone,
-        agent_name, tracking_number, notes, expected_delivery_date,
+        agent_name, tracking_number, source_platform, notes, expected_delivery_date,
         total_piasters, allocated_shipping_piasters, emergency_increase_piasters, deposit_piasters, status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ''',
       variables: [
         Variable.withString(orderId),
@@ -420,6 +432,7 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
         Variable.withString(order.customerPhone),
         Variable(order.agentName),
         Variable(order.trackingNumber),
+        Variable(order.sourcePlatform),
         Variable(order.notes),
         Variable(
           order.expectedDeliveryDate != null
@@ -444,8 +457,8 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
         INSERT INTO pre_order_items (
           id, pre_order_id, product_name, variant_description, quantity,
           unit_price_piasters, total_price_piasters, cost_price_piasters,
-          commission_piasters, item_url, notes, transferred_to_inventory, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          commission_piasters, item_url, source_platform, notes, transferred_to_inventory, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''',
         variables: [
           Variable.withString(itemId),
@@ -458,6 +471,7 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
           Variable.withInt(item.costPricePiasters),
           Variable.withInt(item.commissionPiasters),
           Variable(item.itemUrl),
+          Variable(item.sourcePlatform),
           Variable(item.notes),
           Variable.withInt(0),
           Variable.withString(item.status),

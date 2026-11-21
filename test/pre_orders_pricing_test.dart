@@ -402,6 +402,60 @@ void main() {
       // Net profit = 500 - 200 = 300 LE = 30000 piasters
       expect(batchPassedToCustomers.totalProfitPiasters, equals(30000));
     });
+
+    test('PreOrderEntity handles sourcePlatform and displaySourcePlatform correctly (Task 8.5.3)', () {
+      final orderWithPlatform = PreOrderEntity(
+        id: 'order-plat-1',
+        branchId: 'b-1',
+        orderNumber: 'PO-3001',
+        customerName: 'مريم محمود',
+        customerPhone: '01012345678',
+        sourcePlatform: PreOrderPlatforms.trendyol,
+        totalPiasters: 50000,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      expect(orderWithPlatform.displaySourcePlatform, equals('ترينديول'));
+      expect(orderWithPlatform.toMap()['source_platform'], equals('ترينديول'));
+
+      final fromMapOrder = PreOrderEntity.fromMap(orderWithPlatform.toMap());
+      expect(fromMapOrder.sourcePlatform, equals('ترينديول'));
+      expect(fromMapOrder.displaySourcePlatform, equals('ترينديول'));
+
+      // If order.sourcePlatform is null, fallback to first item's platform or 'طلب خاص'
+      final itemWithPlatform = PreOrderItemEntity(
+        id: 'it-plat-1',
+        preOrderId: 'order-plat-2',
+        productName: 'فستان زارا',
+        unitPricePiasters: 80000,
+        totalPricePiasters: 80000,
+        sourcePlatform: PreOrderPlatforms.zara,
+      );
+      final orderFallback = PreOrderEntity(
+        id: 'order-plat-2',
+        branchId: 'b-1',
+        orderNumber: 'PO-3002',
+        customerName: 'هدى',
+        customerPhone: '01111111111',
+        totalPiasters: 80000,
+        items: [itemWithPlatform],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      expect(orderFallback.displaySourcePlatform, equals('زارا'));
+
+      final orderNoPlatform = PreOrderEntity(
+        id: 'order-plat-3',
+        branchId: 'b-1',
+        orderNumber: 'PO-3003',
+        customerName: 'نورا',
+        customerPhone: '01222222222',
+        totalPiasters: 30000,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      expect(orderNoPlatform.displaySourcePlatform, equals('طلب خاص'));
+    });
   });
 }
 

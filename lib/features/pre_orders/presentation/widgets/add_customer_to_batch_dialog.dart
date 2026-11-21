@@ -400,7 +400,7 @@ class _AddCustomerToBatchDialogState extends State<AddCustomerToBatchDialog> {
                                       controller: _fastNameCtrl,
                                       focusNode: _fastNameFocus,
                                       style: const TextStyle(fontFamily: 'Cairo', fontSize: 12),
-                                      decoration: _compactInput(label: 'اسم الصنف أو الرابط *', hint: 'بلوزة شي إن...'),
+                                      decoration: _compactInput(label: 'اسم الصنف أو كود المنتج (SKU / Code) *', hint: 'فستان، بلوزة، كود...'),
                                       onFieldSubmitted: (_) => _fastDescFocus.requestFocus(),
                                     ),
                                   ),
@@ -684,3 +684,4 @@ class _AddCustomerToBatchDialogState extends State<AddCustomerToBatchDialog> {
     );
   }
 }
+

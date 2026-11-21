@@ -1439,7 +1439,7 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                   focusNode: customer.fastNameFocus,
                   style: const TextStyle(fontFamily: 'Cairo', fontSize: 12),
                   decoration: _compactInput(
-                    label: 'اسم الصنف أو كود شي إن *',
+                    label: 'اسم الصنف أو كود المنتج (SKU / Code) *',
                     hint: 'اكتب واضغط Enter...',
                   ),
                   onFieldSubmitted: (_) =>

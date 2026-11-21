@@ -76,7 +76,7 @@ class _OrderItemActionDialogState extends State<OrderItemActionDialog> {
 
   Future<void> _sendApologyWhatsApp() async {
     final message =
-        'عميلنا العزيز ${widget.order.customerName}،\nنعتذر لك جداً، الصنف [${widget.item.productName}${widget.item.variantDescription != null ? " - ${widget.item.variantDescription}" : ""}] قد نفد من موقع شي إن أثناء تأكيد الطلب.\nتم خصم قيمته وإرجاع العربون الخاص به.\nشاكرين تفهمك ونسعد بخدمتك دائماً!';
+        'عميلنا العزيز ${widget.order.customerName}،\nنعتذر لك جداً، الصنف [${widget.item.productName}${widget.item.variantDescription != null ? " - ${widget.item.variantDescription}" : ""}] قد نفد من المصدر / غير متوفر لدى المورد أثناء تأكيد الطلب.\nتم خصم قيمته وإرجاع العربون الخاص به.\nشاكرين تفهمك ونسعد بخدمتك دائماً!';
 
     final baseUri = CustomerLedgerService.buildWhatsAppUri(
       widget.order.customerPhone,
@@ -130,7 +130,7 @@ class _OrderItemActionDialogState extends State<OrderItemActionDialog> {
           refundPiasters: _refundOption == 'cash' ? _refundPiasters : 0,
           notes: _notesCtrl.text.trim().isNotEmpty
               ? _notesCtrl.text.trim()
-              : 'نفد من المصدر (شي إن)',
+              : 'نفد من المصدر / غير متوفر لدى المورد',
         );
       } else if (_selectedAction == 'damaged') {
         ok = await cubit.markOrderItemDamaged(
@@ -242,18 +242,18 @@ class _OrderItemActionDialogState extends State<OrderItemActionDialog> {
                       // 1. Cancel before order
                       _buildActionOption(
                         id: 'cancelBeforeOrder',
-                        title: 'إلغاء الصنف قبل الطلب من شي إن',
+                        title: 'إلغاء الصنف قبل تأكيد الطلب من المصدر / المورد',
                         subtitle:
-                            'إلغاء طلب الصنف من المندوب لعدم دفع تكلفته مع تسوية عربون العميل',
+                            'إلغاء طلب الصنف من المورد لعدم دفع تكلفته مع تسوية عربون العميل',
                       ),
                       const SizedBox(height: 6),
 
                       // 2. Out of stock by Shein
                       _buildActionOption(
                         id: 'outOfStock',
-                        title: 'نفد من المصدر (Out of Stock by Shein)',
+                        title: 'نفد من المصدر / غير متوفر لدى المورد',
                         subtitle:
-                            'خصم التكلفة تلقائياً من المندوب وإرجاع عربون الصنف للعميل مع رسالة اعتذار',
+                            'خصم التكلفة تلقائياً من المورد وإرجاع عربون الصنف للعميل مع رسالة اعتذار',
                       ),
                       const SizedBox(height: 6),
 

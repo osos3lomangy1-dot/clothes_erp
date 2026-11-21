@@ -77,6 +77,7 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
   CustomerEntity? _selectedCustomer;
   DateTime? _expectedDeliveryDate;
   String _paymentMethod = 'cash'; // 'cash', 'instapay', 'vodafone_cash', 'card'
+  String _selectedPlatform = PreOrderPlatforms.shein;
 
   // قائمة الأصناف المضافة للأوردر
   final List<_ItemEntry> _items = [];
@@ -173,7 +174,7 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('يرجى كتابة اسم الصنف أو كود شي إن'),
+          content: Text('يرجى كتابة اسم الصنف أو كود المنتج (SKU / Code)'),
           backgroundColor: AppColors.error,
           duration: Duration(seconds: 2),
         ),
@@ -371,12 +372,12 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                       ),
                     ),
                     const SizedBox(width: 14),
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                        children: const [
                           Text(
-                            'تسجيل أوردر حجز مسبق ووساطة شي إن',
+                            'تسجيل أوردر حجز مسبق وطلب خاص',
                             style: TextStyle(
                               fontFamily: 'Cairo',
                               fontSize: 17,
@@ -385,7 +386,7 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                             ),
                           ),
                           Text(
-                            'تسعير تكلفة المندوب، عمولة التاجر، إدخال سريع بالإنتر، ودعم شيتات الإكسيل',
+                            'تسعير تكلفة المندوب، عمولة التاجر، إدخال سريع بالإنتر، ودعم شيتات الإكسيل لكافة المنصات',
                             style: TextStyle(
                               fontFamily: 'Cairo',
                               fontSize: 11.5,
@@ -409,6 +410,43 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // قسم مصدر الطلب / المنصة
+                        _buildSectionHeader('مصدر الطلب / جهة الشراء والتوريد', Icons.shopping_bag_outlined),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: PreOrderPlatforms.all.map((platform) {
+                            final isSel = _selectedPlatform == platform;
+                            return InkWell(
+                              onTap: () => setState(() => _selectedPlatform = platform),
+                              borderRadius: BorderRadius.circular(8),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 150),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                                decoration: BoxDecoration(
+                                  color: isSel ? AppColors.primary : AppColors.surfaceContainerLow,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: isSel ? AppColors.primary : AppColors.outlineVariant,
+                                  ),
+                                ),
+                                child: Text(
+                                  platform,
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 12,
+                                    fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
+                                    color: isSel ? Colors.white : AppColors.onSurface,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+
+                        const SizedBox(height: 16),
+
                         // قسم العميل
                         _buildSectionHeader('بيانات العميل', Icons.person_rounded),
                         const SizedBox(height: 8),
@@ -461,7 +499,7 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                                 style: const TextStyle(fontFamily: 'Cairo', fontSize: 13),
                                 decoration: _inputDecoration(
                                   label: 'اسم المندوب / الوسيط (اختياري)',
-                                  hint: 'مثال: كابتن أحمد / وسيط شي إن',
+                                  hint: 'مثال: كابتن أحمد / وسيط شحن',
                                   icon: Icons.badge_outlined,
                                 ),
                               ),
@@ -770,7 +808,7 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                   focusNode: _fastNameFocus,
                   style: const TextStyle(fontFamily: 'Cairo', fontSize: 12),
                   decoration: _compactInput(
-                    label: 'اسم الصنف أو كود شي إن *',
+                    label: 'اسم الصنف أو كود المنتج (SKU / Code) *',
                     hint: 'اكتب واضغط Enter...',
                   ),
                   onFieldSubmitted: (_) => _fastDescFocus.requestFocus(),
@@ -879,8 +917,8 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
             controller: _fastUrlCtrl,
             style: const TextStyle(fontFamily: 'Cairo', fontSize: 11),
             decoration: _compactInput(
-              label: 'رابط المنتج على الموقع (شي إن / المورد - اختياري)',
-              hint: 'https://shein.com/...',
+              label: 'رابط الصنف أو المتجر (اختياري)',
+              hint: 'https://...',
             ),
             onFieldSubmitted: (_) => _addFastItem(),
           ),
@@ -1040,7 +1078,7 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                   controller: item.urlCtrl,
                   style: const TextStyle(fontFamily: 'Cairo', fontSize: 11),
                   decoration: _compactInput(
-                    label: 'رابط شي إن / المورد (اختياري)',
+                    label: 'رابط الصنف أو المتجر (اختياري)',
                     hint: 'https://...',
                   ),
                 ),
@@ -1202,6 +1240,7 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
           totalPricePiasters: itemTotalPricePiasters,
           costPricePiasters: costPiasters,
           commissionPiasters: commPiasters,
+          sourcePlatform: _selectedPlatform,
         ),
       );
     }
@@ -1215,6 +1254,7 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
       customerPhone: _customerPhoneCtrl.text.trim(),
       agentName: _agentNameCtrl.text.trim().isNotEmpty ? _agentNameCtrl.text.trim() : null,
       trackingNumber: _trackingNumberCtrl.text.trim().isNotEmpty ? _trackingNumberCtrl.text.trim() : null,
+      sourcePlatform: _selectedPlatform,
       notes: _notesCtrl.text.trim().isNotEmpty ? _notesCtrl.text.trim() : null,
       expectedDeliveryDate: _expectedDeliveryDate,
       totalPiasters: totalSalePiasters,

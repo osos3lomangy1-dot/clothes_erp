@@ -79,7 +79,7 @@ class _PreOrdersViewState extends State<_PreOrdersView> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'الحجز المسبق والشحنات المجمعة والوساطة',
+                  'الحجز المسبق والطلبات الخاصة والشحنات',
                   style: TextStyle(
                     fontFamily: 'Cairo',
                     fontSize: 15.5,
@@ -88,7 +88,7 @@ class _PreOrdersViewState extends State<_PreOrdersView> {
                   ),
                 ),
                 Text(
-                  'إدارة أوردرات شي إن الفردية، كراتين الشحنات المجمعة، وتوزيع الشحن العام',
+                  'إدارة أوردرات الحجز المسبق، الطلبيات الخاصة، الشحنات المجمعة، وعربونات العملاء',
                   style: TextStyle(
                     fontFamily: 'Cairo',
                     fontSize: 10.5,
@@ -433,7 +433,7 @@ class _PreOrdersViewState extends State<_PreOrdersView> {
                             gridDelegate:
                                 const SliverGridDelegateWithMaxCrossAxisExtent(
                               maxCrossAxisExtent: 430,
-                              mainAxisExtent: 275,
+                              mainAxisExtent: 285,
                               mainAxisSpacing: 14,
                               crossAxisSpacing: 14,
                             ),

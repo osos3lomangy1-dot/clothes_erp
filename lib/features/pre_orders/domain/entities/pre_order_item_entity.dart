@@ -9,6 +9,7 @@ class PreOrderItemEntity {
   final int costPricePiasters; // تكلفة المندوب / سعر الجملة للقطعة
   final int commissionPiasters; // عمولة التاجر للقطعة
   final String? itemUrl;
+  final String? sourcePlatform; // مصدر الطلب / المنصة (شي إن، ترينديول، زارا، أمازون، تفصيل، مورد محلي...)
   final String? notes;
   final bool transferredToInventory;
   final String status; // active, cancelled, outOfStock, damaged
@@ -24,6 +25,7 @@ class PreOrderItemEntity {
     this.costPricePiasters = 0,
     this.commissionPiasters = 0,
     this.itemUrl,
+    this.sourcePlatform,
     this.notes,
     this.transferredToInventory = false,
     this.status = 'active',
@@ -53,6 +55,7 @@ class PreOrderItemEntity {
     int? costPricePiasters,
     int? commissionPiasters,
     String? itemUrl,
+    String? sourcePlatform,
     String? notes,
     bool? transferredToInventory,
     String? status,
@@ -68,6 +71,7 @@ class PreOrderItemEntity {
       costPricePiasters: costPricePiasters ?? this.costPricePiasters,
       commissionPiasters: commissionPiasters ?? this.commissionPiasters,
       itemUrl: itemUrl ?? this.itemUrl,
+      sourcePlatform: sourcePlatform ?? this.sourcePlatform,
       notes: notes ?? this.notes,
       transferredToInventory:
           transferredToInventory ?? this.transferredToInventory,
@@ -87,6 +91,7 @@ class PreOrderItemEntity {
       'cost_price_piasters': costPricePiasters,
       'commission_piasters': commissionPiasters,
       'item_url': itemUrl,
+      'source_platform': sourcePlatform,
       'notes': notes,
       'transferred_to_inventory': transferredToInventory ? 1 : 0,
       'status': status,
@@ -105,6 +110,7 @@ class PreOrderItemEntity {
       costPricePiasters: (map['cost_price_piasters'] as num?)?.toInt() ?? 0,
       commissionPiasters: (map['commission_piasters'] as num?)?.toInt() ?? 0,
       itemUrl: map['item_url'] as String?,
+      sourcePlatform: map['source_platform'] as String?,
       notes: map['notes'] as String?,
       transferredToInventory:
           (map['transferred_to_inventory'] as num?)?.toInt() == 1,

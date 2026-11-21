@@ -26,6 +26,24 @@ class PreOrderStatuses {
   }
 }
 
+class PreOrderPlatforms {
+  static const String shein = 'شي إن';
+  static const String trendyol = 'ترينديول';
+  static const String amazon = 'أمازون';
+  static const String zara = 'زارا';
+  static const String customTailoring = 'تفصيل وتصنيع';
+  static const String localSupplierOther = 'مورد محلي / أخرى';
+
+  static const List<String> all = [
+    shein,
+    trendyol,
+    amazon,
+    zara,
+    customTailoring,
+    localSupplierOther,
+  ];
+}
+
 class PreOrderEntity {
   final String id;
   final String branchId;
@@ -36,6 +54,7 @@ class PreOrderEntity {
   final String customerPhone;
   final String? agentName; // اسم المندوب أو وسيط الشحن
   final String? trackingNumber; // رقم بوليصة الشحن / كود التتبع
+  final String? sourcePlatform; // مصدر الطلب / المنصة
   final String? notes;
   final DateTime? expectedDeliveryDate;
   final int totalPiasters;
@@ -65,6 +84,7 @@ class PreOrderEntity {
     required this.customerPhone,
     this.agentName,
     this.trackingNumber,
+    this.sourcePlatform,
     this.notes,
     this.expectedDeliveryDate,
     required this.totalPiasters,
@@ -108,6 +128,19 @@ class PreOrderEntity {
   int get totalProfitPiasters =>
       (totalPiasters - totalCostPiasters).clamp(0, totalPiasters);
 
+  /// المنصة أو جهة الشراء المعروضة في الكارت
+  String get displaySourcePlatform {
+    if (sourcePlatform != null && sourcePlatform!.trim().isNotEmpty) {
+      return sourcePlatform!.trim();
+    }
+    for (final it in items) {
+      if (it.sourcePlatform != null && it.sourcePlatform!.trim().isNotEmpty) {
+        return it.sourcePlatform!.trim();
+      }
+    }
+    return 'طلب خاص';
+  }
+
   bool get canAddPayment =>
       status == PreOrderStatuses.pendingProcessing ||
       status == PreOrderStatuses.arrivedAtStore;
@@ -134,6 +167,7 @@ class PreOrderEntity {
     String? customerPhone,
     String? agentName,
     String? trackingNumber,
+    String? sourcePlatform,
     String? notes,
     DateTime? expectedDeliveryDate,
     int? totalPiasters,
@@ -163,6 +197,7 @@ class PreOrderEntity {
       customerPhone: customerPhone ?? this.customerPhone,
       agentName: agentName ?? this.agentName,
       trackingNumber: trackingNumber ?? this.trackingNumber,
+      sourcePlatform: sourcePlatform ?? this.sourcePlatform,
       notes: notes ?? this.notes,
       expectedDeliveryDate: expectedDeliveryDate ?? this.expectedDeliveryDate,
       totalPiasters: totalPiasters ?? this.totalPiasters,
@@ -198,6 +233,7 @@ class PreOrderEntity {
       'customer_phone': customerPhone,
       'agent_name': agentName,
       'tracking_number': trackingNumber,
+      'source_platform': sourcePlatform,
       'notes': notes,
       'expected_delivery_date': expectedDeliveryDate != null
           ? expectedDeliveryDate!.millisecondsSinceEpoch ~/ 1000
@@ -243,6 +279,7 @@ class PreOrderEntity {
       customerPhone: map['customer_phone'] as String,
       agentName: map['agent_name'] as String?,
       trackingNumber: map['tracking_number'] as String?,
+      sourcePlatform: map['source_platform'] as String?,
       notes: map['notes'] as String?,
       expectedDeliveryDate: map['expected_delivery_date'] != null
           ? DateTime.fromMillisecondsSinceEpoch(

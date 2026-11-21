@@ -203,15 +203,41 @@ class PreOrderCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        order.customerName,
-                        style: const TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.onSurface,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              order.customerName,
+                              style: const TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.onSurface,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceContainerLow,
+                              borderRadius: BorderRadius.circular(4),
+                              border:
+                                  Border.all(color: AppColors.outlineVariant),
+                            ),
+                            child: Text(
+                              order.displaySourcePlatform,
+                              style: const TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       Text(
                         order.customerPhone,
@@ -375,236 +401,342 @@ class PreOrderCard extends StatelessWidget {
           const Divider(height: 1, color: AppColors.outlineVariant),
 
           // 2. Items Preview
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ...order.items.take(3).map((item) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 5),
-                    child: InkWell(
-                      onTap: () => OrderItemActionDialog.show(
-                        context,
-                        order: order,
-                        item: item,
-                      ),
-                      borderRadius: BorderRadius.circular(6),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.circle,
-                            size: 5,
-                            color: item.isActive
-                                ? Colors.grey
-                                : (item.isCancelled || item.isOutOfStock)
-                                    ? AppColors.error
-                                    : AppColors.primary,
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              '${item.productName}${item.isCancelled ? " [ملغي]" : item.isOutOfStock ? " [نفد]" : item.isDamaged ? " [تالف/أوتلت]" : ""}',
-                              style: TextStyle(
-                                fontFamily: 'Cairo',
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                decoration: (item.isCancelled || item.isOutOfStock)
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                                color: (item.isCancelled || item.isOutOfStock)
-                                    ? AppColors.error
-                                    : AppColors.onSurface,
-                              ),
-                              overflow: TextOverflow.ellipsis,
+          if (order.items.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ...order.items.take(3).map((item) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: InkWell(
+                        onTap: () => OrderItemActionDialog.show(
+                          context,
+                          order: order,
+                          item: item,
+                        ),
+                        borderRadius: BorderRadius.circular(6),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.circle,
+                              size: 5,
+                              color: item.isActive
+                                  ? Colors.grey
+                                  : (item.isCancelled || item.isOutOfStock)
+                                      ? AppColors.error
+                                      : AppColors.primary,
                             ),
-                          ),
-                          if (item.variantDescription != null &&
-                              item.variantDescription!.isNotEmpty) ...[
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                '${item.productName}${item.isCancelled ? " [ملغي]" : item.isOutOfStock ? " [نفد]" : item.isDamaged ? " [تالف/أوتلت]" : ""}',
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                  decoration: (item.isCancelled || item.isOutOfStock)
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                  color: (item.isCancelled || item.isOutOfStock)
+                                      ? AppColors.error
+                                      : AppColors.onSurface,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (item.variantDescription != null &&
+                                item.variantDescription!.isNotEmpty) ...[
+                              Text(
+                                ' (${item.variantDescription})',
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 10.5,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(width: 6),
                             Text(
-                              ' (${item.variantDescription})',
+                              '${item.quantity} × ${Money(item.unitPricePiasters).toDisplay()} ج',
                               style: TextStyle(
                                 fontFamily: 'Cairo',
                                 fontSize: 11,
-                                color: Colors.grey.shade600,
+                                color: Colors.grey.shade800,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                          ],
-                          const SizedBox(width: 8),
-                          Text(
-                            '${item.quantity} × ${Money(item.unitPricePiasters).toDisplay()} ج',
-                            style: TextStyle(
-                              fontFamily: 'Cairo',
-                              fontSize: 11.5,
-                              color: Colors.grey.shade800,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Icon(
-                            Icons.tune_rounded,
-                            size: 13,
-                            color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
-                          ),
-                          if (item.itemUrl != null && item.itemUrl!.isNotEmpty) ...[
                             const SizedBox(width: 4),
-                            InkWell(
-                              onTap: () => launchUrl(
-                                Uri.parse(item.itemUrl!),
-                                mode: LaunchMode.externalApplication,
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(2),
-                                child: Icon(Icons.open_in_new_rounded, size: 13, color: AppColors.primary),
-                              ),
+                            Icon(
+                              Icons.tune_rounded,
+                              size: 13,
+                              color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
                             ),
+                            if (item.itemUrl != null && item.itemUrl!.isNotEmpty) ...[
+                              const SizedBox(width: 4),
+                              InkWell(
+                                onTap: () => launchUrl(
+                                  Uri.parse(item.itemUrl!),
+                                  mode: LaunchMode.externalApplication,
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(2),
+                                  child: Icon(Icons.open_in_new_rounded, size: 13, color: AppColors.primary),
+                                ),
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
+                      ),
+                    );
+                  }),
+                  if (order.items.length > 3) ...[
+                    Text(
+                      '+ ${order.items.length - 3} أصناف أخرى...',
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 10,
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey.shade600,
                       ),
                     ),
-                  );
-                }),
-                if (order.items.length > 3) ...[
-                  Text(
-                    '+ ${order.items.length - 3} أصناف أخرى...',
-                    style: TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 10.5,
-                      fontStyle: FontStyle.italic,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.6)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.inventory_2_outlined, size: 16, color: AppColors.onSurfaceVariant),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'طلب جديد بدون أصناف مسجلة - اضغط لإضافة قطع',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 11,
+                          color: AppColors.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
 
           const Spacer(),
 
-          // 3. Financial Row
+          // 3. Financial Metrics (3 clean, well-spaced metric boxes)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color: AppColors.surfaceContainerLow,
               border: Border(
-                top: BorderSide(color: AppColors.outlineVariant.withValues(alpha: 0.6)),
-                bottom: BorderSide(color: AppColors.outlineVariant.withValues(alpha: 0.6)),
+                top: BorderSide(
+                    color: AppColors.outlineVariant.withValues(alpha: 0.6)),
+                bottom: BorderSide(
+                    color: AppColors.outlineVariant.withValues(alpha: 0.6)),
               ),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildAmountColumn('الإجمالي للعميل', Money(order.totalPiasters).toDisplay(), AppColors.onSurface),
-                Container(width: 1, height: 22, color: AppColors.outlineVariant),
-                if (order.totalCostPiasters > 0) ...[
-                  _buildAmountColumn('تكلفة المندوب', Money(order.totalCostPiasters).toDisplay(), AppColors.onSurfaceVariant),
-                  Container(width: 1, height: 22, color: AppColors.outlineVariant),
-                  _buildAmountColumn('الربح المتوقع', '+${Money(order.totalProfitPiasters).toDisplay()}', AppColors.primary),
-                  Container(width: 1, height: 22, color: AppColors.outlineVariant),
-                ],
-                _buildAmountColumn('المسدد (عربون)', Money(order.depositPiasters).toDisplay(), AppColors.success),
-                Container(width: 1, height: 22, color: AppColors.outlineVariant),
-                _buildAmountColumn(
-                  'المتبقي',
-                  Money(remainingPiasters).toDisplay(),
-                  remainingPiasters > 0 ? AppColors.error : AppColors.success,
+                Expanded(
+                  child: _buildMetricBox(
+                    label: 'الإجمالي للعميل',
+                    amount: Money(order.totalWithShippingPiasters).toDisplay(),
+                    color: AppColors.onSurface,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: _buildMetricBox(
+                    label: 'المسدد (عربون)',
+                    amount: Money(order.depositPiasters).toDisplay(),
+                    color: AppColors.success,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: _buildMetricBox(
+                    label: 'المتبقي',
+                    amount: Money(remainingPiasters).toDisplay(),
+                    color: remainingPiasters > 0
+                        ? AppColors.error
+                        : AppColors.success,
+                  ),
                 ),
               ],
             ),
           ),
 
-          // 4. Quick Actions Row (Scrollable to prevent any horizontal overflow)
+          // 4. Quick Actions Row (No horizontal scroll, no button truncation)
           Padding(
-            padding: const EdgeInsets.all(8),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  // WhatsApp Button
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF25D366),
-                      side: const BorderSide(color: Color(0xFF25D366)),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    icon: const Icon(Icons.chat_rounded, size: 15),
-                    label: const Text('واتساب', style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5, fontWeight: FontWeight.bold)),
-                    onPressed: () => _showWhatsAppMenu(context),
-                  ),
-                  const SizedBox(width: 6),
-
-                  // Add Payment Button
-                  if (order.canAddPayment && remainingPiasters > 0) ...[
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primary,
-                        side: BorderSide(color: AppColors.primary),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      icon: const Icon(Icons.add_card_rounded, size: 15),
-                      label: const Text('دفعة', style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5, fontWeight: FontWeight.bold)),
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (_) => BlocProvider.value(
-                            value: context.read<PreOrdersCubit>(),
-                            child: PreOrderPaymentDialog(order: order),
+            padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
+            child: Row(
+              children: [
+                // Primary Action Button (Wide / Expanded)
+                Expanded(
+                  child: order.status == PreOrderStatuses.pendingProcessing
+                      ? ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 7),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8)),
+                            elevation: 0,
                           ),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 6),
-                  ],
+                          icon: const Icon(Icons.storefront_rounded, size: 15),
+                          label: const Text(
+                            'وصل المحل',
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold),
+                          ),
+                          onPressed: () async {
+                            await context
+                                .read<PreOrdersCubit>()
+                                .markArrivedAtStore(order.id);
+                          },
+                        )
+                      : order.canDeliver
+                          ? ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 7),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8)),
+                                elevation: 0,
+                              ),
+                              icon: const Icon(Icons.check_circle_outline,
+                                  size: 15),
+                              label: const Text(
+                                'تسليم الأوردر ✅',
+                                style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                              onPressed: onDeliver ??
+                                  () => PreOrderDeliveryDialog.show(
+                                      context, order),
+                            )
+                          : OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.onSurfaceVariant,
+                                side: const BorderSide(
+                                    color: AppColors.outlineVariant),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 7),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8)),
+                              ),
+                              onPressed: onViewDetails,
+                              child: Text(
+                                PreOrderStatuses.getLabel(order.status),
+                                style: const TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                ),
+                const SizedBox(width: 6),
 
-                  // Deliver Button
-                  if (order.canDeliver) ...[
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      icon: const Icon(Icons.check_rounded, size: 15),
-                      label: const Text('تسليم', style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5, fontWeight: FontWeight.bold)),
-                      onPressed: onDeliver ?? () => PreOrderDeliveryDialog.show(context, order),
+                // WhatsApp Icon Button
+                IconButton(
+                  tooltip: 'مراسلة العميل عبر واتساب',
+                  style: IconButton.styleFrom(
+                    foregroundColor: const Color(0xFF25D366),
+                    backgroundColor:
+                        const Color(0xFF25D366).withValues(alpha: 0.1),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      side: const BorderSide(
+                          color: Color(0xFF25D366), width: 0.8),
                     ),
-                    const SizedBox(width: 6),
-                  ],
+                    padding: const EdgeInsets.all(7),
+                    minimumSize: const Size(34, 34),
+                  ),
+                  icon: const Icon(Icons.chat_rounded, size: 17),
+                  onPressed: () => _showWhatsAppMenu(context),
+                ),
+                const SizedBox(width: 4),
 
-                  // Bag Label Button
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
+                // Add Payment Icon Button
+                if (order.canAddPayment && remainingPiasters > 0) ...[
+                  IconButton(
+                    tooltip: 'تسجيل دفعة إضافية',
+                    style: IconButton.styleFrom(
                       foregroundColor: AppColors.primary,
-                      side: BorderSide(color: AppColors.primary.withValues(alpha: 0.6)),
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      backgroundColor:
+                          AppColors.primary.withValues(alpha: 0.08),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        side: BorderSide(color: AppColors.primary, width: 0.8),
+                      ),
+                      padding: const EdgeInsets.all(7),
+                      minimumSize: const Size(34, 34),
                     ),
-                    icon: const Icon(Icons.label_important_outline, size: 15),
-                    label: const Text('استيكر الكيس', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold)),
-                    onPressed: () => BagPickupLabelDialog.show(context, order),
+                    icon: const Icon(Icons.payment_rounded, size: 17),
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (_) => BlocProvider.value(
+                          value: context.read<PreOrdersCubit>(),
+                          child: PreOrderPaymentDialog(order: order),
+                        ),
+                      );
+                    },
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 4),
+                ],
 
-                  // Export to Agent Excel Button
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.onSurface,
+                // Bag Label Icon Button
+                IconButton(
+                  tooltip: 'طباعة استيكر الكيس والفرز',
+                  style: IconButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    backgroundColor: AppColors.surfaceContainerLow,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
                       side: const BorderSide(color: AppColors.outlineVariant),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                    icon: const Icon(Icons.file_download_outlined, size: 15),
-                    label: const Text('كشف المندوب', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold)),
-                    onPressed: () => _exportToAgent(context),
+                    padding: const EdgeInsets.all(7),
+                    minimumSize: const Size(34, 34),
                   ),
-                  const SizedBox(width: 6),
+                  icon: const Icon(Icons.label_important_outline, size: 17),
+                  onPressed: () => BagPickupLabelDialog.show(context, order),
+                ),
+                const SizedBox(width: 4),
 
-                  // More Menu
-                  PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert_rounded, size: 20, color: AppColors.onSurfaceVariant),
+                // More Menu
+                PopupMenuButton<String>(
+                  tooltip: 'خيارات متقدمة',
+                  style: IconButton.styleFrom(
+                    foregroundColor: AppColors.onSurfaceVariant,
+                    backgroundColor: AppColors.surfaceContainerLow,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      side: const BorderSide(color: AppColors.outlineVariant),
+                    ),
+                    padding: const EdgeInsets.all(7),
+                    minimumSize: const Size(34, 34),
+                  ),
+                  icon: const Icon(Icons.more_horiz_rounded, size: 17),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     onSelected: (val) async {
                       final cubit = context.read<PreOrdersCubit>();
@@ -697,29 +829,51 @@ class PreOrderCard extends StatelessWidget {
               ],
             ),
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
-  Widget _buildAmountColumn(String label, String value, Color color) {
-    return Column(
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontFamily: 'Cairo', fontSize: 10, color: Colors.grey),
-        ),
-        Text(
-          '$value ج.م',
-          style: TextStyle(
-            fontFamily: 'Cairo',
-            fontSize: 12.5,
-            fontWeight: FontWeight.bold,
-            color: color,
+  Widget _buildMetricBox({
+    required String label,
+    required String amount,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+            color: AppColors.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 10,
+              color: AppColors.onSurfaceVariant,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-        ),
-      ],
+          const SizedBox(height: 1),
+          Text(
+            '$amount ج',
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
     );
   }
 
