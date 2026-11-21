@@ -448,11 +448,11 @@ class PreOrderCard extends StatelessWidget {
                 return Container(
                   margin: const EdgeInsets.symmetric(
                     horizontal: 14,
-                    vertical: 4,
+                    vertical: 2,
                   ),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
-                    vertical: 5,
+                    vertical: 3,
                   ),
                   decoration: BoxDecoration(
                     color: isOverdue
@@ -546,13 +546,13 @@ class PreOrderCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (order.items.isNotEmpty) ...[
-                  ...order.items.map((item) {
+                  ...order.items.take(2).map((item) {
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 5),
+                      padding: const EdgeInsets.only(bottom: 4),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
-                          vertical: 4,
+                          vertical: 3.5,
                         ),
                         decoration: BoxDecoration(
                           color: AppColors.surfaceContainerLow,
@@ -588,7 +588,7 @@ class PreOrderCard extends StatelessWidget {
                                     : ""}',
                                 style: TextStyle(
                                   fontFamily: 'Cairo',
-                                  fontSize: 11.5,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w600,
                                   decoration:
                                       (item.isCancelled || item.isOutOfStock)
@@ -607,7 +607,7 @@ class PreOrderCard extends StatelessWidget {
                                 ' (${item.variantDescription})',
                                 style: TextStyle(
                                   fontFamily: 'Cairo',
-                                  fontSize: 10.5,
+                                  fontSize: 10,
                                   color: Colors.grey.shade600,
                                 ),
                               ),
@@ -617,7 +617,7 @@ class PreOrderCard extends StatelessWidget {
                               '${item.quantity} × ${Money(item.unitPricePiasters).toDisplay()} ج',
                               style: TextStyle(
                                 fontFamily: 'Cairo',
-                                fontSize: 11,
+                                fontSize: 10.5,
                                 color: Colors.grey.shade800,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -693,72 +693,107 @@ class PreOrderCard extends StatelessWidget {
                       ),
                     );
                   }),
-                ] else ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: AppColors.outlineVariant.withValues(alpha: 0.6),
-                      ),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(
-                          Icons.inventory_2_outlined,
-                          size: 16,
-                          color: AppColors.onSurfaceVariant,
-                        ),
-                        SizedBox(width: 8),
-                        Expanded(
+                  if (order.items.length > 2) ...[
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: InkWell(
+                        onTap: onViewDetails,
+                        borderRadius: BorderRadius.circular(4),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceContainerLow,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
                           child: Text(
-                            'طلب بدون أصناف مسجلة - يمكنك إضافة قطع للطلب الآن',
-                            style: TextStyle(
+                            '+ ${order.items.length - 2} أصناف أخرى (اضغط للتفاصيل)',
+                            style: const TextStyle(
                               fontFamily: 'Cairo',
-                              fontSize: 11,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
                               color: AppColors.onSurfaceVariant,
                             ),
                           ),
                         ),
-                      ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 4),
+                  // زر إضافة صنف لهذا الطلب
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: BorderSide(
+                          color: AppColors.primary.withValues(alpha: 0.35),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 2,
+                        ),
+                        minimumSize: const Size(0, 26),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                      icon: const Icon(Icons.add_rounded, size: 13),
+                      label: const Text(
+                        '+ إضافة صنف لهذا الطلب',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      onPressed: () => EditPreOrderItemDialog.show(
+                        context,
+                        orderId: order.id,
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  // عندما يكون الأوردر بدون أصناف مسجلة:
+                  // صندوق مدمج بزر إضافة أنيق بارتفاع 36 بكسل
+                  InkWell(
+                    onTap: () =>
+                        EditPreOrderItemDialog.show(context, orderId: order.id),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.35),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.add_rounded,
+                            size: 15,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '+ لا توجد أصناف مسجلة - اضغط لإضافة صنف',
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
-                const SizedBox(height: 6),
-                // زر إضافة صنف لهذا الطلب
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                      side: BorderSide(
-                        color: AppColors.primary.withValues(alpha: 0.35),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                    ),
-                    icon: const Icon(Icons.add_rounded, size: 14),
-                    label: const Text(
-                      '+ إضافة صنف لهذا الطلب',
-                      style: TextStyle(
-                        fontFamily: 'Cairo',
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    onPressed: () =>
-                        EditPreOrderItemDialog.show(context, orderId: order.id),
-                  ),
-                ),
               ],
             ),
           ),

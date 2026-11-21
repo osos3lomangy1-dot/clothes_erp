@@ -63,9 +63,7 @@ class RestSyncService {
     _autoSyncTimer = Timer.periodic(interval, (_) async {
       final pendingCount = await getPendingCount();
       if (pendingCount > 0 && !_isSyncing) {
-        Logging.info(
-          '[Auto-Sync] Auto-syncing $pendingCount pending items...',
-        );
+        Logging.info('[Auto-Sync] Auto-syncing $pendingCount pending items...');
         await syncPendingData();
       }
     });

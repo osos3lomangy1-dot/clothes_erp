@@ -433,7 +433,7 @@ class _PreOrdersViewState extends State<_PreOrdersView> {
                             gridDelegate:
                                 const SliverGridDelegateWithMaxCrossAxisExtent(
                               maxCrossAxisExtent: 430,
-                              mainAxisExtent: 285,
+                              mainAxisExtent: 335,
                               mainAxisSpacing: 14,
                               crossAxisSpacing: 14,
                             ),

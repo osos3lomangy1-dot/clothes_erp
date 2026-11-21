@@ -8,10 +8,7 @@ import '../services/z_report_service.dart';
 class ZReportDialog extends StatelessWidget {
   final ShiftSummaryEntity summary;
 
-  const ZReportDialog({
-    super.key,
-    required this.summary,
-  });
+  const ZReportDialog({super.key, required this.summary});
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +60,11 @@ class ZReportDialog extends StatelessWidget {
                               color: AppColors.primary.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Icon(Icons.receipt_long_rounded, color: AppColors.primary, size: 24),
+                            child: Icon(
+                              Icons.receipt_long_rounded,
+                              color: AppColors.primary,
+                              size: 24,
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -72,11 +73,18 @@ class ZReportDialog extends StatelessWidget {
                               children: [
                                 const Text(
                                   'تقرير إغلاق الوردية (Z-Report)',
-                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.onSurface),
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.onSurface,
+                                  ),
                                 ),
                                 Text(
                                   'وردية #${shift.id.length > 8 ? shift.id.substring(0, 8) : shift.id} • الكاشير: ${shift.cashierName.isNotEmpty ? shift.cashierName : shift.cashierId}',
-                                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ],
@@ -103,30 +111,67 @@ class ZReportDialog extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      Expanded(child: _infoText('وقت الفتح:', dateFormat.format(shift.openedAt))),
+                      Expanded(
+                        child: _infoText(
+                          'وقت الفتح:',
+                          dateFormat.format(shift.openedAt),
+                        ),
+                      ),
                       const SizedBox(width: 12),
-                      Expanded(child: _infoText('وقت الإغلاق:', dateFormat.format(shift.closedAt ?? DateTime.now()))),
+                      Expanded(
+                        child: _infoText(
+                          'وقت الإغلاق:',
+                          dateFormat.format(shift.closedAt ?? DateTime.now()),
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 16),
 
                 // Sales Metric Grid
-                const Text('مبيعات الوردية:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                const Text(
+                  'مبيعات الوردية:',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Expanded(child: _metricCard('مبيعات كاش', '${Money(summary.cashSales).toDisplay()} ج.م', Icons.money_rounded, Colors.green.shade700)),
+                    Expanded(
+                      child: _metricCard(
+                        'مبيعات كاش',
+                        '${Money(summary.cashSales).toDisplay()} ج.م',
+                        Icons.money_rounded,
+                        Colors.green.shade700,
+                      ),
+                    ),
                     const SizedBox(width: 8),
-                    Expanded(child: _metricCard('مبيعات فيزا', '${Money(summary.cardSales).toDisplay()} ج.م', Icons.credit_card_rounded, Colors.blue.shade700)),
+                    Expanded(
+                      child: _metricCard(
+                        'مبيعات فيزا',
+                        '${Money(summary.cardSales).toDisplay()} ج.م',
+                        Icons.credit_card_rounded,
+                        Colors.blue.shade700,
+                      ),
+                    ),
                     const SizedBox(width: 8),
-                    Expanded(child: _metricCard('إجمالي المبيعات', '${Money(summary.totalRevenue).toDisplay()} ج.م', Icons.payments_rounded, AppColors.primary)),
+                    Expanded(
+                      child: _metricCard(
+                        'إجمالي المبيعات',
+                        '${Money(summary.totalRevenue).toDisplay()} ج.م',
+                        Icons.payments_rounded,
+                        AppColors.primary,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
 
                 // Cash Reconciliation Details
-                const Text('مطابقة حركة الدرج (الكاش):', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                const Text(
+                  'مطابقة حركة الدرج (الكاش):',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.all(14),
@@ -137,21 +182,45 @@ class ZReportDialog extends StatelessWidget {
                   ),
                   child: Column(
                     children: [
-                      _rowDetail('الرصيد الافتتاحي (الفكة):', '${Money(shift.openingBalance).toDisplay()} ج.م'),
+                      _rowDetail(
+                        'الرصيد الافتتاحي (الفكة):',
+                        '${Money(shift.openingBalance).toDisplay()} ج.م',
+                      ),
                       const Divider(height: 12),
-                      _rowDetail('المقبوضات النقدية (مبيعات + أقساط كاش):', '+${Money(summary.cashSales + summary.cashInstallments).toDisplay()} ج.م', color: Colors.green.shade700),
+                      _rowDetail(
+                        'المقبوضات النقدية (مبيعات + أقساط كاش):',
+                        '+${Money(summary.cashSales + summary.cashInstallments).toDisplay()} ج.م',
+                        color: Colors.green.shade700,
+                      ),
                       if (summary.cashReturns > 0) ...[
                         const SizedBox(height: 6),
-                        _rowDetail('مرتجعات نقدية للعملاء:', '-${Money(summary.cashReturns).toDisplay()} ج.م', color: Colors.red.shade600),
+                        _rowDetail(
+                          'مرتجعات نقدية للعملاء:',
+                          '-${Money(summary.cashReturns).toDisplay()} ج.م',
+                          color: Colors.red.shade600,
+                        ),
                       ],
                       if (summary.cashExpenses > 0) ...[
                         const SizedBox(height: 6),
-                        _rowDetail('مصروفات نقدية وسلف:', '-${Money(summary.cashExpenses).toDisplay()} ج.م', color: Colors.red.shade600),
+                        _rowDetail(
+                          'مصروفات نقدية وسلف:',
+                          '-${Money(summary.cashExpenses).toDisplay()} ج.م',
+                          color: Colors.red.shade600,
+                        ),
                       ],
                       const Divider(height: 16, thickness: 1.2),
-                      _rowDetail('المبلغ المتوقع في الدرج:', '${Money(summary.expectedCashInDrawer).toDisplay()} ج.م', isBold: true, color: AppColors.primary),
+                      _rowDetail(
+                        'المبلغ المتوقع في الدرج:',
+                        '${Money(summary.expectedCashInDrawer).toDisplay()} ج.م',
+                        isBold: true,
+                        color: AppColors.primary,
+                      ),
                       const SizedBox(height: 6),
-                      _rowDetail('المبلغ الفعلي (المعدود):', '${Money(counted).toDisplay()} ج.م', isBold: true),
+                      _rowDetail(
+                        'المبلغ الفعلي (المعدود):',
+                        '${Money(counted).toDisplay()} ج.م',
+                        isBold: true,
+                      ),
                     ],
                   ),
                 ),
@@ -159,7 +228,10 @@ class ZReportDialog extends StatelessWidget {
 
                 // Reconciliation Result Banner
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: diffColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
@@ -172,7 +244,11 @@ class ZReportDialog extends StatelessWidget {
                       Expanded(
                         child: Text(
                           diffLabel,
-                          style: TextStyle(color: diffColor, fontWeight: FontWeight.bold, fontSize: 13),
+                          style: TextStyle(
+                            color: diffColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ],
@@ -190,11 +266,17 @@ class ZReportDialog extends StatelessWidget {
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
-                        onPressed: () => ZReportService.printThermalSlip(summary),
+                        onPressed: () =>
+                            ZReportService.printThermalSlip(summary),
                         icon: const Icon(Icons.print_rounded, size: 18),
-                        label: const Text('بون حراري', style: TextStyle(fontWeight: FontWeight.bold)),
+                        label: const Text(
+                          'بون حراري',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -206,11 +288,19 @@ class ZReportDialog extends StatelessWidget {
                           foregroundColor: AppColors.primary,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           side: BorderSide(color: AppColors.primary),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                         onPressed: () => ZReportService.printA4Report(summary),
-                        icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
-                        label: const Text('تقرير A4', style: TextStyle(fontWeight: FontWeight.bold)),
+                        icon: const Icon(
+                          Icons.picture_as_pdf_rounded,
+                          size: 18,
+                        ),
+                        label: const Text(
+                          'تقرير A4',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -222,11 +312,17 @@ class ZReportDialog extends StatelessWidget {
                           backgroundColor: const Color(0xFF25D366),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
-                        onPressed: () => ZReportService.shareViaWhatsApp(summary),
+                        onPressed: () =>
+                            ZReportService.shareViaWhatsApp(summary),
                         icon: const Icon(Icons.chat_rounded, size: 18),
-                        label: const Text('واتساب', style: TextStyle(fontWeight: FontWeight.bold)),
+                        label: const Text(
+                          'واتساب',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ),
                   ],
@@ -244,9 +340,16 @@ class ZReportDialog extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+        Text(
+          label,
+          style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+        ),
         const SizedBox(height: 2),
-        Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+          overflow: TextOverflow.ellipsis,
+        ),
       ],
     );
   }
@@ -267,26 +370,50 @@ class ZReportDialog extends StatelessWidget {
               Icon(icon, size: 16, color: color),
               const SizedBox(width: 6),
               Expanded(
-                child: Text(title, style: TextStyle(fontSize: 11, color: Colors.grey.shade700, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey.shade700,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 6),
           Text(
             value,
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: color),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _rowDetail(String label, String value, {Color? color, bool isBold = false}) {
+  Widget _rowDetail(
+    String label,
+    String value, {
+    Color? color,
+    bool isBold = false,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Expanded(
-          child: Text(label, style: TextStyle(fontSize: 13, fontWeight: isBold ? FontWeight.bold : FontWeight.normal), overflow: TextOverflow.ellipsis),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
         const SizedBox(width: 8),
         Text(
