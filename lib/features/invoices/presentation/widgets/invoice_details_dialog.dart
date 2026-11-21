@@ -58,10 +58,10 @@ class InvoiceDetailsDialog extends StatelessWidget {
     final message = 'مرحباً ${invoice.customerName ?? 'عزيزنا العميل'}،\n'
         'شكراً لتسوقكم من متجرنا!\n'
         'إليك تفاصيل فاتورة الشراء #${invoice.shortRef}:\n'
-        '📅 التاريخ: ${dateFormat.format(invoice.date)}\n'
-        '🛒 الأصناف (${invoice.totalItemsCount} قطعة):\n$itemsSummary\n'
-        '💰 الإجمالي: ${Money(invoice.total).toDisplay()} ج.م\n'
-        '💳 طريقة الدفع: ${_formatPaymentLabel(invoice.paymentMethod)}\n\n'
+        'التاريخ: ${dateFormat.format(invoice.date)}\n'
+        'الأصناف (${invoice.totalItemsCount} قطعة):\n$itemsSummary\n'
+        'الإجمالي: ${Money(invoice.total).toDisplay()} ج.م\n'
+        'طريقة الدفع: ${_formatPaymentLabel(invoice.paymentMethod)}\n\n'
         'نسعد دائماً بخدمتكم!';
 
     final uri = CustomerLedgerService.buildWhatsAppUri(phone);

@@ -351,7 +351,7 @@ class PreOrderCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         isOverdue
-                            ? '⚠️ تجاوز مهلة الاستلام ($daysElapsed يوماً بالمحل)'
+                            ? 'تجاوز مهلة الاستلام ($daysElapsed يوماً بالمحل)'
                             : 'وصل للمحل منذ ${daysElapsed == 0 ? "اليوم" : "$daysElapsed أيام"}',
                         style: TextStyle(
                           fontFamily: 'Cairo',
@@ -624,7 +624,7 @@ class PreOrderCard extends StatelessWidget {
                               icon: const Icon(Icons.check_circle_outline,
                                   size: 15),
                               label: const Text(
-                                'تسليم الأوردر ✅',
+                                'تسليم الأوردر',
                                 style: TextStyle(
                                     fontFamily: 'Cairo',
                                     fontSize: 11.5,

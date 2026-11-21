@@ -152,7 +152,7 @@ void main() async {
 
   // Firebase intentionally disabled on Windows.
   // See Phase 0 decision + TD for full removal.
-  Logging.info('🛡️ [Safe Mode] Running without Firebase');
+  Logging.info('[Safe Mode] Running without Firebase');
 
   // Emergency Recovery Pre-Flight Check
   try {
@@ -169,7 +169,7 @@ void main() async {
 
     final emergencyStatus = await recoveryService.checkRecoveryNeeded();
     if (emergencyStatus.isEmergency) {
-      Logging.error('🚨 [Emergency State Detected] Reason: ${emergencyStatus.reason}');
+      Logging.error('[Emergency State Detected] Reason: ${emergencyStatus.reason}');
       runApp(
         Directionality(
           textDirection: TextDirection.rtl,

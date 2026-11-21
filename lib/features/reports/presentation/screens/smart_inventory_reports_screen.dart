@@ -150,7 +150,7 @@ class _ReorderSuggestionsTab extends StatelessWidget {
   void _copyPurchaseList(BuildContext context, List<ReorderSuggestionEntity> list) {
     if (list.isEmpty) return;
     final buffer = StringBuffer();
-    buffer.writeln('📋 *طلب شراء بضاعة ونواقص مخزن*');
+    buffer.writeln('*طلب شراء بضاعة ونواقص مخزن*');
     buffer.writeln('تاريخ: ${DateFormat('yyyy/MM/dd').format(DateTime.now())}');
     buffer.writeln('--------------------------------');
     for (var i = 0; i < list.length; i++) {

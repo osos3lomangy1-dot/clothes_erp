@@ -656,7 +656,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                   ),
           ),
         if (contract.status == 'legal_case') ...[
-          // Option 1: ⚖️ تحصيل وتسوية قضائية (تم التخليص)
+          // Option 1: تحصيل وتسوية قضائية (تم التخليص)
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.success,
@@ -669,7 +669,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
             ),
             icon: const Icon(Icons.gavel_rounded, size: 20),
             label: const Text(
-              '⚖️ تحصيل وتسوية قضائية (تم التخليص)',
+              'تحصيل وتسوية قضائية (تم التخليص)',
               style: TextStyle(
                 fontFamily: 'Cairo',
                 fontWeight: FontWeight.bold,
@@ -684,7 +684,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
             ),
           ),
 
-          // Option 2: ⛔ إثبات تهرب / إعدام دين
+          // Option 2: إثبات تهرب / إعدام دين
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.error,
@@ -696,7 +696,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
             ),
             icon: const Icon(Icons.block_rounded, size: 20),
             label: const Text(
-              '⛔ إثبات تهرب / إعدام دين',
+              'إثبات تهرب / إعدام دين',
               style: TextStyle(
                 fontFamily: 'Cairo',
                 fontWeight: FontWeight.bold,
@@ -706,7 +706,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
             onPressed: () => _confirmBadDebtWriteOff(context, cubit, contract),
           ),
 
-          // Option 3: ↩️ إلغاء الإجراء القانوني (إعادة لنشط)
+          // Option 3: إلغاء الإجراء القانوني (إعادة لنشط)
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.onSurface,
@@ -718,7 +718,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
             ),
             icon: const Icon(Icons.undo_rounded, size: 20),
             label: const Text(
-              '↩️ إلغاء الإجراء القانوني (إعادة لنشط)',
+              'إلغاء الإجراء القانوني (إعادة لنشط)',
               style: TextStyle(
                 fontFamily: 'Cairo',
                 fontWeight: FontWeight.bold,

@@ -340,35 +340,32 @@ class ZReportService {
     final counted = shift.countedBalance ?? summary.expectedCashInDrawer;
     final diff = shift.difference ?? (counted - summary.expectedCashInDrawer);
 
-    String diffEmoji = '✅';
     String diffStatusText = 'مطابق تماماً 100%';
     if (diff > 0) {
-      diffEmoji = '🟢';
       diffStatusText = '+${Money(diff).toDisplay()} ج.م (زيادة)';
     } else if (diff < 0) {
-      diffEmoji = '🔴';
       diffStatusText = '${Money(diff).toDisplay()} ج.م (عجز)';
     }
 
     return '''
-📊 *تقرير إغلاق الوردية (Z-Report) — بيعة ERP*
-🏪 *المتجر:* $storeName
-👤 *الكاشير:* ${shift.cashierName.isNotEmpty ? shift.cashierName : shift.cashierId}
-🆔 *رقم الوردية:* #${shift.id.length > 8 ? shift.id.substring(0, 8) : shift.id}
-⏰ *الفترة:* من ${dateFormat.format(shift.openedAt)} إلى ${dateFormat.format(shift.closedAt ?? DateTime.now())}
+*تقرير إغلاق الوردية (Z-Report) — بيعة ERP*
+*المتجر:* $storeName
+*الكاشير:* ${shift.cashierName.isNotEmpty ? shift.cashierName : shift.cashierId}
+*رقم الوردية:* #${shift.id.length > 8 ? shift.id.substring(0, 8) : shift.id}
+*الفترة:* من ${dateFormat.format(shift.openedAt)} إلى ${dateFormat.format(shift.closedAt ?? DateTime.now())}
 ─────────────────
-💵 *مبيعات كاش:* ${Money(summary.cashSales).toDisplay()} ج.م
-💳 *مبيعات فيزا:* ${Money(summary.cardSales).toDisplay()} ج.م
-${summary.otherSales > 0 ? "🔄 *مبيعات مجزأة:* ${Money(summary.otherSales).toDisplay()} ج.م\n" : ""}💰 *إجمالي الإيرادات:* ${Money(summary.totalRevenue).toDisplay()} ج.م
-🧾 *عدد الفواتير:* ${summary.totalSalesCount} فاتورة
+*مبيعات كاش:* ${Money(summary.cashSales).toDisplay()} ج.م
+*مبيعات فيزا:* ${Money(summary.cardSales).toDisplay()} ج.م
+${summary.otherSales > 0 ? "*مبيعات مجزأة:* ${Money(summary.otherSales).toDisplay()} ج.م\n" : ""}*إجمالي الإيرادات:* ${Money(summary.totalRevenue).toDisplay()} ج.م
+*عدد الفواتير:* ${summary.totalSalesCount} فاتورة
 ─────────────────
-📥 *رصيد الفكة الافتتاحي:* ${Money(shift.openingBalance).toDisplay()} ج.م
-💸 *مصروفات نقدية:* -${Money(summary.cashExpenses).toDisplay()} ج.م
-🔄 *مرتجعات نقدية:* -${Money(summary.cashReturns).toDisplay()} ج.م
+*رصيد الفكة الافتتاحي:* ${Money(shift.openingBalance).toDisplay()} ج.م
+*مصروفات نقدية:* -${Money(summary.cashExpenses).toDisplay()} ج.م
+*مرتجعات نقدية:* -${Money(summary.cashReturns).toDisplay()} ج.م
 ─────────────────
-🎯 *المتوقع في الدرج:* ${Money(summary.expectedCashInDrawer).toDisplay()} ج.م
-✋ *الفعلي المعدود:* ${Money(counted).toDisplay()} ج.م
-$diffEmoji *حالة الدرج:* $diffStatusText
+*المتوقع في الدرج:* ${Money(summary.expectedCashInDrawer).toDisplay()} ج.م
+*الفعلي المعدود:* ${Money(counted).toDisplay()} ج.م
+*حالة الدرج:* $diffStatusText
 ''';
   }
 

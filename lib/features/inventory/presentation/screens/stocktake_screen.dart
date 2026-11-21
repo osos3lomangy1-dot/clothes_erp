@@ -743,7 +743,7 @@ class _StocktakeScreenState extends State<StocktakeScreen> {
       if (diff == 0) {
         statusBg = Colors.green.shade50;
         statusFg = Colors.green.shade800;
-        statusText = 'مطابق ✓';
+        statusText = 'مطابق';
       } else if (diff < 0) {
         statusBg = Colors.red.shade50;
         statusFg = Colors.red.shade800;

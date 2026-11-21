@@ -697,10 +697,10 @@ class GoogleDriveBackupService {
         todayKey,
         userId: 'system_auto_drive_backup',
       );
-      Logging.info('☁️ [DriveBackup] Uploaded scheduled backup: ${uploaded.name}');
+      Logging.info('[DriveBackup] Uploaded scheduled backup: ${uploaded.name}');
       return uploaded;
     } catch (e) {
-      Logging.error('⚠️ [DriveBackup] Auto upload skipped/failed: $e');
+      Logging.error('[DriveBackup] Auto upload skipped/failed: $e');
       return null;
     }
   }

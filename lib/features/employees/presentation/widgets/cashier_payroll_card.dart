@@ -134,7 +134,7 @@ class CashierPayrollCard extends StatelessWidget {
                                   ? '+${Money(summary.bonusThisMonth).toDisplay()} ج.م'
                                   : '0.00 ج.م',
                               subtitle: summary.bonusThisMonth > 0
-                                  ? 'يوجد بونص مستحق لهذا الشهر 🎉'
+                                  ? 'يوجد بونص مستحق لهذا الشهر'
                                   : 'لا يوجد بونص مسجل لهذا الشهر',
                               valueColor: summary.bonusThisMonth > 0
                                   ? Colors.green.shade700
@@ -403,21 +403,21 @@ class CashierPayrollCard extends StatelessWidget {
       case PayrollSalaryStatus.fullyPaid:
         statusBg = Colors.green.shade50;
         statusColor = Colors.green.shade700;
-        statusText = 'تم استلام الراتب بالكامل ✅';
+        statusText = 'تم استلام الراتب بالكامل';
         subtitle = 'تم صرف ${Money(summary.salaryPaidThisMonth).toDisplay()} ج.م';
         icon = Icons.check_circle_rounded;
         break;
       case PayrollSalaryStatus.partiallyPaid:
         statusBg = Colors.orange.shade50;
         statusColor = Colors.orange.shade800;
-        statusText = 'مستلم جزئياً ⚠️';
+        statusText = 'مستلم جزئياً';
         subtitle = 'المتبقي: ${Money(summary.remainingSalary).toDisplay()} ج.م (صُرف ${Money(summary.salaryPaidThisMonth).toDisplay()})';
         icon = Icons.hourglass_bottom_rounded;
         break;
       case PayrollSalaryStatus.notPaid:
         statusBg = Colors.amber.shade50;
         statusColor = Colors.amber.shade900;
-        statusText = 'لم يُصرف راتب الشهر بعد ⏳';
+        statusText = 'لم يُصرف راتب الشهر بعد';
         subtitle = 'المستحق الأساسي: ${Money(summary.basicSalary).toDisplay()} ج.م';
         icon = Icons.pending_rounded;
         break;
@@ -575,7 +575,7 @@ class CashierPayrollCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  hasShift ? 'وردية مفتوحة 🟢' : 'الوردية مغلقة ⚪',
+                  hasShift ? 'وردية مفتوحة' : 'الوردية مغلقة',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,

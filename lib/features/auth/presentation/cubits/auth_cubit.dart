@@ -36,7 +36,7 @@ class AuthCubit extends Cubit<AuthState> {
         }
       },
       onError: (e) {
-        Logging.error('⚠️ [Cubit] Stream error: $e');
+        Logging.error('[Cubit] Stream error: $e');
         if (state is! AuthAuthenticated) {
           emit(AuthUnauthenticated());
         }

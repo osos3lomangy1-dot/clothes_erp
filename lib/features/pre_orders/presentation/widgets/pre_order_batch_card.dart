@@ -206,12 +206,12 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
     final message =
         '''
 أهلاً بحضرتك أستاذ/ة ${order.customerName}،
-شحنتك رقم #${order.orderNumber} ضمن [${widget.batch.batchNumber}] وصلت المحل وجاهزة للاستلام الآن! 🎉
+شحنتك رقم #${order.orderNumber} ضمن [${widget.batch.batchNumber}] وصلت المحل وجاهزة للاستلام الآن!
 
-📦 إجمالي الأصناف: ${Money(order.totalPiasters).toDisplay()} ج.م
-🚚 نصيب الشحن العام: ${Money(order.allocatedShippingPiasters).toDisplay()} ج.م
-💰 العربون المسدد: ${Money(order.depositPiasters).toDisplay()} ج.م
-💵 المبلغ المتبقي عند الاستلام: ${Money(order.remainingWithShippingPiasters).toDisplay()} ج.م
+- إجمالي الأصناف: ${Money(order.totalPiasters).toDisplay()} ج.م
+- نصيب الشحن العام: ${Money(order.allocatedShippingPiasters).toDisplay()} ج.م
+- العربون المسدد: ${Money(order.depositPiasters).toDisplay()} ج.م
+- المبلغ المتبقي عند الاستلام: ${Money(order.remainingWithShippingPiasters).toDisplay()} ج.م
 
 نتشرف بزيارتك لاستلام طلبك في أقرب وقت! يسعدنا دائماً خدمتك.
 ''';
@@ -746,7 +746,7 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                       ),
                       icon: const Icon(Icons.link_rounded, size: 15),
                       label: const Text(
-                        '🔗 ضم أوردر معلق',
+                        'ضم أوردر معلق',
                         style: TextStyle(
                           fontFamily: 'Cairo',
                           fontSize: 11,

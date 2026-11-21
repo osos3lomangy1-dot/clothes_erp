@@ -14,7 +14,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   @override
   Future<UserModel> login(String email, String password) async {
-    Logging.info('🛡️ [Safe Mode] Remote login bypassed');
+    Logging.info('[Safe Mode] Remote login bypassed');
     return UserModel(
       id: 'safe-mode-admin',
       email: email,

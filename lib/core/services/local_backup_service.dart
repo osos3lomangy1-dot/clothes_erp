@@ -260,10 +260,10 @@ class LocalBackupService {
         directoryPath: dir.path,
         keepCount: config.retentionCount,
       );
-      Logging.info('💾 [AutoBackup] Created daily backup: ${result.filePath}');
+      Logging.info('[AutoBackup] Created daily backup: ${result.filePath}');
       return result;
     } catch (e) {
-      Logging.error('⚠️ [AutoBackup] Failed: $e');
+      Logging.error('[AutoBackup] Failed: $e');
       return null;
     }
   }
@@ -475,7 +475,7 @@ class LocalBackupService {
       // still hold a file handle until process exit. That's completely safe:
       // `pendingFile` is staged and AppDatabase applies it on next launch
       // BEFORE SQLite opens the file.
-      Logging.info('💾 [Restore] Staged for atomic apply on restart: $e');
+      Logging.info('[Restore] Staged for atomic apply on restart: $e');
     }
 
     return RestoreResult(

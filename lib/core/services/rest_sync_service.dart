@@ -54,7 +54,7 @@ class RestSyncService {
   void startAutoSync({Duration interval = const Duration(minutes: 5)}) {
     _autoSyncTimer?.cancel();
     Logging.info(
-      '🔄 [Auto-Sync] Started auto-sync timer (every ${interval.inMinutes} mins)',
+      '[Auto-Sync] Started auto-sync timer (every ${interval.inMinutes} mins)',
     );
 
     // Trigger immediate background sync
@@ -64,7 +64,7 @@ class RestSyncService {
       final pendingCount = await getPendingCount();
       if (pendingCount > 0 && !_isSyncing) {
         Logging.info(
-          '🔄 [Auto-Sync] Auto-syncing $pendingCount pending items...',
+          '[Auto-Sync] Auto-syncing $pendingCount pending items...',
         );
         await syncPendingData();
       }
@@ -75,7 +75,7 @@ class RestSyncService {
   void stopAutoSync() {
     _autoSyncTimer?.cancel();
     _autoSyncTimer = null;
-    Logging.info('🛑 [Auto-Sync] Stopped auto-sync timer');
+    Logging.info('[Auto-Sync] Stopped auto-sync timer');
   }
 
   /// Authenticate with Firebase Auth REST API (optional, for secured Firestore rules)
@@ -99,15 +99,15 @@ class RestSyncService {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         _idToken = data['idToken'] as String?;
         Logging.info(
-          '🛡️ [REST Auth] Authenticated successfully with Firebase REST',
+          '[REST Auth] Authenticated successfully with Firebase REST',
         );
         return true;
       } else {
-        Logging.warn('⚠️ [REST Auth] Failed to authenticate: ${response.body}');
+        Logging.warn('[REST Auth] Failed to authenticate: ${response.body}');
         return false;
       }
     } catch (e) {
-      Logging.error('⚠️ [REST Auth] Error during REST login: $e');
+      Logging.error('[REST Auth] Error during REST login: $e');
       return false;
     }
   }
@@ -276,7 +276,7 @@ class RestSyncService {
     http.Response response,
   ) async {
     Logging.warn(
-      '⚠️ [REST Sync] Failed item ${item.id} (${item.entity}/${item.entityId}): '
+      '[REST Sync] Failed item ${item.id} (${item.entity}/${item.entityId}): '
       'HTTP ${response.statusCode} - ${response.body}',
     );
     await _safeUpdateSyncQueue(

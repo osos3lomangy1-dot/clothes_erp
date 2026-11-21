@@ -235,7 +235,7 @@ class _InstallmentsListViewState extends State<_InstallmentsListView> {
                                       state.customFromDate != null &&
                                       state.customToDate != null
                                   ? 'من ${state.customFromDate!.day}/${state.customFromDate!.month} إلى ${state.customToDate!.day}/${state.customToDate!.month}'
-                                  : 'فترة مخصصة 📅',
+                                  : 'فترة مخصصة',
                               value: 'custom',
                               selected: state.dateFilter == 'custom',
                               onCustomTap: () async {

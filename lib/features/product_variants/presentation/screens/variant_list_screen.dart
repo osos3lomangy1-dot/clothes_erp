@@ -224,7 +224,7 @@ class VariantListScreen extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                   child: ElevatedButton.icon(
                     icon: const Icon(Icons.qr_code_2_rounded, color: Colors.white, size: 18),
-                    label: const Text('طباعة الباركود 🏷️', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    label: const Text('طباعة الباركود', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.teal.shade700,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

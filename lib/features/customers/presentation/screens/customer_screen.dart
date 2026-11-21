@@ -791,7 +791,7 @@ class _CustomerViewState extends State<_CustomerView> {
                           ],
                         ),
                         Text(
-                          '★ ${customer.loyaltyPoints} نقطة',
+                          '${customer.loyaltyPoints} نقطة ولاء',
                           style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                         ),
                         if (sum.invoiceCount > 0)

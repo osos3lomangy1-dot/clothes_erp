@@ -112,7 +112,7 @@ class ZReportDialog extends StatelessWidget {
                 const SizedBox(height: 16),
 
                 // Sales Metric Grid
-                const Text('📊 مبيعات الوردية:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                const Text('مبيعات الوردية:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 Row(
                   children: [
@@ -126,7 +126,7 @@ class ZReportDialog extends StatelessWidget {
                 const SizedBox(height: 16),
 
                 // Cash Reconciliation Details
-                const Text('💰 مطابقة حركة الدرج (الكاش):', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                const Text('مطابقة حركة الدرج (الكاش):', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.all(14),
@@ -194,7 +194,7 @@ class ZReportDialog extends StatelessWidget {
                         ),
                         onPressed: () => ZReportService.printThermalSlip(summary),
                         icon: const Icon(Icons.print_rounded, size: 18),
-                        label: const Text('بون حراري 🖨️', style: TextStyle(fontWeight: FontWeight.bold)),
+                        label: const Text('بون حراري', style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -210,7 +210,7 @@ class ZReportDialog extends StatelessWidget {
                         ),
                         onPressed: () => ZReportService.printA4Report(summary),
                         icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
-                        label: const Text('تقرير A4 📄', style: TextStyle(fontWeight: FontWeight.bold)),
+                        label: const Text('تقرير A4', style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -226,7 +226,7 @@ class ZReportDialog extends StatelessWidget {
                         ),
                         onPressed: () => ZReportService.shareViaWhatsApp(summary),
                         icon: const Icon(Icons.chat_rounded, size: 18),
-                        label: const Text('واتساب 💬', style: TextStyle(fontWeight: FontWeight.bold)),
+                        label: const Text('واتساب', style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],

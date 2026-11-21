@@ -656,7 +656,7 @@ void _setupSqlite(CommonDatabase rawDb) {
   try {
     final v = rawDb.select('SELECT sqlite_version() AS v;');
     if (v.isNotEmpty) {
-      Logging.info('📦 [SQLite Runtime Version] ${v.first['v']}');
+      Logging.info('[SQLite Runtime Version] ${v.first['v']}');
     }
   } catch (_) {}
 }

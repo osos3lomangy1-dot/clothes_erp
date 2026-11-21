@@ -810,7 +810,7 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
                       icon: const Icon(Icons.assignment_return_rounded, size: 16),
-                      label: const Text('إرجاع أصناف (مرتجع مشتريات) ↩️', style: TextStyle(fontWeight: FontWeight.bold)),
+                      label: const Text('إرجاع أصناف (مرتجع مشتريات)', style: TextStyle(fontWeight: FontWeight.bold)),
                       onPressed: () => _openCreatePurchaseReturn(p),
                     ),
                     if (p.remainingAmount > 0) ...[
