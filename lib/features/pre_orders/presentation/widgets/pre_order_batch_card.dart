@@ -295,13 +295,16 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                               color: AppColors.onSurfaceVariant,
                             ),
                             const SizedBox(width: 3),
-                            Text(
-                              batch.agentName!,
-                              style: const TextStyle(
-                                fontFamily: 'Cairo',
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.onSurface,
+                            Flexible(
+                              child: Text(
+                                batch.agentName!,
+                                style: const TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.onSurface,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             if (batch.trackingNumber != null) ...[
@@ -317,12 +320,15 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                                 color: AppColors.onSurfaceVariant,
                               ),
                               const SizedBox(width: 2),
-                              Text(
-                                batch.trackingNumber!,
-                                style: const TextStyle(
-                                  fontFamily: 'Cairo',
-                                  fontSize: 11,
-                                  color: AppColors.onSurfaceVariant,
+                              Flexible(
+                                child: Text(
+                                  batch.trackingNumber!,
+                                  style: const TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 11,
+                                    color: AppColors.onSurfaceVariant,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
@@ -452,16 +458,19 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                     color: AppColors.primary,
                   ),
                   const SizedBox(width: 4),
-                  Text(
-                    'تفاصيل أوردرات العملاء داخل الشحنة (${batch.orders.length})',
-                    style: TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
+                  Flexible(
+                    child: Text(
+                      'تفاصيل أوردرات العملاء داخل الشحنة (${batch.orders.length})',
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 8),
                   Text(
                     'طريقة الشحن: ${ShippingSplitMethods.getLabel(batch.shippingSplitMethod)}',
                     style: const TextStyle(
@@ -515,8 +524,9 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        const SizedBox(width: 6),
                         Expanded(
-                          flex: 4,
+                          flex: 3,
                           child: Text(
                             'الأصناف: ${Money(o.totalPiasters).toDisplay()} ج + الشحن: ${Money(o.allocatedShippingPiasters).toDisplay()} ج',
                             style: const TextStyle(
@@ -524,8 +534,10 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                               fontSize: 11,
                               color: AppColors.onSurfaceVariant,
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        const SizedBox(width: 6),
                         Text(
                           'المتبقي: ${Money(o.remainingWithShippingPiasters).toDisplay()} ج.م',
                           style: TextStyle(
@@ -573,7 +585,7 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
             ),
           ],
 
-          const Spacer(),
+          const SizedBox(height: 10),
           const Divider(height: 1, color: AppColors.outlineVariant),
 
           // 4. أزرار الإجراءات السريعة (Scrollable لمنع أي overflow)

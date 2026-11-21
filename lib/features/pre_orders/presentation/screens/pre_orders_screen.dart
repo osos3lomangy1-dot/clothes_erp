@@ -398,16 +398,11 @@ class _PreOrdersViewState extends State<_PreOrdersView> {
                               ],
                             ),
                           )
-                        : GridView.builder(
+                        : ListView.separated(
                             padding: const EdgeInsets.all(16),
-                            gridDelegate:
-                                const SliverGridDelegateWithMaxCrossAxisExtent(
-                              maxCrossAxisExtent: 520,
-                              mainAxisExtent: 275,
-                              mainAxisSpacing: 14,
-                              crossAxisSpacing: 14,
-                            ),
                             itemCount: filteredBatches.length,
+                            separatorBuilder: (context, _) =>
+                                const SizedBox(height: 14),
                             itemBuilder: (context, index) {
                               final batch = filteredBatches[index];
                               return PreOrderBatchCard(batch: batch);

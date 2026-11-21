@@ -1012,28 +1012,42 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
         ),
         title: Row(
           children: [
-            Text(
-              customer.nameCtrl.text.isNotEmpty
-                  ? customer.nameCtrl.text
-                  : 'عميل جديد #${cIdx + 1}',
-              style: const TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 13.5,
-                fontWeight: FontWeight.bold,
-                color: AppColors.onSurface,
+            Flexible(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      customer.nameCtrl.text.isNotEmpty
+                          ? customer.nameCtrl.text
+                          : 'عميل جديد #${cIdx + 1}',
+                      style: const TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.onSurface,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (customer.phoneCtrl.text.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        '(${customer.phoneCtrl.text})',
+                        style: const TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 11,
+                          color: AppColors.onSurfaceVariant,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             const SizedBox(width: 8),
-            if (customer.phoneCtrl.text.isNotEmpty)
-              Text(
-                '(${customer.phoneCtrl.text})',
-                style: const TextStyle(
-                  fontFamily: 'Cairo',
-                  fontSize: 11,
-                  color: AppColors.onSurfaceVariant,
-                ),
-              ),
-            const Spacer(),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
@@ -1066,7 +1080,7 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
           ],
         ),
         children: [
-          // بيانات العميل: اختيار مسجل أو كتابة جديد
+          // السطر الأول: بيانات العميل (الاسم ورقم الهاتف)
           Row(
             children: [
               if (_availableCustomers.isNotEmpty) ...[
@@ -1144,10 +1158,14 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                   onChanged: (_) => setState(() {}),
                 ),
               ),
-              const SizedBox(width: 8),
-              // العربون وطريقة دفعه
-              SizedBox(
-                width: 95,
+            ],
+          ),
+          const SizedBox(height: 8),
+          // السطر الثاني: العربون، طريقة الدفع، والشحن المخصص
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
                 child: TextFormField(
                   controller: customer.depositCtrl,
                   keyboardType: TextInputType.number,
@@ -1158,27 +1176,27 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                     fontWeight: FontWeight.bold,
                     color: AppColors.success,
                   ),
-                  decoration: _compactInput(label: 'العربون (ج.م)'),
+                  decoration: _compactInput(label: 'العربون المدفوع (ج.م)'),
                   onChanged: (_) => setState(() {}),
                 ),
               ),
               const SizedBox(width: 8),
-              SizedBox(
-                width: 110,
+              Expanded(
+                flex: 2,
                 child: DropdownButtonFormField<String>(
                   initialValue: customer.paymentMethod,
-                  decoration: _compactInput(label: 'طريقة الدفع'),
+                  decoration: _compactInput(label: 'طريقة دفع العربون'),
                   items: const [
-                    DropdownMenuItem(value: 'cash', child: Text('كاش')),
+                    DropdownMenuItem(value: 'cash', child: Text('كاش (نقداً)')),
                     DropdownMenuItem(
                       value: 'instapay',
                       child: Text('انستاباي'),
                     ),
                     DropdownMenuItem(
                       value: 'vodafone_cash',
-                      child: Text('فودافون'),
+                      child: Text('فودافون كاش'),
                     ),
-                    DropdownMenuItem(value: 'card', child: Text('فيزا')),
+                    DropdownMenuItem(value: 'card', child: Text('فيزا / بطاقة')),
                   ],
                   onChanged: (val) {
                     if (val != null) {
@@ -1189,8 +1207,8 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
               ),
               if (_shippingSplitMethod == ShippingSplitMethods.customFixed) ...[
                 const SizedBox(width: 8),
-                SizedBox(
-                  width: 90,
+                Expanded(
+                  flex: 2,
                   child: TextFormField(
                     controller: customer.customShippingCtrl,
                     keyboardType: TextInputType.number,
@@ -1200,7 +1218,8 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
-                    decoration: _compactInput(label: 'الشحن المخصص'),
+                    decoration:
+                        _compactInput(label: 'الشحن المخصص للعميل (ج.م)'),
                     onChanged: (_) => setState(() {}),
                   ),
                 ),
@@ -1256,37 +1275,54 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                     ),
                     Expanded(
                       flex: 3,
-                      child: Text(
-                        it.nameCtrl.text.isNotEmpty
-                            ? it.nameCtrl.text
-                            : 'صنف بدون اسم',
-                        style: const TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                      child: Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              it.nameCtrl.text.isNotEmpty
+                                  ? it.nameCtrl.text
+                                  : 'صنف بدون اسم',
+                              style: const TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.onSurface,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (it.descCtrl.text.isNotEmpty) ...[
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                '(${it.descCtrl.text})',
+                                style: const TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 11,
+                                  color: AppColors.onSurfaceVariant,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
-                    if (it.descCtrl.text.isNotEmpty) ...[
-                      const SizedBox(width: 4),
-                      Text(
-                        '(${it.descCtrl.text})',
-                        style: TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: 11,
-                          color: Colors.grey.shade600,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 4,
+                      child: Align(
+                        alignment: AlignmentDirectional.centerEnd,
+                        child: Text(
+                          'الكمية: $q | البيع: ${itemTotal.toStringAsFixed(1)} ج | الربح: +${itemProfit.toStringAsFixed(1)} ج',
+                          style: const TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 11,
+                            color: AppColors.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                    ],
-                    const Spacer(),
-                    Text(
-                      'الكمية: $q | البيع: ${itemTotal.toStringAsFixed(1)} ج | الربح: +${itemProfit.toStringAsFixed(1)} ج',
-                      style: TextStyle(
-                        fontFamily: 'Cairo',
-                        fontSize: 11,
-                        color: Colors.blueGrey.shade800,
-                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(width: 8),
