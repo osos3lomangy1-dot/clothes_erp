@@ -8,6 +8,7 @@ class InvoiceItemDetailsEntity extends Equatable {
   final String size;
   final int qty;
   final int price; // in piasters
+  final int costPrice; // in piasters (cost snapshot)
   final int lineDiscount; // in piasters
   final int promotionDiscount; // in piasters
   final int lineTotal; // in piasters
@@ -20,10 +21,18 @@ class InvoiceItemDetailsEntity extends Equatable {
     required this.size,
     required this.qty,
     required this.price,
+    this.costPrice = 0,
     this.lineDiscount = 0,
     this.promotionDiscount = 0,
     required this.lineTotal,
   });
+
+  /// Net line profit in piasters: lineTotal - (costPrice * qty)
+  int get profitPiasters => lineTotal - (costPrice * qty);
+
+  /// Profit margin percentage: profit / lineTotal
+  double get profitMarginPercent =>
+      lineTotal > 0 ? (profitPiasters / lineTotal) * 100 : 0.0;
 
   @override
   List<Object?> get props => [
@@ -34,6 +43,7 @@ class InvoiceItemDetailsEntity extends Equatable {
         size,
         qty,
         price,
+        costPrice,
         lineDiscount,
         promotionDiscount,
         lineTotal,

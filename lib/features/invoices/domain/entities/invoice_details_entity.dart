@@ -37,7 +37,12 @@ class InvoiceDetailsEntity extends Equatable {
   });
 
   int get totalItemsCount => items.fold<int>(0, (sum, i) => sum + i.qty);
-  int get totalPromotionDiscount => items.fold<int>(0, (sum, i) => sum + i.promotionDiscount);
+  int get totalPromotionDiscount =>
+      items.fold<int>(0, (sum, i) => sum + i.promotionDiscount);
+  int get totalProfitPiasters =>
+      items.fold<int>(0, (sum, i) => sum + i.profitPiasters);
+  double get totalProfitMarginPercent =>
+      total > 0 ? (totalProfitPiasters / total) * 100 : 0.0;
 
   @override
   List<Object?> get props => [

@@ -353,27 +353,32 @@ class _InvoicesViewState extends State<_InvoicesView> {
     InvoiceDetailsEntity invoice,
     DateFormat dateFormat,
   ) {
-    Color statusBgColor;
+    Color statusBorderColor;
     Color statusTextColor;
     String statusLabel;
 
     if (invoice.status == 'returned') {
-      statusBgColor = Colors.red.shade50;
-      statusTextColor = Colors.red.shade800;
+      statusBorderColor = AppColors.error.withValues(alpha: 0.3);
+      statusTextColor = AppColors.error;
       statusLabel = 'مرتجعة بالكامل';
     } else if (invoice.status == 'partially_returned') {
-      statusBgColor = Colors.orange.shade50;
-      statusTextColor = Colors.orange.shade900;
+      statusBorderColor = AppColors.warning.withValues(alpha: 0.3);
+      statusTextColor = AppColors.warning;
       statusLabel = 'مرتجع جزئي';
     } else {
-      statusBgColor = Colors.green.shade50;
-      statusTextColor = Colors.green.shade800;
+      statusBorderColor = AppColors.success.withValues(alpha: 0.3);
+      statusTextColor = AppColors.success;
       statusLabel = 'مكتملة';
     }
 
     return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppColors.outlineVariant),
+      ),
+      margin: const EdgeInsets.symmetric(vertical: 4),
       child: InkWell(
         onTap: () => _openDetails(invoice),
         borderRadius: BorderRadius.circular(12),
@@ -385,8 +390,8 @@ class _InvoicesViewState extends State<_InvoicesView> {
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: invoice.status == 'returned'
-                      ? Colors.red.withValues(alpha: 0.1)
-                      : AppColors.primary.withValues(alpha: 0.1),
+                      ? AppColors.error.withValues(alpha: 0.08)
+                      : AppColors.primary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
@@ -394,48 +399,45 @@ class _InvoicesViewState extends State<_InvoicesView> {
                       ? Icons.assignment_return_rounded
                       : Icons.receipt_rounded,
                   color: invoice.status == 'returned'
-                      ? Colors.red.shade700
+                      ? AppColors.error
                       : AppColors.primary,
                   size: 22,
                 ),
               ),
               const SizedBox(width: 12),
+              // Reference, Date & Status Badge
               Expanded(
                 flex: 3,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 6,
+                      runSpacing: 4,
                       children: [
-                        Flexible(
-                          child: Text(
-                            'فاتورة #${invoice.shortRef}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14.5,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                        Text(
+                          'فاتورة #',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: AppColors.onSurface,
                           ),
                         ),
-                        const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 6,
-                            vertical: 2,
+                            vertical: 1.5,
                           ),
                           decoration: BoxDecoration(
-                            color: statusBgColor,
+                            color: const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: statusTextColor.withValues(alpha: 0.3),
-                            ),
+                            border: Border.all(color: statusBorderColor),
                           ),
                           child: Text(
                             statusLabel,
                             style: TextStyle(
-                              fontSize: 10.5,
+                              fontSize: 10,
                               fontWeight: FontWeight.bold,
                               color: statusTextColor,
                             ),
@@ -446,8 +448,8 @@ class _InvoicesViewState extends State<_InvoicesView> {
                     const SizedBox(height: 3),
                     Text(
                       dateFormat.format(invoice.date),
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
+                      style: const TextStyle(
+                        color: Color(0xFF64748B),
                         fontSize: 11,
                       ),
                       maxLines: 1,
@@ -457,6 +459,7 @@ class _InvoicesViewState extends State<_InvoicesView> {
                 ),
               ),
               const SizedBox(width: 8),
+              // Customer & Cashier Info
               Expanded(
                 flex: 2,
                 child: Column(
@@ -466,15 +469,17 @@ class _InvoicesViewState extends State<_InvoicesView> {
                       invoice.customerName ?? 'عميل نقدي',
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
-                        fontSize: 13,
+                        fontSize: 12.5,
+                        color: AppColors.onSurface,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    const SizedBox(height: 2),
                     Text(
-                      'كاشير: ${invoice.cashierName}',
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
+                      'كاشير: ',
+                      style: const TextStyle(
+                        color: Color(0xFF64748B),
                         fontSize: 11,
                       ),
                       maxLines: 1,
@@ -484,75 +489,76 @@ class _InvoicesViewState extends State<_InvoicesView> {
                 ),
               ),
               const SizedBox(width: 8),
-              Flexible(
-                flex: 1,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
+              // Payment Method Badge (purified subtle pill)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 3,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: AppColors.outlineVariant),
+                ),
+                child: Text(
+                  _formatPaymentLabel(invoice.paymentMethod),
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF475569),
                   ),
-                  decoration: BoxDecoration(
-                    color:
-                        invoice.paymentMethod.toLowerCase().contains('cash') ||
-                            invoice.paymentMethod.contains('كاش')
-                        ? Colors.green.shade50
-                        : Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    _formatPaymentLabel(invoice.paymentMethod),
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color:
-                          invoice.paymentMethod.toLowerCase().contains(
-                                'cash',
-                              ) ||
-                              invoice.paymentMethod.contains('كاش')
-                          ? Colors.green.shade800
-                          : Colors.blue.shade800,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '${Money(invoice.total).toDisplay()} ج.م',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: invoice.status == 'returned'
-                          ? Colors.red.shade700
-                          : AppColors.primary,
-                      decoration: invoice.status == 'returned'
-                          ? TextDecoration.lineThrough
-                          : null,
+              const SizedBox(width: 12),
+              // Total Amount & Items Count
+              ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 80),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        ' ج.م',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 14.5,
+                          color: invoice.status == 'returned'
+                              ? AppColors.error
+                              : AppColors.primary,
+                          decoration: invoice.status == 'returned'
+                              ? TextDecoration.lineThrough
+                              : null,
+                        ),
+                      ),
                     ),
-                  ),
-                  Text(
-                    '${invoice.totalItemsCount} قطعة',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
-                  ),
-                ],
+                    Text(
+                      ' قطعة',
+                      style: const TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 10.5,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(width: 8),
-              // Quick Action Icons
+              // Action Buttons
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
                     visualDensity: VisualDensity.compact,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    padding: const EdgeInsets.all(4),
                     tooltip: 'تنزيل PDF',
                     icon: const Icon(
                       Icons.picture_as_pdf_rounded,
-                      color: Colors.red,
-                      size: 20,
+                      color: Color(0xFFEF4444),
+                      size: 18,
                     ),
                     onPressed: () async {
                       final messenger = ScaffoldMessenger.of(context);
@@ -562,8 +568,8 @@ class _InvoicesViewState extends State<_InvoicesView> {
                       if (path != null) {
                         messenger.showSnackBar(
                           SnackBar(
-                            content: Text('تم تنزيل الفاتورة كملف PDF:\n$path'),
-                            backgroundColor: Colors.green,
+                            content: Text('تم تنزيل الفاتورة كملف PDF:\n'),
+                            backgroundColor: AppColors.success,
                             behavior: SnackBarBehavior.floating,
                           ),
                         );
@@ -571,19 +577,26 @@ class _InvoicesViewState extends State<_InvoicesView> {
                     },
                   ),
                   IconButton(
+                    visualDensity: VisualDensity.compact,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    padding: const EdgeInsets.all(4),
                     tooltip: 'طباعة فورية',
                     icon: Icon(
                       Icons.print_rounded,
                       color: AppColors.primary,
-                      size: 20,
+                      size: 18,
                     ),
                     onPressed: () => ReceiptPdfService.printReceipt(invoice),
                   ),
                   IconButton(
+                    visualDensity: VisualDensity.compact,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    padding: const EdgeInsets.all(4),
                     tooltip: 'عرض التفاصيل',
                     icon: const Icon(
                       Icons.chevron_left_rounded,
-                      color: Colors.grey,
+                      color: Color(0xFF94A3B8),
+                      size: 20,
                     ),
                     onPressed: () => _openDetails(invoice),
                   ),

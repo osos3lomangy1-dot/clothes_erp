@@ -12,7 +12,9 @@ import '../cubits/returns_cubit.dart';
 import '../cubits/returns_state.dart';
 
 class ReturnScreen extends StatefulWidget {
-  const ReturnScreen({super.key});
+  final String? initialInvoiceRef;
+
+  const ReturnScreen({super.key, this.initialInvoiceRef});
 
   @override
   State<ReturnScreen> createState() => _ReturnScreenState();
@@ -25,6 +27,15 @@ class _ReturnScreenState extends State<ReturnScreen> {
   final _dateFormat = DateFormat('yyyy/MM/dd - hh:mm a');
   String _historyQuery = '';
   Timer? _searchDebounce;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialInvoiceRef != null &&
+        widget.initialInvoiceRef!.trim().isNotEmpty) {
+      _searchCtrl.text = widget.initialInvoiceRef!.trim();
+    }
+  }
 
   @override
   void dispose() {
@@ -54,7 +65,14 @@ class _ReturnScreenState extends State<ReturnScreen> {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => getIt<ReturnsCubit>()..init(),
+      create: (context) {
+        final cubit = getIt<ReturnsCubit>()..init();
+        if (widget.initialInvoiceRef != null &&
+            widget.initialInvoiceRef!.trim().isNotEmpty) {
+          cubit.searchSale(widget.initialInvoiceRef!.trim());
+        }
+        return cubit;
+      },
       child: DefaultTabController(
         length: 2,
         child: Scaffold(
