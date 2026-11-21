@@ -549,7 +549,7 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                   ],
                 ),
                 const Divider(height: 12, color: AppColors.outlineVariant),
-                // الصف الثاني: الشحن العام، صافي الأرباح، المتبقي تحصيله
+                // الصف الثاني: الشحن العام، العربونات، صافي الأرباح، المتبقي تحصيله (شبكة متناسقة 4×2)
                 Row(
                   children: [
                     Expanded(
@@ -557,6 +557,14 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                         'شحن المندوب',
                         Money(batch.totalShippingPiasters).toDisplay(),
                         AppColors.primary,
+                      ),
+                    ),
+                    _divider(),
+                    Expanded(
+                      child: _buildMetricColumn(
+                        'العربونات المسددة',
+                        Money(batch.totalDepositsPiasters).toDisplay(),
+                        AppColors.onSurface,
                       ),
                     ),
                     _divider(),
@@ -1274,6 +1282,7 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
         ),
         Text(
           value,
+          textDirection: TextDirection.ltr,
           style: TextStyle(
             fontFamily: 'Cairo',
             fontSize: 12,
