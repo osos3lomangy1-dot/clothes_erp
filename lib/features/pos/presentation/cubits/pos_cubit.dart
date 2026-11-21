@@ -426,6 +426,17 @@ class PosCubit extends Cubit<PosState> {
     ));
   }
 
+  void loadCart({
+    required List<SaleItemEntity> cart,
+    CustomerEntity? customer,
+  }) {
+    final next = state.copyWith(
+      customer: customer,
+      clearCustomer: customer == null,
+    );
+    _updateCart(next, cart);
+  }
+
   void assignCustomer(CustomerEntity? customer) {
     final next = state.copyWith(
       customer: customer,

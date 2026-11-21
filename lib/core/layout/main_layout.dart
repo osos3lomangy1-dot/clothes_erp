@@ -27,6 +27,7 @@ import '../../features/inventory/presentation/screens/stocktake_screen.dart';
 import '../../features/invoices/presentation/screens/invoices_screen.dart';
 import '../../features/partners/presentation/screens/partners_screen.dart';
 import '../../features/pos/presentation/screens/pos_screen.dart';
+import '../../features/pre_orders/presentation/screens/pre_orders_screen.dart';
 import '../../features/auth/domain/models/cashier_permissions_config.dart';
 import '../../features/auth/services/cashier_permissions_service.dart';
 import '../../features/products/presentation/screens/product_list_screen.dart';
@@ -364,6 +365,16 @@ class _MainLayoutState extends State<MainLayout> {
                                                 const DeliveryOrdersScreen(),
                                                 isSubItem: true,
                                               ),
+                                              if (_featureEnabled(
+                                                features,
+                                                FeatureKeys.preOrders,
+                                              ))
+                                                _navItem(
+                                                  Icons.bookmark_added_rounded,
+                                                  'الحجز المسبق والعربونات',
+                                                  const PreOrdersScreen(),
+                                                  isSubItem: true,
+                                                ),
                                               if (_featureEnabled(
                                                 features,
                                                 FeatureKeys.shifts,

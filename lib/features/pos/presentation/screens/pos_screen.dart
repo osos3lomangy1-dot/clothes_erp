@@ -36,6 +36,7 @@ import '../../../delivery/domain/entities/delivery_order_entity.dart';
 import '../../../delivery/domain/repositories/delivery_repository.dart';
 import '../../../delivery/presentation/screens/delivery_orders_screen.dart';
 import '../../../delivery/presentation/widgets/delivery_checkout_dialog.dart';
+import '../../../pre_orders/presentation/screens/pre_orders_screen.dart';
 import '../../../auth/services/cashier_permissions_service.dart';
 
 Color _getCategoryColor(String? categoryId) {
@@ -103,8 +104,7 @@ class _PosView extends StatefulWidget {
 
 class _PosViewState extends State<_PosView> {
   final FocusNode _searchFocusNode = FocusNode();
-  final GlobalKey<_ProductPanelState> _productPanelKey =
-      GlobalKey<_ProductPanelState>();
+  final TextEditingController _searchCtrl = TextEditingController();
   final GlobalKey<_CartPanelState> _cartPanelKey = GlobalKey<_CartPanelState>();
   final StringBuffer _scannerBuffer = StringBuffer();
   DateTime _lastScanKeyTime = DateTime.now();
@@ -134,10 +134,29 @@ class _PosViewState extends State<_PosView> {
     // Shortcut [F2]: Focus & select search bar
     if (key == LogicalKeyboardKey.f2) {
       _scannerBuffer.clear();
-      _productPanelKey.currentState?.focusAndSelectSearch();
-      if (_productPanelKey.currentState == null) {
-        _searchFocusNode.requestFocus();
+      _searchFocusNode.requestFocus();
+      if (_searchCtrl.text.isNotEmpty) {
+        _searchCtrl.selection = TextSelection(
+          baseOffset: 0,
+          extentOffset: _searchCtrl.text.length,
+        );
       }
+      return true;
+    }
+
+    // Shortcut [F7]: Open Pre-Orders Hub
+    if (key == LogicalKeyboardKey.f7) {
+      _scannerBuffer.clear();
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const PreOrdersScreen()),
+      );
+      return true;
+    }
+
+    // Shortcut [F8]: Add new bill tab / Hold current bill
+    if (key == LogicalKeyboardKey.f8) {
+      _scannerBuffer.clear();
+      _cartPanelKey.currentState?.addNewBillTab();
       return true;
     }
 
@@ -148,17 +167,21 @@ class _PosViewState extends State<_PosView> {
       return true;
     }
 
-    // Shortcut [Esc]: Clear cart (or clear search text if cart is already empty)
+    // Shortcut [Esc]: Clear search text if not empty, otherwise clear cart
     if (key == LogicalKeyboardKey.escape) {
       _scannerBuffer.clear();
+      if (_searchCtrl.text.isNotEmpty) {
+        _searchCtrl.clear();
+        context.read<PosCubit>().searchProducts('');
+        setState(() {});
+        return true;
+      }
       final posCubit = context.read<PosCubit>();
       if (posCubit.state.cart.isNotEmpty) {
         _cartPanelKey.currentState?.clearCartAndInputs();
         return true;
       }
-      final clearedSearch =
-          _productPanelKey.currentState?.clearSearchIfNotEmpty() ?? false;
-      return clearedSearch;
+      return false;
     }
 
     final now = DateTime.now();
@@ -201,7 +224,31 @@ class _PosViewState extends State<_PosView> {
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_handleHardwareScan);
     _searchFocusNode.dispose();
+    _searchCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _openQuickAddProduct(
+    BuildContext context, {
+    String? initialQuery,
+  }) async {
+    final posCubit = context.read<PosCubit>();
+    final barcodeOrResult = await showDialog<dynamic>(
+      context: context,
+      builder: (_) => SimpleProductFormDialog(
+        initialQuery: initialQuery ?? _searchCtrl.text.trim(),
+      ),
+    );
+    if (!mounted) return;
+    if (barcodeOrResult != null && barcodeOrResult != false) {
+      await posCubit.init();
+      if (barcodeOrResult is String && barcodeOrResult.isNotEmpty) {
+        posCubit.addByBarcode(barcodeOrResult);
+      }
+      _searchCtrl.clear();
+      posCubit.searchProducts('');
+      if (mounted) setState(() {});
+    }
   }
 
   @override
@@ -262,74 +309,77 @@ class _PosViewState extends State<_PosView> {
             shape: const Border(
               bottom: BorderSide(color: AppColors.outlineVariant),
             ),
-            leading: Navigator.canPop(context)
-                ? IconButton(
+            automaticallyImplyLeading: false,
+            toolbarHeight: 56,
+            titleSpacing: 12,
+            title: Row(
+              children: [
+                if (Navigator.canPop(context)) ...[
+                  IconButton(
                     icon: const Icon(
                       Icons.arrow_back_rounded,
                       color: AppColors.onSurface,
+                      size: 20,
                     ),
+                    tooltip: 'رجوع للوحة التحكم',
                     onPressed: () => Navigator.of(context).pop(),
-                  )
-                : null,
-            title: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.point_of_sale_rounded,
-                  color: AppColors.primary,
-                  size: 22,
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'نقطة البيع',
-                  style: TextStyle(
-                    fontFamily: 'Cairo',
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: AppColors.onSurface,
                   ),
+                  const SizedBox(width: 4),
+                ],
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.point_of_sale_rounded,
+                      color: AppColors.primary,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'نقطة البيع',
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16.5,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            actions: [
-              if (shiftState.shiftsEnabled && shiftState.activeShift != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 10,
-                    horizontal: 8,
-                  ),
-                  child: InkWell(
+                if (shiftState.shiftsEnabled && shiftState.activeShift != null) ...[
+                  const SizedBox(width: 8),
+                  InkWell(
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const ShiftScreen()),
                       );
                     },
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(16),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
+                        horizontal: 8,
+                        vertical: 3.5,
                       ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: AppColors.outlineVariant),
                       ),
-                      child: Row(
+                      child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.lock_open_rounded,
                             color: AppColors.success,
-                            size: 14,
+                            size: 13,
                           ),
-                          const SizedBox(width: 4),
-                          const Text(
+                          SizedBox(width: 4),
+                          Text(
                             'وردية مفتوحة',
                             style: TextStyle(
                               fontFamily: 'Cairo',
                               color: AppColors.success,
-                              fontSize: 11,
+                              fontSize: 10.5,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -337,97 +387,237 @@ class _PosViewState extends State<_PosView> {
                       ),
                     ),
                   ),
-                ),
-              IconButton(
-                icon: const Icon(
-                  Icons.moped_rounded,
-                  color: AppColors.onSurfaceVariant,
-                  size: 22,
-                ),
-                tooltip: 'إدارة وتتبع الدليفري والطيارين',
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const DeliveryOrdersScreen(),
+                ],
+                const SizedBox(width: 8),
+                // Cashier Badge
+                Tooltip(
+                  message: 'ملف ومستحقات الكاشير (الراتب، البونص، الوردية)',
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: cashierId.isNotEmpty
+                        ? () => CashierProfileDialog.show(
+                              context,
+                              employeeId: cashierId,
+                            )
+                        : null,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 3.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.outlineVariant),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.person_rounded,
+                            size: 14,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            cashierName,
+                            style: const TextStyle(
+                              fontFamily: 'Cairo',
+                              color: AppColors.onSurface,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  );
-                },
-              ),
-              // Cashier Badge & Financial Summary Quick Access
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Center(
-                  child: BlocBuilder<AuthCubit, AuthState>(
-                    builder: (context, authState) {
-                      final cashierName = authState is AuthAuthenticated
-                          ? authState.user.name
-                          : 'كاشير';
-                      final cashierId = authState is AuthAuthenticated
-                          ? authState.user.id
-                          : '';
-                      return Tooltip(
-                        message:
-                            'عرض ملف ومستحقات الكاشير (الراتب، البونص، الوردية)',
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(20),
-                          onTap: cashierId.isNotEmpty
-                              ? () => CashierProfileDialog.show(
-                                  context,
-                                  employeeId: cashierId,
-                                )
-                              : null,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 6,
+                  ),
+                ),
+
+                const SizedBox(width: 12),
+
+                // Center: Quick Search Field [F2]
+                Expanded(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 480),
+                      child: Container(
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppColors.outlineVariant.withValues(alpha: 0.8),
+                          ),
+                        ),
+                        child: TextField(
+                          controller: _searchCtrl,
+                          focusNode: _searchFocusNode,
+                          autofocus: true,
+                          style: const TextStyle(fontFamily: 'Cairo', fontSize: 13),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            hintText: 'بحث بالاسم أو الكود أو المقاس... [F2]',
+                            hintStyle: TextStyle(
+                              fontFamily: 'Cairo',
+                              color: Colors.grey.shade500,
+                              fontSize: 12,
                             ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: AppColors.outlineVariant,
-                              ),
+                            prefixIcon: Icon(
+                              Icons.search_rounded,
+                              color: AppColors.primary,
+                              size: 18,
                             ),
-                            child: Row(
+                            suffixIcon: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(
-                                  Icons.person_rounded,
-                                  size: 16,
-                                  color: AppColors.primary,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  cashierName,
-                                  style: const TextStyle(
-                                    fontFamily: 'Cairo',
-                                    color: AppColors.onSurface,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
+                                if (_searchCtrl.text.isNotEmpty)
+                                  IconButton(
+                                    icon: const Icon(Icons.clear, size: 16),
+                                    onPressed: () {
+                                      _searchCtrl.clear();
+                                      context.read<PosCubit>().searchProducts('');
+                                      setState(() {});
+                                    },
                                   ),
-                                ),
-                                const SizedBox(width: 4),
-                                const Icon(
-                                  Icons.info_outline_rounded,
-                                  size: 14,
-                                  color: AppColors.onSurfaceVariant,
+                                Container(
+                                  margin: const EdgeInsets.only(left: 6),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surfaceContainer,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: AppColors.outlineVariant,
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'F2',
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.onSurface,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 9,
+                            ),
                           ),
+                          onChanged: (val) {
+                            context.read<PosCubit>().searchProducts(val);
+                            setState(() {});
+                          },
+                          onSubmitted: (val) {
+                            if (val.trim().isNotEmpty) {
+                              final added = context.read<PosCubit>().addByBarcode(val.trim());
+                              if (added) {
+                                _searchCtrl.clear();
+                                context.read<PosCubit>().searchProducts('');
+                                setState(() {});
+                              }
+                            }
+                          },
                         ),
-                      );
-                    },
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ],
+
+                const SizedBox(width: 8),
+
+                // Quick Add Product Button
+                FilledButton.icon(
+                  onPressed: () => _openQuickAddProduct(context),
+                  icon: const Icon(Icons.add_rounded, size: 17),
+                  label: const Text(
+                    'صنف جديد',
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    minimumSize: const Size(0, 36),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+
+                const SizedBox(width: 8),
+
+                // Pre-Orders Button [F7]
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const PreOrdersScreen(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.bookmark_added_rounded, size: 16),
+                  label: const Text(
+                    'حجز مسبق [F7]',
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.surfaceContainerLow,
+                    foregroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    minimumSize: const Size(0, 36),
+                    side: BorderSide(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+
+                const SizedBox(width: 8),
+
+                // Delivery Button
+                IconButton(
+                  icon: const Icon(
+                    Icons.moped_rounded,
+                    color: AppColors.onSurfaceVariant,
+                    size: 20,
+                  ),
+                  tooltip: 'إدارة وتتبع الدليفري والطيارين',
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const DeliveryOrdersScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
           body: LayoutBuilder(
             builder: (context, constraints) {
               final cartWidth = constraints.maxWidth > 1200
                   ? 440.0
-                  : (constraints.maxWidth * 0.38).clamp(340.0, 440.0);
+                  : (constraints.maxWidth * 0.38).clamp(360.0, 440.0);
               return Row(
                 children: [
                   // Right Panel in RTL: Products Catalog
@@ -436,8 +626,9 @@ class _PosViewState extends State<_PosView> {
                       builder: (ctx) {
                         try {
                           return _ProductPanel(
-                            key: _productPanelKey,
-                            searchFocusNode: _searchFocusNode,
+                            searchQuery: _searchCtrl.text,
+                            onOpenQuickAdd: (query) =>
+                                _openQuickAddProduct(context, initialQuery: query),
                           );
                         } catch (e, st) {
                           return SingleChildScrollView(
@@ -758,63 +949,10 @@ class _PosViewState extends State<_PosView> {
 // ---------------------------------------------------------------------------
 // RIGHT PANEL: PRODUCTS
 // ---------------------------------------------------------------------------
-class _ProductPanel extends StatefulWidget {
-  final FocusNode searchFocusNode;
-  const _ProductPanel({super.key, required this.searchFocusNode});
-
-  @override
-  State<_ProductPanel> createState() => _ProductPanelState();
-}
-
-class _ProductPanelState extends State<_ProductPanel> {
-  final _searchCtrl = TextEditingController();
-
-  void focusAndSelectSearch() {
-    widget.searchFocusNode.requestFocus();
-    if (_searchCtrl.text.isNotEmpty) {
-      _searchCtrl.selection = TextSelection(
-        baseOffset: 0,
-        extentOffset: _searchCtrl.text.length,
-      );
-    }
-  }
-
-  bool clearSearchIfNotEmpty() {
-    if (_searchCtrl.text.isEmpty) return false;
-    _searchCtrl.clear();
-    context.read<PosCubit>().searchProducts('');
-    setState(() {});
-    return true;
-  }
-
-  Future<void> _openQuickAddProduct(
-    BuildContext context, {
-    String? initialQuery,
-  }) async {
-    final posCubit = context.read<PosCubit>();
-    final barcodeOrResult = await showDialog<dynamic>(
-      context: context,
-      builder: (_) => SimpleProductFormDialog(
-        initialQuery: initialQuery ?? _searchCtrl.text.trim(),
-      ),
-    );
-    if (!mounted) return;
-    if (barcodeOrResult != null && barcodeOrResult != false) {
-      await posCubit.init();
-      if (barcodeOrResult is String && barcodeOrResult.isNotEmpty) {
-        posCubit.addByBarcode(barcodeOrResult);
-      }
-      _searchCtrl.clear();
-      posCubit.searchProducts('');
-      if (mounted) setState(() {});
-    }
-  }
-
-  @override
-  void dispose() {
-    _searchCtrl.dispose();
-    super.dispose();
-  }
+class _ProductPanel extends StatelessWidget {
+  final String searchQuery;
+  final void Function(String? query)? onOpenQuickAdd;
+  const _ProductPanel({this.searchQuery = '', this.onOpenQuickAdd});
 
   @override
   Widget build(BuildContext context) {
@@ -834,136 +972,7 @@ class _ProductPanelState extends State<_ProductPanel> {
   Widget _buildContent(BuildContext context) {
     return Column(
       children: [
-        // Search Bar: clean search input with F2 shortcut & Quick Add Product button
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: AppColors.outlineVariant.withValues(alpha: 0.6),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.02),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    controller: _searchCtrl,
-                    focusNode: widget.searchFocusNode,
-                    autofocus: true,
-                    style: const TextStyle(fontFamily: 'Cairo', fontSize: 14),
-                    decoration: InputDecoration(
-                      hintText: 'بحث بالاسم أو كود الصنف أو المقاس... [F2]',
-                      hintStyle: TextStyle(
-                        fontFamily: 'Cairo',
-                        color: Colors.grey.shade500,
-                        fontSize: 13,
-                      ),
-                      prefixIcon: Icon(
-                        Icons.search_rounded,
-                        color: AppColors.primary,
-                      ),
-                      suffixIcon: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (_searchCtrl.text.isNotEmpty)
-                            IconButton(
-                              icon: const Icon(Icons.clear, size: 18),
-                              onPressed: () {
-                                _searchCtrl.clear();
-                                context.read<PosCubit>().searchProducts('');
-                                setState(() {});
-                              },
-                            ),
-                          Container(
-                            margin: const EdgeInsets.only(left: 8),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceContainer,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: AppColors.outlineVariant,
-                              ),
-                            ),
-                            child: Text(
-                              'F2',
-                              style: TextStyle(
-                                fontFamily: 'Cairo',
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.onSurface,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                    ),
-                    onChanged: (val) {
-                      context.read<PosCubit>().searchProducts(val);
-                      setState(() {});
-                    },
-                    onSubmitted: (val) {
-                      if (val.trim().isNotEmpty) {
-                        final added = context.read<PosCubit>().addByBarcode(
-                          val.trim(),
-                        );
-                        if (added) {
-                          _searchCtrl.clear();
-                          context.read<PosCubit>().searchProducts('');
-                          setState(() {});
-                        }
-                      }
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              FilledButton.icon(
-                onPressed: () => _openQuickAddProduct(context),
-                icon: const Icon(Icons.add_rounded, size: 20),
-                label: const Text(
-                  'صنف جديد',
-                  style: TextStyle(
-                    fontFamily: 'Cairo',
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 14,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  elevation: 0,
-                ),
-              ),
-            ],
-          ),
-        ),
-
+        const SizedBox(height: 10),
         // Category Chips: Horizontal scrollable row
         BlocBuilder<PosCubit, PosState>(
           builder: (context, state) {
@@ -1072,7 +1081,7 @@ class _ProductPanelState extends State<_ProductPanel> {
                   );
                 }
                 if (state.filteredVariants.isEmpty) {
-                  final query = _searchCtrl.text.trim();
+                  final query = searchQuery.trim();
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -1094,10 +1103,7 @@ class _ProductPanelState extends State<_ProductPanel> {
                         if (query.isNotEmpty) ...[
                           const SizedBox(height: 12),
                           ElevatedButton.icon(
-                            onPressed: () => _openQuickAddProduct(
-                              context,
-                              initialQuery: query,
-                            ),
+                            onPressed: () => onOpenQuickAdd?.call(query),
                             icon: const Icon(Icons.add_rounded, size: 18),
                             label: Text(
                               'إضافة "$query" كصنف جديد',
@@ -2048,6 +2054,35 @@ class _VariantModalState extends State<_VariantModal> {
 }
 
 // ---------------------------------------------------------------------------
+// POS HELD BILL MODEL (MULTI-BILL / HOLD SUPPORT)
+// ---------------------------------------------------------------------------
+class PosHeldBill {
+  final int id;
+  String title;
+  List<SaleItemEntity> cart;
+  CustomerEntity? customer;
+  String discountText;
+  bool isPercentageDiscount;
+  String receivedText;
+  String paymentMethod;
+  DeliveryOrderEntity? deliveryOrder;
+  DateTime heldAt;
+
+  PosHeldBill({
+    required this.id,
+    required this.title,
+    this.cart = const [],
+    this.customer,
+    this.discountText = '',
+    this.isPercentageDiscount = false,
+    this.receivedText = '',
+    this.paymentMethod = 'cash',
+    this.deliveryOrder,
+    DateTime? heldAt,
+  }) : heldAt = heldAt ?? DateTime.now();
+}
+
+// ---------------------------------------------------------------------------
 // LEFT PANEL: CART (440px)
 // ---------------------------------------------------------------------------
 class _CartPanel extends StatefulWidget {
@@ -2068,6 +2103,114 @@ class _CartPanelState extends State<_CartPanel> {
   bool _creditAvailable = true;
   bool _isWholesaleMode = false;
   DeliveryOrderEntity? _deliveryOrder;
+
+  int _nextBillId = 2;
+  int _activeBillIndex = 0;
+  final List<PosHeldBill> _bills = [
+    PosHeldBill(id: 1, title: 'فاتورة 1'),
+  ];
+
+  void _saveActiveBillState(PosState currentState) {
+    if (_activeBillIndex >= 0 && _activeBillIndex < _bills.length) {
+      _bills[_activeBillIndex] = PosHeldBill(
+        id: _bills[_activeBillIndex].id,
+        title: _bills[_activeBillIndex].title,
+        cart: List.from(currentState.cart),
+        customer: currentState.customer,
+        discountText: _discountCtrl.text,
+        isPercentageDiscount: _isPercentageDiscount,
+        receivedText: _receivedCtrl.text,
+        paymentMethod: _paymentMethod,
+        deliveryOrder: _deliveryOrder,
+      );
+    }
+  }
+
+  void addNewBillTab() {
+    if (!mounted) return;
+    final posCubit = context.read<PosCubit>();
+    _saveActiveBillState(posCubit.state);
+
+    final newBill = PosHeldBill(
+      id: _nextBillId++,
+      title: 'فاتورة ${_bills.length + 1}',
+    );
+
+    setState(() {
+      _bills.add(newBill);
+      _activeBillIndex = _bills.length - 1;
+      _discountCtrl.clear();
+      _receivedCtrl.clear();
+      _isPercentageDiscount = false;
+      _paymentMethod = 'cash';
+      _deliveryOrder = null;
+    });
+
+    posCubit.loadCart(cart: const [], customer: null);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('تم تعليق الفاتورة السابقة وفتح ${newBill.title} جديدة [F8]'),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppColors.primary,
+      ),
+    );
+  }
+
+  void _switchToBill(int targetIndex) {
+    if (targetIndex == _activeBillIndex ||
+        targetIndex < 0 ||
+        targetIndex >= _bills.length) {
+      return;
+    }
+    final posCubit = context.read<PosCubit>();
+    _saveActiveBillState(posCubit.state);
+
+    final targetBill = _bills[targetIndex];
+    setState(() {
+      _activeBillIndex = targetIndex;
+      _discountCtrl.text = targetBill.discountText;
+      _receivedCtrl.text = targetBill.receivedText;
+      _isPercentageDiscount = targetBill.isPercentageDiscount;
+      _paymentMethod = targetBill.paymentMethod;
+      _deliveryOrder = targetBill.deliveryOrder;
+    });
+
+    posCubit.loadCart(
+      cart: targetBill.cart,
+      customer: targetBill.customer,
+    );
+  }
+
+  void _closeBill(int index) {
+    if (_bills.length <= 1) {
+      clearCartAndInputs();
+      return;
+    }
+
+    final posCubit = context.read<PosCubit>();
+    setState(() {
+      _bills.removeAt(index);
+      if (_activeBillIndex >= _bills.length) {
+        _activeBillIndex = _bills.length - 1;
+      } else if (_activeBillIndex > index) {
+        _activeBillIndex--;
+      }
+    });
+
+    final activeBill = _bills[_activeBillIndex];
+    _discountCtrl.text = activeBill.discountText;
+    _receivedCtrl.text = activeBill.receivedText;
+    _isPercentageDiscount = activeBill.isPercentageDiscount;
+    _paymentMethod = activeBill.paymentMethod;
+    _deliveryOrder = activeBill.deliveryOrder;
+
+    posCubit.loadCart(
+      cart: activeBill.cart,
+      customer: activeBill.customer,
+    );
+  }
 
   Widget _buildPaymentBtn({
     required String method,
@@ -2149,6 +2292,12 @@ class _CartPanelState extends State<_CartPanel> {
     _discountCtrl.clear();
     _receivedCtrl.clear();
     setState(() => _isWholesaleMode = false);
+    if (_activeBillIndex < _bills.length) {
+      _bills[_activeBillIndex] = PosHeldBill(
+        id: _bills[_activeBillIndex].id,
+        title: _bills[_activeBillIndex].title,
+      );
+    }
   }
 
   @override
@@ -2278,6 +2427,12 @@ class _CartPanelState extends State<_CartPanel> {
       _discountCtrl.clear();
       setState(() => _isWholesaleMode = false);
 
+      if (_bills.length > 1) {
+        _closeBill(_activeBillIndex);
+      } else {
+        _bills[0] = PosHeldBill(id: _bills[0].id, title: 'فاتورة 1');
+      }
+
       final invoicesRepo = getIt<InvoicesRepository>();
       final res = await invoicesRepo.getInvoices(limit: 1);
       InvoiceDetailsEntity? latestInvoice;
@@ -2354,6 +2509,12 @@ class _CartPanelState extends State<_CartPanel> {
       _receivedCtrl.clear();
       _discountCtrl.clear();
       setState(() => _isWholesaleMode = false);
+
+      if (_bills.length > 1) {
+        _closeBill(_activeBillIndex);
+      } else {
+        _bills[0] = PosHeldBill(id: _bills[0].id, title: 'فاتورة 1');
+      }
 
       final invoicesRepo = getIt<InvoicesRepository>();
       final res = await invoicesRepo.getInvoices(limit: 1);
@@ -2846,17 +3007,189 @@ class _CartPanelState extends State<_CartPanel> {
           },
           child: LayoutBuilder(
             builder: (context, outerConstraints) {
-              final isCompact = outerConstraints.maxHeight < 680;
+              final isCompact = outerConstraints.maxHeight < 750;
               return Container(
                 color: AppColors.surfaceContainerLowest,
                 child: Column(
                   children: [
+                    // 1. Multi-Bill / Hold Tabs
+                    Container(
+                      height: 38,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: const BoxDecoration(
+                        color: AppColors.surfaceContainer,
+                        border: Border(
+                          bottom: BorderSide(
+                            color: AppColors.outlineVariant,
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: _bills.length,
+                              separatorBuilder: (context, _) =>
+                                  const SizedBox(width: 4),
+                              itemBuilder: (context, index) {
+                                final bill = _bills[index];
+                                final isActive = index == _activeBillIndex;
+                                final count = isActive
+                                    ? state.cart.length
+                                    : bill.cart.length;
+                                return InkWell(
+                                  onTap: () => _switchToBill(index),
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: AnimatedContainer(
+                                    duration:
+                                        const Duration(milliseconds: 150),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isActive
+                                          ? Colors.white
+                                          : Colors.transparent,
+                                      borderRadius:
+                                          BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: isActive
+                                            ? AppColors.primary
+                                            : Colors.transparent,
+                                        width: 1.2,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          isActive
+                                              ? Icons.receipt_long_rounded
+                                              : Icons
+                                                  .pause_circle_outline_rounded,
+                                          size: 13,
+                                          color: isActive
+                                              ? AppColors.primary
+                                              : AppColors.onSurfaceVariant,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          bill.title,
+                                          style: TextStyle(
+                                            fontFamily: 'Cairo',
+                                            fontSize: 11,
+                                            fontWeight: isActive
+                                                ? FontWeight.bold
+                                                : FontWeight.w600,
+                                            color: isActive
+                                                ? AppColors.primary
+                                                : AppColors.onSurfaceVariant,
+                                          ),
+                                        ),
+                                        if (count > 0) ...[
+                                          const SizedBox(width: 4),
+                                          Container(
+                                            padding:
+                                                const EdgeInsets.symmetric(
+                                                  horizontal: 4.5,
+                                                  vertical: 0.5,
+                                                ),
+                                            decoration: BoxDecoration(
+                                              color: isActive
+                                                  ? AppColors.primary
+                                                  : Colors.amber.shade700,
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              '$count',
+                                              style: const TextStyle(
+                                                fontFamily: 'Cairo',
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                        if (_bills.length > 1) ...[
+                                          const SizedBox(width: 4),
+                                          InkWell(
+                                            onTap: () => _closeBill(index),
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                            child: const Padding(
+                                              padding: EdgeInsets.all(1),
+                                              child: Icon(
+                                                Icons.close_rounded,
+                                                size: 12,
+                                                color: AppColors.error,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Tooltip(
+                            message: 'فاتورة جديدة / تعليق الحالية [F8]',
+                            child: InkWell(
+                              onTap: addNewBillTab,
+                              borderRadius: BorderRadius.circular(6),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.12,
+                                  ),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.add_rounded,
+                                      size: 14,
+                                      color: AppColors.primary,
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      'F8',
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
                     // Cart Header: Title + Items/Pieces count + Wholesale toggle + Clear [Esc]
                     Padding(
                       padding: EdgeInsets.fromLTRB(
-                        16,
-                        isCompact ? 6 : 10,
-                        16,
+                        12,
+                        isCompact ? 4 : 8,
+                        12,
                         isCompact ? 2 : 4,
                       ),
                       child: Column(
@@ -2866,42 +3199,48 @@ class _CartPanelState extends State<_CartPanel> {
                             children: [
                               Icon(
                                 Icons.shopping_bag_outlined,
-                                size: 18,
+                                size: 17,
                                 color: AppColors.primary,
                               ),
-                              const SizedBox(width: 6),
+                              const SizedBox(width: 5),
                               const Text(
                                 'سلة المشتريات',
                                 style: TextStyle(
                                   fontFamily: 'Cairo',
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 14.5,
+                                  fontSize: 13.5,
                                   color: AppColors.onSurface,
                                 ),
                               ),
-                              const SizedBox(width: 6),
-                              // Badge showing items & pieces
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 1.5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  '${state.cart.length} أصناف • $totalPieces قطع',
-                                  style: TextStyle(
-                                    fontFamily: 'Cairo',
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 10,
+                              const SizedBox(width: 5),
+                              // Badge showing items & pieces (overflow-safe)
+                              Flexible(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 5,
+                                    vertical: 1.5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.12,
+                                    ),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    '${state.cart.length} أصناف • $totalPieces قطع',
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 9.5,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
                                   ),
                                 ),
                               ),
-                              const Spacer(),
-                              if (state.cart.isNotEmpty)
+                              if (state.cart.isNotEmpty) ...[
+                                const SizedBox(width: 4),
                                 Tooltip(
                                   message: 'إفراغ السلة [Esc]',
                                   child: InkWell(
@@ -2913,15 +3252,15 @@ class _CartPanelState extends State<_CartPanel> {
                                     borderRadius: BorderRadius.circular(6),
                                     child: const Padding(
                                       padding: EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 3,
+                                        horizontal: 5,
+                                        vertical: 2,
                                       ),
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Icon(
                                             Icons.delete_sweep_rounded,
-                                            size: 16,
+                                            size: 15,
                                             color: AppColors.error,
                                           ),
                                           SizedBox(width: 2),
@@ -2939,6 +3278,7 @@ class _CartPanelState extends State<_CartPanel> {
                                     ),
                                   ),
                                 ),
+                              ],
                             ],
                           ),
                           const SizedBox(height: 6),
@@ -3401,569 +3741,601 @@ class _CartPanelState extends State<_CartPanel> {
 
                     const Divider(height: 1),
 
-                    // Checkout Footer
-                    Container(
-                      padding: EdgeInsets.all(isCompact ? 10 : 14),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        border: Border(
-                          top: BorderSide(
-                            color: AppColors.outlineVariant.withValues(
-                              alpha: 0.5,
+                    // Checkout Footer (Responsive & Flexible to prevent RenderFlex overflow)
+                    Flexible(
+                      fit: FlexFit.loose,
+                      child: SingleChildScrollView(
+                        physics: const ClampingScrollPhysics(),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: isCompact ? 8 : 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            border: Border(
+                              top: BorderSide(
+                                color: AppColors.outlineVariant.withValues(
+                                  alpha: 0.5,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Subtotal
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                'المجموع الفرعي',
-                                style: TextStyle(
-                                  fontFamily: 'Cairo',
-                                  fontSize: 13,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                              Text(
-                                '${Money(state.subtotal).toDisplay()} ج.م',
-                                style: const TextStyle(
-                                  fontFamily: 'Cairo',
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: isCompact ? 3 : 6),
-
-                          // Promotions Discount
-                          if (state.promotionDiscountPiasters > 0) ...[
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.local_offer,
-                                      size: 14,
-                                      color: AppColors.primary,
+                              // Subtotal
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'المجموع الفرعي',
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: isCompact ? 12 : 13,
+                                      color: Colors.grey.shade600,
                                     ),
-                                    const SizedBox(width: 4),
+                                  ),
+                                  Text(
+                                    '${Money(state.subtotal).toDisplay()} ج.م',
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: isCompact ? 13 : 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: isCompact ? 3 : 5),
+
+                              // Promotions Discount
+                              if (state.promotionDiscountPiasters > 0) ...[
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.local_offer,
+                                          size: 13,
+                                          color: AppColors.primary,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'خصم العروض',
+                                          style: TextStyle(
+                                            fontFamily: 'Cairo',
+                                            fontSize: isCompact ? 12 : 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.primary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                     Text(
-                                      'خصم العروض',
+                                      '- ${Money(state.promotionDiscountPiasters).toDisplay()} ج.م',
                                       style: TextStyle(
                                         fontFamily: 'Cairo',
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
+                                        fontSize: isCompact ? 13 : 14,
+                                        fontWeight: FontWeight.bold,
                                         color: AppColors.primary,
                                       ),
                                     ),
                                   ],
                                 ),
-                                Text(
-                                  '- ${Money(state.promotionDiscountPiasters).toDisplay()} ج.م',
-                                  style: TextStyle(
-                                    fontFamily: 'Cairo',
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.primary,
-                                  ),
-                                ),
+                                SizedBox(height: isCompact ? 3 : 5),
                               ],
-                            ),
-                            SizedBox(height: isCompact ? 3 : 6),
-                          ],
 
-                          // Discount with % and ج.م toggle
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'الخصم',
-                                style: TextStyle(
-                                  fontFamily: 'Cairo',
-                                  fontSize: 13,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
+                              // Discount with % and ج.م toggle
                               Row(
-                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: AppColors.surfaceContainerLow,
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(
-                                        color: AppColors.outlineVariant,
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        _toggleBtn(
-                                          label: '%',
-                                          isSelected: _isPercentageDiscount,
-                                          onTap: () {
-                                            setState(
-                                              () =>
-                                                  _isPercentageDiscount = true,
-                                            );
-                                            _recalculateDiscount(
-                                              state.subtotal,
-                                            );
-                                          },
-                                        ),
-                                        _toggleBtn(
-                                          label: 'ج.م',
-                                          isSelected: !_isPercentageDiscount,
-                                          onTap: () {
-                                            setState(
-                                              () =>
-                                                  _isPercentageDiscount = false,
-                                            );
-                                            _recalculateDiscount(
-                                              state.subtotal,
-                                            );
-                                          },
-                                        ),
-                                      ],
+                                  Text(
+                                    'الخصم',
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: isCompact ? 12 : 13,
+                                      color: Colors.grey.shade600,
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  SizedBox(
-                                    width: 85,
-                                    height: 34,
-                                    child: TextField(
-                                      controller: _discountCtrl,
-                                      keyboardType: TextInputType.number,
-                                      style: const TextStyle(
-                                        fontFamily: 'Cairo',
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                      decoration: InputDecoration(
-                                        hintText: '0',
-                                        isDense: true,
-                                        filled: true,
-                                        fillColor:
-                                            AppColors.surfaceContainerLowest,
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                          borderSide: const BorderSide(
-                                            color: AppColors.outlineVariant,
-                                          ),
-                                        ),
-                                        contentPadding:
-                                            const EdgeInsets.symmetric(
-                                              horizontal: 6,
-                                              vertical: 6,
-                                            ),
-                                      ),
-                                      onChanged: (_) =>
-                                          _recalculateDiscount(state.subtotal),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: isCompact ? 4 : 8),
-
-                          // Grand Total: Big, bold, Primary color
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: isCompact ? 5 : 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceContainer,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'الإجمالي النهائي',
-                                  style: TextStyle(
-                                    fontFamily: 'Cairo',
-                                    fontSize: isCompact ? 13 : 15,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Text(
-                                  '${Money(state.total).toDisplay()} ج.م',
-                                  style: TextStyle(
-                                    fontFamily: 'Cairo',
-                                    fontSize: isCompact ? 18 : 22,
-                                    fontWeight: FontWeight.w900,
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          SizedBox(height: isCompact ? 4 : 8),
-
-                          // Delivery Order Toggle
-                          Row(
-                            children: [
-                              Text(
-                                'طريقة الدفع:',
-                                style: TextStyle(
-                                  fontFamily: 'Cairo',
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.grey.shade700,
-                                ),
-                              ),
-                              const Spacer(),
-                              Flexible(
-                                child: InkWell(
-                                  onTap: () => _toggleDeliveryMode(state),
-                                  borderRadius: BorderRadius.circular(6),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: _deliveryOrder != null
-                                          ? AppColors.primary
-                                          : AppColors.surfaceContainerLow,
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(
-                                        color: _deliveryOrder != null
-                                            ? AppColors.primary
-                                            : AppColors.outlineVariant,
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          Icons.delivery_dining_rounded,
-                                          size: 15,
-                                          color: _deliveryOrder != null
-                                              ? Colors.white
-                                              : AppColors.primary,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Flexible(
-                                          child: Text(
-                                            _deliveryOrder != null
-                                                ? 'طلب دليفري (+${Money(_deliveryOrder!.deliveryFeePiasters).toDisplay()} ج.م)'
-                                                : 'طلب دليفري',
-                                            style: TextStyle(
-                                              fontFamily: 'Cairo',
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.bold,
-                                              color: _deliveryOrder != null
-                                                  ? Colors.white
-                                                  : AppColors.onSurface,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                        if (_deliveryOrder != null) ...[
-                                          const SizedBox(width: 4),
-                                          const Icon(
-                                            Icons.close_rounded,
-                                            size: 12,
-                                            color: Colors.white,
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: isCompact ? 3 : 5),
-
-                          // Payment Method Buttons: 2 clean rows preventing squeeze
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildPaymentBtn(
-                                  method: 'cash',
-                                  label: 'كاش',
-                                  icon: Icons.payments_outlined,
-                                  onTap: () =>
-                                      setState(() => _paymentMethod = 'cash'),
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: _buildPaymentBtn(
-                                  method: 'card',
-                                  label: 'فيزا',
-                                  icon: Icons.credit_card_rounded,
-                                  onTap: () =>
-                                      setState(() => _paymentMethod = 'card'),
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: _buildPaymentBtn(
-                                  method: 'split',
-                                  label: 'مجزأ',
-                                  icon: Icons.call_split_rounded,
-                                  onTap: () =>
-                                      setState(() => _paymentMethod = 'split'),
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (_installmentAvailable || _creditAvailable) ...[
-                            const SizedBox(height: 6),
-                            Row(
-                              children: [
-                                if (_installmentAvailable) ...[
-                                  Expanded(
-                                    child: _buildPaymentBtn(
-                                      method: 'installment',
-                                      label: 'تقسيط',
-                                      icon: Icons.payments_rounded,
-                                      onTap: () => setState(
-                                        () => _paymentMethod = 'installment',
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                                if (_installmentAvailable && _creditAvailable)
-                                  const SizedBox(width: 6),
-                                if (_creditAvailable) ...[
-                                  Expanded(
-                                    child: _buildPaymentBtn(
-                                      method: 'credit',
-                                      label: 'آجل',
-                                      icon: Icons.account_balance_wallet_outlined,
-                                      onTap: () => setState(
-                                        () => _paymentMethod = 'credit',
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ],
-
-                          if (_paymentMethod == 'credit') ...[
-                            SizedBox(height: isCompact ? 4 : 8),
-                            _buildCreditPaymentSection(state),
-                          ],
-
-                          // Fast Cash Banknote Presets (when cash mode is active)
-                          if (_paymentMethod == 'cash') ...[
-                            SizedBox(height: isCompact ? 4 : 8),
-                            SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: Row(
-                                  children: [
-                                    Text(
-                                      'الدفع السريع:',
-                                  style: TextStyle(
-                                    fontFamily: 'Cairo',
-                                    fontSize: 11,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                // Exact Amount Preset
-                                InkWell(
-                                  onTap: () {
-                                    _receivedCtrl.text = Money(
-                                      state.total,
-                                    ).toDisplay();
-                                    setState(() {});
-                                  },
-                                  borderRadius: BorderRadius.circular(6),
-                                  child: Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: isCompact ? 2 : 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.surfaceContainerLow,
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(
-                                        color: AppColors.outlineVariant,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      'المبلغ بالضبط',
-                                      style: TextStyle(
-                                        fontFamily: 'Cairo',
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.primary,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                // 50, 100, 200, 500 EGP chips
-                                ...[50, 100, 200, 500].map((preset) {
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 2.0,
-                                    ),
-                                    child: InkWell(
-                                      onTap: () {
-                                        _receivedCtrl.text = '$preset.00';
-                                        setState(() {});
-                                      },
-                                      borderRadius: BorderRadius.circular(6),
-                                      child: Container(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: 6,
-                                          vertical: isCompact ? 2 : 3,
-                                        ),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
                                         decoration: BoxDecoration(
                                           color: AppColors.surfaceContainerLow,
-                                          borderRadius: BorderRadius.circular(
-                                            6,
-                                          ),
+                                          borderRadius:
+                                              BorderRadius.circular(6),
                                           border: Border.all(
                                             color: AppColors.outlineVariant,
                                           ),
                                         ),
-                                        child: Text(
-                                          '$preset',
-                                          style: const TextStyle(
-                                            fontFamily: 'Cairo',
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            _toggleBtn(
+                                              label: '%',
+                                              isSelected: _isPercentageDiscount,
+                                              onTap: () {
+                                                setState(
+                                                  () => _isPercentageDiscount =
+                                                      true,
+                                                );
+                                                _recalculateDiscount(
+                                                  state.subtotal,
+                                                );
+                                              },
+                                            ),
+                                            _toggleBtn(
+                                              label: 'ج.م',
+                                              isSelected:
+                                                  !_isPercentageDiscount,
+                                              onTap: () {
+                                                setState(
+                                                  () => _isPercentageDiscount =
+                                                      false,
+                                                );
+                                                _recalculateDiscount(
+                                                  state.subtotal,
+                                                );
+                                              },
+                                            ),
+                                          ],
                                         ),
                                       ),
+                                      const SizedBox(width: 6),
+                                      SizedBox(
+                                        width: 78,
+                                        height: 30,
+                                        child: TextField(
+                                          controller: _discountCtrl,
+                                          keyboardType: TextInputType.number,
+                                          style: const TextStyle(
+                                            fontFamily: 'Cairo',
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                          decoration: InputDecoration(
+                                            hintText: '0',
+                                            isDense: true,
+                                            filled: true,
+                                            fillColor: AppColors
+                                                .surfaceContainerLowest,
+                                            border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                              borderSide: const BorderSide(
+                                                color: AppColors.outlineVariant,
+                                              ),
+                                            ),
+                                            contentPadding:
+                                                const EdgeInsets.symmetric(
+                                                  horizontal: 4,
+                                                  vertical: 4,
+                                                ),
+                                          ),
+                                          onChanged: (_) =>
+                                              _recalculateDiscount(
+                                                state.subtotal,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: isCompact ? 4 : 6),
+
+                              // Grand Total
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: isCompact ? 4 : 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surfaceContainer,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'الإجمالي النهائي',
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontSize: isCompact ? 12 : 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
-                                  );
-                                }),
+                                    Text(
+                                      '${Money(state.total).toDisplay()} ج.م',
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontSize: isCompact ? 16 : 20,
+                                        fontWeight: FontWeight.w900,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
                               SizedBox(height: isCompact ? 4 : 6),
-                            Row(
-                              children: [
-                                Text(
-                                  'المستلم:',
-                                  style: TextStyle(
-                                    fontFamily: 'Cairo',
-                                    fontSize: 12,
-                                    color: Colors.grey.shade600,
+
+                              // Delivery and Payment Method Header
+                              Row(
+                                children: [
+                                  Text(
+                                    'طريقة الدفع:',
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey.shade700,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: SizedBox(
-                                    height: isCompact ? 30 : 34,
-                                    child: TextField(
-                                      controller: _receivedCtrl,
-                                      keyboardType: TextInputType.number,
-                                      style: const TextStyle(
-                                        fontFamily: 'Cairo',
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      decoration: InputDecoration(
-                                        hintText: 'المبلغ المدفوع',
-                                        isDense: true,
-                                        filled: true,
-                                        fillColor:
-                                            AppColors.surfaceContainerLowest,
-                                        contentPadding:
-                                            const EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                              vertical: 6,
-                                            ),
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            8,
+                                  const Spacer(),
+                                  Flexible(
+                                    child: InkWell(
+                                      onTap: () => _toggleDeliveryMode(state),
+                                      borderRadius: BorderRadius.circular(6),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2.5,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: _deliveryOrder != null
+                                              ? AppColors.primary
+                                              : AppColors.surfaceContainerLow,
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                          border: Border.all(
+                                            color: _deliveryOrder != null
+                                                ? AppColors.primary
+                                                : AppColors.outlineVariant,
                                           ),
-                                          borderSide: const BorderSide(
-                                            color: AppColors.outlineVariant,
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.delivery_dining_rounded,
+                                              size: 14,
+                                              color: _deliveryOrder != null
+                                                  ? Colors.white
+                                                  : AppColors.primary,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Flexible(
+                                              child: Text(
+                                                _deliveryOrder != null
+                                                    ? 'طلب دليفري (+${Money(_deliveryOrder!.deliveryFeePiasters).toDisplay()} ج.م)'
+                                                    : 'طلب دليفري',
+                                                style: TextStyle(
+                                                  fontFamily: 'Cairo',
+                                                  fontSize: 10.5,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: _deliveryOrder != null
+                                                      ? Colors.white
+                                                      : AppColors.onSurface,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            if (_deliveryOrder != null) ...[
+                                              const SizedBox(width: 4),
+                                              const Icon(
+                                                Icons.close_rounded,
+                                                size: 12,
+                                                color: Colors.white,
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: isCompact ? 3 : 5),
+
+                              // Payment Method Buttons
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildPaymentBtn(
+                                      method: 'cash',
+                                      label: 'كاش',
+                                      icon: Icons.payments_outlined,
+                                      onTap: () => setState(
+                                        () => _paymentMethod = 'cash',
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Expanded(
+                                    child: _buildPaymentBtn(
+                                      method: 'card',
+                                      label: 'فيزا',
+                                      icon: Icons.credit_card_rounded,
+                                      onTap: () => setState(
+                                        () => _paymentMethod = 'card',
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Expanded(
+                                    child: _buildPaymentBtn(
+                                      method: 'split',
+                                      label: 'مجزأ',
+                                      icon: Icons.call_split_rounded,
+                                      onTap: () => setState(
+                                        () => _paymentMethod = 'split',
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (_installmentAvailable || _creditAvailable) ...[
+                                const SizedBox(height: 5),
+                                Row(
+                                  children: [
+                                    if (_installmentAvailable) ...[
+                                      Expanded(
+                                        child: _buildPaymentBtn(
+                                          method: 'installment',
+                                          label: 'تقسيط',
+                                          icon: Icons.payments_rounded,
+                                          onTap: () => setState(
+                                            () => _paymentMethod =
+                                                'installment',
                                           ),
                                         ),
                                       ),
-                                      onChanged: (_) => setState(() {}),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  'الباقي: ',
-                                  style: TextStyle(
-                                    fontFamily: 'Cairo',
-                                    fontSize: 12,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                                Text(
-                                  '${Money(changePiasters).toDisplay()} ج.م',
-                                  style: TextStyle(
-                                    fontFamily: 'Cairo',
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: changePiasters > 0
-                                        ? AppColors.success
-                                        : AppColors.onSurface,
-                                  ),
+                                    ],
+                                    if (_installmentAvailable &&
+                                        _creditAvailable)
+                                      const SizedBox(width: 5),
+                                    if (_creditAvailable) ...[
+                                      Expanded(
+                                        child: _buildPaymentBtn(
+                                          method: 'credit',
+                                          label: 'آجل',
+                                          icon: Icons
+                                              .account_balance_wallet_outlined,
+                                          onTap: () => setState(
+                                            () => _paymentMethod = 'credit',
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ],
-                            ),
-                          ],
 
-                          SizedBox(height: isCompact ? 6 : 10),
+                              if (_paymentMethod == 'credit') ...[
+                                SizedBox(height: isCompact ? 4 : 6),
+                                _buildCreditPaymentSection(state),
+                              ],
 
-                          // Massive Checkout [F12] Button
-                          SizedBox(
-                            width: double.infinity,
-                            height: isCompact ? 44 : 52,
-                            child: ElevatedButton.icon(
-                              onPressed:
-                                  state.cart.isEmpty || state.isProcessing
-                                  ? null
-                                  : () => _handleCheckout(state),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                elevation: 3,
-                              ),
-                              icon: state.isProcessing
-                                  ? const SizedBox.shrink()
-                                  : const Icon(
-                                      Icons.check_circle_rounded,
-                                      size: 22,
-                                      color: Colors.white,
+                              // Fast Cash Banknote Presets (hide presets when isCompact to save vertical space)
+                              if (_paymentMethod == 'cash') ...[
+                                if (!isCompact) ...[
+                                  const SizedBox(height: 5),
+                                  SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: Row(
+                                      children: [
+                                        Text(
+                                          'الدفع السريع:',
+                                          style: TextStyle(
+                                            fontFamily: 'Cairo',
+                                            fontSize: 10.5,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        ...[50, 100, 200, 500].map((preset) {
+                                          return Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 2.0,
+                                            ),
+                                            child: InkWell(
+                                              onTap: () {
+                                                _receivedCtrl.text = '$preset.00';
+                                                setState(() {});
+                                              },
+                                              borderRadius:
+                                                  BorderRadius.circular(5),
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 5,
+                                                      vertical: 2,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors
+                                                      .surfaceContainerLow,
+                                                  borderRadius:
+                                                      BorderRadius.circular(5),
+                                                  border: Border.all(
+                                                    color: AppColors
+                                                        .outlineVariant,
+                                                  ),
+                                                ),
+                                                child: Text(
+                                                  '$preset',
+                                                  style: const TextStyle(
+                                                    fontFamily: 'Cairo',
+                                                    fontSize: 10.5,
+                                                    fontWeight:
+                                                        FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        }),
+                                      ],
                                     ),
-                              label: state.isProcessing
-                                  ? const CircularProgressIndicator(
-                                      color: Colors.white,
-                                    )
-                                  : Text(
-                                      'إتمام عملية البيع [F12]',
+                                  ),
+                                ],
+
+                                // Unified Single Row for Received and Change
+                                SizedBox(height: isCompact ? 4 : 6),
+                                Row(
+                                  children: [
+                                    Text(
+                                      'المستلم:',
                                       style: TextStyle(
                                         fontFamily: 'Cairo',
-                                        fontSize: isCompact ? 15 : 17,
-                                        fontWeight: FontWeight.bold,
+                                        fontSize: isCompact ? 11 : 12,
+                                        color: Colors.grey.shade600,
                                       ),
                                     ),
-                            ),
+                                    const SizedBox(width: 4),
+                                    InkWell(
+                                      onTap: () {
+                                        _receivedCtrl.text = Money(
+                                          state.total,
+                                        ).toDisplay();
+                                        setState(() {});
+                                      },
+                                      borderRadius: BorderRadius.circular(5),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 5,
+                                          vertical: 1.5,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                          borderRadius:
+                                              BorderRadius.circular(5),
+                                        ),
+                                        child: Text(
+                                          'بالضبط',
+                                          style: TextStyle(
+                                            fontFamily: 'Cairo',
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.primary,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    SizedBox(
+                                      width: 75,
+                                      height: 28,
+                                      child: TextField(
+                                        controller: _receivedCtrl,
+                                        keyboardType: TextInputType.number,
+                                        style: const TextStyle(
+                                          fontFamily: 'Cairo',
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        decoration: InputDecoration(
+                                          hintText: '0.00',
+                                          isDense: true,
+                                          filled: true,
+                                          fillColor:
+                                              AppColors.surfaceContainerLowest,
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                horizontal: 6,
+                                                vertical: 4,
+                                              ),
+                                          border: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(6),
+                                            borderSide: const BorderSide(
+                                              color: AppColors.outlineVariant,
+                                            ),
+                                          ),
+                                        ),
+                                        onChanged: (_) => setState(() {}),
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Text(
+                                      'الباقي: ',
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontSize: isCompact ? 11 : 12,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                    Text(
+                                      '${Money(changePiasters).toDisplay()} ج.م',
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontSize: isCompact ? 12 : 13.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: changePiasters > 0
+                                            ? AppColors.success
+                                            : AppColors.onSurface,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+
+                              SizedBox(height: isCompact ? 6 : 8),
+
+                              // Checkout [F12] Button (Compact 46px Height)
+                              SizedBox(
+                                width: double.infinity,
+                                height: 46,
+                                child: ElevatedButton.icon(
+                                  onPressed:
+                                      state.cart.isEmpty || state.isProcessing
+                                          ? null
+                                          : () => _handleCheckout(state),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    elevation: 2,
+                                  ),
+                                  icon: state.isProcessing
+                                      ? const SizedBox.shrink()
+                                      : const Icon(
+                                          Icons.check_circle_rounded,
+                                          size: 20,
+                                          color: Colors.white,
+                                        ),
+                                  label: state.isProcessing
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : const Text(
+                                          'إتمام عملية البيع [F12]',
+                                          style: TextStyle(
+                                            fontFamily: 'Cairo',
+                                            fontSize: 14.5,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ],

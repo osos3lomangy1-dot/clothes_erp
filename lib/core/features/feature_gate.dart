@@ -45,6 +45,7 @@ class FeatureKeys {
   static const partners = 'partners';
   static const loyalty = 'loyalty';
   static const promotions = 'promotions';
+  static const preOrders = 'preOrders';
 
   static const definitions = <FeatureDefinition>[
     FeatureDefinition(
@@ -146,6 +147,12 @@ class FeatureKeys {
       label: 'العروض الترويجية',
       coreAlwaysEnabled: false,
       defaultEnabled: false,
+    ),
+    FeatureDefinition(
+      key: preOrders,
+      label: 'الحجز المسبق والعربونات',
+      coreAlwaysEnabled: false,
+      defaultEnabled: true,
     ),
   ];
 

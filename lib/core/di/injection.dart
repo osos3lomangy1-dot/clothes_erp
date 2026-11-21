@@ -7,6 +7,10 @@ import '../../features/delivery/data/datasources/delivery_local_data_source.dart
 import '../../features/delivery/data/repositories/delivery_repository_impl.dart';
 import '../../features/delivery/domain/repositories/delivery_repository.dart';
 import '../../features/delivery/presentation/cubits/delivery_cubit.dart';
+import '../../features/pre_orders/data/datasources/pre_orders_local_data_source.dart';
+import '../../features/pre_orders/data/repositories/pre_orders_repository_impl.dart';
+import '../../features/pre_orders/domain/repositories/pre_orders_repository.dart';
+import '../../features/pre_orders/presentation/cubits/pre_orders_cubit.dart';
 import '../../features/employees/domain/repositories/employee_repository.dart';
 import '../../features/employees/presentation/cubits/cashier_payroll_cubit.dart';
 import '../../features/installments/data/services/manager_pin_service.dart';
@@ -115,6 +119,24 @@ Future<void> configureDependencies() async {
         getIt<DeliveryRepository>(),
         getIt<BranchProvider>(),
       ),
+    );
+  }
+  if (!getIt.isRegistered<PreOrdersLocalDataSource>()) {
+    getIt.registerLazySingleton<PreOrdersLocalDataSource>(
+      () => PreOrdersLocalDataSourceImpl(
+        getIt<AppDatabase>(),
+        getIt<BranchProvider>(),
+      ),
+    );
+  }
+  if (!getIt.isRegistered<PreOrdersRepository>()) {
+    getIt.registerLazySingleton<PreOrdersRepository>(
+      () => PreOrdersRepositoryImpl(getIt<PreOrdersLocalDataSource>()),
+    );
+  }
+  if (!getIt.isRegistered<PreOrdersCubit>()) {
+    getIt.registerFactory<PreOrdersCubit>(
+      () => PreOrdersCubit(getIt<PreOrdersRepository>()),
     );
   }
 }
