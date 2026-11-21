@@ -70,6 +70,48 @@ abstract class PreOrdersLocalDataSource {
   });
   Future<void> markBatchArrivedAtStore(String batchId);
   Future<void> deleteBatch(String batchId);
+
+  // --- سيناريوهات الشحنات والبنود الطارئة (Task 8.5.2) ---
+  Future<void> attachOrderToBatch(String batchId, String orderId);
+  Future<void> applyBatchEmergencyIncrease(
+    String batchId,
+    int increasePiasters,
+    String handledBy,
+  );
+  Future<void> cancelOrderItem(
+    String itemId, {
+    required String refundOption,
+    int refundPiasters = 0,
+    String? notes,
+    String? shiftId,
+    String? cashierId,
+  });
+  Future<void> markOrderItemOutOfStock(
+    String itemId, {
+    required String refundOption,
+    int refundPiasters = 0,
+    String? notes,
+    String? shiftId,
+    String? cashierId,
+  });
+  Future<void> markOrderItemDamaged(
+    String itemId, {
+    bool refundDeposit = true,
+    int refundPiasters = 0,
+    bool transferToClearance = true,
+    String? categoryId,
+    String? notes,
+    String? shiftId,
+    String? cashierId,
+  });
+  Future<PreOrderEntity> addCustomerToBatch(
+    String batchId,
+    PreOrderEntity order, {
+    int initialDepositPiasters = 0,
+    String paymentMethod = 'cash',
+    String? shiftId,
+    String? cashierId,
+  });
 }
 
 @LazySingleton(as: PreOrdersLocalDataSource)
@@ -212,6 +254,26 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
         'ALTER TABLE pre_order_items ADD COLUMN commission_piasters INTEGER NOT NULL DEFAULT 0;',
       );
     } catch (_) {}
+    try {
+      await _db.customStatement(
+        'ALTER TABLE pre_orders ADD COLUMN emergency_increase_piasters INTEGER NOT NULL DEFAULT 0;',
+      );
+    } catch (_) {}
+    try {
+      await _db.customStatement(
+        'ALTER TABLE pre_order_batches ADD COLUMN emergency_increase_piasters INTEGER NOT NULL DEFAULT 0;',
+      );
+    } catch (_) {}
+    try {
+      await _db.customStatement(
+        "ALTER TABLE pre_order_batches ADD COLUMN emergency_increase_handled_by TEXT NOT NULL DEFAULT 'merchant';",
+      );
+    } catch (_) {}
+    try {
+      await _db.customStatement(
+        "ALTER TABLE pre_order_items ADD COLUMN status TEXT NOT NULL DEFAULT 'active';",
+      );
+    } catch (_) {}
 
     _initialized = true;
   }
@@ -345,8 +407,8 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
       INSERT INTO pre_orders (
         id, branch_id, order_number, batch_id, customer_id, customer_name, customer_phone,
         agent_name, tracking_number, notes, expected_delivery_date,
-        total_piasters, allocated_shipping_piasters, deposit_piasters, status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        total_piasters, allocated_shipping_piasters, emergency_increase_piasters, deposit_piasters, status, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ''',
       variables: [
         Variable.withString(orderId),
@@ -366,6 +428,7 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
         ),
         Variable.withInt(order.totalPiasters),
         Variable.withInt(order.allocatedShippingPiasters),
+        Variable.withInt(order.emergencyIncreasePiasters),
         Variable.withInt(totalDeposit),
         Variable.withString(order.status),
         Variable.withInt(nowSec),
@@ -381,8 +444,8 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
         INSERT INTO pre_order_items (
           id, pre_order_id, product_name, variant_description, quantity,
           unit_price_piasters, total_price_piasters, cost_price_piasters,
-          commission_piasters, item_url, notes, transferred_to_inventory
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          commission_piasters, item_url, notes, transferred_to_inventory, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''',
         variables: [
           Variable.withString(itemId),
@@ -397,6 +460,7 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
           Variable(item.itemUrl),
           Variable(item.notes),
           Variable.withInt(0),
+          Variable.withString(item.status),
         ],
       );
     }
@@ -867,9 +931,10 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
       '''
       INSERT INTO pre_order_batches (
         id, branch_id, batch_number, agent_name, tracking_number,
-        total_shipping_piasters, shipping_split_method, status,
+        total_shipping_piasters, shipping_split_method,
+        emergency_increase_piasters, emergency_increase_handled_by, status,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ''',
       variables: [
         Variable.withString(batchId),
@@ -879,6 +944,8 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
         Variable(batch.trackingNumber),
         Variable.withInt(batch.totalShippingPiasters),
         Variable.withString(batch.shippingSplitMethod),
+        Variable.withInt(batch.emergencyIncreasePiasters),
+        Variable.withString(batch.emergencyIncreaseHandledBy),
         Variable.withString(batch.status),
         Variable.withInt(nowSec),
         Variable.withInt(nowSec),
@@ -992,5 +1059,435 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
     } catch (_) {
       // Ignore if table constraints differ in older schema
     }
+  }
+
+  // ========================================================
+  // --- سيناريوهات الشحنات والبنود الطارئة (Task 8.5.2) ---
+  // ========================================================
+
+  @override
+  Future<void> attachOrderToBatch(String batchId, String orderId) async {
+    await ensureTablesExist();
+    final batch = await getBatchById(batchId);
+    if (batch == null) throw Exception('الشحنة المجمعة غير موجودة');
+
+    final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    await _db.customUpdate(
+      '''
+      UPDATE pre_orders
+      SET batch_id = ?,
+          agent_name = CASE WHEN agent_name IS NULL OR agent_name = '' THEN ? ELSE agent_name END,
+          tracking_number = CASE WHEN tracking_number IS NULL OR tracking_number = '' THEN ? ELSE tracking_number END,
+          updated_at = ?
+      WHERE id = ?
+      ''',
+      variables: [
+        Variable.withString(batchId),
+        Variable(batch.agentName),
+        Variable(batch.trackingNumber),
+        Variable.withInt(nowSec),
+        Variable.withString(orderId),
+      ],
+    );
+  }
+
+  @override
+  Future<void> applyBatchEmergencyIncrease(
+    String batchId,
+    int increasePiasters,
+    String handledBy,
+  ) async {
+    await ensureTablesExist();
+    final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+    await _db.customUpdate(
+      '''
+      UPDATE pre_order_batches
+      SET emergency_increase_piasters = ?, emergency_increase_handled_by = ?, updated_at = ?
+      WHERE id = ?
+      ''',
+      variables: [
+        Variable.withInt(increasePiasters),
+        Variable.withString(handledBy),
+        Variable.withInt(nowSec),
+        Variable.withString(batchId),
+      ],
+    );
+
+    if (handledBy == 'customers' && increasePiasters > 0) {
+      final orders = await getPreOrders(batchId: batchId);
+      final totalActivePieces = orders.fold(
+        0,
+        (sum, o) =>
+            sum +
+            o.items
+                .where((it) => it.isActive)
+                .fold(0, (s, it) => s + it.quantity),
+      );
+
+      if (totalActivePieces > 0) {
+        for (final o in orders) {
+          final oPieces = o.items
+              .where((it) => it.isActive)
+              .fold(0, (s, it) => s + it.quantity);
+          final allocated =
+              ((increasePiasters * oPieces) / totalActivePieces).round();
+          await _db.customUpdate(
+            'UPDATE pre_orders SET emergency_increase_piasters = ?, updated_at = ? WHERE id = ?',
+            variables: [
+              Variable.withInt(allocated),
+              Variable.withInt(nowSec),
+              Variable.withString(o.id),
+            ],
+          );
+        }
+      }
+    } else {
+      // If merchant absorbs it, clear customer orders emergency increase
+      await _db.customUpdate(
+        'UPDATE pre_orders SET emergency_increase_piasters = 0, updated_at = ? WHERE batch_id = ?',
+        variables: [Variable.withInt(nowSec), Variable.withString(batchId)],
+      );
+    }
+  }
+
+  @override
+  Future<void> cancelOrderItem(
+    String itemId, {
+    required String refundOption,
+    int refundPiasters = 0,
+    String? notes,
+    String? shiftId,
+    String? cashierId,
+  }) async {
+    await ensureTablesExist();
+    final itemRows = await _db.customSelect(
+      'SELECT * FROM pre_order_items WHERE id = ?',
+      variables: [Variable.withString(itemId)],
+    ).get();
+    if (itemRows.isEmpty) throw Exception('الصنف غير موجود');
+    final item = PreOrderItemEntity.fromMap(itemRows.first.data);
+
+    final order = await getPreOrderById(item.preOrderId);
+    if (order == null) throw Exception('طلب الحجز غير موجود');
+
+    final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final branchId = order.branchId.isNotEmpty
+        ? order.branchId
+        : await _branchProvider.getBranchId();
+
+    // 1. Mark item status as cancelled
+    await _db.customUpdate(
+      'UPDATE pre_order_items SET status = ?, notes = ? WHERE id = ?',
+      variables: [
+        Variable.withString('cancelled'),
+        Variable(notes ?? 'ألغي قبل الطلب'),
+        Variable.withString(itemId),
+      ],
+    );
+
+    // 2. Recalculate order total from active items
+    final updatedItems = await _getItemsForOrder(order.id);
+    final newTotalPiasters = updatedItems
+        .where((it) => it.isActive)
+        .fold(0, (sum, it) => sum + it.totalPricePiasters);
+
+    int newDeposit = order.depositPiasters;
+    int newRefunded = order.refundedPiasters ?? 0;
+
+    // 3. Handle refund if cash option chosen
+    if (refundOption == 'cash' && refundPiasters > 0) {
+      newDeposit = (order.depositPiasters - refundPiasters).clamp(0, order.depositPiasters);
+      newRefunded += refundPiasters;
+
+      await _db.into(_db.cashMovements).insert(
+        CashMovementsCompanion(
+          id: Value(_uuid.v4()),
+          branchId: Value(branchId),
+          shiftId: Value(shiftId),
+          type: const Value('refund'),
+          direction: const Value('out'),
+          amountPiasters: Value(refundPiasters),
+          method: const Value('cash'),
+          referenceId: Value(order.id),
+          notes: Value(
+            'رد عربون صنف ملغي (${item.productName}) - حجز #${order.orderNumber}',
+          ),
+          createdAt: Value(nowSec),
+          updatedAt: Value(nowSec),
+        ),
+      );
+    }
+
+    await _db.customUpdate(
+      '''
+      UPDATE pre_orders
+      SET total_piasters = ?, deposit_piasters = ?, refunded_piasters = ?, updated_at = ?
+      WHERE id = ?
+      ''',
+      variables: [
+        Variable.withInt(newTotalPiasters),
+        Variable.withInt(newDeposit),
+        Variable.withInt(newRefunded),
+        Variable.withInt(nowSec),
+        Variable.withString(order.id),
+      ],
+    );
+  }
+
+  @override
+  Future<void> markOrderItemOutOfStock(
+    String itemId, {
+    required String refundOption,
+    int refundPiasters = 0,
+    String? notes,
+    String? shiftId,
+    String? cashierId,
+  }) async {
+    await ensureTablesExist();
+    final itemRows = await _db.customSelect(
+      'SELECT * FROM pre_order_items WHERE id = ?',
+      variables: [Variable.withString(itemId)],
+    ).get();
+    if (itemRows.isEmpty) throw Exception('الصنف غير موجود');
+    final item = PreOrderItemEntity.fromMap(itemRows.first.data);
+
+    final order = await getPreOrderById(item.preOrderId);
+    if (order == null) throw Exception('طلب الحجز غير موجود');
+
+    final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final branchId = order.branchId.isNotEmpty
+        ? order.branchId
+        : await _branchProvider.getBranchId();
+
+    // 1. Mark item as outOfStock
+    await _db.customUpdate(
+      'UPDATE pre_order_items SET status = ?, notes = ? WHERE id = ?',
+      variables: [
+        Variable.withString('outOfStock'),
+        Variable(notes ?? 'نفد من شي إن / المصدر'),
+        Variable.withString(itemId),
+      ],
+    );
+
+    // 2. Recalculate order total from active items
+    final updatedItems = await _getItemsForOrder(order.id);
+    final newTotalPiasters = updatedItems
+        .where((it) => it.isActive)
+        .fold(0, (sum, it) => sum + it.totalPricePiasters);
+
+    int newDeposit = order.depositPiasters;
+    int newRefunded = order.refundedPiasters ?? 0;
+
+    if (refundOption == 'cash' && refundPiasters > 0) {
+      newDeposit = (order.depositPiasters - refundPiasters).clamp(0, order.depositPiasters);
+      newRefunded += refundPiasters;
+
+      await _db.into(_db.cashMovements).insert(
+        CashMovementsCompanion(
+          id: Value(_uuid.v4()),
+          branchId: Value(branchId),
+          shiftId: Value(shiftId),
+          type: const Value('refund'),
+          direction: const Value('out'),
+          amountPiasters: Value(refundPiasters),
+          method: const Value('cash'),
+          referenceId: Value(order.id),
+          notes: Value(
+            'رد عربون صنف نفد من المصدر (${item.productName}) - حجز #${order.orderNumber}',
+          ),
+          createdAt: Value(nowSec),
+          updatedAt: Value(nowSec),
+        ),
+      );
+    }
+
+    await _db.customUpdate(
+      '''
+      UPDATE pre_orders
+      SET total_piasters = ?, deposit_piasters = ?, refunded_piasters = ?, updated_at = ?
+      WHERE id = ?
+      ''',
+      variables: [
+        Variable.withInt(newTotalPiasters),
+        Variable.withInt(newDeposit),
+        Variable.withInt(newRefunded),
+        Variable.withInt(nowSec),
+        Variable.withString(order.id),
+      ],
+    );
+  }
+
+  @override
+  Future<void> markOrderItemDamaged(
+    String itemId, {
+    bool refundDeposit = true,
+    int refundPiasters = 0,
+    bool transferToClearance = true,
+    String? categoryId,
+    String? notes,
+    String? shiftId,
+    String? cashierId,
+  }) async {
+    await ensureTablesExist();
+    final itemRows = await _db.customSelect(
+      'SELECT * FROM pre_order_items WHERE id = ?',
+      variables: [Variable.withString(itemId)],
+    ).get();
+    if (itemRows.isEmpty) throw Exception('الصنف غير موجود');
+    final item = PreOrderItemEntity.fromMap(itemRows.first.data);
+
+    final order = await getPreOrderById(item.preOrderId);
+    if (order == null) throw Exception('طلب الحجز غير موجود');
+
+    final now = DateTime.now();
+    final nowSec = now.millisecondsSinceEpoch ~/ 1000;
+    final branchId = order.branchId.isNotEmpty
+        ? order.branchId
+        : await _branchProvider.getBranchId();
+
+    // 1. Mark item as damaged
+    await _db.customUpdate(
+      'UPDATE pre_order_items SET status = ?, notes = ? WHERE id = ?',
+      variables: [
+        Variable.withString('damaged'),
+        Variable(notes ?? 'غير مطابق أو تالف شحن'),
+        Variable.withString(itemId),
+      ],
+    );
+
+    // 2. Transfer to clearance / outlet in products table if requested
+    if (transferToClearance && !item.transferredToInventory) {
+      String catId = categoryId ?? '';
+      if (catId.isEmpty) {
+        final catRows = await (_db.select(_db.categories)..limit(1)).get();
+        if (catRows.isNotEmpty) {
+          catId = catRows.first.id;
+        } else {
+          catId = _uuid.v4();
+          await _db.into(_db.categories).insert(
+            CategoriesCompanion.insert(
+              id: catId,
+              branchId: branchId,
+              name: 'ركن التخفيضات والأوتلت',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+        }
+      }
+
+      final productId = _uuid.v4();
+      await _db.into(_db.products).insert(
+        ProductsCompanion.insert(
+          id: productId,
+          branchId: branchId,
+          name: '${item.productName} (أوتلت / عيوب شحن)',
+          categoryId: catId,
+          description: Value(
+            'صنف غير مطابق أو تالف شحن معروض بسعر مخفض - حجز #${order.orderNumber}',
+          ),
+          minStock: const Value(1),
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      final barcode = 'OUTLET-${nowSec % 1000000}';
+      await _db.into(_db.productVariants).insert(
+        ProductVariantsCompanion.insert(
+          id: _uuid.v4(),
+          productId: productId,
+          branchId: branchId,
+          color: 'عام',
+          size: item.variantDescription?.isNotEmpty == true
+              ? item.variantDescription!
+              : 'حر',
+          sku: 'SKU-$barcode',
+          quantity: Value(item.quantity),
+          costPrice: item.costPricePiasters,
+          sellPrice: (item.unitPricePiasters * 0.7).round(), // discounted
+          wholesalePrice: Value(item.costPricePiasters),
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      await _db.customUpdate(
+        'UPDATE pre_order_items SET transferred_to_inventory = 1 WHERE id = ?',
+        variables: [Variable.withString(itemId)],
+      );
+    }
+
+    // 3. Deduct from total piasters
+    final updatedItems = await _getItemsForOrder(order.id);
+    final newTotalPiasters = updatedItems
+        .where((it) => it.isActive)
+        .fold(0, (sum, it) => sum + it.totalPricePiasters);
+
+    int newDeposit = order.depositPiasters;
+    int newRefunded = order.refundedPiasters ?? 0;
+
+    if (refundDeposit && refundPiasters > 0) {
+      newDeposit = (order.depositPiasters - refundPiasters).clamp(0, order.depositPiasters);
+      newRefunded += refundPiasters;
+
+      await _db.into(_db.cashMovements).insert(
+        CashMovementsCompanion(
+          id: Value(_uuid.v4()),
+          branchId: Value(branchId),
+          shiftId: Value(shiftId),
+          type: const Value('refund'),
+          direction: const Value('out'),
+          amountPiasters: Value(refundPiasters),
+          method: const Value('cash'),
+          referenceId: Value(order.id),
+          notes: Value(
+            'رد عربون صنف غير مطابق/تالف (${item.productName}) - حجز #${order.orderNumber}',
+          ),
+          createdAt: Value(nowSec),
+          updatedAt: Value(nowSec),
+        ),
+      );
+    }
+
+    await _db.customUpdate(
+      '''
+      UPDATE pre_orders
+      SET total_piasters = ?, deposit_piasters = ?, refunded_piasters = ?, updated_at = ?
+      WHERE id = ?
+      ''',
+      variables: [
+        Variable.withInt(newTotalPiasters),
+        Variable.withInt(newDeposit),
+        Variable.withInt(newRefunded),
+        Variable.withInt(nowSec),
+        Variable.withString(order.id),
+      ],
+    );
+  }
+
+  @override
+  Future<PreOrderEntity> addCustomerToBatch(
+    String batchId,
+    PreOrderEntity order, {
+    int initialDepositPiasters = 0,
+    String paymentMethod = 'cash',
+    String? shiftId,
+    String? cashierId,
+  }) async {
+    final batch = await getBatchById(batchId);
+    final updatedOrder = order.copyWith(
+      batchId: batchId,
+      agentName: order.agentName ?? batch?.agentName,
+      trackingNumber: order.trackingNumber ?? batch?.trackingNumber,
+    );
+    return insertPreOrder(
+      updatedOrder,
+      initialDepositPiasters: initialDepositPiasters,
+      paymentMethod: paymentMethod,
+      shiftId: shiftId,
+      cashierId: cashierId,
+    );
   }
 }

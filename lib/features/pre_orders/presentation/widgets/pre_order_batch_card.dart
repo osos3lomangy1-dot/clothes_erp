@@ -8,8 +8,13 @@ import '../../data/services/pre_order_excel_service.dart';
 import '../../domain/entities/pre_order_batch_entity.dart';
 import '../../domain/entities/pre_order_entity.dart';
 import '../cubits/pre_orders_cubit.dart';
+import 'add_customer_to_batch_dialog.dart';
+import 'attach_order_to_batch_dialog.dart';
 import 'bag_pickup_label_dialog.dart';
+import 'batch_emergency_surcharge_dialog.dart';
+import 'order_item_action_dialog.dart';
 import 'pre_order_delivery_dialog.dart';
+import 'pre_order_forfeit_dialog.dart';
 
 class PreOrderBatchCard extends StatefulWidget {
   final PreOrderBatchEntity batch;
@@ -486,95 +491,197 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
 
           if (_isExpanded) ...[
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               color: AppColors.surfaceContainerLow,
               child: Column(
                 children: List.generate(batch.orders.length, (idx) {
                   final o = batch.orders[idx];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.outlineVariant),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        CircleAvatar(
-                          radius: 10,
-                          backgroundColor: AppColors.primary.withValues(
-                            alpha: 0.1,
-                          ),
-                          child: Text(
-                            '${idx + 1}',
-                            style: TextStyle(
-                              fontFamily: 'Cairo',
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary,
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 10,
+                              backgroundColor: AppColors.primary.withValues(
+                                alpha: 0.1,
+                              ),
+                              child: Text(
+                                '${idx + 1}',
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primary,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          flex: 3,
-                          child: Text(
-                            '${o.customerName} (${o.customerPhone})',
-                            style: const TextStyle(
-                              fontFamily: 'Cairo',
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.onSurface,
+                            const SizedBox(width: 6),
+                            Expanded(
+                              flex: 3,
+                              child: Text(
+                                '${o.customerName} (${o.customerPhone})',
+                                style: const TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.onSurface,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          flex: 3,
-                          child: Text(
-                            'الأصناف: ${Money(o.totalPiasters).toDisplay()} ج + الشحن: ${Money(o.allocatedShippingPiasters).toDisplay()} ج',
-                            style: const TextStyle(
-                              fontFamily: 'Cairo',
-                              fontSize: 11,
-                              color: AppColors.onSurfaceVariant,
+                            const SizedBox(width: 6),
+                            Expanded(
+                              flex: 3,
+                              child: Text(
+                                'الأصناف: ${Money(o.totalPiasters).toDisplay()} ج'
+                                '${o.allocatedShippingPiasters > 0 ? " + شحن: ${Money(o.allocatedShippingPiasters).toDisplay()} ج" : ""}'
+                                '${o.emergencyIncreasePiasters > 0 ? " + زيادة: ${Money(o.emergencyIncreasePiasters).toDisplay()} ج" : ""}',
+                                style: const TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 11,
+                                  color: AppColors.onSurfaceVariant,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'المتبقي: ${Money(o.remainingWithShippingPiasters).toDisplay()} ج.م',
-                          style: TextStyle(
-                            fontFamily: 'Cairo',
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: o.remainingWithShippingPiasters > 0
-                                ? AppColors.error
-                                : AppColors.success,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        IconButton(
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          icon: Icon(
-                            Icons.label_important_outline,
-                            size: 15,
-                            color: AppColors.primary,
-                          ),
-                          tooltip: 'طباعة استيكر فرز الكيس',
-                          onPressed: () =>
-                              BagPickupLabelDialog.show(context, o),
-                        ),
-                        if (o.canDeliver) ...[
-                          const SizedBox(width: 4),
-                          IconButton(
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            icon: const Icon(
-                              Icons.check_circle_outline_rounded,
-                              size: 16,
-                              color: AppColors.success,
+                            const SizedBox(width: 6),
+                            Text(
+                              'المتبقي: ${Money(o.remainingWithShippingPiasters).toDisplay()} ج.م',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: o.remainingWithShippingPiasters > 0
+                                    ? AppColors.error
+                                    : AppColors.success,
+                              ),
                             ),
-                            tooltip: 'تسليم الأوردر للعميل',
-                            onPressed: () =>
-                                PreOrderDeliveryDialog.show(context, o),
+                            const SizedBox(width: 6),
+                            IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              icon: Icon(
+                                Icons.label_important_outline,
+                                size: 15,
+                                color: AppColors.primary,
+                              ),
+                              tooltip: 'طباعة استيكر فرز الكيس',
+                              onPressed: () =>
+                                  BagPickupLabelDialog.show(context, o),
+                            ),
+                            if (o.canDeliver) ...[
+                              const SizedBox(width: 6),
+                              IconButton(
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                icon: const Icon(
+                                  Icons.check_circle_outline_rounded,
+                                  size: 16,
+                                  color: AppColors.success,
+                                ),
+                                tooltip: 'تسليم الأوردر للعميل',
+                                onPressed: () =>
+                                    PreOrderDeliveryDialog.show(context, o),
+                              ),
+                            ],
+                            if (o.canForfeit) ...[
+                              const SizedBox(width: 6),
+                              IconButton(
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                icon: const Icon(
+                                  Icons.gavel_rounded,
+                                  size: 15,
+                                  color: AppColors.error,
+                                ),
+                                tooltip: 'مصادرة العربون وطرح البضاعة للمخزن',
+                                onPressed: () => showDialog(
+                                  context: context,
+                                  builder: (_) => BlocProvider.value(
+                                    value: context.read<PreOrdersCubit>(),
+                                    child: PreOrderForfeitDialog(order: o),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        // قائمة الأصناف للعميل مع إمكانية إدارة الاستثناءات
+                        if (o.items.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            children: o.items.map((it) {
+                              String statusText = '';
+                              Color badgeColor = AppColors.onSurfaceVariant;
+                              if (it.isCancelled) {
+                                statusText = ' [ملغي قبل الطلب]';
+                                badgeColor = AppColors.error;
+                              } else if (it.isOutOfStock) {
+                                statusText = ' [نفد من المصدر]';
+                                badgeColor = AppColors.error;
+                              } else if (it.isDamaged) {
+                                statusText = ' [تالف/أوتلت]';
+                                badgeColor = AppColors.primary;
+                              }
+
+                              return InkWell(
+                                onTap: () => OrderItemActionDialog.show(
+                                  context,
+                                  order: o,
+                                  item: it,
+                                ),
+                                borderRadius: BorderRadius.circular(6),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surfaceContainerLow,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: it.isActive
+                                          ? AppColors.outlineVariant
+                                          : badgeColor.withValues(alpha: 0.5),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.tune_rounded,
+                                        size: 11,
+                                        color: badgeColor,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${it.productName}${it.variantDescription != null ? " (${it.variantDescription})" : ""} × ${it.quantity}$statusText',
+                                        style: TextStyle(
+                                          fontFamily: 'Cairo',
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                          decoration: (it.isCancelled || it.isOutOfStock)
+                                              ? TextDecoration.lineThrough
+                                              : null,
+                                          color: badgeColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }).toList(),
                           ),
                         ],
                       ],
@@ -595,6 +702,90 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
+                  // أزرار التجميع التدريجي للشحنات المفتوحة
+                  if (batch.status == PreOrderStatuses.pendingProcessing) ...[
+                    // زر إضافة عميل وأصنافه للشحنة
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      icon: const Icon(Icons.person_add_alt_1_rounded, size: 15),
+                      label: const Text(
+                        '+ إضافة عميل للشحنة',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      onPressed: () =>
+                          AddCustomerToBatchDialog.show(context, batch),
+                    ),
+                    const SizedBox(width: 8),
+
+                    // زر ضم أوردر فردي معلق
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: BorderSide(color: AppColors.primary),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      icon: const Icon(Icons.link_rounded, size: 15),
+                      label: const Text(
+                        '🔗 ضم أوردر معلق',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      onPressed: () =>
+                          AttachOrderToBatchDialog.show(context, batch),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+
+                  // زر تطبيق فرق العملة / زيادة طارئة
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.onSurface,
+                      side: const BorderSide(color: AppColors.outlineVariant),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    icon: const Icon(Icons.currency_exchange_rounded, size: 15),
+                    label: const Text(
+                      'فرق عملة / زيادة طارئة',
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    onPressed: () =>
+                        BatchEmergencySurchargeDialog.show(context, batch),
+                  ),
+                  const SizedBox(width: 8),
+
                   // زر وصول الشحنة بالكامل في المحل
                   if (batch.status == PreOrderStatuses.pendingProcessing) ...[
                     ElevatedButton.icon(

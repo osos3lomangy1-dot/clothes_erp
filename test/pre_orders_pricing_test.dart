@@ -251,6 +251,158 @@ void main() {
       expect(restored.status, equals(PreOrderStatuses.arrivedAtStore));
     });
   });
+
+  group('PreOrders Task 8.5.2 Shein Real-World Scenarios & All-Inclusive Pricing Tests', () {
+    test('PreOrderItemEntity status effects: cancelled and outOfStock items have 0 cost to supplier', () {
+      final activeItem = PreOrderItemEntity(
+        id: 'it-1',
+        preOrderId: 'ord-1',
+        productName: 'فستان صيفي',
+        quantity: 2,
+        costPricePiasters: 20000,
+        unitPricePiasters: 25000,
+        totalPricePiasters: 50000,
+        status: 'active',
+      );
+
+      final cancelledItem = PreOrderItemEntity(
+        id: 'it-2',
+        preOrderId: 'ord-1',
+        productName: 'تنورة ملغاة قبل الطلب',
+        quantity: 1,
+        costPricePiasters: 15000,
+        unitPricePiasters: 20000,
+        totalPricePiasters: 20000,
+        status: 'cancelled',
+      );
+
+      final outOfStockItem = PreOrderItemEntity(
+        id: 'it-3',
+        preOrderId: 'ord-1',
+        productName: 'بلوزة نفدت من شي إن',
+        quantity: 1,
+        costPricePiasters: 10000,
+        unitPricePiasters: 14000,
+        totalPricePiasters: 14000,
+        status: 'outOfStock',
+      );
+
+      final damagedItem = PreOrderItemEntity(
+        id: 'it-4',
+        preOrderId: 'ord-1',
+        productName: 'شال تالف/أوتلت',
+        quantity: 1,
+        costPricePiasters: 5000,
+        unitPricePiasters: 8000,
+        totalPricePiasters: 8000,
+        status: 'damaged',
+      );
+
+      expect(activeItem.totalCostPiasters, equals(40000));
+      expect(activeItem.totalProfitPiasters, equals(10000));
+
+      // Cancelled before order: not owed to supplier
+      expect(cancelledItem.totalCostPiasters, equals(0));
+      expect(cancelledItem.totalProfitPiasters, equals(0));
+
+      // Out of stock by Shein: not owed to supplier
+      expect(outOfStockItem.totalCostPiasters, equals(0));
+      expect(outOfStockItem.totalProfitPiasters, equals(0));
+
+      // Damaged/Clearance item received: cost was paid, but routed to outlet
+      expect(damagedItem.totalCostPiasters, equals(5000));
+    });
+
+    test('PreOrderEntity handles emergencyIncreasePiasters correctly in customer remaining balance', () {
+      final item = PreOrderItemEntity(
+        id: 'it-1',
+        preOrderId: 'ord-1',
+        productName: 'صنف شي إن',
+        quantity: 1,
+        costPricePiasters: 30000,
+        unitPricePiasters: 40000,
+        totalPricePiasters: 40000,
+      );
+
+      final orderWithoutSurcharge = PreOrderEntity(
+        id: 'ord-1',
+        branchId: 'b-1',
+        orderNumber: 'PO-2001',
+        customerName: 'مريم',
+        customerPhone: '01011112222',
+        totalPiasters: 40000, // 400 LE
+        depositPiasters: 10000, // 100 LE
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        items: [item],
+      );
+
+      // Remaining = 400 - 100 = 300 LE = 30000 piasters
+      expect(orderWithoutSurcharge.remainingPiasters, equals(30000));
+
+      // Now emergency exchange rate surcharge applied to customer (+ 50 LE = 5000 piasters)
+      final orderWithSurcharge = orderWithoutSurcharge.copyWith(
+        emergencyIncreasePiasters: 5000,
+      );
+
+      // Total due = 400 + 50 = 450 LE = 45000 piasters
+      expect(orderWithSurcharge.totalWithShippingPiasters, equals(45000));
+      // Remaining = 450 - 100 = 350 LE = 35000 piasters
+      expect(orderWithSurcharge.remainingPiasters, equals(35000));
+      expect(orderWithSurcharge.remainingWithShippingPiasters, equals(35000));
+    });
+
+    test('PreOrderBatchEntity calculates merchant profit correctly when merchant absorbs emergency increase vs when customers pay', () {
+      final item = PreOrderItemEntity(
+        id: 'it-1',
+        preOrderId: 'ord-1',
+        productName: 'فستان',
+        quantity: 10,
+        costPricePiasters: 10000, // 100 LE each -> 1000 LE total cost
+        unitPricePiasters: 15000, // 150 LE each -> 1500 LE total retail
+        totalPricePiasters: 150000,
+      );
+
+      final order = PreOrderEntity(
+        id: 'ord-1',
+        branchId: 'b-1',
+        orderNumber: 'PO-3001',
+        customerName: 'سارة',
+        customerPhone: '010',
+        totalPiasters: 150000, // 1500 LE
+        depositPiasters: 50000, // 500 LE
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        items: [item],
+      );
+
+      // Scenario: Batch with 200 LE general shipping paid by merchant, and 100 LE emergency increase
+      final batch = PreOrderBatchEntity(
+        id: 'batch-shein',
+        branchId: 'b-1',
+        batchNumber: 'شحنة شي إن 25 نوفمبر',
+        totalShippingPiasters: 20000, // 200 LE shipping overhead
+        emergencyIncreasePiasters: 10000, // 100 LE customs/currency surge
+        emergencyIncreaseHandledBy: 'merchant', // Merchant absorbs
+        shippingSplitMethod: ShippingSplitMethods.freeShipping,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        orders: [order],
+      );
+
+      // Retail: 1500 LE, Cost: 1000 LE -> Base Profit: 500 LE
+      // Deduct General Shipping (200 LE) -> 300 LE
+      // Deduct Merchant absorbed emergency increase (100 LE) -> Net Profit: 200 LE = 20000 piasters
+      expect(batch.totalProfitPiasters, equals(20000));
+
+      // If emergency surge was passed to customers instead:
+      final batchPassedToCustomers = batch.copyWith(
+        emergencyIncreaseHandledBy: 'customers',
+      );
+      // Net profit = 500 - 200 = 300 LE = 30000 piasters
+      expect(batchPassedToCustomers.totalProfitPiasters, equals(30000));
+    });
+  });
 }
 
 

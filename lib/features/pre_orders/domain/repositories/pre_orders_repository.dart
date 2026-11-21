@@ -75,4 +75,51 @@ abstract class PreOrdersRepository {
   Future<void> markBatchArrivedAtStore(String batchId);
 
   Future<void> deleteBatch(String batchId);
+
+  // --- سيناريوهات الشحنات والبنود الطارئة (Task 8.5.2) ---
+  Future<void> attachOrderToBatch(String batchId, String orderId);
+
+  Future<void> applyBatchEmergencyIncrease(
+    String batchId,
+    int increasePiasters,
+    String handledBy,
+  );
+
+  Future<void> cancelOrderItem(
+    String itemId, {
+    required String refundOption,
+    int refundPiasters = 0,
+    String? notes,
+    String? shiftId,
+    String? cashierId,
+  });
+
+  Future<void> markOrderItemOutOfStock(
+    String itemId, {
+    required String refundOption,
+    int refundPiasters = 0,
+    String? notes,
+    String? shiftId,
+    String? cashierId,
+  });
+
+  Future<void> markOrderItemDamaged(
+    String itemId, {
+    bool refundDeposit = true,
+    int refundPiasters = 0,
+    bool transferToClearance = true,
+    String? categoryId,
+    String? notes,
+    String? shiftId,
+    String? cashierId,
+  });
+
+  Future<PreOrderEntity> addCustomerToBatch(
+    String batchId,
+    PreOrderEntity order, {
+    int initialDepositPiasters = 0,
+    String paymentMethod = 'cash',
+    String? shiftId,
+    String? cashierId,
+  });
 }

@@ -40,6 +40,7 @@ class PreOrderEntity {
   final DateTime? expectedDeliveryDate;
   final int totalPiasters;
   final int allocatedShippingPiasters; // نصيب العميل المحسوب من الشحن العام
+  final int emergencyIncreasePiasters; // فرق سعر الصرف / الزيادة الطارئة على العميل
   final int depositPiasters;
   final String status;
   final DateTime createdAt;
@@ -68,6 +69,7 @@ class PreOrderEntity {
     this.expectedDeliveryDate,
     required this.totalPiasters,
     this.allocatedShippingPiasters = 0,
+    this.emergencyIncreasePiasters = 0,
     this.depositPiasters = 0,
     this.status = PreOrderStatuses.pendingProcessing,
     required this.createdAt,
@@ -83,20 +85,22 @@ class PreOrderEntity {
     this.payments = const [],
   });
 
-  /// إجمالي المبلغ المطلوب من العميل شامل نصيبه من الشحن
-  int get totalWithShippingPiasters => totalPiasters + allocatedShippingPiasters;
+  /// إجمالي المبلغ المطلوب من العميل شامل نصيبه من الشحن والزيادة الطارئة إن وُجدت
+  int get totalWithShippingPiasters =>
+      totalPiasters + allocatedShippingPiasters + emergencyIncreasePiasters;
 
-  /// المبلغ المتبقي على العميل عند الاستلام شامل الشحن
+  /// المبلغ المتبقي على العميل عند الاستلام شامل الشحن والزيادة الطارئة
   int get remainingWithShippingPiasters =>
       (totalWithShippingPiasters - depositPiasters)
           .clamp(0, totalWithShippingPiasters);
 
   int get remainingPiasters =>
-      (totalPiasters - depositPiasters).clamp(0, totalPiasters);
+      (totalPiasters + emergencyIncreasePiasters - depositPiasters)
+          .clamp(0, totalPiasters + emergencyIncreasePiasters);
 
   bool get isFullyPaid => depositPiasters >= totalWithShippingPiasters;
 
-  /// إجمالي تكلفة المندوب للأوردر بالكامل
+  /// إجمالي تكلفة المندوب للأوردر بالكامل (للأصناف السارية والتالفة)
   int get totalCostPiasters =>
       items.fold(0, (sum, it) => sum + it.totalCostPiasters);
 
@@ -134,6 +138,7 @@ class PreOrderEntity {
     DateTime? expectedDeliveryDate,
     int? totalPiasters,
     int? allocatedShippingPiasters,
+    int? emergencyIncreasePiasters,
     int? depositPiasters,
     String? status,
     DateTime? createdAt,
@@ -163,6 +168,8 @@ class PreOrderEntity {
       totalPiasters: totalPiasters ?? this.totalPiasters,
       allocatedShippingPiasters:
           allocatedShippingPiasters ?? this.allocatedShippingPiasters,
+      emergencyIncreasePiasters:
+          emergencyIncreasePiasters ?? this.emergencyIncreasePiasters,
       depositPiasters: depositPiasters ?? this.depositPiasters,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
@@ -197,6 +204,7 @@ class PreOrderEntity {
           : null,
       'total_piasters': totalPiasters,
       'allocated_shipping_piasters': allocatedShippingPiasters,
+      'emergency_increase_piasters': emergencyIncreasePiasters,
       'deposit_piasters': depositPiasters,
       'status': status,
       'created_at': createdAt.millisecondsSinceEpoch ~/ 1000,
@@ -244,6 +252,8 @@ class PreOrderEntity {
       totalPiasters: (map['total_piasters'] as num?)?.toInt() ?? 0,
       allocatedShippingPiasters:
           (map['allocated_shipping_piasters'] as num?)?.toInt() ?? 0,
+      emergencyIncreasePiasters:
+          (map['emergency_increase_piasters'] as num?)?.toInt() ?? 0,
       depositPiasters: (map['deposit_piasters'] as num?)?.toInt() ?? 0,
       status: map['status'] as String? ?? PreOrderStatuses.pendingProcessing,
       createdAt: DateTime.fromMillisecondsSinceEpoch(

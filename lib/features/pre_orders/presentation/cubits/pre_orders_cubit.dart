@@ -297,4 +297,184 @@ class PreOrdersCubit extends Cubit<PreOrdersState> {
       return false;
     }
   }
+
+  // ========================================================
+  // --- سيناريوهات الشحنات والبنود الطارئة (Task 8.5.2) ---
+  // ========================================================
+
+  Future<bool> attachOrderToBatch(String batchId, String orderId) async {
+    emit(state.copyWith(isSubmitting: true));
+    try {
+      await _repository.attachOrderToBatch(batchId, orderId);
+      await loadPreOrders();
+      emit(state.copyWith(isSubmitting: false));
+      return true;
+    } catch (e) {
+      emit(
+        state.copyWith(
+          isSubmitting: false,
+          errorMessage: 'فشل إلحاق الأوردر بالشحنة: $e',
+        ),
+      );
+      return false;
+    }
+  }
+
+  Future<bool> applyBatchEmergencyIncrease(
+    String batchId,
+    int increasePiasters,
+    String handledBy,
+  ) async {
+    emit(state.copyWith(isSubmitting: true));
+    try {
+      await _repository.applyBatchEmergencyIncrease(
+        batchId,
+        increasePiasters,
+        handledBy,
+      );
+      await loadPreOrders();
+      emit(state.copyWith(isSubmitting: false));
+      return true;
+    } catch (e) {
+      emit(
+        state.copyWith(
+          isSubmitting: false,
+          errorMessage: 'فشل تطبيق الزيادة الطارئة: $e',
+        ),
+      );
+      return false;
+    }
+  }
+
+  Future<bool> cancelOrderItem(
+    String itemId, {
+    required String refundOption,
+    int refundPiasters = 0,
+    String? notes,
+    String? shiftId,
+    String? cashierId,
+  }) async {
+    emit(state.copyWith(isSubmitting: true));
+    try {
+      await _repository.cancelOrderItem(
+        itemId,
+        refundOption: refundOption,
+        refundPiasters: refundPiasters,
+        notes: notes,
+        shiftId: shiftId,
+        cashierId: cashierId,
+      );
+      await loadPreOrders();
+      emit(state.copyWith(isSubmitting: false));
+      return true;
+    } catch (e) {
+      emit(
+        state.copyWith(
+          isSubmitting: false,
+          errorMessage: 'فشل إلغاء الصنف: $e',
+        ),
+      );
+      return false;
+    }
+  }
+
+  Future<bool> markOrderItemOutOfStock(
+    String itemId, {
+    required String refundOption,
+    int refundPiasters = 0,
+    String? notes,
+    String? shiftId,
+    String? cashierId,
+  }) async {
+    emit(state.copyWith(isSubmitting: true));
+    try {
+      await _repository.markOrderItemOutOfStock(
+        itemId,
+        refundOption: refundOption,
+        refundPiasters: refundPiasters,
+        notes: notes,
+        shiftId: shiftId,
+        cashierId: cashierId,
+      );
+      await loadPreOrders();
+      emit(state.copyWith(isSubmitting: false));
+      return true;
+    } catch (e) {
+      emit(
+        state.copyWith(
+          isSubmitting: false,
+          errorMessage: 'فشل تسجيل نفاذ الصنف: $e',
+        ),
+      );
+      return false;
+    }
+  }
+
+  Future<bool> markOrderItemDamaged(
+    String itemId, {
+    bool refundDeposit = true,
+    int refundPiasters = 0,
+    bool transferToClearance = true,
+    String? categoryId,
+    String? notes,
+    String? shiftId,
+    String? cashierId,
+  }) async {
+    emit(state.copyWith(isSubmitting: true));
+    try {
+      await _repository.markOrderItemDamaged(
+        itemId,
+        refundDeposit: refundDeposit,
+        refundPiasters: refundPiasters,
+        transferToClearance: transferToClearance,
+        categoryId: categoryId,
+        notes: notes,
+        shiftId: shiftId,
+        cashierId: cashierId,
+      );
+      await loadPreOrders();
+      emit(state.copyWith(isSubmitting: false));
+      return true;
+    } catch (e) {
+      emit(
+        state.copyWith(
+          isSubmitting: false,
+          errorMessage: 'فشل تسجيل تلف الصنف: $e',
+        ),
+      );
+      return false;
+    }
+  }
+
+  Future<bool> addCustomerToBatch(
+    String batchId,
+    PreOrderEntity order, {
+    int initialDepositPiasters = 0,
+    String paymentMethod = 'cash',
+    String? shiftId,
+    String? cashierId,
+  }) async {
+    emit(state.copyWith(isSubmitting: true));
+    try {
+      await _repository.addCustomerToBatch(
+        batchId,
+        order,
+        initialDepositPiasters: initialDepositPiasters,
+        paymentMethod: paymentMethod,
+        shiftId: shiftId,
+        cashierId: cashierId,
+      );
+      await loadPreOrders();
+      emit(state.copyWith(isSubmitting: false));
+      return true;
+    } catch (e) {
+      emit(
+        state.copyWith(
+          isSubmitting: false,
+          errorMessage: 'فشل إضافة العميل للشحنة: $e',
+        ),
+      );
+      return false;
+    }
+  }
 }

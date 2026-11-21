@@ -9,6 +9,7 @@ import '../../data/services/pre_order_excel_service.dart';
 import '../../domain/entities/pre_order_entity.dart';
 import '../cubits/pre_orders_cubit.dart';
 import 'bag_pickup_label_dialog.dart';
+import 'order_item_action_dialog.dart';
 import 'pre_order_delivery_dialog.dart';
 import 'pre_order_forfeit_dialog.dart';
 import 'pre_order_payment_dialog.dart';
@@ -382,56 +383,84 @@ class PreOrderCard extends StatelessWidget {
                 ...order.items.take(3).map((item) {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 5),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.circle, size: 5, color: Colors.grey),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            item.productName,
-                            style: const TextStyle(
-                              fontFamily: 'Cairo',
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            overflow: TextOverflow.ellipsis,
+                    child: InkWell(
+                      onTap: () => OrderItemActionDialog.show(
+                        context,
+                        order: order,
+                        item: item,
+                      ),
+                      borderRadius: BorderRadius.circular(6),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.circle,
+                            size: 5,
+                            color: item.isActive
+                                ? Colors.grey
+                                : (item.isCancelled || item.isOutOfStock)
+                                    ? AppColors.error
+                                    : AppColors.primary,
                           ),
-                        ),
-                        if (item.variantDescription != null &&
-                            item.variantDescription!.isNotEmpty) ...[
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              '${item.productName}${item.isCancelled ? " [ملغي]" : item.isOutOfStock ? " [نفد]" : item.isDamaged ? " [تالف/أوتلت]" : ""}',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                decoration: (item.isCancelled || item.isOutOfStock)
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                                color: (item.isCancelled || item.isOutOfStock)
+                                    ? AppColors.error
+                                    : AppColors.onSurface,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (item.variantDescription != null &&
+                              item.variantDescription!.isNotEmpty) ...[
+                            Text(
+                              ' (${item.variantDescription})',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 11,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(width: 8),
                           Text(
-                            ' (${item.variantDescription})',
+                            '${item.quantity} × ${Money(item.unitPricePiasters).toDisplay()} ج',
                             style: TextStyle(
                               fontFamily: 'Cairo',
-                              fontSize: 11,
-                              color: Colors.grey.shade600,
+                              fontSize: 11.5,
+                              color: Colors.grey.shade800,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ],
-                        const SizedBox(width: 8),
-                        Text(
-                          '${item.quantity} × ${Money(item.unitPricePiasters).toDisplay()} ج',
-                          style: TextStyle(
-                            fontFamily: 'Cairo',
-                            fontSize: 11.5,
-                            color: Colors.grey.shade800,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        if (item.itemUrl != null && item.itemUrl!.isNotEmpty) ...[
                           const SizedBox(width: 4),
-                          InkWell(
-                            onTap: () => launchUrl(
-                              Uri.parse(item.itemUrl!),
-                              mode: LaunchMode.externalApplication,
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(2),
-                              child: Icon(Icons.open_in_new_rounded, size: 13, color: AppColors.primary),
-                            ),
+                          Icon(
+                            Icons.tune_rounded,
+                            size: 13,
+                            color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
                           ),
+                          if (item.itemUrl != null && item.itemUrl!.isNotEmpty) ...[
+                            const SizedBox(width: 4),
+                            InkWell(
+                              onTap: () => launchUrl(
+                                Uri.parse(item.itemUrl!),
+                                mode: LaunchMode.externalApplication,
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(2),
+                                child: Icon(Icons.open_in_new_rounded, size: 13, color: AppColors.primary),
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                   );
                 }),

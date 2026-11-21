@@ -1494,7 +1494,7 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
                   ),
-                  decoration: _compactInput(label: 'تكلفة المندوب'),
+                  decoration: _compactInput(label: 'سعر الجملة (التكلفة) *'),
                   onChanged: (_) => onCostOrCommissionChanged(),
                   onFieldSubmitted: (_) =>
                       customer.fastCommissionFocus.requestFocus(),
@@ -1531,7 +1531,7 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
                   ),
-                  decoration: _compactInput(label: 'سعر البيع'),
+                  decoration: _compactInput(label: 'سعر البيع النهائي للعميل *'),
                   onChanged: onSalePriceChanged,
                   onFieldSubmitted: (_) => addFastItem(),
                 ),

@@ -2,7 +2,8 @@ import 'pre_order_entity.dart';
 
 class ShippingSplitMethods {
   static const String perItem = 'perItem'; // حسب عدد القطع
-  static const String equalPerCustomer = 'equalPerCustomer'; // بالتساوي بين العملاء
+  static const String equalPerCustomer =
+      'equalPerCustomer'; // بالتساوي بين العملاء
   static const String customFixed = 'customFixed'; // تحديد يدوي مخصص
   static const String freeShipping = 'freeShipping'; // شحن مجاني يتحمله التاجر
 
@@ -30,6 +31,9 @@ class PreOrderBatchEntity {
   final String? trackingNumber;
   final int totalShippingPiasters; // إجمالي مصاريف الشحن العام بالقرش
   final String shippingSplitMethod;
+  final int
+  emergencyIncreasePiasters; // الزيادة الطارئة / فرق سعر الصرف على الشحنة
+  final String emergencyIncreaseHandledBy; // 'merchant' أو 'customers'
   final String status; // pendingProcessing, arrivedAtStore, completed
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -43,7 +47,9 @@ class PreOrderBatchEntity {
     this.agentName,
     this.trackingNumber,
     this.totalShippingPiasters = 0,
-    this.shippingSplitMethod = ShippingSplitMethods.perItem,
+    this.shippingSplitMethod = ShippingSplitMethods.freeShipping,
+    this.emergencyIncreasePiasters = 0,
+    this.emergencyIncreaseHandledBy = 'merchant',
     this.status = PreOrderStatuses.pendingProcessing,
     required this.createdAt,
     required this.updatedAt,
@@ -54,9 +60,9 @@ class PreOrderBatchEntity {
   int get totalOrdersCount => orders.length;
 
   int get totalPiecesCount => orders.fold(
-        0,
-        (sum, o) => sum + o.items.fold(0, (s, it) => s + it.quantity),
-      );
+    0,
+    (sum, o) => sum + o.items.fold(0, (s, it) => s + it.quantity),
+  );
 
   int get totalRetailPiasters =>
       orders.fold(0, (sum, o) => sum + o.totalPiasters);
@@ -67,13 +73,19 @@ class PreOrderBatchEntity {
   int get totalDepositsPiasters =>
       orders.fold(0, (sum, o) => sum + o.depositPiasters);
 
-  /// صافي ربح التاجر من الشحنة (مع خصم الشحن العام في حال الشحن المجاني)
+  /// صافي ربح التاجر من الشحنة
+  /// في التسعير الشامل (شحن مجاني للعملاء): يُخصم شحن المندوب العام من أرباح التاجر
+  /// وفي حال تحمل التاجر للزيادة الطارئة في العملة/الجمارك: تُخصم أيضاً من صافي الربح
   int get totalProfitPiasters {
     final baseProfit = totalRetailPiasters - totalCostPiasters;
+    int profit = baseProfit;
     if (shippingSplitMethod == ShippingSplitMethods.freeShipping) {
-      return (baseProfit - totalShippingPiasters).clamp(0, totalRetailPiasters);
+      profit -= totalShippingPiasters;
     }
-    return baseProfit.clamp(0, totalRetailPiasters);
+    if (emergencyIncreaseHandledBy == 'merchant') {
+      profit -= emergencyIncreasePiasters;
+    }
+    return profit.clamp(0, totalRetailPiasters);
   }
 
   int get totalAllocatedShippingPiasters =>
@@ -90,6 +102,8 @@ class PreOrderBatchEntity {
     String? trackingNumber,
     int? totalShippingPiasters,
     String? shippingSplitMethod,
+    int? emergencyIncreasePiasters,
+    String? emergencyIncreaseHandledBy,
     String? status,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -105,6 +119,10 @@ class PreOrderBatchEntity {
       totalShippingPiasters:
           totalShippingPiasters ?? this.totalShippingPiasters,
       shippingSplitMethod: shippingSplitMethod ?? this.shippingSplitMethod,
+      emergencyIncreasePiasters:
+          emergencyIncreasePiasters ?? this.emergencyIncreasePiasters,
+      emergencyIncreaseHandledBy:
+          emergencyIncreaseHandledBy ?? this.emergencyIncreaseHandledBy,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -122,6 +140,8 @@ class PreOrderBatchEntity {
       'tracking_number': trackingNumber,
       'total_shipping_piasters': totalShippingPiasters,
       'shipping_split_method': shippingSplitMethod,
+      'emergency_increase_piasters': emergencyIncreasePiasters,
+      'emergency_increase_handled_by': emergencyIncreaseHandledBy,
       'status': status,
       'created_at': createdAt.millisecondsSinceEpoch ~/ 1000,
       'updated_at': updatedAt.millisecondsSinceEpoch ~/ 1000,
@@ -144,8 +164,13 @@ class PreOrderBatchEntity {
       trackingNumber: map['tracking_number'] as String?,
       totalShippingPiasters:
           (map['total_shipping_piasters'] as num?)?.toInt() ?? 0,
-      shippingSplitMethod: map['shipping_split_method'] as String? ??
-          ShippingSplitMethods.perItem,
+      shippingSplitMethod:
+          map['shipping_split_method'] as String? ??
+          ShippingSplitMethods.freeShipping,
+      emergencyIncreasePiasters:
+          (map['emergency_increase_piasters'] as num?)?.toInt() ?? 0,
+      emergencyIncreaseHandledBy:
+          map['emergency_increase_handled_by'] as String? ?? 'merchant',
       status: map['status'] as String? ?? PreOrderStatuses.pendingProcessing,
       createdAt: DateTime.fromMillisecondsSinceEpoch(
         ((map['created_at'] as num?)?.toInt() ?? 0) * 1000,
@@ -162,4 +187,3 @@ class PreOrderBatchEntity {
     );
   }
 }
-

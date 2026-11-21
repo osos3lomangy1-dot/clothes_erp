@@ -11,6 +11,7 @@ class PreOrderItemEntity {
   final String? itemUrl;
   final String? notes;
   final bool transferredToInventory;
+  final String status; // active, cancelled, outOfStock, damaged
 
   const PreOrderItemEntity({
     required this.id,
@@ -25,14 +26,21 @@ class PreOrderItemEntity {
     this.itemUrl,
     this.notes,
     this.transferredToInventory = false,
+    this.status = 'active',
   });
 
-  /// إجمالي تكلفة المندوب للصنف بالكامل = تكلفة القطعة * الكمية
-  int get totalCostPiasters => costPricePiasters * quantity;
+  bool get isActive => status == 'active';
+  bool get isCancelled => status == 'cancelled';
+  bool get isOutOfStock => status == 'outOfStock';
+  bool get isDamaged => status == 'damaged';
 
-  /// إجمالي صافي ربح التاجر للصنف = (سعر البيع - سعر التكلفة) * الكمية
+  /// إجمالي تكلفة المندوب للصنف بالكامل = تكلفة القطعة * الكمية (فقط للأصناف السارية أو التالفة التي تم استلامها)
+  int get totalCostPiasters =>
+      (isActive || isDamaged) ? (costPricePiasters * quantity) : 0;
+
+  /// إجمالي صافي ربح التاجر للصنف = (سعر البيع - سعر التكلفة) * الكمية (فقط للأصناف النشطة)
   int get totalProfitPiasters =>
-      (unitPricePiasters - costPricePiasters) * quantity;
+      isActive ? ((unitPricePiasters - costPricePiasters) * quantity) : 0;
 
   PreOrderItemEntity copyWith({
     String? id,
@@ -47,6 +55,7 @@ class PreOrderItemEntity {
     String? itemUrl,
     String? notes,
     bool? transferredToInventory,
+    String? status,
   }) {
     return PreOrderItemEntity(
       id: id ?? this.id,
@@ -62,6 +71,7 @@ class PreOrderItemEntity {
       notes: notes ?? this.notes,
       transferredToInventory:
           transferredToInventory ?? this.transferredToInventory,
+      status: status ?? this.status,
     );
   }
 
@@ -79,6 +89,7 @@ class PreOrderItemEntity {
       'item_url': itemUrl,
       'notes': notes,
       'transferred_to_inventory': transferredToInventory ? 1 : 0,
+      'status': status,
     };
   }
 
@@ -97,6 +108,7 @@ class PreOrderItemEntity {
       notes: map['notes'] as String?,
       transferredToInventory:
           (map['transferred_to_inventory'] as num?)?.toInt() == 1,
+      status: map['status'] as String? ?? 'active',
     );
   }
 }

@@ -169,5 +169,105 @@ class PreOrdersRepositoryImpl implements PreOrdersRepository {
   Future<void> deleteBatch(String batchId) {
     return _dataSource.deleteBatch(batchId);
   }
+
+  // --- سيناريوهات الشحنات والبنود الطارئة (Task 8.5.2) ---
+
+  @override
+  Future<void> attachOrderToBatch(String batchId, String orderId) {
+    return _dataSource.attachOrderToBatch(batchId, orderId);
+  }
+
+  @override
+  Future<void> applyBatchEmergencyIncrease(
+    String batchId,
+    int increasePiasters,
+    String handledBy,
+  ) {
+    return _dataSource.applyBatchEmergencyIncrease(
+      batchId,
+      increasePiasters,
+      handledBy,
+    );
+  }
+
+  @override
+  Future<void> cancelOrderItem(
+    String itemId, {
+    required String refundOption,
+    int refundPiasters = 0,
+    String? notes,
+    String? shiftId,
+    String? cashierId,
+  }) {
+    return _dataSource.cancelOrderItem(
+      itemId,
+      refundOption: refundOption,
+      refundPiasters: refundPiasters,
+      notes: notes,
+      shiftId: shiftId,
+      cashierId: cashierId,
+    );
+  }
+
+  @override
+  Future<void> markOrderItemOutOfStock(
+    String itemId, {
+    required String refundOption,
+    int refundPiasters = 0,
+    String? notes,
+    String? shiftId,
+    String? cashierId,
+  }) {
+    return _dataSource.markOrderItemOutOfStock(
+      itemId,
+      refundOption: refundOption,
+      refundPiasters: refundPiasters,
+      notes: notes,
+      shiftId: shiftId,
+      cashierId: cashierId,
+    );
+  }
+
+  @override
+  Future<void> markOrderItemDamaged(
+    String itemId, {
+    bool refundDeposit = true,
+    int refundPiasters = 0,
+    bool transferToClearance = true,
+    String? categoryId,
+    String? notes,
+    String? shiftId,
+    String? cashierId,
+  }) {
+    return _dataSource.markOrderItemDamaged(
+      itemId,
+      refundDeposit: refundDeposit,
+      refundPiasters: refundPiasters,
+      transferToClearance: transferToClearance,
+      categoryId: categoryId,
+      notes: notes,
+      shiftId: shiftId,
+      cashierId: cashierId,
+    );
+  }
+
+  @override
+  Future<PreOrderEntity> addCustomerToBatch(
+    String batchId,
+    PreOrderEntity order, {
+    int initialDepositPiasters = 0,
+    String paymentMethod = 'cash',
+    String? shiftId,
+    String? cashierId,
+  }) {
+    return _dataSource.addCustomerToBatch(
+      batchId,
+      order,
+      initialDepositPiasters: initialDepositPiasters,
+      paymentMethod: paymentMethod,
+      shiftId: shiftId,
+      cashierId: cashierId,
+    );
+  }
 }
 
