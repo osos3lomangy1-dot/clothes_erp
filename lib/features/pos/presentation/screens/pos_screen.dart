@@ -2855,166 +2855,181 @@ class _CartPanelState extends State<_CartPanel> {
                     Padding(
                       padding: EdgeInsets.fromLTRB(
                         16,
-                        isCompact ? 6 : 12,
+                        isCompact ? 6 : 10,
                         16,
                         isCompact ? 2 : 4,
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Row(
                             children: [
-                              Text(
+                              Icon(
+                                Icons.shopping_bag_outlined,
+                                size: 18,
+                                color: AppColors.primary,
+                              ),
+                              const SizedBox(width: 6),
+                              const Text(
                                 'سلة المشتريات',
                                 style: TextStyle(
                                   fontFamily: 'Cairo',
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                                  fontSize: 14.5,
                                   color: AppColors.onSurface,
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 6),
                               // Badge showing items & pieces
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 2,
+                                  horizontal: 6,
+                                  vertical: 1.5,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary,
-                                  borderRadius: BorderRadius.circular(10),
+                                  color: AppColors.primary.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
                                   '${state.cart.length} أصناف • $totalPieces قطع',
                                   style: TextStyle(
                                     fontFamily: 'Cairo',
-                                    color: AppColors.onPrimary,
+                                    color: AppColors.primary,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 10,
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
-                          // Wholesale / Retail Toggle Button
-                          Container(
-                            height: 28,
-                            padding: const EdgeInsets.all(2),
-                            decoration: BoxDecoration(
-                              color: _isWholesaleMode
-                                  ? AppColors.primary.withValues(alpha: 0.1)
-                                  : AppColors.surfaceContainerLow,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: _isWholesaleMode
-                                    ? AppColors.primary
-                                    : AppColors.outlineVariant,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                InkWell(
-                                  onTap: () {
-                                    if (!_isWholesaleMode) return;
-                                    setState(() => _isWholesaleMode = false);
-                                    _toggleWholesalePrices(false);
-                                  },
-                                  borderRadius: BorderRadius.circular(6),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: !_isWholesaleMode
-                                          ? AppColors.primary
-                                          : Colors.transparent,
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      'قطاعي',
-                                      style: TextStyle(
-                                        fontFamily: 'Cairo',
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: !_isWholesaleMode
-                                            ? Colors.white
-                                            : AppColors.onSurfaceVariant,
+                              const Spacer(),
+                              if (state.cart.isNotEmpty)
+                                Tooltip(
+                                  message: 'إفراغ السلة [Esc]',
+                                  child: InkWell(
+                                    onTap: () {
+                                      _receivedCtrl.clear();
+                                      _discountCtrl.clear();
+                                      context.read<PosCubit>().clearCart();
+                                    },
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 3,
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.delete_sweep_rounded,
+                                            size: 16,
+                                            color: AppColors.error,
+                                          ),
+                                          SizedBox(width: 2),
+                                          Text(
+                                            'مسح',
+                                            style: TextStyle(
+                                              fontFamily: 'Cairo',
+                                              fontSize: 11,
+                                              color: AppColors.error,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),
                                 ),
-                                InkWell(
-                                  onTap: () {
-                                    if (_isWholesaleMode) return;
-                                    setState(() => _isWholesaleMode = true);
-                                    _toggleWholesalePrices(true);
-                                  },
-                                  borderRadius: BorderRadius.circular(6),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: _isWholesaleMode
-                                          ? AppColors.primary
-                                          : Colors.transparent,
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.storefront_rounded,
-                                          size: 12,
-                                          color: _isWholesaleMode
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          // Wholesale / Retail Toggle Bar (Full-Width Segmented Control)
+                          Container(
+                            height: 28,
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceContainerLow,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: AppColors.outlineVariant,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () {
+                                      if (!_isWholesaleMode) return;
+                                      setState(() => _isWholesaleMode = false);
+                                      _toggleWholesalePrices(false);
+                                    },
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: Container(
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: !_isWholesaleMode
+                                            ? AppColors.primary
+                                            : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        'بيع قطاعي',
+                                        style: TextStyle(
+                                          fontFamily: 'Cairo',
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.bold,
+                                          color: !_isWholesaleMode
                                               ? Colors.white
                                               : AppColors.onSurfaceVariant,
                                         ),
-                                        const SizedBox(width: 3),
-                                        Text(
-                                          'بيع جملة',
-                                          style: TextStyle(
-                                            fontFamily: 'Cairo',
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () {
+                                      if (_isWholesaleMode) return;
+                                      setState(() => _isWholesaleMode = true);
+                                      _toggleWholesalePrices(true);
+                                    },
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: Container(
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: _isWholesaleMode
+                                            ? AppColors.primary
+                                            : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.storefront_rounded,
+                                            size: 13,
                                             color: _isWholesaleMode
                                                 ? Colors.white
                                                 : AppColors.onSurfaceVariant,
                                           ),
-                                        ),
-                                      ],
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'بيع جملة',
+                                            style: TextStyle(
+                                              fontFamily: 'Cairo',
+                                              fontSize: 10.5,
+                                              fontWeight: FontWeight.bold,
+                                              color: _isWholesaleMode
+                                                  ? Colors.white
+                                                  : AppColors.onSurfaceVariant,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
                               ],
-                            ),
-                          ),
-                          TextButton.icon(
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppColors.error,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                              ),
-                            ),
-                            onPressed: state.cart.isEmpty
-                                ? null
-                                : () {
-                                    _receivedCtrl.clear();
-                                    _discountCtrl.clear();
-                                    context.read<PosCubit>().clearCart();
-                                  },
-                            icon: const Icon(
-                              Icons.delete_sweep_rounded,
-                              size: 16,
-                            ),
-                            label: Text(
-                              'مسح',
-                              style: TextStyle(
-                                fontFamily: 'Cairo',
-                                fontSize: 11,
-                              ),
                             ),
                           ),
                         ],
