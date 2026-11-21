@@ -592,6 +592,29 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
         Variable.withString(preOrderId),
       ],
     );
+
+    // If part of a batch, check if all orders in batch are now delivered
+    if (order.batchId != null && order.batchId!.isNotEmpty) {
+      try {
+        final remainingBatchOrders = await _db.customSelect(
+          'SELECT COUNT(*) as cnt FROM pre_orders WHERE batch_id = ? AND status != ? AND deleted_at IS NULL',
+          variables: [
+            Variable.withString(order.batchId!),
+            Variable.withString(PreOrderStatuses.delivered),
+          ],
+        ).getSingle();
+        if (remainingBatchOrders.read<int>('cnt') == 0) {
+          await _db.customUpdate(
+            'UPDATE pre_order_batches SET status = ?, updated_at = ? WHERE id = ?',
+            variables: [
+              Variable.withString(PreOrderStatuses.delivered),
+              Variable.withInt(nowSec),
+              Variable.withString(order.batchId!),
+            ],
+          );
+        }
+      } catch (_) {}
+    }
   }
 
   @override

@@ -11,12 +11,22 @@ class PreOrderDeliveryDialog extends StatefulWidget {
 
   const PreOrderDeliveryDialog({super.key, required this.order});
 
+  static Future<bool?> show(BuildContext context, PreOrderEntity order) {
+    return showDialog<bool>(
+      context: context,
+      builder: (_) => BlocProvider.value(
+        value: context.read<PreOrdersCubit>(),
+        child: PreOrderDeliveryDialog(order: order),
+      ),
+    );
+  }
+
   @override
   State<PreOrderDeliveryDialog> createState() => _PreOrderDeliveryDialogState();
 }
 
 class _PreOrderDeliveryDialogState extends State<PreOrderDeliveryDialog> {
-  late final TextEditingController _finalPaymentCtrl;
+  final TextEditingController _finalPaymentCtrl = TextEditingController();
   final TextEditingController _courierFeeCtrl = TextEditingController(
     text: '0',
   );
@@ -25,6 +35,7 @@ class _PreOrderDeliveryDialogState extends State<PreOrderDeliveryDialog> {
   String _deliveryType = 'pickup'; // 'pickup' | 'courier'
   String _paymentMethod = 'cash';
   late final Set<String> _selectedItemIds;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -53,21 +64,18 @@ class _PreOrderDeliveryDialogState extends State<PreOrderDeliveryDialog> {
       duePiasters = (totalRemaining * ratio).round();
     }
 
-    final courierFee =
-        (double.tryParse(_courierFeeCtrl.text.trim()) ?? 0.0) * 100;
-    duePiasters += courierFee.round();
+    if (_deliveryType == 'courier') {
+      final courierFee =
+          (double.tryParse(_courierFeeCtrl.text.trim()) ?? 0.0) * 100;
+      duePiasters += courierFee.round();
+    }
 
     final remLe = duePiasters > 0 ? duePiasters / 100.0 : 0.0;
+    _finalPaymentCtrl.text =
+        remLe > 0 ? remLe.toStringAsFixed(1).replaceAll('.0', '') : '0';
+
     if (mounted) {
-      setState(() {
-        _finalPaymentCtrl = TextEditingController(
-          text: remLe > 0 ? remLe.toStringAsFixed(1).replaceAll('.0', '') : '0',
-        );
-      });
-    } else {
-      _finalPaymentCtrl = TextEditingController(
-        text: remLe > 0 ? remLe.toStringAsFixed(1).replaceAll('.0', '') : '0',
-      );
+      setState(() {});
     }
   }
 
@@ -494,6 +502,7 @@ class _PreOrderDeliveryDialogState extends State<PreOrderDeliveryDialog> {
                     child: TextField(
                       controller: _finalPaymentCtrl,
                       keyboardType: TextInputType.number,
+                      onChanged: (_) => setState(() {}),
                       style: TextStyle(
                         fontFamily: 'Cairo',
                         fontSize: 14,
@@ -583,88 +592,142 @@ class _PreOrderDeliveryDialogState extends State<PreOrderDeliveryDialog> {
               borderRadius: BorderRadius.circular(10),
             ),
           ),
-          icon: Icon(
-            _isPartialDelivery
-                ? Icons.playlist_add_check_rounded
-                : Icons.check_circle_rounded,
-          ),
+          icon: _isSubmitting
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+              : Icon(
+                  _isPartialDelivery
+                      ? Icons.playlist_add_check_rounded
+                      : Icons.check_circle_rounded,
+                ),
           label: Text(
-            _isPartialDelivery
-                ? 'تأكيد التسليم الجزئي'
-                : 'تأكيد التسليم الكامل والإغلاق',
+            _isSubmitting
+                ? 'جاري التسليم...'
+                : (_isPartialDelivery
+                    ? 'تأكيد التسليم الجزئي'
+                    : 'تأكيد التسليم الكامل والإغلاق'),
             style: const TextStyle(
               fontFamily: 'Cairo',
               fontWeight: FontWeight.bold,
             ),
           ),
-          onPressed: () async {
-            if (_selectedItemIds.isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('يرجى تحديد صنف واحد على الأقل لتسليمه'),
-                  backgroundColor: AppColors.error,
-                ),
-              );
-              return;
-            }
-
-            final amtNum =
-                double.tryParse(_finalPaymentCtrl.text.trim()) ?? 0.0;
-            final piasters = (amtNum * 100).round();
-
-            final cubit = context.read<PreOrdersCubit>();
-            final isAllDelivered =
-                _selectedItemIds.length == widget.order.items.length;
-
-            if (isAllDelivered) {
-              final ok = await cubit.deliverPreOrder(
-                widget.order.id,
-                finalPaymentPiasters: piasters,
-                paymentMethod: _paymentMethod,
-              );
-              if (ok && context.mounted) {
-                Navigator.of(context).pop(true);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'تم تسليم الأوردر بالكامل وإغلاق الحساب بنجاح!',
-                      style: TextStyle(
-                        fontFamily: 'Cairo',
-                        fontWeight: FontWeight.bold,
+          onPressed: _isSubmitting
+              ? null
+              : () async {
+                  if (_selectedItemIds.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('يرجى تحديد صنف واحد على الأقل لتسليمه'),
+                        backgroundColor: AppColors.error,
                       ),
-                    ),
-                    backgroundColor: AppColors.success,
-                  ),
-                );
-              }
-            } else {
-              // تسليم جزئي: إضافة دفعة بقيمة الأصناف المسلمة وتسجيل ملاحظة
-              if (piasters > 0) {
-                await cubit.addPayment(
-                  widget.order.id,
-                  piasters,
-                  paymentMethod: _paymentMethod,
-                  notes:
-                      'تسليم جزئي لـ ${_selectedItemIds.length} أصناف من أصل ${widget.order.items.length}',
-                );
-              }
-              if (context.mounted) {
-                Navigator.of(context).pop(true);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'تم تسجيل تسليم جزئي لـ ${_selectedItemIds.length} أصناف بنجاح، وتبقى ${widget.order.items.length - _selectedItemIds.length} أصناف قيد الانتظار!',
-                      style: const TextStyle(
-                        fontFamily: 'Cairo',
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    backgroundColor: AppColors.primary,
-                  ),
-                );
-              }
-            }
-          },
+                    );
+                    return;
+                  }
+
+                  final amtNum =
+                      double.tryParse(_finalPaymentCtrl.text.trim()) ?? 0.0;
+                  final piasters = (amtNum * 100).round();
+
+                  setState(() => _isSubmitting = true);
+
+                  try {
+                    final cubit = context.read<PreOrdersCubit>();
+                    final isAllDelivered =
+                        _selectedItemIds.length == widget.order.items.length;
+
+                    if (isAllDelivered) {
+                      final ok = await cubit.deliverPreOrder(
+                        widget.order.id,
+                        finalPaymentPiasters: piasters,
+                        paymentMethod: _paymentMethod,
+                      );
+                      if (!context.mounted) return;
+                      if (ok) {
+                        Navigator.of(context).pop(true);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'تم تسليم الأوردر بالكامل وإغلاق الحساب بنجاح!',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            backgroundColor: AppColors.success,
+                          ),
+                        );
+                      } else {
+                        setState(() => _isSubmitting = false);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              cubit.state.errorMessage ??
+                                  'فشل إتمام تسليم الأوردر',
+                            ),
+                            backgroundColor: AppColors.error,
+                          ),
+                        );
+                      }
+                    } else {
+                      // تسليم جزئي: إضافة دفعة بقيمة الأصناف المسلمة وتسجيل ملاحظة
+                      if (piasters > 0) {
+                        final ok = await cubit.addPayment(
+                          widget.order.id,
+                          piasters,
+                          paymentMethod: _paymentMethod,
+                          notes:
+                              'تسليم جزئي لـ ${_selectedItemIds.length} أصناف من أصل ${widget.order.items.length}${_deliveryType == 'courier' && _courierNameCtrl.text.trim().isNotEmpty ? ' (توصيل ${_courierNameCtrl.text.trim()})' : ''}',
+                        );
+                        if (!ok) {
+                          if (context.mounted) {
+                            setState(() => _isSubmitting = false);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  cubit.state.errorMessage ??
+                                      'فشل تسجيل دفعة التسليم الجزئي',
+                                ),
+                                backgroundColor: AppColors.error,
+                              ),
+                            );
+                          }
+                          return;
+                        }
+                      }
+                      if (context.mounted) {
+                        Navigator.of(context).pop(true);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'تم تسجيل تسليم جزئي لـ ${_selectedItemIds.length} أصناف بنجاح، وتبقى ${widget.order.items.length - _selectedItemIds.length} أصناف قيد الانتظار!',
+                              style: const TextStyle(
+                                fontFamily: 'Cairo',
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            backgroundColor: AppColors.primary,
+                          ),
+                        );
+                      }
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      setState(() => _isSubmitting = false);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('حدث خطأ أثناء تنفيذ التسليم: $e'),
+                          backgroundColor: AppColors.error,
+                        ),
+                      );
+                    }
+                  }
+                },
         ),
       ],
     );

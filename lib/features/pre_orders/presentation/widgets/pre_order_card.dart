@@ -9,6 +9,7 @@ import '../../data/services/pre_order_excel_service.dart';
 import '../../domain/entities/pre_order_entity.dart';
 import '../cubits/pre_orders_cubit.dart';
 import 'bag_pickup_label_dialog.dart';
+import 'pre_order_delivery_dialog.dart';
 import 'pre_order_forfeit_dialog.dart';
 import 'pre_order_payment_dialog.dart';
 
@@ -539,7 +540,7 @@ class PreOrderCard extends StatelessWidget {
                       ),
                       icon: const Icon(Icons.check_rounded, size: 15),
                       label: const Text('تسليم', style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5, fontWeight: FontWeight.bold)),
-                      onPressed: onDeliver,
+                      onPressed: onDeliver ?? () => PreOrderDeliveryDialog.show(context, order),
                     ),
                     const SizedBox(width: 6),
                   ],

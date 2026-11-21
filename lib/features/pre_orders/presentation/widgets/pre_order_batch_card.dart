@@ -9,6 +9,7 @@ import '../../domain/entities/pre_order_batch_entity.dart';
 import '../../domain/entities/pre_order_entity.dart';
 import '../cubits/pre_orders_cubit.dart';
 import 'bag_pickup_label_dialog.dart';
+import 'pre_order_delivery_dialog.dart';
 
 class PreOrderBatchCard extends StatefulWidget {
   final PreOrderBatchEntity batch;
@@ -549,6 +550,21 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                           onPressed: () =>
                               BagPickupLabelDialog.show(context, o),
                         ),
+                        if (o.canDeliver) ...[
+                          const SizedBox(width: 4),
+                          IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            icon: const Icon(
+                              Icons.check_circle_outline_rounded,
+                              size: 16,
+                              color: AppColors.success,
+                            ),
+                            tooltip: 'تسليم الأوردر للعميل',
+                            onPressed: () =>
+                                PreOrderDeliveryDialog.show(context, o),
+                          ),
+                        ],
                       ],
                     ),
                   );
