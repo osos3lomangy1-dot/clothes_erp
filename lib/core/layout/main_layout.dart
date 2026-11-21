@@ -55,6 +55,7 @@ class _MainLayoutState extends State<MainLayout> {
   final GlobalKey<NavigatorState> _contentNavKey = GlobalKey<NavigatorState>();
   final Set<String> _collapsedSections = {};
   bool? _userCollapsedOverride;
+  bool _collapsedByPos = false;
   bool _isSyncing = false;
   bool _cloudSyncEnabled = false;
   String _activeTitle = 'لوحة التحكم';
@@ -70,6 +71,8 @@ class _MainLayoutState extends State<MainLayout> {
     _currentScreen = widget.child;
     if (widget.currentRoute == '/pos' || widget.child is PosScreen) {
       _activeTitle = 'نقطة البيع (الكاشير)';
+      _userCollapsedOverride = true;
+      _collapsedByPos = true;
     }
 
     final syncService = getIt<RestSyncService>();
@@ -158,6 +161,11 @@ class _MainLayoutState extends State<MainLayout> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.currentRoute != widget.currentRoute) {
       _currentScreen = widget.child;
+      if (widget.currentRoute == '/pos' || widget.child is PosScreen) {
+        _activeTitle = 'نقطة البيع (الكاشير)';
+        _userCollapsedOverride = true;
+        _collapsedByPos = true;
+      }
       _contentNavKey.currentState?.pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => widget.child),
         (route) => false,
@@ -215,9 +223,10 @@ class _MainLayoutState extends State<MainLayout> {
                                     color: Colors.white,
                                   ),
                                   tooltip: 'توسيع القائمة',
-                                  onPressed: () => setState(
-                                    () => _userCollapsedOverride = !collapsed,
-                                  ),
+                                  onPressed: () => setState(() {
+                                    _collapsedByPos = false;
+                                    _userCollapsedOverride = !collapsed;
+                                  }),
                                 ),
                               )
                             : Row(
@@ -265,9 +274,10 @@ class _MainLayoutState extends State<MainLayout> {
                                       color: Colors.white,
                                     ),
                                     tooltip: 'طي القائمة',
-                                    onPressed: () => setState(
-                                      () => _userCollapsedOverride = !collapsed,
-                                    ),
+                                    onPressed: () => setState(() {
+                                      _collapsedByPos = false;
+                                      _userCollapsedOverride = !collapsed;
+                                    }),
                                   ),
                                 ],
                               ),
@@ -962,9 +972,17 @@ class _MainLayoutState extends State<MainLayout> {
           context.read<DashboardCubit>().loadStats(silent: true);
         } catch (_) {}
       }
+      final isPosScreen =
+          title == 'نقطة البيع (الكاشير)' || screen is PosScreen || isPos;
       if (_activeTitle == title) {
         if (_contentNavKey.currentState?.canPop() == true) {
           _contentNavKey.currentState?.popUntil((route) => route.isFirst);
+        }
+        if (isPosScreen && _userCollapsedOverride != true) {
+          setState(() {
+            _userCollapsedOverride = true;
+            _collapsedByPos = true;
+          });
         }
         return;
       }
@@ -972,6 +990,13 @@ class _MainLayoutState extends State<MainLayout> {
       setState(() {
         _activeTitle = title;
         _currentScreen = screen;
+        if (isPosScreen) {
+          _userCollapsedOverride = true;
+          _collapsedByPos = true;
+        } else if (_collapsedByPos) {
+          _userCollapsedOverride = null;
+          _collapsedByPos = false;
+        }
       });
       _contentNavKey.currentState?.pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => screen),
