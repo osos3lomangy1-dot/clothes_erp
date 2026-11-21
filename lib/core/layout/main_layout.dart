@@ -201,15 +201,29 @@ class _MainLayoutState extends State<MainLayout> {
       builder: (context, branding, _) {
         return Scaffold(
           body: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 curve: Curves.easeOut,
                 width: collapsed ? 66 : 232,
-                child: Material(
-                  color: branding.primaryColor,
-                  child: Column(
-                    children: [
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final targetWidth = collapsed ? 66.0 : 232.0;
+                    return ClipRect(
+                      child: OverflowBox(
+                        alignment: AlignmentDirectional.topStart,
+                        minWidth: 0,
+                        maxWidth: 232,
+                        minHeight: constraints.maxHeight,
+                        maxHeight: constraints.maxHeight,
+                        child: SizedBox(
+                          width: targetWidth,
+                          height: constraints.maxHeight,
+                          child: Material(
+                            color: branding.primaryColor,
+                            child: Column(
+                              children: [
                       Container(
                         padding: EdgeInsets.symmetric(
                           horizontal: collapsed ? 0 : 14,
@@ -580,6 +594,11 @@ class _MainLayoutState extends State<MainLayout> {
                   ),
                 ),
               ),
+            ),
+          );
+        },
+      ),
+    ),
               Expanded(
                 child: ClipRect(
                   child: Container(
@@ -786,6 +805,8 @@ class _MainLayoutState extends State<MainLayout> {
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
                           ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                       ),
                     ],
