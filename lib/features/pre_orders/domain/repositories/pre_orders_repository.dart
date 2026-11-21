@@ -1,5 +1,6 @@
 import '../entities/pre_order_batch_entity.dart';
 import '../entities/pre_order_entity.dart';
+import '../entities/pre_order_item_entity.dart';
 
 abstract class PreOrdersRepository {
   Future<void> ensureTablesExist();
@@ -122,4 +123,12 @@ abstract class PreOrdersRepository {
     String? shiftId,
     String? cashierId,
   });
+
+  // --- إدارة وتعديل الأصناف (Task 8.5.4) ---
+  Future<void> updateOrderItem(PreOrderItemEntity item);
+  Future<void> deleteOrderItem(String itemId);
+  Future<PreOrderItemEntity> addOrderItem(
+    String orderId,
+    PreOrderItemEntity item,
+  );
 }

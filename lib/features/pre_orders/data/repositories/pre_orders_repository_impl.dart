@@ -2,6 +2,7 @@ import 'package:injectable/injectable.dart';
 
 import '../../domain/entities/pre_order_batch_entity.dart';
 import '../../domain/entities/pre_order_entity.dart';
+import '../../domain/entities/pre_order_item_entity.dart';
 import '../../domain/repositories/pre_orders_repository.dart';
 import '../datasources/pre_orders_local_data_source.dart';
 
@@ -268,6 +269,24 @@ class PreOrdersRepositoryImpl implements PreOrdersRepository {
       shiftId: shiftId,
       cashierId: cashierId,
     );
+  }
+
+  @override
+  Future<void> updateOrderItem(PreOrderItemEntity item) {
+    return _dataSource.updateOrderItem(item);
+  }
+
+  @override
+  Future<void> deleteOrderItem(String itemId) {
+    return _dataSource.deleteOrderItem(itemId);
+  }
+
+  @override
+  Future<PreOrderItemEntity> addOrderItem(
+    String orderId,
+    PreOrderItemEntity item,
+  ) {
+    return _dataSource.addOrderItem(orderId, item);
   }
 }
 

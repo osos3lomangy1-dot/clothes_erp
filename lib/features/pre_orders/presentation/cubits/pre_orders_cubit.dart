@@ -3,6 +3,7 @@ import 'package:injectable/injectable.dart';
 
 import '../../domain/entities/pre_order_batch_entity.dart';
 import '../../domain/entities/pre_order_entity.dart';
+import '../../domain/entities/pre_order_item_entity.dart';
 import '../../domain/repositories/pre_orders_repository.dart';
 import 'pre_orders_state.dart';
 
@@ -472,6 +473,62 @@ class PreOrdersCubit extends Cubit<PreOrdersState> {
         state.copyWith(
           isSubmitting: false,
           errorMessage: 'فشل إضافة العميل للشحنة: $e',
+        ),
+      );
+      return false;
+    }
+  }
+
+  // --- إدارة وتعديل الأصناف وإعادة الحسابات (Task 8.5.4) ---
+
+  Future<bool> updateOrderItem(PreOrderItemEntity item) async {
+    emit(state.copyWith(isSubmitting: true));
+    try {
+      await _repository.updateOrderItem(item);
+      await loadPreOrders();
+      emit(state.copyWith(isSubmitting: false));
+      return true;
+    } catch (e) {
+      emit(
+        state.copyWith(
+          isSubmitting: false,
+          errorMessage: 'فشل تعديل بيانات الصنف: $e',
+        ),
+      );
+      return false;
+    }
+  }
+
+  Future<bool> deleteOrderItem(String itemId) async {
+    emit(state.copyWith(isSubmitting: true));
+    try {
+      await _repository.deleteOrderItem(itemId);
+      await loadPreOrders();
+      emit(state.copyWith(isSubmitting: false));
+      return true;
+    } catch (e) {
+      emit(
+        state.copyWith(
+          isSubmitting: false,
+          errorMessage: 'فشل حذف الصنف: $e',
+        ),
+      );
+      return false;
+    }
+  }
+
+  Future<bool> addOrderItem(String orderId, PreOrderItemEntity item) async {
+    emit(state.copyWith(isSubmitting: true));
+    try {
+      await _repository.addOrderItem(orderId, item);
+      await loadPreOrders();
+      emit(state.copyWith(isSubmitting: false));
+      return true;
+    } catch (e) {
+      emit(
+        state.copyWith(
+          isSubmitting: false,
+          errorMessage: 'فشل إضافة الصنف للطلب: $e',
         ),
       );
       return false;

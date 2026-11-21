@@ -7,11 +7,13 @@ import '../../../../core/utils/money.dart';
 import '../../data/services/pre_order_excel_service.dart';
 import '../../domain/entities/pre_order_batch_entity.dart';
 import '../../domain/entities/pre_order_entity.dart';
+import '../../domain/entities/pre_order_item_entity.dart';
 import '../cubits/pre_orders_cubit.dart';
 import 'add_customer_to_batch_dialog.dart';
 import 'attach_order_to_batch_dialog.dart';
 import 'bag_pickup_label_dialog.dart';
 import 'batch_emergency_surcharge_dialog.dart';
+import 'edit_pre_order_item_dialog.dart';
 import 'order_item_action_dialog.dart';
 import 'pre_order_delivery_dialog.dart';
 import 'pre_order_forfeit_dialog.dart';
@@ -39,6 +41,120 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
       default:
         return AppColors.onSurfaceVariant;
     }
+  }
+
+  void _confirmDeleteItem(BuildContext context, PreOrderItemEntity item) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Row(
+          children: [
+            Icon(
+              Icons.delete_outline_rounded,
+              color: AppColors.error,
+              size: 20,
+            ),
+            SizedBox(width: 8),
+            Text(
+              'حذف الصنف',
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: AppColors.onSurface,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'هل أنت متأكد من حذف الصنف (${item.productName})؟\nسيتم تحديث إجمالي طلب العميل ومقاييس الشحنة تلقائياً.',
+          style: const TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 12,
+            color: AppColors.onSurfaceVariant,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<PreOrdersCubit>().deleteOrderItem(item.id);
+            },
+            child: const Text(
+              'تأكيد الحذف',
+              style: TextStyle(fontFamily: 'Cairo'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteBatch(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Row(
+          children: [
+            Icon(
+              Icons.delete_outline_rounded,
+              color: AppColors.error,
+              size: 20,
+            ),
+            SizedBox(width: 8),
+            Text(
+              'حذف الشحنة المجمعة',
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: AppColors.onSurface,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'هل أنت متأكد من حذف الشحنة (${widget.batch.batchNumber})؟',
+          style: const TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 12,
+            color: AppColors.onSurfaceVariant,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<PreOrdersCubit>().deleteBatch(widget.batch.id);
+            },
+            child: const Text(
+              'تأكيد الحذف',
+              style: TextStyle(fontFamily: 'Cairo'),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showBatchWhatsAppModal(BuildContext context) {
@@ -388,61 +504,84 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
 
           const Divider(height: 1, color: AppColors.outlineVariant),
 
-          // 2. شريط الأرقام المالية والمقاييس للشحنة (متجاوب وقابل للتمرير لمنع أي Overflow)
+          // 2. شريط الأرقام المالية والمقاييس للشحنة (صفين متناسقين لمنع أي Overflow)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: const BoxDecoration(
               color: AppColors.surfaceContainerLow,
             ),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildMetricColumn(
-                    'العملاء',
-                    '${batch.totalOrdersCount}',
-                    AppColors.onSurface,
-                  ),
-                  _divider(),
-                  _buildMetricColumn(
-                    'إجمالي القطع',
-                    '${batch.totalPiecesCount}',
-                    AppColors.onSurface,
-                  ),
-                  _divider(),
-                  _buildMetricColumn(
-                    'المبيعات',
-                    Money(batch.totalRetailPiasters).toDisplay(),
-                    AppColors.onSurface,
-                  ),
-                  _divider(),
-                  _buildMetricColumn(
-                    'تكلفة المندوب',
-                    Money(batch.totalCostPiasters).toDisplay(),
-                    AppColors.onSurfaceVariant,
-                  ),
-                  _divider(),
-                  _buildMetricColumn(
-                    'الشحن العام',
-                    Money(batch.totalShippingPiasters).toDisplay(),
-                    AppColors.primary,
-                  ),
-                  _divider(),
-                  _buildMetricColumn(
-                    'صافي أرباحك',
-                    '+${Money(batch.totalProfitPiasters).toDisplay()}',
-                    AppColors.primary,
-                  ),
-                  _divider(),
-                  _buildMetricColumn(
-                    'المتبقي تحصيله',
-                    Money(batch.totalRemainingWithShippingPiasters).toDisplay(),
-                    batch.totalRemainingWithShippingPiasters > 0
-                        ? AppColors.error
-                        : AppColors.success,
-                  ),
-                ],
-              ),
+            child: Column(
+              children: [
+                // الصف الأول: العملاء، إجمالي القطع، المبيعات، تكلفة الجملة
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildMetricColumn(
+                        'العملاء',
+                        '${batch.totalOrdersCount}',
+                        AppColors.onSurface,
+                      ),
+                    ),
+                    _divider(),
+                    Expanded(
+                      child: _buildMetricColumn(
+                        'إجمالي القطع',
+                        '${batch.totalPiecesCount}',
+                        AppColors.onSurface,
+                      ),
+                    ),
+                    _divider(),
+                    Expanded(
+                      child: _buildMetricColumn(
+                        'المبيعات',
+                        Money(batch.totalRetailPiasters).toDisplay(),
+                        AppColors.onSurface,
+                      ),
+                    ),
+                    _divider(),
+                    Expanded(
+                      child: _buildMetricColumn(
+                        'تكلفة الجملة',
+                        Money(batch.totalCostPiasters).toDisplay(),
+                        AppColors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 12, color: AppColors.outlineVariant),
+                // الصف الثاني: الشحن العام، صافي الأرباح، المتبقي تحصيله
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildMetricColumn(
+                        'شحن المندوب',
+                        Money(batch.totalShippingPiasters).toDisplay(),
+                        AppColors.primary,
+                      ),
+                    ),
+                    _divider(),
+                    Expanded(
+                      child: _buildMetricColumn(
+                        'صافي ربحك',
+                        '+${Money(batch.totalProfitPiasters).toDisplay()}',
+                        AppColors.primary,
+                      ),
+                    ),
+                    _divider(),
+                    Expanded(
+                      child: _buildMetricColumn(
+                        'المتبقي تحصيله',
+                        Money(
+                          batch.totalRemainingWithShippingPiasters,
+                        ).toDisplay(),
+                        batch.totalRemainingWithShippingPiasters > 0
+                            ? AppColors.error
+                            : AppColors.success,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
 
@@ -615,13 +754,14 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                             ],
                           ],
                         ),
-                        // قائمة الأصناف للعميل مع إمكانية إدارة الاستثناءات
-                        if (o.items.isNotEmpty) ...[
-                          const SizedBox(height: 6),
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 4,
-                            children: o.items.map((it) {
+                        // قائمة الأصناف للعميل مع إمكانية التعديل وإدارة الاستثناءات والحذف
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            ...o.items.map((it) {
                               String statusText = '';
                               Color badgeColor = AppColors.onSurfaceVariant;
                               if (it.isCancelled) {
@@ -635,55 +775,136 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                                 badgeColor = AppColors.primary;
                               }
 
-                              return InkWell(
-                                onTap: () => OrderItemActionDialog.show(
-                                  context,
-                                  order: o,
-                                  item: it,
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 3,
                                 ),
-                                borderRadius: BorderRadius.circular(6),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 3,
+                                decoration: BoxDecoration(
+                                  color: AppColors.surfaceContainerLow,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: it.isActive
+                                        ? AppColors.outlineVariant
+                                        : badgeColor.withValues(alpha: 0.5),
                                   ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surfaceContainerLow,
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(
-                                      color: it.isActive
-                                          ? AppColors.outlineVariant
-                                          : badgeColor.withValues(alpha: 0.5),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.tune_rounded,
-                                        size: 11,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      '${it.productName}${it.variantDescription != null ? " (${it.variantDescription})" : ""} × ${it.quantity}$statusText',
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        decoration:
+                                            (it.isCancelled || it.isOutOfStock)
+                                            ? TextDecoration.lineThrough
+                                            : null,
                                         color: badgeColor,
                                       ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        '${it.productName}${it.variantDescription != null ? " (${it.variantDescription})" : ""} × ${it.quantity}$statusText',
-                                        style: TextStyle(
-                                          fontFamily: 'Cairo',
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w600,
-                                          decoration: (it.isCancelled || it.isOutOfStock)
-                                              ? TextDecoration.lineThrough
-                                              : null,
-                                          color: badgeColor,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    // أيقونة تعديل الصنف
+                                    InkWell(
+                                      onTap: () => EditPreOrderItemDialog.show(
+                                        context,
+                                        orderId: o.id,
+                                        item: it,
+                                      ),
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(2),
+                                        child: Icon(
+                                          Icons.edit_outlined,
+                                          size: 12,
+                                          color: AppColors.primary,
                                         ),
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                    // أيقونة الاستثناءات
+                                    InkWell(
+                                      onTap: () => OrderItemActionDialog.show(
+                                        context,
+                                        order: o,
+                                        item: it,
+                                      ),
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: const Padding(
+                                        padding: EdgeInsets.all(2),
+                                        child: Icon(
+                                          Icons.tune_rounded,
+                                          size: 12,
+                                          color: AppColors.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ),
+                                    // أيقونة الحذف
+                                    InkWell(
+                                      onTap: () =>
+                                          _confirmDeleteItem(context, it),
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: const Padding(
+                                        padding: EdgeInsets.all(2),
+                                        child: Icon(
+                                          Icons.delete_outline_rounded,
+                                          size: 12,
+                                          color: AppColors.error,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               );
-                            }).toList(),
-                          ),
-                        ],
+                            }),
+                            // زر إضافة صنف جديد لهذا العميل
+                            InkWell(
+                              onTap: () => EditPreOrderItemDialog.show(
+                                context,
+                                orderId: o.id,
+                              ),
+                              borderRadius: BorderRadius.circular(6),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.08,
+                                  ),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.3,
+                                    ),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.add_rounded,
+                                      size: 12,
+                                      color: AppColors.primary,
+                                    ),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      '+ إضافة صنف',
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   );
@@ -695,133 +916,246 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
           const SizedBox(height: 10),
           const Divider(height: 1, color: AppColors.outlineVariant),
 
-          // 4. أزرار الإجراءات السريعة (Scrollable لمنع أي overflow)
+          // 4. أزرار الإجراءات السريعة (موزعة على صفين متناسقين تمنع أي قص أو شريط تمرير أفقي)
           Padding(
-            padding: const EdgeInsets.all(8),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  // أزرار التجميع التدريجي للشحنات المفتوحة
-                  if (batch.status == PreOrderStatuses.pendingProcessing) ...[
-                    // زر إضافة عميل وأصنافه للشحنة
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // الصف الأول: الإجراءات التشغيلية المباشرة
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (batch.status == PreOrderStatuses.pendingProcessing) ...[
+                      // زر إضافة عميل وأصنافه للشحنة
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                        icon: const Icon(
+                          Icons.person_add_alt_1_rounded,
+                          size: 16,
                         ),
-                      ),
-                      icon: const Icon(Icons.person_add_alt_1_rounded, size: 15),
-                      label: const Text(
-                        '+ إضافة عميل للشحنة',
-                        style: TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
+                        label: const Text(
+                          '+ إضافة عميل للشحنة',
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
+                        onPressed: () =>
+                            AddCustomerToBatchDialog.show(context, batch),
                       ),
-                      onPressed: () =>
-                          AddCustomerToBatchDialog.show(context, batch),
-                    ),
-                    const SizedBox(width: 8),
-
-                    // زر ضم أوردر فردي معلق
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primary,
-                        side: BorderSide(color: AppColors.primary),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
+                      // زر ضم أوردر فردي معلق
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: BorderSide(color: AppColors.primary),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                        icon: const Icon(Icons.link_rounded, size: 16),
+                        label: const Text(
+                          'ضم أوردر معلق',
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
+                        onPressed: () =>
+                            AttachOrderToBatchDialog.show(context, batch),
                       ),
-                      icon: const Icon(Icons.link_rounded, size: 15),
-                      label: const Text(
-                        'ضم أوردر معلق',
-                        style: TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
+                      // زر استلام الشحنة بالكامل في المحل
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
+                        icon: const Icon(
+                          Icons.check_circle_outline_rounded,
+                          size: 16,
+                        ),
+                        label: const Text(
+                          'استلام الشحنة بالكامل في المحل',
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        onPressed: () async {
+                          final cubit = context.read<PreOrdersCubit>();
+                          final ok = await cubit.markBatchArrivedAtStore(
+                            batch.id,
+                          );
+                          if (ok && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'تم استلام الشحنة (${batch.batchNumber}) بالكامل وتحويل جميع أوردراتها إلى جاهزة للاستلام',
+                                  style: const TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                backgroundColor: AppColors.success,
+                              ),
+                            );
+                          }
+                        },
                       ),
-                      onPressed: () =>
-                          AttachOrderToBatchDialog.show(context, batch),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-
-                  // زر تطبيق فرق العملة / زيادة طارئة
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.onSurface,
-                      side: const BorderSide(color: AppColors.outlineVariant),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    icon: const Icon(Icons.currency_exchange_rounded, size: 15),
-                    label: const Text(
-                      'فرق عملة / زيادة طارئة',
-                      style: TextStyle(
-                        fontFamily: 'Cairo',
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    onPressed: () =>
-                        BatchEmergencySurchargeDialog.show(context, batch),
-                  ),
-                  const SizedBox(width: 8),
-
-                  // زر وصول الشحنة بالكامل في المحل
-                  if (batch.status == PreOrderStatuses.pendingProcessing) ...[
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
+                    ] else ...[
+                      // الشحنة وصلت المحل
+                      Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
-                          vertical: 6,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.success.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: AppColors.success.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.check_circle_rounded,
+                              size: 16,
+                              color: AppColors.success,
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              'الشحنة وصلت المحل وجاهزة لتسليم العملاء',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.success,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: BorderSide(color: AppColors.primary),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 7,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        icon: const Icon(
+                          Icons.person_add_alt_1_rounded,
+                          size: 15,
+                        ),
+                        label: const Text(
+                          '+ إضافة عميل للشحنة',
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        onPressed: () =>
+                            AddCustomerToBatchDialog.show(context, batch),
+                      ),
+                    ],
+                  ],
+                ),
+
+                const SizedBox(height: 8),
+
+                // الصف الثاني: أدوات التحكم السريع (Quick Tool Bar)
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    // زر إرسال واتساب للعملاء
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF25D366),
+                        side: const BorderSide(color: Color(0xFF25D366)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
                         ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      icon: const Icon(
-                        Icons.check_circle_outline_rounded,
-                        size: 16,
-                      ),
+                      icon: const Icon(Icons.chat_rounded, size: 15),
                       label: const Text(
-                        'استلام الشحنة بالكامل في المحل',
+                        'واتساب للعملاء',
                         style: TextStyle(
                           fontFamily: 'Cairo',
                           fontSize: 11.5,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
+                      onPressed: () => _showBatchWhatsAppModal(context),
+                    ),
+
+                    // زر تصدير كشف للمندوب إكسيل
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.onSurface,
+                        side: const BorderSide(color: AppColors.outlineVariant),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      icon: const Icon(Icons.table_chart_outlined, size: 15),
+                      label: const Text(
+                        'كشف المندوب إكسيل',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       onPressed: () async {
-                        final cubit = context.read<PreOrdersCubit>();
-                        final ok = await cubit.markBatchArrivedAtStore(
-                          batch.id,
-                        );
-                        if (ok && context.mounted) {
+                        final path =
+                            await PreOrderExcelService.exportBatchToExcel(batch);
+                        if (path != null && context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
-                                'تم استلام الشحنة (${batch.batchNumber}) بالكامل وتحويل جميع أوردراتها إلى جاهزة للاستلام',
+                                'تم تصدير كشف الشحنة للمندوب بنجاح!\n$path',
                                 style: const TextStyle(
                                   fontFamily: 'Cairo',
                                   fontWeight: FontWeight.bold,
@@ -833,118 +1167,84 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                         }
                       },
                     ),
-                    const SizedBox(width: 8),
-                  ],
 
-                  // زر إرسال واتساب للعملاء
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF25D366),
-                      side: const BorderSide(color: Color(0xFF25D366)),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    icon: const Icon(Icons.chat_rounded, size: 15),
-                    label: const Text(
-                      'إرسال واتساب للعملاء',
-                      style: TextStyle(
-                        fontFamily: 'Cairo',
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    onPressed: () => _showBatchWhatsAppModal(context),
-                  ),
-                  const SizedBox(width: 8),
-
-                  // زر تصدير كشف الشحنة بالكامل للمندوب (Excel)
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.onSurface,
-                      side: const BorderSide(color: AppColors.outlineVariant),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    icon: const Icon(Icons.file_download_outlined, size: 15),
-                    label: const Text(
-                      'تصدير كشف للمندوب (Excel)',
-                      style: TextStyle(
-                        fontFamily: 'Cairo',
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    onPressed: () async {
-                      final path =
-                          await PreOrderExcelService.exportBatchToExcel(batch);
-                      if (path != null && context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'تم تصدير كشف الشحنة للمندوب بنجاح!\n$path',
-                              style: const TextStyle(
-                                fontFamily: 'Cairo',
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            backgroundColor: AppColors.success,
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                  const SizedBox(width: 8),
-
-                  // More Menu
-                  PopupMenuButton<String>(
-                    icon: const Icon(
-                      Icons.more_vert_rounded,
-                      size: 20,
-                      color: AppColors.onSurfaceVariant,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    onSelected: (val) {
-                      if (val == 'delete') {
-                        context.read<PreOrdersCubit>().deleteBatch(batch.id);
-                      }
-                    },
-                    itemBuilder: (ctx) => const [
-                      PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.delete_outline_rounded,
-                              size: 18,
-                              color: AppColors.error,
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              'حذف الشحنة المجمعة',
-                              style: TextStyle(
-                                fontFamily: 'Cairo',
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
+                    // زر تطبيق فرق العملة / زيادة طارئة
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.onSurface,
+                        side: const BorderSide(color: AppColors.outlineVariant),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                      icon:
+                          const Icon(Icons.currency_exchange_rounded, size: 15),
+                      label: const Text(
+                        'فرق عملة / زيادة طارئة',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      onPressed: () =>
+                          BatchEmergencySurchargeDialog.show(context, batch),
+                    ),
+
+                    // قائمة الخيارات الإضافية [...]
+                    PopupMenuButton<String>(
+                      tooltip: 'خيارات إضافية',
+                      icon: Container(
+                        padding: const EdgeInsets.all(5),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: AppColors.outlineVariant),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.more_vert_rounded,
+                          size: 18,
+                          color: AppColors.onSurfaceVariant,
+                        ),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      onSelected: (val) {
+                        if (val == 'delete') {
+                          _confirmDeleteBatch(context);
+                        }
+                      },
+                      itemBuilder: (ctx) => const [
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.delete_outline_rounded,
+                                size: 18,
+                                color: AppColors.error,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'حذف الشحنة المجمعة',
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 12,
+                                  color: AppColors.error,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],

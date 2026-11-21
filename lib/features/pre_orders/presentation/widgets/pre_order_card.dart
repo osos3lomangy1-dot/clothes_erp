@@ -7,8 +7,10 @@ import '../../../../core/utils/money.dart';
 import '../../../customers/data/services/customer_ledger_service.dart';
 import '../../data/services/pre_order_excel_service.dart';
 import '../../domain/entities/pre_order_entity.dart';
+import '../../domain/entities/pre_order_item_entity.dart';
 import '../cubits/pre_orders_cubit.dart';
 import 'bag_pickup_label_dialog.dart';
+import 'edit_pre_order_item_dialog.dart';
 import 'order_item_action_dialog.dart';
 import 'pre_order_delivery_dialog.dart';
 import 'pre_order_forfeit_dialog.dart';
@@ -66,7 +68,9 @@ class PreOrderCard extends StatelessWidget {
       return;
     }
 
-    final fullUri = Uri.parse('${baseUri.toString()}?text=${Uri.encodeComponent(message)}');
+    final fullUri = Uri.parse(
+      '${baseUri.toString()}?text=${Uri.encodeComponent(message)}',
+    );
     try {
       await launchUrl(fullUri, mode: LaunchMode.externalApplication);
     } catch (_) {
@@ -97,31 +101,62 @@ class PreOrderCard extends StatelessWidget {
               children: [
                 const Text(
                   'اختيار قالب رسالة واتساب للعميل',
-                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 14),
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 ListTile(
-                  leading: Icon(Icons.check_circle_outline, color: AppColors.primary),
-                  title: const Text('إشعار تأكيد الحجز والعربون', style: TextStyle(fontFamily: 'Cairo', fontSize: 13)),
-                  subtitle: const Text('إرسال تفاصيل الأوردر والمبلغ المدفوع والمتبقي', style: TextStyle(fontFamily: 'Cairo', fontSize: 11)),
+                  leading: Icon(
+                    Icons.check_circle_outline,
+                    color: AppColors.primary,
+                  ),
+                  title: const Text(
+                    'إشعار تأكيد الحجز والعربون',
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 13),
+                  ),
+                  subtitle: const Text(
+                    'إرسال تفاصيل الأوردر والمبلغ المدفوع والمتبقي',
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 11),
+                  ),
                   onTap: () {
                     Navigator.pop(ctx);
                     _sendWhatsApp(context, 'booking');
                   },
                 ),
                 ListTile(
-                  leading: Icon(Icons.storefront_rounded, color: AppColors.primary),
-                  title: const Text('إشعار وصول الشحنة للمحل', style: TextStyle(fontFamily: 'Cairo', fontSize: 13)),
-                  subtitle: const Text('إبلاغ العميل بأن الشحنة جاهزة للاستلام بالفرع', style: TextStyle(fontFamily: 'Cairo', fontSize: 11)),
+                  leading: Icon(
+                    Icons.storefront_rounded,
+                    color: AppColors.primary,
+                  ),
+                  title: const Text(
+                    'إشعار وصول الشحنة للمحل',
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 13),
+                  ),
+                  subtitle: const Text(
+                    'إبلاغ العميل بأن الشحنة جاهزة للاستلام بالفرع',
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 11),
+                  ),
                   onTap: () {
                     Navigator.pop(ctx);
                     _sendWhatsApp(context, 'arrived');
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.alarm_rounded, color: AppColors.error),
-                  title: const Text('تذكير عاجل بالاستلام', style: TextStyle(fontFamily: 'Cairo', fontSize: 13)),
-                  subtitle: const Text('تنبيه بالاستلام خلال 48 ساعة قبل مصادرة العربون', style: TextStyle(fontFamily: 'Cairo', fontSize: 11)),
+                  leading: const Icon(
+                    Icons.alarm_rounded,
+                    color: AppColors.error,
+                  ),
+                  title: const Text(
+                    'تذكير عاجل بالاستلام',
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 13),
+                  ),
+                  subtitle: const Text(
+                    'تنبيه بالاستلام خلال 48 ساعة قبل مصادرة العربون',
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 11),
+                  ),
                   onTap: () {
                     Navigator.pop(ctx);
                     _sendWhatsApp(context, 'reminder');
@@ -152,6 +187,63 @@ class PreOrderCard extends StatelessWidget {
     }
   }
 
+  void _confirmDeleteItem(BuildContext context, PreOrderItemEntity item) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Row(
+          children: [
+            Icon(
+              Icons.delete_outline_rounded,
+              color: AppColors.error,
+              size: 20,
+            ),
+            SizedBox(width: 8),
+            Text(
+              'حذف الصنف',
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: AppColors.onSurface,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'هل أنت متأكد من حذف الصنف (${item.productName})؟\nسيتم تحديث إجمالي الطلب والمتبقي على العميل تلقائياً.',
+          style: const TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 12,
+            color: AppColors.onSurfaceVariant,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<PreOrdersCubit>().deleteOrderItem(item.id);
+            },
+            child: const Text(
+              'تأكيد الحذف',
+              style: TextStyle(fontFamily: 'Cairo'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final statusColor = _getStatusColor(order.status);
@@ -180,11 +272,16 @@ class PreOrderCard extends StatelessWidget {
               children: [
                 // Order Number Badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.2),
+                    ),
                   ),
                   child: Text(
                     order.orderNumber,
@@ -220,12 +317,15 @@ class PreOrderCard extends StatelessWidget {
                           const SizedBox(width: 6),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 1.5),
+                              horizontal: 6,
+                              vertical: 1.5,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.surfaceContainerLow,
                               borderRadius: BorderRadius.circular(4),
-                              border:
-                                  Border.all(color: AppColors.outlineVariant),
+                              border: Border.all(
+                                color: AppColors.outlineVariant,
+                              ),
                             ),
                             child: Text(
                               order.displaySourcePlatform,
@@ -247,12 +347,17 @@ class PreOrderCard extends StatelessWidget {
                           color: Colors.grey.shade600,
                         ),
                       ),
-                      if (order.agentName != null || order.trackingNumber != null) ...[
+                      if (order.agentName != null ||
+                          order.trackingNumber != null) ...[
                         const SizedBox(height: 2),
                         Row(
                           children: [
                             if (order.agentName != null) ...[
-                              const Icon(Icons.badge_outlined, size: 12, color: AppColors.onSurfaceVariant),
+                              const Icon(
+                                Icons.badge_outlined,
+                                size: 12,
+                                color: AppColors.onSurfaceVariant,
+                              ),
                               const SizedBox(width: 3),
                               Text(
                                 order.agentName!,
@@ -264,10 +369,20 @@ class PreOrderCard extends StatelessWidget {
                                 ),
                               ),
                             ],
-                            if (order.agentName != null && order.trackingNumber != null)
-                              const Text(' • ', style: TextStyle(color: AppColors.onSurfaceVariant)),
+                            if (order.agentName != null &&
+                                order.trackingNumber != null)
+                              const Text(
+                                ' • ',
+                                style: TextStyle(
+                                  color: AppColors.onSurfaceVariant,
+                                ),
+                              ),
                             if (order.trackingNumber != null) ...[
-                              const Icon(Icons.tag_rounded, size: 12, color: AppColors.onSurfaceVariant),
+                              const Icon(
+                                Icons.tag_rounded,
+                                size: 12,
+                                color: AppColors.onSurfaceVariant,
+                              ),
                               const SizedBox(width: 2),
                               Text(
                                 order.trackingNumber!,
@@ -288,11 +403,16 @@ class PreOrderCard extends StatelessWidget {
 
                 // Status Badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3.5,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: statusColor.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -317,106 +437,134 @@ class PreOrderCard extends StatelessWidget {
 
           // عداد مهلة الاستلام وتنبيه المصادرة (Hold Expiry Counter)
           if (order.status == PreOrderStatuses.arrivedAtStore) ...[
-            Builder(builder: (context) {
-              final arrivedDate = order.arrivedAt ?? order.updatedAt;
-              final daysElapsed = DateTime.now().difference(arrivedDate).inDays;
-              final isOverdue = daysElapsed >= 15;
+            Builder(
+              builder: (context) {
+                final arrivedDate = order.arrivedAt ?? order.updatedAt;
+                final daysElapsed = DateTime.now()
+                    .difference(arrivedDate)
+                    .inDays;
+                final isOverdue = daysElapsed >= 15;
 
-              return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: isOverdue
-                      ? AppColors.error.withValues(alpha: 0.08)
-                      : AppColors.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: isOverdue
-                        ? AppColors.error.withValues(alpha: 0.3)
-                        : AppColors.outlineVariant,
+                return Container(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 4,
                   ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      isOverdue
-                          ? Icons.warning_rounded
-                          : Icons.schedule_rounded,
-                      size: 15,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isOverdue
+                        ? AppColors.error.withValues(alpha: 0.08)
+                        : AppColors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
                       color: isOverdue
-                          ? AppColors.error
-                          : AppColors.onSurfaceVariant,
+                          ? AppColors.error.withValues(alpha: 0.3)
+                          : AppColors.outlineVariant,
                     ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
                         isOverdue
-                            ? 'تجاوز مهلة الاستلام ($daysElapsed يوماً بالمحل)'
-                            : 'وصل للمحل منذ ${daysElapsed == 0 ? "اليوم" : "$daysElapsed أيام"}',
-                        style: TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: 11,
-                          fontWeight: isOverdue ? FontWeight.bold : FontWeight.w600,
-                          color: isOverdue ? AppColors.error : AppColors.onSurface,
+                            ? Icons.warning_rounded
+                            : Icons.schedule_rounded,
+                        size: 15,
+                        color: isOverdue
+                            ? AppColors.error
+                            : AppColors.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          isOverdue
+                              ? 'تجاوز مهلة الاستلام ($daysElapsed يوماً بالمحل)'
+                              : 'وصل للمحل منذ ${daysElapsed == 0 ? "اليوم" : "$daysElapsed أيام"}',
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 11,
+                            fontWeight: isOverdue
+                                ? FontWeight.bold
+                                : FontWeight.w600,
+                            color: isOverdue
+                                ? AppColors.error
+                                : AppColors.onSurface,
+                          ),
                         ),
                       ),
-                    ),
-                    if (isOverdue) ...[
-                      InkWell(
-                        onTap: () => _sendWhatsApp(context, 'reminder'),
-                        borderRadius: BorderRadius.circular(6),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2.5),
-                          decoration: BoxDecoration(
-                            color: AppColors.error,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.notification_important_rounded,
-                                  size: 12, color: Colors.white),
-                              SizedBox(width: 4),
-                              Text(
-                                'إنذار واتساب نهائي',
-                                style: TextStyle(
-                                  fontFamily: 'Cairo',
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
+                      if (isOverdue) ...[
+                        InkWell(
+                          onTap: () => _sendWhatsApp(context, 'reminder'),
+                          borderRadius: BorderRadius.circular(6),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2.5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.error,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.notification_important_rounded,
+                                  size: 12,
                                   color: Colors.white,
                                 ),
-                              ),
-                            ],
+                                SizedBox(width: 4),
+                                Text(
+                                  'إنذار واتساب نهائي',
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
-                  ],
-                ),
-              );
-            }),
+                  ),
+                );
+              },
+            ),
           ],
 
           const Divider(height: 1, color: AppColors.outlineVariant),
 
           // 2. Items Preview
-          if (order.items.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ...order.items.take(3).map((item) {
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (order.items.isNotEmpty) ...[
+                  ...order.items.map((item) {
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: InkWell(
-                        onTap: () => OrderItemActionDialog.show(
-                          context,
-                          order: order,
-                          item: item,
+                      padding: const EdgeInsets.only(bottom: 5),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
                         ),
-                        borderRadius: BorderRadius.circular(6),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: item.isActive
+                                ? AppColors.outlineVariant.withValues(
+                                    alpha: 0.5,
+                                  )
+                                : AppColors.error.withValues(alpha: 0.3),
+                          ),
+                        ),
                         child: Row(
                           children: [
                             Icon(
@@ -425,18 +573,25 @@ class PreOrderCard extends StatelessWidget {
                               color: item.isActive
                                   ? Colors.grey
                                   : (item.isCancelled || item.isOutOfStock)
-                                      ? AppColors.error
-                                      : AppColors.primary,
+                                  ? AppColors.error
+                                  : AppColors.primary,
                             ),
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
-                                '${item.productName}${item.isCancelled ? " [ملغي]" : item.isOutOfStock ? " [نفد]" : item.isDamaged ? " [تالف/أوتلت]" : ""}',
+                                '${item.productName}${item.isCancelled
+                                    ? " [ملغي]"
+                                    : item.isOutOfStock
+                                    ? " [نفد]"
+                                    : item.isDamaged
+                                    ? " [تالف/أوتلت]"
+                                    : ""}',
                                 style: TextStyle(
                                   fontFamily: 'Cairo',
                                   fontSize: 11.5,
                                   fontWeight: FontWeight.w600,
-                                  decoration: (item.isCancelled || item.isOutOfStock)
+                                  decoration:
+                                      (item.isCancelled || item.isOutOfStock)
                                       ? TextDecoration.lineThrough
                                       : null,
                                   color: (item.isCancelled || item.isOutOfStock)
@@ -456,8 +611,8 @@ class PreOrderCard extends StatelessWidget {
                                   color: Colors.grey.shade600,
                                 ),
                               ),
+                              const SizedBox(width: 4),
                             ],
-                            const SizedBox(width: 6),
                             Text(
                               '${item.quantity} × ${Money(item.unitPricePiasters).toDisplay()} ج',
                               style: TextStyle(
@@ -467,13 +622,8 @@ class PreOrderCard extends StatelessWidget {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(width: 4),
-                            Icon(
-                              Icons.tune_rounded,
-                              size: 13,
-                              color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
-                            ),
-                            if (item.itemUrl != null && item.itemUrl!.isNotEmpty) ...[
+                            if (item.itemUrl != null &&
+                                item.itemUrl!.isNotEmpty) ...[
                               const SizedBox(width: 4),
                               InkWell(
                                 onTap: () => launchUrl(
@@ -482,57 +632,136 @@ class PreOrderCard extends StatelessWidget {
                                 ),
                                 child: Padding(
                                   padding: const EdgeInsets.all(2),
-                                  child: Icon(Icons.open_in_new_rounded, size: 13, color: AppColors.primary),
+                                  child: Icon(
+                                    Icons.open_in_new_rounded,
+                                    size: 13,
+                                    color: AppColors.primary,
+                                  ),
                                 ),
                               ),
                             ],
+                            const SizedBox(width: 6),
+                            // أيقونة تعديل الصنف
+                            InkWell(
+                              onTap: () => EditPreOrderItemDialog.show(
+                                context,
+                                orderId: order.id,
+                                item: item,
+                              ),
+                              borderRadius: BorderRadius.circular(4),
+                              child: Padding(
+                                padding: const EdgeInsets.all(3),
+                                child: Icon(
+                                  Icons.edit_outlined,
+                                  size: 14,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                            // أيقونة ضبط الاستثناءات (إلغاء، نفاد، تلف)
+                            InkWell(
+                              onTap: () => OrderItemActionDialog.show(
+                                context,
+                                order: order,
+                                item: item,
+                              ),
+                              borderRadius: BorderRadius.circular(4),
+                              child: const Padding(
+                                padding: EdgeInsets.all(3),
+                                child: Icon(
+                                  Icons.tune_rounded,
+                                  size: 14,
+                                  color: AppColors.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                            // أيقونة حذف الصنف
+                            InkWell(
+                              onTap: () => _confirmDeleteItem(context, item),
+                              borderRadius: BorderRadius.circular(4),
+                              child: const Padding(
+                                padding: EdgeInsets.all(3),
+                                child: Icon(
+                                  Icons.delete_outline_rounded,
+                                  size: 14,
+                                  color: AppColors.error,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     );
                   }),
-                  if (order.items.length > 3) ...[
-                    Text(
-                      '+ ${order.items.length - 3} أصناف أخرى...',
-                      style: TextStyle(
-                        fontFamily: 'Cairo',
-                        fontSize: 10,
-                        fontStyle: FontStyle.italic,
-                        color: Colors.grey.shade600,
+                ] else ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppColors.outlineVariant.withValues(alpha: 0.6),
                       ),
                     ),
-                  ],
-                ],
-              ),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.6)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.inventory_2_outlined, size: 16, color: AppColors.onSurfaceVariant),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'طلب جديد بدون أصناف مسجلة - اضغط لإضافة قطع',
-                        style: TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: 11,
+                    child: const Row(
+                      children: [
+                        Icon(
+                          Icons.inventory_2_outlined,
+                          size: 16,
                           color: AppColors.onSurfaceVariant,
                         ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'طلب بدون أصناف مسجلة - يمكنك إضافة قطع للطلب الآن',
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 11,
+                              color: AppColors.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 6),
+                // زر إضافة صنف لهذا الطلب
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: BorderSide(
+                        color: AppColors.primary.withValues(alpha: 0.35),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
                       ),
                     ),
-                  ],
+                    icon: const Icon(Icons.add_rounded, size: 14),
+                    label: const Text(
+                      '+ إضافة صنف لهذا الطلب',
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    onPressed: () =>
+                        EditPreOrderItemDialog.show(context, orderId: order.id),
+                  ),
                 ),
-              ),
+              ],
             ),
+          ),
 
           const Spacer(),
 
@@ -543,9 +772,11 @@ class PreOrderCard extends StatelessWidget {
               color: AppColors.surfaceContainerLow,
               border: Border(
                 top: BorderSide(
-                    color: AppColors.outlineVariant.withValues(alpha: 0.6)),
+                  color: AppColors.outlineVariant.withValues(alpha: 0.6),
+                ),
                 bottom: BorderSide(
-                    color: AppColors.outlineVariant.withValues(alpha: 0.6)),
+                  color: AppColors.outlineVariant.withValues(alpha: 0.6),
+                ),
               ),
             ),
             child: Row(
@@ -593,16 +824,18 @@ class PreOrderCard extends StatelessWidget {
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 7),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8)),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                             elevation: 0,
                           ),
                           icon: const Icon(Icons.storefront_rounded, size: 15),
                           label: const Text(
                             'وصل المحل',
                             style: TextStyle(
-                                fontFamily: 'Cairo',
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.bold),
+                              fontFamily: 'Cairo',
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           onPressed: () async {
                             await context
@@ -611,48 +844,53 @@ class PreOrderCard extends StatelessWidget {
                           },
                         )
                       : order.canDeliver
-                          ? ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                foregroundColor: Colors.white,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 7),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8)),
-                                elevation: 0,
-                              ),
-                              icon: const Icon(Icons.check_circle_outline,
-                                  size: 15),
-                              label: const Text(
-                                'تسليم الأوردر',
-                                style: TextStyle(
-                                    fontFamily: 'Cairo',
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                              onPressed: onDeliver ??
-                                  () => PreOrderDeliveryDialog.show(
-                                      context, order),
-                            )
-                          : OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.onSurfaceVariant,
-                                side: const BorderSide(
-                                    color: AppColors.outlineVariant),
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 7),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8)),
-                              ),
-                              onPressed: onViewDetails,
-                              child: Text(
-                                PreOrderStatuses.getLabel(order.status),
-                                style: const TextStyle(
-                                    fontFamily: 'Cairo',
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold),
-                              ),
+                      ? ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 7),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
                             ),
+                            elevation: 0,
+                          ),
+                          icon: const Icon(
+                            Icons.check_circle_outline,
+                            size: 15,
+                          ),
+                          label: const Text(
+                            'تسليم الأوردر',
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          onPressed:
+                              onDeliver ??
+                              () => PreOrderDeliveryDialog.show(context, order),
+                        )
+                      : OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.onSurfaceVariant,
+                            side: const BorderSide(
+                              color: AppColors.outlineVariant,
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 7),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: onViewDetails,
+                          child: Text(
+                            PreOrderStatuses.getLabel(order.status),
+                            style: const TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                 ),
                 const SizedBox(width: 6),
 
@@ -661,12 +899,15 @@ class PreOrderCard extends StatelessWidget {
                   tooltip: 'مراسلة العميل عبر واتساب',
                   style: IconButton.styleFrom(
                     foregroundColor: const Color(0xFF25D366),
-                    backgroundColor:
-                        const Color(0xFF25D366).withValues(alpha: 0.1),
+                    backgroundColor: const Color(
+                      0xFF25D366,
+                    ).withValues(alpha: 0.1),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                       side: const BorderSide(
-                          color: Color(0xFF25D366), width: 0.8),
+                        color: Color(0xFF25D366),
+                        width: 0.8,
+                      ),
                     ),
                     padding: const EdgeInsets.all(7),
                     minimumSize: const Size(34, 34),
@@ -682,8 +923,9 @@ class PreOrderCard extends StatelessWidget {
                     tooltip: 'تسجيل دفعة إضافية',
                     style: IconButton.styleFrom(
                       foregroundColor: AppColors.primary,
-                      backgroundColor:
-                          AppColors.primary.withValues(alpha: 0.08),
+                      backgroundColor: AppColors.primary.withValues(
+                        alpha: 0.08,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                         side: BorderSide(color: AppColors.primary, width: 0.8),
@@ -737,69 +979,105 @@ class PreOrderCard extends StatelessWidget {
                     minimumSize: const Size(34, 34),
                   ),
                   icon: const Icon(Icons.more_horiz_rounded, size: 17),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    onSelected: (val) async {
-                      final cubit = context.read<PreOrdersCubit>();
-                      if (val == 'bag_label') {
-                        BagPickupLabelDialog.show(context, order);
-                      } else if (val == 'export_agent') {
-                        _exportToAgent(context);
-                      } else if (val == 'arrived') {
-                        await cubit.markArrivedAtStore(order.id);
-                      } else if (val == 'forfeit') {
-                        showDialog(
-                          context: context,
-                          builder: (_) => BlocProvider.value(
-                            value: cubit,
-                            child: PreOrderForfeitDialog(order: order),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  onSelected: (val) async {
+                    final cubit = context.read<PreOrdersCubit>();
+                    if (val == 'bag_label') {
+                      BagPickupLabelDialog.show(context, order);
+                    } else if (val == 'export_agent') {
+                      _exportToAgent(context);
+                    } else if (val == 'arrived') {
+                      await cubit.markArrivedAtStore(order.id);
+                    } else if (val == 'forfeit') {
+                      showDialog(
+                        context: context,
+                        builder: (_) => BlocProvider.value(
+                          value: cubit,
+                          child: PreOrderForfeitDialog(order: order),
+                        ),
+                      );
+                    } else if (val == 'cancel') {
+                      _showCancelDialog(context, cubit);
+                    } else if (val == 'delete') {
+                      cubit.deletePreOrder(order.id);
+                    }
+                  },
+                  itemBuilder: (ctx) => [
+                    PopupMenuItem(
+                      value: 'bag_label',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.label_important_outline,
+                            size: 18,
+                            color: AppColors.primary,
                           ),
-                        );
-                      } else if (val == 'cancel') {
-                        _showCancelDialog(context, cubit);
-                      } else if (val == 'delete') {
-                        cubit.deletePreOrder(order.id);
-                      }
-                    },
-                    itemBuilder: (ctx) => [
+                          const SizedBox(width: 8),
+                          const Text(
+                            'طباعة استيكر الكيس',
+                            style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'export_agent',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.table_chart_outlined,
+                            size: 18,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'تصدير كشف للمندوب (إكسيل)',
+                            style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (order.status == PreOrderStatuses.pendingProcessing)
                       PopupMenuItem(
-                        value: 'bag_label',
+                        value: 'arrived',
                         child: Row(
                           children: [
-                            Icon(Icons.label_important_outline, size: 18, color: AppColors.primary),
+                            Icon(
+                              Icons.storefront_rounded,
+                              size: 18,
+                              color: AppColors.primary,
+                            ),
                             const SizedBox(width: 8),
-                            const Text('طباعة استيكر الكيس', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
+                            const Text(
+                              'وصل للمحل جاهز للتسليم',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 12,
+                              ),
+                            ),
                           ],
                         ),
-                      ),
-                      PopupMenuItem(
-                        value: 'export_agent',
-                        child: Row(
-                          children: [
-                            Icon(Icons.table_chart_outlined, size: 18, color: AppColors.primary),
-                            const SizedBox(width: 8),
-                            const Text('تصدير كشف للمندوب (إكسيل)', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
-                          ],
-                        ),
-                      ),
-                      if (order.status == PreOrderStatuses.pendingProcessing)
-                        PopupMenuItem(
-                          value: 'arrived',
-                          child: Row(
-                            children: [
-                              Icon(Icons.storefront_rounded, size: 18, color: AppColors.primary),
-                              const SizedBox(width: 8),
-                              const Text('وصل للمحل جاهز للتسليم', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
-                            ],
-                          ),
                       ),
                     if (order.canForfeit)
                       PopupMenuItem(
                         value: 'forfeit',
                         child: Row(
                           children: [
-                            Icon(Icons.warning_amber_rounded, size: 18, color: AppColors.error),
+                            Icon(
+                              Icons.warning_amber_rounded,
+                              size: 18,
+                              color: AppColors.error,
+                            ),
                             const SizedBox(width: 8),
-                            const Text('مصادرة العربون ونقل للمخزن', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
+                            const Text(
+                              'مصادرة العربون ونقل للمخزن',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 12,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -808,9 +1086,19 @@ class PreOrderCard extends StatelessWidget {
                         value: 'cancel',
                         child: Row(
                           children: [
-                            Icon(Icons.cancel_outlined, size: 18, color: AppColors.error),
+                            Icon(
+                              Icons.cancel_outlined,
+                              size: 18,
+                              color: AppColors.error,
+                            ),
                             SizedBox(width: 8),
-                            Text('إلغاء واسترداد جزئي/كامل', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
+                            Text(
+                              'إلغاء واسترداد جزئي/كامل',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 12,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -818,9 +1106,16 @@ class PreOrderCard extends StatelessWidget {
                       value: 'delete',
                       child: Row(
                         children: [
-                          Icon(Icons.delete_outline_rounded, size: 18, color: Colors.grey),
+                          Icon(
+                            Icons.delete_outline_rounded,
+                            size: 18,
+                            color: Colors.grey,
+                          ),
                           SizedBox(width: 8),
-                          Text('حذف الحجز', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
+                          Text(
+                            'حذف الحجز',
+                            style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
+                          ),
                         ],
                       ),
                     ),
@@ -845,7 +1140,8 @@ class PreOrderCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-            color: AppColors.outlineVariant.withValues(alpha: 0.6)),
+          color: AppColors.outlineVariant.withValues(alpha: 0.6),
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -890,7 +1186,11 @@ class PreOrderCard extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
           'إلغاء أوردر الحجز ورد العربون',
-          style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 15),
+          style: TextStyle(
+            fontFamily: 'Cairo',
+            fontWeight: FontWeight.bold,
+            fontSize: 15,
+          ),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -905,7 +1205,9 @@ class PreOrderCard extends StatelessWidget {
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: 'المبلغ المسترد للعميل (ج.م)',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
             const SizedBox(height: 10),
@@ -913,7 +1215,9 @@ class PreOrderCard extends StatelessWidget {
               controller: reasonCtrl,
               decoration: InputDecoration(
                 labelText: 'سبب الإلغاء',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
           ],
@@ -938,7 +1242,13 @@ class PreOrderCard extends StatelessWidget {
               );
               Navigator.pop(ctx);
             },
-            child: const Text('تأكيد الإلغاء', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
+            child: const Text(
+              'تأكيد الإلغاء',
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),

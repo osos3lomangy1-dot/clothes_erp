@@ -112,6 +112,14 @@ abstract class PreOrdersLocalDataSource {
     String? shiftId,
     String? cashierId,
   });
+
+  // --- إدارة وتعديل الأصناف (Task 8.5.4) ---
+  Future<void> updateOrderItem(PreOrderItemEntity item);
+  Future<void> deleteOrderItem(String itemId);
+  Future<PreOrderItemEntity> addOrderItem(
+    String orderId,
+    PreOrderItemEntity item,
+  );
 }
 
 @LazySingleton(as: PreOrdersLocalDataSource)
@@ -1503,5 +1511,222 @@ class PreOrdersLocalDataSourceImpl implements PreOrdersLocalDataSource {
       shiftId: shiftId,
       cashierId: cashierId,
     );
+  }
+
+  // ===================================================
+  // --- إدارة وتعديل الأصناف وإعادة الحسابات (Task 8.5.4) ---
+  // ===================================================
+
+  @override
+  Future<void> updateOrderItem(PreOrderItemEntity item) async {
+    await ensureTablesExist();
+    await _db.customUpdate(
+      '''
+      UPDATE pre_order_items
+      SET product_name = ?,
+          variant_description = ?,
+          quantity = ?,
+          unit_price_piasters = ?,
+          total_price_piasters = ?,
+          cost_price_piasters = ?,
+          commission_piasters = ?,
+          item_url = ?,
+          source_platform = ?,
+          notes = ?,
+          status = ?
+      WHERE id = ?
+      ''',
+      variables: [
+        Variable.withString(item.productName),
+        Variable(item.variantDescription),
+        Variable.withInt(item.quantity),
+        Variable.withInt(item.unitPricePiasters),
+        Variable.withInt(item.totalPricePiasters),
+        Variable.withInt(item.costPricePiasters),
+        Variable.withInt(item.commissionPiasters),
+        Variable(item.itemUrl),
+        Variable(item.sourcePlatform),
+        Variable(item.notes),
+        Variable.withString(item.status),
+        Variable.withString(item.id),
+      ],
+    );
+
+    await _recalculateOrderAndBatch(item.preOrderId);
+  }
+
+  @override
+  Future<void> deleteOrderItem(String itemId) async {
+    await ensureTablesExist();
+    final itemRows = await _db.customSelect(
+      'SELECT pre_order_id FROM pre_order_items WHERE id = ?',
+      variables: [Variable.withString(itemId)],
+    ).get();
+    if (itemRows.isEmpty) return;
+    final orderId = itemRows.first.read<String>('pre_order_id');
+
+    await _db.customUpdate(
+      'DELETE FROM pre_order_items WHERE id = ?',
+      variables: [Variable.withString(itemId)],
+    );
+
+    await _recalculateOrderAndBatch(orderId);
+  }
+
+  @override
+  Future<PreOrderItemEntity> addOrderItem(
+    String orderId,
+    PreOrderItemEntity item,
+  ) async {
+    await ensureTablesExist();
+    final itemId = item.id.isNotEmpty ? item.id : _uuid.v4();
+    await _db.customInsert(
+      '''
+      INSERT INTO pre_order_items (
+        id, pre_order_id, product_name, variant_description, quantity,
+        unit_price_piasters, total_price_piasters, cost_price_piasters,
+        commission_piasters, item_url, source_platform, notes, transferred_to_inventory, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ''',
+      variables: [
+        Variable.withString(itemId),
+        Variable.withString(orderId),
+        Variable.withString(item.productName),
+        Variable(item.variantDescription),
+        Variable.withInt(item.quantity),
+        Variable.withInt(item.unitPricePiasters),
+        Variable.withInt(item.totalPricePiasters),
+        Variable.withInt(item.costPricePiasters),
+        Variable.withInt(item.commissionPiasters),
+        Variable(item.itemUrl),
+        Variable(item.sourcePlatform),
+        Variable(item.notes),
+        Variable.withInt(0),
+        Variable.withString(item.status),
+      ],
+    );
+
+    await _recalculateOrderAndBatch(orderId);
+
+    final createdRows = await _db.customSelect(
+      'SELECT * FROM pre_order_items WHERE id = ?',
+      variables: [Variable.withString(itemId)],
+    ).get();
+    return PreOrderItemEntity.fromMap(createdRows.first.data);
+  }
+
+  Future<void> _recalculateOrderAndBatch(String orderId) async {
+    final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final items = await _getItemsForOrder(orderId);
+    final newTotalPiasters = items
+        .where((it) => it.isActive)
+        .fold(0, (sum, it) => sum + it.totalPricePiasters);
+
+    await _db.customUpdate(
+      '''
+      UPDATE pre_orders
+      SET total_piasters = ?, updated_at = ?
+      WHERE id = ?
+      ''',
+      variables: [
+        Variable.withInt(newTotalPiasters),
+        Variable.withInt(nowSec),
+        Variable.withString(orderId),
+      ],
+    );
+
+    final orderRows = await _db.customSelect(
+      'SELECT batch_id FROM pre_orders WHERE id = ?',
+      variables: [Variable.withString(orderId)],
+    ).get();
+
+    if (orderRows.isNotEmpty) {
+      final batchId = orderRows.first.readNullable<String>('batch_id');
+      if (batchId != null && batchId.isNotEmpty) {
+        await _recalculateBatchAllocations(batchId);
+      }
+    }
+  }
+
+  Future<void> _recalculateBatchAllocations(String batchId) async {
+    final batch = await getBatchById(batchId);
+    if (batch == null) return;
+    final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final orders = await getPreOrders(batchId: batchId);
+    if (orders.isEmpty) return;
+
+    if (batch.totalShippingPiasters > 0) {
+      if (batch.shippingSplitMethod == ShippingSplitMethods.perItem) {
+        final totalActivePieces = orders.fold(
+          0,
+          (sum, o) =>
+              sum +
+              o.items
+                  .where((it) => it.isActive)
+                  .fold(0, (s, it) => s + it.quantity),
+        );
+        if (totalActivePieces > 0) {
+          for (final o in orders) {
+            final oPieces = o.items
+                .where((it) => it.isActive)
+                .fold(0, (s, it) => s + it.quantity);
+            final allocated =
+                ((batch.totalShippingPiasters * oPieces) / totalActivePieces)
+                    .round();
+            await _db.customUpdate(
+              'UPDATE pre_orders SET allocated_shipping_piasters = ?, updated_at = ? WHERE id = ?',
+              variables: [
+                Variable.withInt(allocated),
+                Variable.withInt(nowSec),
+                Variable.withString(o.id),
+              ],
+            );
+          }
+        }
+      } else if (batch.shippingSplitMethod ==
+          ShippingSplitMethods.equalPerCustomer) {
+        final perCustomer = (batch.totalShippingPiasters / orders.length).round();
+        for (final o in orders) {
+          await _db.customUpdate(
+            'UPDATE pre_orders SET allocated_shipping_piasters = ?, updated_at = ? WHERE id = ?',
+            variables: [
+              Variable.withInt(perCustomer),
+              Variable.withInt(nowSec),
+              Variable.withString(o.id),
+            ],
+          );
+        }
+      }
+    }
+
+    if (batch.emergencyIncreaseHandledBy == 'customers' &&
+        batch.emergencyIncreasePiasters > 0) {
+      final totalActivePieces = orders.fold(
+        0,
+        (sum, o) =>
+            sum +
+            o.items
+                .where((it) => it.isActive)
+                .fold(0, (s, it) => s + it.quantity),
+      );
+      if (totalActivePieces > 0) {
+        for (final o in orders) {
+          final oPieces = o.items
+              .where((it) => it.isActive)
+              .fold(0, (s, it) => s + it.quantity);
+          final allocated =
+              ((batch.emergencyIncreasePiasters * oPieces) / totalActivePieces)
+                  .round();
+          await _db.customUpdate(
+            'UPDATE pre_orders SET emergency_increase_piasters = ?, updated_at = ? WHERE id = ?',
+            variables: [
+              Variable.withInt(allocated),
+              Variable.withInt(nowSec),
+              Variable.withString(o.id),
+            ],
+          );
+        }
+      }
+    }
   }
 }

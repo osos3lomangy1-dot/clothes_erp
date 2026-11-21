@@ -457,6 +457,168 @@ void main() {
       expect(orderNoPlatform.displaySourcePlatform, equals('طلب خاص'));
     });
   });
+
+  group('PreOrders Task 8.5.4 Item Full Editing & CRUD Dynamic Recalculation Tests', () {
+    test('PreOrderItemEntity copyWith allows full editing of specs, quantity, cost, commission, price', () {
+      final initialItem = PreOrderItemEntity(
+        id: 'it-orig',
+        preOrderId: 'ord-100',
+        productName: 'بلوزة قطن',
+        variantDescription: 'أبيض / M',
+        quantity: 1,
+        costPricePiasters: 25000,
+        commissionPiasters: 5000,
+        unitPricePiasters: 30000,
+        totalPricePiasters: 30000,
+        sourcePlatform: PreOrderPlatforms.shein,
+      );
+
+      // Customer changed size from M to L and requested 2 pieces instead of 1
+      final editedItem = initialItem.copyWith(
+        variantDescription: 'أبيض / L',
+        quantity: 2,
+        totalPricePiasters: 2 * initialItem.unitPricePiasters,
+      );
+
+      expect(editedItem.variantDescription, equals('أبيض / L'));
+      expect(editedItem.quantity, equals(2));
+      expect(editedItem.totalPricePiasters, equals(60000));
+      expect(editedItem.totalCostPiasters, equals(50000));
+      expect(editedItem.totalProfitPiasters, equals(10000));
+    });
+
+    test('Adding and updating items recalculates order total retail, cost, and remaining balance', () {
+      final item1 = PreOrderItemEntity(
+        id: 'it-1',
+        preOrderId: 'ord-101',
+        productName: 'صنف 1',
+        quantity: 1,
+        costPricePiasters: 20000,
+        commissionPiasters: 5000,
+        unitPricePiasters: 25000,
+        totalPricePiasters: 25000,
+      );
+
+      final initialOrder = PreOrderEntity(
+        id: 'ord-101',
+        branchId: 'b-1',
+        orderNumber: 'PO-101',
+        customerName: 'فاطمة',
+        customerPhone: '01099887766',
+        totalPiasters: 25000,
+        depositPiasters: 10000,
+        allocatedShippingPiasters: 2000,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        items: [item1],
+      );
+
+      // Initial remaining with shipping = (250 + 20 - 100) = 170 LE = 17000 piasters
+      expect(initialOrder.remainingWithShippingPiasters, equals(17000));
+
+      // Customer adds second item
+      final item2 = PreOrderItemEntity(
+        id: 'it-2',
+        preOrderId: 'ord-101',
+        productName: 'صنف 2',
+        quantity: 2,
+        costPricePiasters: 15000,
+        commissionPiasters: 5000,
+        unitPricePiasters: 20000,
+        totalPricePiasters: 40000,
+      );
+
+      final itemsAfterAdd = [item1, item2];
+      final newTotalRetail = itemsAfterAdd.fold(0, (sum, it) => sum + it.totalPricePiasters);
+      final orderAfterAdd = initialOrder.copyWith(
+        items: itemsAfterAdd,
+        totalPiasters: newTotalRetail,
+      );
+
+      // New total retail = 25000 + 40000 = 65000 piasters
+      expect(orderAfterAdd.totalPiasters, equals(65000));
+      // Total cost = 20000 + (2 * 15000) = 50000 piasters
+      expect(orderAfterAdd.totalCostPiasters, equals(50000));
+      // Net merchant profit = 65000 - 50000 = 15000 piasters
+      expect(orderAfterAdd.totalProfitPiasters, equals(15000));
+      // New remaining with shipping = (65000 + 2000 - 10000) = 57000 piasters
+      expect(orderAfterAdd.remainingWithShippingPiasters, equals(57000));
+
+      // Now customer removes item 1
+      final itemsAfterDelete = [item2];
+      final totalAfterDelete = itemsAfterDelete.fold(0, (sum, it) => sum + it.totalPricePiasters);
+      final orderAfterDelete = orderAfterAdd.copyWith(
+        items: itemsAfterDelete,
+        totalPiasters: totalAfterDelete,
+      );
+
+      expect(orderAfterDelete.totalPiasters, equals(40000));
+      expect(orderAfterDelete.totalCostPiasters, equals(30000));
+      expect(orderAfterDelete.remainingWithShippingPiasters, equals(32000)); // 40000 + 2000 - 10000
+    });
+
+    test('Batch metrics reflect dynamically updated customer items and orders', () {
+      final order1 = PreOrderEntity(
+        id: 'ord-batch-1',
+        branchId: 'b-1',
+        batchId: 'batch-202',
+        orderNumber: 'PO-201',
+        customerName: 'سارة',
+        customerPhone: '0101',
+        totalPiasters: 30000,
+        depositPiasters: 10000,
+        allocatedShippingPiasters: 3000,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        items: [
+          const PreOrderItemEntity(
+            id: 'it-b-1',
+            preOrderId: 'ord-batch-1',
+            productName: 'فستان',
+            quantity: 1,
+            costPricePiasters: 20000,
+            unitPricePiasters: 30000,
+            totalPricePiasters: 30000,
+          ),
+        ],
+      );
+
+      final batch = PreOrderBatchEntity(
+        id: 'batch-202',
+        branchId: 'b-1',
+        batchNumber: 'BATCH-202',
+        totalShippingPiasters: 5000,
+        shippingSplitMethod: ShippingSplitMethods.freeShipping,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        orders: [order1],
+      );
+
+      expect(batch.totalPiecesCount, equals(1));
+      expect(batch.totalRetailPiasters, equals(30000));
+      expect(batch.totalCostPiasters, equals(20000));
+      // Base profit = 30000 - 20000 = 10000; minus shipping (free for customer) = 10000 - 5000 = 5000
+      expect(batch.totalProfitPiasters, equals(5000));
+
+      // Edit item quantity to 3
+      final updatedItem = order1.items.first.copyWith(
+        quantity: 3,
+        totalPricePiasters: 90000,
+      );
+      final updatedOrder = order1.copyWith(
+        items: [updatedItem],
+        totalPiasters: 90000,
+      );
+      final updatedBatch = batch.copyWith(orders: [updatedOrder]);
+
+      expect(updatedBatch.totalPiecesCount, equals(3));
+      expect(updatedBatch.totalRetailPiasters, equals(90000));
+      // Total cost = 3 * 20000 = 60000
+      expect(updatedBatch.totalCostPiasters, equals(60000));
+      // Net profit = (90000 - 60000) - 5000 = 25000 piasters
+      expect(updatedBatch.totalProfitPiasters, equals(25000));
+    });
+  });
 }
 
 
