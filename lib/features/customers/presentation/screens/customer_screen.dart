@@ -740,7 +740,13 @@ class _CustomerViewState extends State<_CustomerView> {
                             color: AppColors.onSurface,
                           ),
                         ),
-                        if (isWholesale)
+                        if (customer.isBlacklisted)
+                          _tag(
+                            'محظور (تهرب تقسيط)',
+                            const Color(0xFFFEF2F2),
+                            AppColors.error,
+                          )
+                        else if (isWholesale)
                           _tag(
                             'تاجر جملة',
                             const Color(0xFFF1F5F9),

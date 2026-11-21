@@ -46,10 +46,12 @@ class _ProductsAndCategoriesView extends StatefulWidget {
   const _ProductsAndCategoriesView();
 
   @override
-  State<_ProductsAndCategoriesView> createState() => _ProductsAndCategoriesViewState();
+  State<_ProductsAndCategoriesView> createState() =>
+      _ProductsAndCategoriesViewState();
 }
 
-class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> {
+class _ProductsAndCategoriesViewState
+    extends State<_ProductsAndCategoriesView> {
   final TextEditingController _searchCtrl = TextEditingController();
   String _searchQuery = '';
   String? _selectedCategoryId;
@@ -62,9 +64,9 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
   void initState() {
     super.initState();
     if (getIt.isRegistered<FeatureGate>()) {
-      _sectorSub = getIt<FeatureGate>()
-          .watchMeta(RetailSector.metaKey)
-          .listen((mode) {
+      _sectorSub = getIt<FeatureGate>().watchMeta(RetailSector.metaKey).listen((
+        mode,
+      ) {
         if (mounted) {
           setState(() {
             _sectorMode = mode ?? RetailSector.apparel;
@@ -81,7 +83,10 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
     super.dispose();
   }
 
-  void _openAddCategoryDialog(BuildContext context, [CategoryEntity? category]) async {
+  void _openAddCategoryDialog(
+    BuildContext context, [
+    CategoryEntity? category,
+  ]) async {
     final catCubit = context.read<CategoryCubit>();
     final prodCubit = context.read<ProductCubit>();
 
@@ -97,7 +102,10 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
     }
   }
 
-  Future<void> _confirmDeleteCategory(BuildContext context, CategoryEntity category) async {
+  Future<void> _confirmDeleteCategory(
+    BuildContext context,
+    CategoryEntity category,
+  ) async {
     final catCubit = context.read<CategoryCubit>();
     final confirmed = await showDialog<bool>(
       context: context,
@@ -107,7 +115,10 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
           children: [
             Icon(Icons.warning_amber_rounded, color: AppColors.error),
             SizedBox(width: 8),
-            Text('تأكيد حذف القسم', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              'تأكيد حذف القسم',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ],
         ),
         content: Text('هل أنت متأكد من حذف قسم "${category.name}"؟'),
@@ -119,7 +130,10 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('حذف نهائي', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'حذف نهائي',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -127,7 +141,8 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
 
     if (confirmed == true && context.mounted) {
       await catCubit.deleteCategory(category.id);
-      if (_selectedCategoryId == category.id || _selectedCategoryName == category.name) {
+      if (_selectedCategoryId == category.id ||
+          _selectedCategoryName == category.name) {
         setState(() {
           _selectedCategoryId = null;
           _selectedCategoryName = null;
@@ -136,7 +151,10 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
     }
   }
 
-  void _openAddProductDialog(BuildContext context, [ProductEntity? product]) async {
+  void _openAddProductDialog(
+    BuildContext context, [
+    ProductEntity? product,
+  ]) async {
     final cubit = context.read<ProductCubit>();
     final isSingle = RetailSector.isSingleProductMode(_sectorMode);
     await showDialog(
@@ -167,7 +185,10 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
     }
   }
 
-  Future<void> _confirmDeleteProduct(BuildContext context, ProductEntity product) async {
+  Future<void> _confirmDeleteProduct(
+    BuildContext context,
+    ProductEntity product,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -176,10 +197,15 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
           children: [
             Icon(Icons.warning_amber_rounded, color: AppColors.error),
             SizedBox(width: 8),
-            Text('تأكيد حذف المنتج', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              'تأكيد حذف المنتج',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ],
         ),
-        content: Text('هل أنت متأكد من حذف المنتج "${product.name}"؟ لا يمكن التراجع عن هذه العملية.'),
+        content: Text(
+          'هل أنت متأكد من حذف المنتج "${product.name}"؟ لا يمكن التراجع عن هذه العملية.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -188,7 +214,10 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('حذف نهائي', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'حذف نهائي',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -211,7 +240,9 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
         await showDialog<void>(
           context: context,
           builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             title: Row(
               children: [
                 Icon(Icons.info_outline_rounded, color: Colors.amber.shade800),
@@ -248,10 +279,12 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                     if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        backgroundColor:
-                            deactErr == null ? Colors.green.shade800 : AppColors.error,
+                        backgroundColor: deactErr == null
+                            ? Colors.green.shade800
+                            : AppColors.error,
                         content: Text(
-                          deactErr ?? 'تم تعطيل المنتج "${product.name}" وإخفاؤه من الكاشير بنجاح',
+                          deactErr ??
+                              'تم تعطيل المنتج "${product.name}" وإخفاؤه من الكاشير بنجاح',
                         ),
                       ),
                     );
@@ -262,10 +295,7 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: AppColors.error,
-            content: Text(error),
-          ),
+          SnackBar(backgroundColor: AppColors.error, content: Text(error)),
         );
       }
     }
@@ -316,7 +346,10 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
     if (bytes == null) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعذر قراءة ملف الإكسيل المحدد'), backgroundColor: AppColors.error),
+          const SnackBar(
+            content: Text('تعذر قراءة ملف الإكسيل المحدد'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
       return;
@@ -328,9 +361,8 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
       context: context,
       useRootNavigator: true,
       barrierDismissible: false,
-      builder: (_) => Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
-      ),
+      builder: (_) =>
+          Center(child: CircularProgressIndicator(color: AppColors.primary)),
     );
 
     ExcelImportAnalysis analysis;
@@ -342,7 +374,10 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
       }
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل تحليل ملف الإكسيل: $e'), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text('فشل تحليل ملف الإكسيل: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
       return;
@@ -355,7 +390,9 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
     if (analysis.totalRows == 0) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('الملف لا يحتوي على أي صفوف منتجات صالحة للتحميل')),
+          const SnackBar(
+            content: Text('الملف لا يحتوي على أي صفوف منتجات صالحة للتحميل'),
+          ),
         );
       }
       return;
@@ -396,7 +433,10 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
         elevation: 0,
         leading: Navigator.canPop(context)
             ? IconButton(
-                icon: const Icon(Icons.arrow_back_rounded, color: AppColors.onSurface),
+                icon: const Icon(
+                  Icons.arrow_back_rounded,
+                  color: AppColors.onSurface,
+                ),
                 tooltip: 'رجوع',
                 onPressed: () => Navigator.of(context).maybePop(),
               )
@@ -406,7 +446,11 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
           children: [
             Text(
               'دليل المنتجات والتصنيفات',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.onSurface),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: AppColors.onSurface,
+              ),
             ),
             Text(
               'إدارة الأقسام والأصناف والمقاسات وجداول الأسعار في مكان واحد',
@@ -426,21 +470,32 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
             onPressed: () => _importFromExcel(context),
           ),
           const SizedBox(width: 8),
-          if (_sectorMode == RetailSector.supermarket || RetailSector.isSingleProductMode(_sectorMode)) ...[
+          if (_sectorMode == RetailSector.supermarket ||
+              RetailSector.isSingleProductMode(_sectorMode)) ...[
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: ElevatedButton.icon(
                 key: const Key('rapid_scan_button'),
-                icon: const Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: 18),
+                icon: const Icon(
+                  Icons.qr_code_scanner_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
                 label: const Text(
                   'مسح سريع للأصناف',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2E7D32),
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(horizontal: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
                 onPressed: () => _openRapidScanDialog(context),
               ),
@@ -450,18 +505,28 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: ElevatedButton.icon(
-              icon: const Icon(Icons.add_circle_outline, color: Colors.white, size: 18),
+              icon: const Icon(
+                Icons.add_circle_outline,
+                color: Colors.white,
+                size: 18,
+              ),
               label: Text(
                 RetailSector.isSingleProductMode(_sectorMode)
                     ? 'إضافة صنف جديد'
                     : 'إضافة منتج جديد',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(horizontal: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               onPressed: () => _openAddProductDialog(context),
             ),
@@ -471,11 +536,15 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
       ),
       body: BlocBuilder<ProductCubit, ProductState>(
         builder: (context, prodState) {
-          final allProducts = prodState is ProductLoaded ? prodState.products : <ProductEntity>[];
+          final allProducts = prodState is ProductLoaded
+              ? prodState.products
+              : <ProductEntity>[];
 
           return BlocBuilder<CategoryCubit, CategoryState>(
             builder: (context, catState) {
-              final categories = catState is CategoryLoaded ? catState.categories : <CategoryEntity>[];
+              final categories = catState is CategoryLoaded
+                  ? catState.categories
+                  : <CategoryEntity>[];
 
               return LayoutBuilder(
                 builder: (context, constraints) {
@@ -488,12 +557,24 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                         // Right Side Panel: Categories
                         SizedBox(
                           width: 280,
-                          child: _buildCategoriesPanel(context, categories, allProducts),
+                          child: _buildCategoriesPanel(
+                            context,
+                            categories,
+                            allProducts,
+                          ),
                         ),
-                        const VerticalDivider(width: 1, thickness: 1, color: Color(0xFFE8DEF8)),
+                        const VerticalDivider(
+                          width: 1,
+                          thickness: 1,
+                          color: Color(0xFFE8DEF8),
+                        ),
                         // Main Left Area: Products
                         Expanded(
-                          child: _buildProductsArea(context, prodState, allProducts),
+                          child: _buildProductsArea(
+                            context,
+                            prodState,
+                            allProducts,
+                          ),
                         ),
                       ],
                     );
@@ -505,7 +586,11 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                       _buildTopCategoriesBar(context, categories, allProducts),
                       const Divider(height: 1),
                       Expanded(
-                        child: _buildProductsArea(context, prodState, allProducts),
+                        child: _buildProductsArea(
+                          context,
+                          prodState,
+                          allProducts,
+                        ),
                       ),
                     ],
                   );
@@ -538,22 +623,37 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
               children: [
                 Row(
                   children: [
-                    Icon(Icons.category_rounded, color: AppColors.primary, size: 20),
+                    Icon(
+                      Icons.category_rounded,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     const Text(
                       'أقسام المتجر',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.onSurface),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: AppColors.onSurface,
+                      ),
                     ),
                     const SizedBox(width: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         '${categories.length}',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
                       ),
                     ),
                   ],
@@ -561,10 +661,16 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                 TextButton.icon(
                   onPressed: () => _openAddCategoryDialog(context),
                   icon: const Icon(Icons.add, size: 16),
-                  label: const Text('قسم جديد', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  label: const Text(
+                    'قسم جديد',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
                   style: TextButton.styleFrom(
                     foregroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                   ),
                 ),
               ],
@@ -591,8 +697,16 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                 const SizedBox(height: 4),
                 // Categories Tiles
                 ...categories.map((cat) {
-                  final isSelected = _selectedCategoryId == cat.id || _selectedCategoryName == cat.name;
-                  final catCount = allProducts.where((p) => p.categoryId == cat.id || p.categoryName == cat.name).length;
+                  final isSelected =
+                      _selectedCategoryId == cat.id ||
+                      _selectedCategoryName == cat.name;
+                  final catCount = allProducts
+                      .where(
+                        (p) =>
+                            p.categoryId == cat.id ||
+                            p.categoryName == cat.name,
+                      )
+                      .length;
                   final catColor = _getCategoryColor(cat.name);
 
                   return _buildCategoryTile(
@@ -635,7 +749,9 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
         color: isSelected ? AppColors.surfaceContainer : Colors.transparent,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: isSelected ? AppColors.primary.withValues(alpha: 0.3) : Colors.transparent,
+          color: isSelected
+              ? AppColors.primary.withValues(alpha: 0.3)
+              : Colors.transparent,
         ),
       ),
       child: ListTile(
@@ -652,9 +768,11 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
             borderRadius: BorderRadius.circular(8),
           ),
           alignment: Alignment.center,
-          child: Icon(icon,
-              color: isSelected ? AppColors.primary : AppColors.onSurfaceVariant,
-              size: 18),
+          child: Icon(
+            icon,
+            color: isSelected ? AppColors.primary : AppColors.onSurfaceVariant,
+            size: 18,
+          ),
         ),
         title: Text(
           title,
@@ -687,7 +805,11 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
             if (onEdit != null) ...[
               const SizedBox(width: 4),
               PopupMenuButton<String>(
-                icon: Icon(Icons.more_vert, size: 16, color: Colors.grey.shade500),
+                icon: Icon(
+                  Icons.more_vert,
+                  size: 16,
+                  color: Colors.grey.shade500,
+                ),
                 padding: EdgeInsets.zero,
                 tooltip: 'خيارات القسم',
                 onSelected: (val) {
@@ -699,7 +821,11 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                     value: 'edit',
                     child: Row(
                       children: [
-                        Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
+                        Icon(
+                          Icons.edit_outlined,
+                          size: 18,
+                          color: AppColors.primary,
+                        ),
                         SizedBox(width: 8),
                         Text('تعديل القسم'),
                       ],
@@ -709,9 +835,16 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                     value: 'delete',
                     child: Row(
                       children: [
-                        Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error),
+                        Icon(
+                          Icons.delete_outline_rounded,
+                          size: 18,
+                          color: AppColors.error,
+                        ),
                         SizedBox(width: 8),
-                        Text('حذف القسم', style: TextStyle(color: AppColors.error)),
+                        Text(
+                          'حذف القسم',
+                          style: TextStyle(color: AppColors.error),
+                        ),
                       ],
                     ),
                   ),
@@ -752,15 +885,23 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
               },
               selectedColor: AppColors.primary,
               labelStyle: TextStyle(
-                color: _selectedCategoryId == null ? Colors.white : AppColors.onSurface,
+                color: _selectedCategoryId == null
+                    ? Colors.white
+                    : AppColors.onSurface,
                 fontWeight: FontWeight.bold,
                 fontSize: 12,
               ),
             ),
           ),
           ...categories.map((cat) {
-            final isSel = _selectedCategoryId == cat.id || _selectedCategoryName == cat.name;
-            final catCount = allProducts.where((p) => p.categoryId == cat.id || p.categoryName == cat.name).length;
+            final isSel =
+                _selectedCategoryId == cat.id ||
+                _selectedCategoryName == cat.name;
+            final catCount = allProducts
+                .where(
+                  (p) => p.categoryId == cat.id || p.categoryName == cat.name,
+                )
+                .length;
 
             return Padding(
               padding: const EdgeInsets.only(left: 6),
@@ -809,9 +950,16 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline_rounded, size: 48, color: AppColors.error),
+            const Icon(
+              Icons.error_outline_rounded,
+              size: 48,
+              color: AppColors.error,
+            ),
             const SizedBox(height: 12),
-            Text('حدث خطأ: ${state.message}', style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              'حدث خطأ: ${state.message}',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 12),
             ElevatedButton(
               onPressed: () => context.read<ProductCubit>().getProducts(),
@@ -850,7 +998,10 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                             },
                           )
                         : null,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                     filled: true,
                     fillColor: AppColors.surfaceContainer,
                     border: OutlineInputBorder(
@@ -862,18 +1013,28 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
               ),
               const SizedBox(width: 12),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceContainer,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.inventory_2_outlined, size: 18, color: AppColors.primary),
+                    Icon(
+                      Icons.inventory_2_outlined,
+                      size: 18,
+                      color: AppColors.primary,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       'المعروض: ${filtered.length}',
-                      style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
                     ),
                   ],
                 ),
@@ -890,21 +1051,34 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.search_off_rounded, size: 64, color: Colors.grey.shade400),
+                      Icon(
+                        Icons.search_off_rounded,
+                        size: 64,
+                        color: Colors.grey.shade400,
+                      ),
                       const SizedBox(height: 12),
                       Text(
                         _searchQuery.isNotEmpty || _selectedCategoryId != null
                             ? 'لا توجد منتجات مطابقة في هذا القسم'
                             : 'لا توجد منتجات مسجلة في النظام بعد',
-                        style: TextStyle(fontSize: 16, color: Colors.grey.shade700, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey.shade700,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton.icon(
                         icon: const Icon(Icons.add, color: Colors.white),
-                        label: const Text('إضافة منتج جديد الآن', style: TextStyle(color: Colors.white)),
+                        label: const Text(
+                          'إضافة منتج جديد الآن',
+                          style: TextStyle(color: Colors.white),
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                         onPressed: () => _openAddProductDialog(context),
                       ),
@@ -916,12 +1090,13 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                     if (constraints.maxWidth > 650) {
                       return GridView.builder(
                         padding: const EdgeInsets.all(16),
-                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 460,
-                          mainAxisExtent: 160,
-                          crossAxisSpacing: 14,
-                          mainAxisSpacing: 14,
-                        ),
+                        gridDelegate:
+                            const SliverGridDelegateWithMaxCrossAxisExtent(
+                              maxCrossAxisExtent: 460,
+                              mainAxisExtent: 160,
+                              crossAxisSpacing: 14,
+                              mainAxisSpacing: 14,
+                            ),
                         itemCount: filtered.length,
                         itemBuilder: (context, index) {
                           return _buildProductCard(context, filtered[index]);
@@ -931,7 +1106,8 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                     return ListView.separated(
                       padding: const EdgeInsets.all(16),
                       itemCount: filtered.length,
-                      separatorBuilder: (_, index) => const SizedBox(height: 12),
+                      separatorBuilder: (_, index) =>
+                          const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         return _buildProductCard(context, filtered[index]);
                       },
@@ -944,7 +1120,7 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
   }
 
   Widget _buildProductCard(BuildContext context, ProductEntity product) {
-    final catColor = _getCategoryColor(product.categoryName);
+    _getCategoryColor(product.categoryName);
 
     return Container(
       decoration: BoxDecoration(
@@ -995,13 +1171,18 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            product.categoryName.isNotEmpty ? product.categoryName : 'بدون تصنيف',
+                            product.categoryName.isNotEmpty
+                                ? product.categoryName
+                                : 'بدون تصنيف',
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -1011,12 +1192,19 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                         ),
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
-                            color: product.isActive ? const Color(0xFFECFDF5) : const Color(0xFFF1F5F9),
+                            color: product.isActive
+                                ? const Color(0xFFECFDF5)
+                                : const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(6),
                             border: Border.all(
-                              color: product.isActive ? const Color(0xFFA7F3D0) : const Color(0xFFCBD5E1),
+                              color: product.isActive
+                                  ? const Color(0xFFA7F3D0)
+                                  : const Color(0xFFCBD5E1),
                               width: 0.8,
                             ),
                           ),
@@ -1025,7 +1213,9 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
-                              color: product.isActive ? const Color(0xFF065F46) : const Color(0xFF64748B),
+                              color: product.isActive
+                                  ? const Color(0xFF065F46)
+                                  : const Color(0xFF64748B),
                             ),
                           ),
                         ),
@@ -1035,7 +1225,11 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.delete_outline_rounded, size: 20, color: Color(0xFF94A3B8)),
+                icon: const Icon(
+                  Icons.delete_outline_rounded,
+                  size: 20,
+                  color: Color(0xFF94A3B8),
+                ),
                 tooltip: 'حذف المنتج',
                 onPressed: () => _confirmDeleteProduct(context, product),
               ),
@@ -1065,20 +1259,31 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                   RetailSector.isSingleProductMode(_sectorMode)
                       ? 'تعديل الصنف والباركود'
                       : 'المقاسات والألوان',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.primary,
                   side: BorderSide(color: AppColors.primary, width: 1.2),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
                 onPressed: () async {
                   if (RetailSector.isSingleProductMode(_sectorMode)) {
                     _openAddProductDialog(context, product);
                   } else {
                     await Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => VariantListScreen(product: product)),
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            VariantListScreen(product: product),
+                      ),
                     );
                     if (context.mounted) {
                       context.read<ProductCubit>().getProducts();
@@ -1088,14 +1293,23 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
               ),
               const Spacer(),
               IconButton(
-                icon: const Icon(Icons.qr_code_2_rounded, size: 20, color: Colors.teal),
+                icon: const Icon(
+                  Icons.qr_code_2_rounded,
+                  size: 20,
+                  color: Colors.teal,
+                ),
                 tooltip: 'طباعة ملصقات الباركود',
                 onPressed: () async {
-                  final variants = await getIt<VariantLocalDataSource>().getVariants(product.id);
+                  final variants = await getIt<VariantLocalDataSource>()
+                      .getVariants(product.id);
                   if (!context.mounted) return;
                   if (variants.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('لا توجد مقاسات مسجلة لهذا المنتج للطباعة')),
+                      const SnackBar(
+                        content: Text(
+                          'لا توجد مقاسات مسجلة لهذا المنتج للطباعة',
+                        ),
+                      ),
                     );
                     return;
                   }
@@ -1103,25 +1317,35 @@ class _ProductsAndCategoriesViewState extends State<_ProductsAndCategoriesView> 
                     context: context,
                     builder: (_) => BarcodePrintDialog(
                       title: 'طباعة باركود: ${product.name}',
-                      initialItems: variants.map((v) => BarcodeLabelItem(
-                        variantId: v.id,
-                        productName: product.name,
-                        sku: v.sku,
-                        color: v.color,
-                        size: v.size,
-                        salePricePiasters: v.sellPrice,
-                        copies: v.quantity > 0 ? v.quantity : 1,
-                      )).toList(),
+                      initialItems: variants
+                          .map(
+                            (v) => BarcodeLabelItem(
+                              variantId: v.id,
+                              productName: product.name,
+                              sku: v.sku,
+                              color: v.color,
+                              size: v.size,
+                              salePricePiasters: v.sellPrice,
+                              copies: v.quantity > 0 ? v.quantity : 1,
+                            ),
+                          )
+                          .toList(),
                     ),
                   );
                 },
               ),
               TextButton.icon(
                 icon: const Icon(Icons.edit_outlined, size: 16),
-                label: const Text('تعديل', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                label: const Text(
+                  'تعديل',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
                 style: TextButton.styleFrom(
                   foregroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                 ),
                 onPressed: () => _openAddProductDialog(context, product),
               ),
@@ -1139,7 +1363,8 @@ class _ExcelImportOptionsDialog extends StatefulWidget {
   const _ExcelImportOptionsDialog({required this.analysis});
 
   @override
-  State<_ExcelImportOptionsDialog> createState() => _ExcelImportOptionsDialogState();
+  State<_ExcelImportOptionsDialog> createState() =>
+      _ExcelImportOptionsDialogState();
 }
 
 class _ExcelImportOptionsDialogState extends State<_ExcelImportOptionsDialog> {
@@ -1193,7 +1418,10 @@ class _ExcelImportOptionsDialogState extends State<_ExcelImportOptionsDialog> {
       if (mounted) {
         setState(() => _isImporting = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل الاستيراد: $e'), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text('فشل الاستيراد: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     }
@@ -1220,11 +1448,19 @@ class _ExcelImportOptionsDialogState extends State<_ExcelImportOptionsDialog> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.upload_file_rounded, color: AppColors.primary, size: 26),
+                      Icon(
+                        Icons.upload_file_rounded,
+                        color: AppColors.primary,
+                        size: 26,
+                      ),
                       SizedBox(width: 10),
                       Text(
                         'خيارات استيراد ملف الإكسيل وفحص التكرار',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.onSurface),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          color: AppColors.onSurface,
+                        ),
                       ),
                     ],
                   ),
@@ -1242,7 +1478,10 @@ class _ExcelImportOptionsDialogState extends State<_ExcelImportOptionsDialog> {
                 children: [
                   Expanded(
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.green.shade50,
                         borderRadius: BorderRadius.circular(12),
@@ -1250,13 +1489,29 @@ class _ExcelImportOptionsDialogState extends State<_ExcelImportOptionsDialog> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.add_circle_outline_rounded, color: Colors.green.shade800),
+                          Icon(
+                            Icons.add_circle_outline_rounded,
+                            color: Colors.green.shade800,
+                          ),
                           const SizedBox(width: 10),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('أصناف جديدة بالكامل', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                              Text('${newRows.length} صنف جاهز للإضافة', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.green.shade900)),
+                              const Text(
+                                'أصناف جديدة بالكامل',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              Text(
+                                '${newRows.length} صنف جاهز للإضافة',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: Colors.green.shade900,
+                                ),
+                              ),
                             ],
                           ),
                         ],
@@ -1266,21 +1521,50 @@ class _ExcelImportOptionsDialogState extends State<_ExcelImportOptionsDialog> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
-                        color: conflicts.isNotEmpty ? Colors.amber.shade50 : Colors.grey.shade50,
+                        color: conflicts.isNotEmpty
+                            ? Colors.amber.shade50
+                            : Colors.grey.shade50,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: conflicts.isNotEmpty ? Colors.amber.shade300 : Colors.grey.shade200),
+                        border: Border.all(
+                          color: conflicts.isNotEmpty
+                              ? Colors.amber.shade300
+                              : Colors.grey.shade200,
+                        ),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.warning_amber_rounded, color: conflicts.isNotEmpty ? Colors.amber.shade900 : Colors.grey),
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            color: conflicts.isNotEmpty
+                                ? Colors.amber.shade900
+                                : Colors.grey,
+                          ),
                           const SizedBox(width: 10),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('أصناف مكررة الكود', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                              Text('${conflicts.length} أصناف موجودة مسبقاً', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: conflicts.isNotEmpty ? Colors.amber.shade900 : Colors.grey.shade700)),
+                              const Text(
+                                'أصناف مكررة الكود',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              Text(
+                                '${conflicts.length} أصناف موجودة مسبقاً',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: conflicts.isNotEmpty
+                                      ? Colors.amber.shade900
+                                      : Colors.grey.shade700,
+                                ),
+                              ),
                             ],
                           ),
                         ],
@@ -1301,23 +1585,41 @@ class _ExcelImportOptionsDialogState extends State<_ExcelImportOptionsDialog> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('طريقة الاستيراد:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const Text(
+                      'طريقة الاستيراد:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     InkWell(
                       borderRadius: BorderRadius.circular(8),
-                      onTap: _isImporting ? null : () => setState(() => _replaceExisting = false),
+                      onTap: _isImporting
+                          ? null
+                          : () => setState(() => _replaceExisting = false),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 4,
+                          horizontal: 6,
+                        ),
                         child: Row(
                           children: [
                             Icon(
-                              !_replaceExisting ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                              color: !_replaceExisting ? AppColors.primary : Colors.grey,
+                              !_replaceExisting
+                                  ? Icons.radio_button_checked
+                                  : Icons.radio_button_unchecked,
+                              color: !_replaceExisting
+                                  ? AppColors.primary
+                                  : Colors.grey,
                               size: 20,
                             ),
                             const SizedBox(width: 8),
                             const Expanded(
-                              child: Text('إضافة وتحديث على البيانات الحالية (دمج الأرصدة والأسعار - موصى به)', style: TextStyle(fontSize: 13)),
+                              child: Text(
+                                'إضافة وتحديث على البيانات الحالية (دمج الأرصدة والأسعار - موصى به)',
+                                style: TextStyle(fontSize: 13),
+                              ),
                             ),
                           ],
                         ),
@@ -1326,19 +1628,31 @@ class _ExcelImportOptionsDialogState extends State<_ExcelImportOptionsDialog> {
                     const SizedBox(height: 6),
                     InkWell(
                       borderRadius: BorderRadius.circular(8),
-                      onTap: _isImporting ? null : () => setState(() => _replaceExisting = true),
+                      onTap: _isImporting
+                          ? null
+                          : () => setState(() => _replaceExisting = true),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 4,
+                          horizontal: 6,
+                        ),
                         child: Row(
                           children: [
                             Icon(
-                              _replaceExisting ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                              color: _replaceExisting ? AppColors.primary : Colors.grey,
+                              _replaceExisting
+                                  ? Icons.radio_button_checked
+                                  : Icons.radio_button_unchecked,
+                              color: _replaceExisting
+                                  ? AppColors.primary
+                                  : Colors.grey,
                               size: 20,
                             ),
                             const SizedBox(width: 8),
                             const Expanded(
-                              child: Text('استبدال كافة الأصناف غير المباعة الموجودة في النظام بملف الإكسيل', style: TextStyle(fontSize: 13)),
+                              child: Text(
+                                'استبدال كافة الأصناف غير المباعة الموجودة في النظام بملف الإكسيل',
+                                style: TextStyle(fontSize: 13),
+                              ),
                             ),
                           ],
                         ),
@@ -1355,20 +1669,40 @@ class _ExcelImportOptionsDialogState extends State<_ExcelImportOptionsDialog> {
                   children: [
                     const Text(
                       'معالجة الأصناف المكررة:',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                     ),
                     const Spacer(),
                     TextButton(
-                      onPressed: _isImporting ? null : () => _applyToAll(DuplicateResolution.updatePricesAndQty),
-                      child: const Text('تحديث السعر والرصيد للكل', style: TextStyle(fontSize: 11)),
+                      onPressed: _isImporting
+                          ? null
+                          : () => _applyToAll(
+                              DuplicateResolution.updatePricesAndQty,
+                            ),
+                      child: const Text(
+                        'تحديث السعر والرصيد للكل',
+                        style: TextStyle(fontSize: 11),
+                      ),
                     ),
                     TextButton(
-                      onPressed: _isImporting ? null : () => _applyToAll(DuplicateResolution.addQuantity),
-                      child: const Text('إضافة الكمية فوق الرصيد للكل', style: TextStyle(fontSize: 11)),
+                      onPressed: _isImporting
+                          ? null
+                          : () => _applyToAll(DuplicateResolution.addQuantity),
+                      child: const Text(
+                        'إضافة الكمية فوق الرصيد للكل',
+                        style: TextStyle(fontSize: 11),
+                      ),
                     ),
                     TextButton(
-                      onPressed: _isImporting ? null : () => _applyToAll(DuplicateResolution.skip),
-                      child: const Text('تخطي الكل', style: TextStyle(fontSize: 11)),
+                      onPressed: _isImporting
+                          ? null
+                          : () => _applyToAll(DuplicateResolution.skip),
+                      child: const Text(
+                        'تخطي الكل',
+                        style: TextStyle(fontSize: 11),
+                      ),
                     ),
                   ],
                 ),
@@ -1397,11 +1731,17 @@ class _ExcelImportOptionsDialogState extends State<_ExcelImportOptionsDialog> {
                                 children: [
                                   Text(
                                     '${conflict.existingProductName} (${row.sku})',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                   Text(
                                     'المقاس: ${row.size} | اللون: ${row.color}',
-                                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey.shade600,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1413,11 +1753,18 @@ class _ExcelImportOptionsDialogState extends State<_ExcelImportOptionsDialog> {
                                 children: [
                                   Text(
                                     'الحالي: رصيد ${existing.quantity} | بيع ${(existing.sellPrice / 100).toStringAsFixed(1)} ج.م',
-                                    style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey.shade700,
+                                    ),
                                   ),
                                   Text(
                                     'الإكسيل: كمية ${row.quantity} | بيع ${row.salePrice.toStringAsFixed(1)} ج.م',
-                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.primary,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1425,7 +1772,10 @@ class _ExcelImportOptionsDialogState extends State<_ExcelImportOptionsDialog> {
                             DropdownButton<DuplicateResolution>(
                               value: conflict.resolution,
                               isDense: true,
-                              style: const TextStyle(fontSize: 12, color: AppColors.onSurface),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.onSurface,
+                              ),
                               items: const [
                                 DropdownMenuItem(
                                   value: DuplicateResolution.updatePricesAndQty,
@@ -1444,7 +1794,9 @@ class _ExcelImportOptionsDialogState extends State<_ExcelImportOptionsDialog> {
                                   ? null
                                   : (val) {
                                       if (val != null) {
-                                        setState(() => conflict.resolution = val);
+                                        setState(
+                                          () => conflict.resolution = val,
+                                        );
                                       }
                                     },
                             ),
@@ -1463,26 +1815,39 @@ class _ExcelImportOptionsDialogState extends State<_ExcelImportOptionsDialog> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
-                    onPressed: _isImporting ? null : () => Navigator.pop(context, false),
+                    onPressed: _isImporting
+                        ? null
+                        : () => Navigator.pop(context, false),
                     child: const Text('إلغاء'),
                   ),
                   const SizedBox(width: 12),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                     onPressed: _isImporting ? null : _startImport,
                     child: _isImporting
                         ? const SizedBox(
                             width: 20,
                             height: 20,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
                           )
                         : const Text(
                             'بدء الاستيراد وتحديث المخزن',
-                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
                           ),
                   ),
                 ],

@@ -7,7 +7,6 @@ import '../../../../core/features/feature_gate.dart';
 import '../../../../core/layout/main_layout.dart';
 import '../../../../core/services/app_update_service.dart';
 import '../../../../core/utils/money.dart';
-import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../reports/presentation/screens/reports_screen.dart';
 import '../../../reports/presentation/widgets/payment_method_pie_chart.dart';
 import '../../../reports/presentation/widgets/top_selling_products_widget.dart';
@@ -62,7 +61,9 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
       }
     });
     _creditSub = featureGate.watchMeta('payment.credit').listen((val) {
-      final enabled = val == null ? true : (val == '1' || val.toLowerCase() == 'true');
+      final enabled = val == null
+          ? true
+          : (val == '1' || val.toLowerCase() == 'true');
       if (mounted) {
         setState(() {
           _creditEnabled = enabled;
@@ -93,7 +94,11 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
             children: [
               Text(
                 'لوحة تحكم المدير العام',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.onSurface),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: AppColors.onSurface,
+                ),
                 overflow: TextOverflow.ellipsis,
               ),
               Text(
@@ -117,32 +122,56 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
                         color: AppColors.primary,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.analytics_rounded, color: Colors.white, size: 18),
+                      child: const Icon(
+                        Icons.analytics_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
                     ),
                     onPressed: () {
                       Navigator.of(innerCtx).push(
-                        MaterialPageRoute(builder: (_) => const ReportsScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => const ReportsScreen(),
+                        ),
                       );
                     },
                   );
                 }
                 return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 8,
+                  ),
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
                     ),
-                    icon: const Icon(Icons.analytics_rounded, color: Colors.white, size: 18),
+                    icon: const Icon(
+                      Icons.analytics_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
                     label: const Text(
                       'التقرير المالي الشامل',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
                     ),
                     onPressed: () {
                       Navigator.of(innerCtx).push(
-                        MaterialPageRoute(builder: (_) => const ReportsScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => const ReportsScreen(),
+                        ),
                       );
                     },
                   ),
@@ -158,11 +187,6 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
               ),
               icon: Icon(Icons.system_update_rounded, color: AppColors.primary),
             ),
-            IconButton(
-              tooltip: 'تسجيل الخروج',
-              onPressed: () => context.read<AuthCubit>().logout(),
-              icon: const Icon(Icons.logout_rounded, color: AppColors.error),
-            ),
           ],
         ),
         body: BlocBuilder<DashboardCubit, DashboardState>(
@@ -175,7 +199,11 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.error_outline_rounded, size: 48, color: AppColors.error),
+                    const Icon(
+                      Icons.error_outline_rounded,
+                      size: 48,
+                      color: AppColors.error,
+                    ),
                     const SizedBox(height: 12),
                     Text(
                       state.errorMessage ?? 'حدث خطأ أثناء تحميل البيانات',
@@ -183,9 +211,15 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-                      onPressed: () => context.read<DashboardCubit>().loadStats(),
-                      child: const Text('إعادة المحاولة', style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                      ),
+                      onPressed: () =>
+                          context.read<DashboardCubit>().loadStats(),
+                      child: const Text(
+                        'إعادة المحاولة',
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                   ],
                 ),
@@ -218,12 +252,16 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
                           children: [
                             Expanded(
                               flex: 3,
-                              child: WeeklySalesChart(points: stats.last7DaysSales),
+                              child: WeeklySalesChart(
+                                points: stats.last7DaysSales,
+                              ),
                             ),
                             const SizedBox(width: 16),
                             Expanded(
                               flex: 2,
-                              child: PaymentMethodPieChart(breakdown: stats.todayPaymentBreakdown),
+                              child: PaymentMethodPieChart(
+                                breakdown: stats.todayPaymentBreakdown,
+                              ),
                             ),
                           ],
                         );
@@ -232,7 +270,9 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
                         children: [
                           WeeklySalesChart(points: stats.last7DaysSales),
                           const SizedBox(height: 16),
-                          PaymentMethodPieChart(breakdown: stats.todayPaymentBreakdown),
+                          PaymentMethodPieChart(
+                            breakdown: stats.todayPaymentBreakdown,
+                          ),
                         ],
                       );
                     },
@@ -249,21 +289,29 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
                           children: [
                             Expanded(
                               flex: 3,
-                              child: HourlySalesChart(hourlyPoints: stats.todayHourlySales),
+                              child: HourlySalesChart(
+                                hourlyPoints: stats.todayHourlySales,
+                              ),
                             ),
                             const SizedBox(width: 16),
                             Expanded(
                               flex: 2,
-                              child: TopSellingProductsWidget(products: stats.todayTopProducts),
+                              child: TopSellingProductsWidget(
+                                products: stats.todayTopProducts,
+                              ),
                             ),
                           ],
                         );
                       }
                       return Column(
                         children: [
-                          HourlySalesChart(hourlyPoints: stats.todayHourlySales),
+                          HourlySalesChart(
+                            hourlyPoints: stats.todayHourlySales,
+                          ),
                           const SizedBox(height: 16),
-                          TopSellingProductsWidget(products: stats.todayTopProducts),
+                          TopSellingProductsWidget(
+                            products: stats.todayTopProducts,
+                          ),
                         ],
                       );
                     },
@@ -283,7 +331,10 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
     );
   }
 
-  Widget _buildExecutiveKpiRow(BuildContext context, DashboardStatsEntity stats) {
+  Widget _buildExecutiveKpiRow(
+    BuildContext context,
+    DashboardStatsEntity stats,
+  ) {
     final avgTicket = stats.todayTransactions > 0
         ? stats.todaySales ~/ stats.todayTransactions
         : 0;
@@ -300,7 +351,9 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
       title: 'صافي ربح اليوم (تقديري)',
       value: '${Money(stats.todayEstimatedNetProfit).toDisplay()} ج.م',
       icon: Icons.trending_up_rounded,
-      color: stats.todayEstimatedNetProfit >= 0 ? AppColors.primary : AppColors.error,
+      color: stats.todayEstimatedNetProfit >= 0
+          ? AppColors.primary
+          : AppColors.error,
       subtitle: 'تكلفة البضاعة: ${Money(stats.todayCost).toDisplay()} ج.م',
       isHighlighted: true,
     );
@@ -328,9 +381,21 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
         if (constraints.maxWidth < 900) {
           return Column(
             children: [
-              Row(children: [Expanded(child: cardTodaySales), const SizedBox(width: 12), Expanded(child: cardNetProfit)]),
+              Row(
+                children: [
+                  Expanded(child: cardTodaySales),
+                  const SizedBox(width: 12),
+                  Expanded(child: cardNetProfit),
+                ],
+              ),
               const SizedBox(height: 12),
-              Row(children: [Expanded(child: cardLiveCash), const SizedBox(width: 12), Expanded(child: cardAvgTicket)]),
+              Row(
+                children: [
+                  Expanded(child: cardLiveCash),
+                  const SizedBox(width: 12),
+                  Expanded(child: cardAvgTicket),
+                ],
+              ),
             ],
           );
         }
@@ -349,7 +414,10 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
     );
   }
 
-  Widget _buildActionCenterRow(BuildContext context, DashboardStatsEntity stats) {
+  Widget _buildActionCenterRow(
+    BuildContext context,
+    DashboardStatsEntity stats,
+  ) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final alertStock = _MiniAlertCard(
@@ -357,20 +425,30 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
           countText: '${stats.lowStockCount} صنف',
           subtext: 'وصل لحد الأمان',
           icon: Icons.warning_amber_rounded,
-          color: stats.lowStockCount > 0 ? Colors.orange.shade800 : Colors.grey.shade600,
-          bgColor: stats.lowStockCount > 0 ? Colors.orange.shade50 : Colors.grey.shade50,
+          color: stats.lowStockCount > 0
+              ? Colors.orange.shade800
+              : Colors.grey.shade600,
+          bgColor: stats.lowStockCount > 0
+              ? Colors.orange.shade50
+              : Colors.grey.shade50,
         );
 
-        final showInstallments = _installmentsEnabled ||
+        final showInstallments =
+            _installmentsEnabled ||
             stats.overdueInstallmentsCount > 0 ||
             stats.overdueInstallmentsAmount > 0;
         final alertInstallments = _MiniAlertCard(
           title: 'أقساط متأخرة',
           countText: '${stats.overdueInstallmentsCount} عقد',
-          subtext: '${Money(stats.overdueInstallmentsAmount).toDisplay()} ج.م متأخرة',
+          subtext:
+              '${Money(stats.overdueInstallmentsAmount).toDisplay()} ج.م متأخرة',
           icon: Icons.payments_rounded,
-          color: stats.overdueInstallmentsCount > 0 ? AppColors.error : Colors.grey.shade600,
-          bgColor: stats.overdueInstallmentsCount > 0 ? Colors.red.shade50 : Colors.grey.shade50,
+          color: stats.overdueInstallmentsCount > 0
+              ? AppColors.error
+              : Colors.grey.shade600,
+          bgColor: stats.overdueInstallmentsCount > 0
+              ? Colors.red.shade50
+              : Colors.grey.shade50,
         );
 
         final showSuppliers = _suppliersEnabled || stats.totalSupplierDebts > 0;
@@ -383,14 +461,19 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
           bgColor: Colors.blueGrey.shade50,
         );
 
-        final showCustomerCredit = _creditEnabled || stats.totalCustomerCreditDebts > 0;
+        final showCustomerCredit =
+            _creditEnabled || stats.totalCustomerCreditDebts > 0;
         final alertCustomerCredit = _MiniAlertCard(
           title: 'مديونيات العملاء الآجلة',
           countText: '${Money(stats.totalCustomerCreditDebts).toDisplay()} ج.م',
           subtext: 'مستحقات على الحساب الآجل',
           icon: Icons.account_balance_wallet_rounded,
-          color: stats.totalCustomerCreditDebts > 0 ? Colors.purple.shade800 : Colors.grey.shade600,
-          bgColor: stats.totalCustomerCreditDebts > 0 ? Colors.purple.shade50 : Colors.grey.shade50,
+          color: stats.totalCustomerCreditDebts > 0
+              ? Colors.purple.shade800
+              : Colors.grey.shade600,
+          bgColor: stats.totalCustomerCreditDebts > 0
+              ? Colors.purple.shade50
+              : Colors.grey.shade50,
         );
 
         final alertReturns = _MiniAlertCard(
@@ -398,8 +481,12 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
           countText: '${Money(stats.todayReturnsTotal).toDisplay()} ج.م',
           subtext: '${stats.todayReturnsCount} عملية مرتجع',
           icon: Icons.assignment_return_rounded,
-          color: stats.todayReturnsCount > 0 ? Colors.indigo.shade800 : Colors.grey.shade600,
-          bgColor: stats.todayReturnsCount > 0 ? Colors.indigo.shade50 : Colors.grey.shade50,
+          color: stats.todayReturnsCount > 0
+              ? Colors.indigo.shade800
+              : Colors.grey.shade600,
+          bgColor: stats.todayReturnsCount > 0
+              ? Colors.indigo.shade50
+              : Colors.grey.shade50,
         );
 
         final visibleCards = <Widget>[
@@ -413,7 +500,10 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
         if (constraints.maxWidth < 700) {
           final rows = <Widget>[];
           for (var i = 0; i < visibleCards.length; i += 2) {
-            final chunk = visibleCards.sublist(i, (i + 2).clamp(0, visibleCards.length));
+            final chunk = visibleCards.sublist(
+              i,
+              (i + 2).clamp(0, visibleCards.length),
+            );
             if (rows.isNotEmpty) rows.add(const SizedBox(height: 10));
             rows.add(
               Row(
@@ -474,11 +564,19 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
       children: [
         Row(
           children: [
-            const Icon(Icons.notification_important_rounded, color: Colors.orange, size: 22),
+            const Icon(
+              Icons.notification_important_rounded,
+              color: Colors.orange,
+              size: 22,
+            ),
             const SizedBox(width: 8),
             const Text(
               'تنبيهات الأصناف منخفضة المخزون',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.onSurface),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.onSurface,
+              ),
             ),
             const Spacer(),
             Container(
@@ -490,7 +588,11 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
               ),
               child: Text(
                 '${stats.lowStockVariants.length} أصناف تحتاج للتوريد',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange.shade800),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orange.shade800,
+                ),
               ),
             ),
           ],
@@ -498,7 +600,9 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
         const SizedBox(height: 12),
         ...stats.lowStockVariants.map(
           (v) => Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: ListTile(
               leading: Container(
                 padding: const EdgeInsets.all(8),
@@ -506,7 +610,10 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
                   color: Colors.orange.shade50,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                child: const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.orange,
+                ),
               ),
               title: Text(
                 '${v.productName} (${v.color} - مقاس ${v.size})',
@@ -514,7 +621,10 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
               ),
               subtitle: Text('كود الصنف: ${v.sku}'),
               trailing: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.red.shade50,
                   borderRadius: BorderRadius.circular(8),
@@ -522,7 +632,11 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
                 ),
                 child: Text(
                   'الرصيد: ${v.quantity} / الحد الأدنى: ${v.minStock}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red, fontSize: 12),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ),
@@ -556,7 +670,9 @@ class _KpiCard extends StatelessWidget {
       elevation: isHighlighted ? 2 : 1,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: isHighlighted ? BorderSide(color: color.withValues(alpha: 0.3), width: 1.5) : BorderSide.none,
+        side: isHighlighted
+            ? BorderSide(color: color.withValues(alpha: 0.3), width: 1.5)
+            : BorderSide.none,
       ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -577,7 +693,11 @@ class _KpiCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     title,
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade700,
+                      fontWeight: FontWeight.w600,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -644,13 +764,21 @@ class _MiniAlertCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade700, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey.shade700,
+                    fontWeight: FontWeight.w600,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Text(
                   countText,
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(

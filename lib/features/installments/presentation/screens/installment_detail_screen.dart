@@ -15,6 +15,7 @@ import '../../domain/facades/installments_facade.dart';
 import '../../domain/services/installment_calculator.dart';
 import '../cubits/installment_detail_cubit.dart';
 import '../widgets/early_settlement_dialog.dart';
+import '../widgets/promissory_note_delivery_dialog.dart';
 import 'record_payment_screen.dart';
 
 class InstallmentDetailScreen extends StatelessWidget {
@@ -573,7 +574,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
       spacing: 12,
       runSpacing: 10,
       children: [
-        if (canPay)
+        if (canPay && contract.status != 'legal_case')
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
@@ -599,11 +600,28 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                 contractId: contract.id,
               );
               if (saved == true && context.mounted) {
-                cubit.refresh();
+                await cubit.refresh();
+                if (!context.mounted) return;
+                final updated = cubit.state.contract;
+                if (updated != null &&
+                    updated.remainingPiasters <= 0 &&
+                    !updated.promissoryNoteDelivered &&
+                    updated.hasPromissoryNote) {
+                  final result = await showPromissoryNoteDeliveryDialog(
+                    context,
+                    customerName: cubit.state.customerName,
+                  );
+                  if (result != null && context.mounted) {
+                    await cubit.markPromissoryNoteDelivered(
+                      result != PromissoryNoteDeliveryResult.inSafe,
+                      hasNote: result != PromissoryNoteDeliveryResult.noReceipt,
+                    );
+                  }
+                }
               }
             },
           ),
-        if (canPay)
+        if (canPay && contract.status != 'legal_case')
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.onSurface,
@@ -617,9 +635,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                 ? const SizedBox(
                     width: 18,
                     height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                    ),
+                    child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.bolt_rounded, size: 20),
             label: const Text(
@@ -639,56 +655,105 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                     contract,
                   ),
           ),
-        if (contract.status != 'cancelled' &&
-            contract.status != 'completed') ...[
-          if (contract.status != 'legal_case')
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.error.withValues(alpha: 0.8),
-                side: BorderSide(color: AppColors.error.withValues(alpha: 0.3)),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 14,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+        if (contract.status == 'legal_case') ...[
+          // Option 1: ⚖️ تحصيل وتسوية قضائية (تم التخليص)
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.success,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-              icon: const Icon(Icons.gavel_rounded, size: 20),
-              label: const Text(
-                'تحويل لإجراء قانوني',
-                style: TextStyle(
-                  fontFamily: 'Cairo',
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-              onPressed: () => _confirmToggleLegalCase(context, cubit, true),
-            )
-          else
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.onSurface,
-                side: const BorderSide(color: AppColors.outlineVariant),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 14,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              icon: const Icon(Icons.undo_rounded, size: 20),
-              label: const Text(
-                'إلغاء الإجراء القانوني (إعادة لنشط)',
-                style: TextStyle(
-                  fontFamily: 'Cairo',
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-              onPressed: () => _confirmToggleLegalCase(context, cubit, false),
             ),
+            icon: const Icon(Icons.gavel_rounded, size: 20),
+            label: const Text(
+              '⚖️ تحصيل وتسوية قضائية (تم التخليص)',
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+            onPressed: () => _openJudicialSettlementDialog(
+              context,
+              cubit,
+              state,
+              contract,
+            ),
+          ),
+
+          // Option 2: ⛔ إثبات تهرب / إعدام دين
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.error,
+              side: BorderSide(color: AppColors.error.withValues(alpha: 0.5)),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            icon: const Icon(Icons.block_rounded, size: 20),
+            label: const Text(
+              '⛔ إثبات تهرب / إعدام دين',
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+            onPressed: () => _confirmBadDebtWriteOff(context, cubit, contract),
+          ),
+
+          // Option 3: ↩️ إلغاء الإجراء القانوني (إعادة لنشط)
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.onSurface,
+              side: const BorderSide(color: AppColors.outlineVariant),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            icon: const Icon(Icons.undo_rounded, size: 20),
+            label: const Text(
+              '↩️ إلغاء الإجراء القانوني (إعادة لنشط)',
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+            onPressed: () => _confirmToggleLegalCase(context, cubit, false),
+          ),
+        ] else if (contract.status != 'cancelled' &&
+            contract.status != 'completed' &&
+            contract.status != 'written_off' &&
+            contract.status != 'cancelled_bad_debt') ...[
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.error.withValues(alpha: 0.8),
+              side: BorderSide(color: AppColors.error.withValues(alpha: 0.3)),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 14,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            icon: const Icon(Icons.gavel_rounded, size: 20),
+            label: const Text(
+              'تحويل لإجراء قانوني',
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+            onPressed: () => _confirmToggleLegalCase(context, cubit, true),
+          ),
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.error.withValues(alpha: 0.8),
@@ -757,46 +822,15 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
     );
 
     if (ok && context.mounted) {
-      final delivered = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (dialogCtx) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
-            children: [
-              Icon(Icons.inventory_2_rounded, color: AppColors.primary),
-              const SizedBox(width: 8),
-              const Text(
-                'تسليم وصل الأمانة',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-            ],
-          ),
-          content: const Text(
-            'تمت تسوية العقد بالكامل بنجاح وأصبح الرصيد 0 ج.م.\n\nهل تم تسليم أصل وصل الأمانة للعميل الآن؟',
-            style: TextStyle(fontSize: 14),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogCtx).pop(false),
-              child: const Text('لا، سيتم تسليمه لاحقاً'),
-            ),
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () => Navigator.of(dialogCtx).pop(true),
-              icon: const Icon(Icons.check_rounded, size: 18),
-              label: const Text('نعم، تم التسليم'),
-            ),
-          ],
-        ),
+      final result = await showPromissoryNoteDeliveryDialog(
+        context,
+        customerName: state.customerName,
       );
-      if (delivered != null && context.mounted) {
-        await cubit.markPromissoryNoteDelivered(delivered);
+      if (result != null && context.mounted) {
+        await cubit.markPromissoryNoteDelivered(
+          result != PromissoryNoteDeliveryResult.inSafe,
+          hasNote: result != PromissoryNoteDeliveryResult.noReceipt,
+        );
       }
 
       if (!context.mounted) return;
@@ -821,7 +855,7 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
 
     if (!isAdmin) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('غير مصرح: إلغاء عقود التقسيط متاح للمدير فقط'),
           backgroundColor: Colors.red,
         ),
@@ -1097,10 +1131,15 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                       statusBg = const Color(0xFFF1F5F9);
                       statusIcon = Icons.fast_rewind_rounded;
                     } else if (isPaid) {
-                      statusLabel = 'مدفوع بالكامل';
+                      statusLabel = 'مدفوع';
                       statusColor = AppColors.success;
                       statusBg = const Color(0xFFECFDF5);
                       statusIcon = Icons.check_circle_rounded;
+                    } else if (isContractCompleted) {
+                      statusLabel = 'مكتمل (تمت التسوية)';
+                      statusColor = AppColors.success;
+                      statusBg = const Color(0xFFECFDF5);
+                      statusIcon = Icons.task_alt_rounded;
                     } else if (isOverdue) {
                       statusLabel = isPartiallyPaid ? 'متأخر (جزئي)' : 'متأخر';
                       statusColor = AppColors.error;
@@ -1604,6 +1643,13 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
         label = 'عقد مكتمل';
         icon = Icons.task_alt_rounded;
         break;
+      case 'written_off':
+      case 'cancelled_bad_debt':
+        color = AppColors.error;
+        bg = const Color(0xFFFEF2F2);
+        label = 'دين معدوم (تهرب)';
+        icon = Icons.cancel_rounded;
+        break;
       case 'cancelled':
         color = Colors.grey.shade700;
         bg = const Color(0xFFF1F5F9);
@@ -1648,6 +1694,38 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
     InstallmentDetailCubit cubit,
     CustomerInstallmentEntity contract,
   ) {
+    if (!contract.hasPromissoryNote) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.outlineVariant),
+        ),
+        child: const Row(
+          children: [
+            Icon(
+              Icons.do_not_disturb_on_outlined,
+              color: AppColors.onSurfaceVariant,
+              size: 18,
+            ),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'لا يوجد إيصال / وصل أمانة مسجل لهذا العقد',
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     if (contract.promissoryNoteDelivered) {
       final deliveredDate = contract.promissoryNoteDeliveredAt != null
           ? DateFormat('yyyy/MM/dd').format(contract.promissoryNoteDeliveredAt!)
@@ -1723,7 +1801,11 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.check_rounded, color: AppColors.onSurface, size: 14),
+                  Icon(
+                    Icons.check_rounded,
+                    color: AppColors.onSurface,
+                    size: 14,
+                  ),
                   SizedBox(width: 4),
                   Text(
                     'تسليم الوصل للعميل',
@@ -1747,49 +1829,28 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
     BuildContext context,
     InstallmentDetailCubit cubit,
   ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.inventory_2_rounded, color: AppColors.primary),
-            const SizedBox(width: 8),
-            const Text(
-              'تسليم وصل الأمانة',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-          ],
-        ),
-        content: const Text(
-          'هل تريد تأكيد تسليم أصل وصل الأمانة للعميل الآن؟\nسيتم توثيق تاريخ ووقت التسليم على العقد.',
-          style: TextStyle(fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogCtx).pop(false),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () => Navigator.of(dialogCtx).pop(true),
-            icon: const Icon(Icons.check_rounded, size: 18),
-            label: const Text('تأكيد التسليم'),
-          ),
-        ],
-      ),
+    final result = await showPromissoryNoteDeliveryDialog(
+      context,
+      customerName: cubit.state.customerName,
     );
 
-    if (confirmed == true && context.mounted) {
-      final success = await cubit.markPromissoryNoteDelivered(true);
+    if (result != null && context.mounted) {
+      final success = await cubit.markPromissoryNoteDelivered(
+        result != PromissoryNoteDeliveryResult.inSafe,
+        hasNote: result != PromissoryNoteDeliveryResult.noReceipt,
+      );
       if (success && context.mounted) {
+        final message = result == PromissoryNoteDeliveryResult.noReceipt
+            ? 'تم توثيق: لا يوجد إيصال أمانة لهذا العميل'
+            : result == PromissoryNoteDeliveryResult.delivered
+            ? 'تم توثيق تسليم وصل الأمانة للعميل بنجاح'
+            : 'تم الإبقاء على وصل الأمانة في الخزينة';
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم توثيق تسليم وصل الأمانة للعميل بنجاح'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: Text(message),
+            backgroundColor: result == PromissoryNoteDeliveryResult.inSafe
+                ? Colors.blueGrey
+                : Colors.green,
           ),
         );
       }
@@ -1847,7 +1908,8 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
 
     if (confirmed == true && context.mounted) {
       final success = await cubit.updateLegalStatus(isLegalCase);
-      if (success && context.mounted) {
+      if (!context.mounted) return;
+      if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -1855,7 +1917,371 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
                   ? 'تم تحويل العقد للإجراءات القانونية بنجاح'
                   : 'تمت إعادة العقد للحالة النشطة بنجاح',
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              cubit.state.errorMessage ??
+                  'تعذر تغيير حالة العقد، يرجى المحاولة ثانية',
+            ),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _openJudicialSettlementDialog(
+    BuildContext context,
+    InstallmentDetailCubit cubit,
+    InstallmentDetailState state,
+    CustomerInstallmentEntity contract,
+  ) async {
+    final featureGate = getIt<FeatureGate>();
+    final isPinRequired = getIt.isRegistered<ManagerPinService>()
+        ? await getIt<ManagerPinService>().isPinRequired()
+        : (await featureGate.getMeta('installments.pin.require')) != '0';
+
+    final remainingPounds = (contract.remainingPiasters / 100).toStringAsFixed(2);
+    final amountCtrl = TextEditingController(text: remainingPounds);
+    final notesCtrl = TextEditingController(text: 'تحصيل وتسوية قضائية (تم التخليص بالقسم/المحكمة)');
+    final pinCtrl = TextEditingController();
+    String paymentMethod = 'cash';
+
+    if (!context.mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFECFDF5),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.gavel_rounded, color: AppColors.success, size: 22),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'تحصيل وتسوية قضائية (تم التخليص)',
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.outlineVariant),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'العميل: ${state.customerName ?? "—"}',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'إجمالي المتبقي بالقضية: ${Money(contract.remainingPiasters).toDisplay()} ج.م',
+                          style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: amountCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                      labelText: 'المبلغ المحصل فعلياً (ج.م) *',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.payments_rounded),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('طريقة التحصيل:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      ChoiceChip(
+                        label: const Text('نقدي (خزينة المحل)'),
+                        selected: paymentMethod == 'cash',
+                        onSelected: (val) {
+                          if (val) setDialogState(() => paymentMethod = 'cash');
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      ChoiceChip(
+                        label: const Text('بطاقة / تحويل بنكي'),
+                        selected: paymentMethod == 'card',
+                        onSelected: (val) {
+                          if (val) setDialogState(() => paymentMethod = 'card');
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: notesCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'ملاحظات محضر الصلح / القضية',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.notes_rounded),
+                    ),
+                  ),
+                  if (isPinRequired) ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: pinCtrl,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: 'الرقم السري للمدير *',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.lock_rounded),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(false),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.success,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              icon: const Icon(Icons.check_circle_rounded, size: 18),
+              label: const Text('إثبات التحصيل والتسوية', style: TextStyle(fontWeight: FontWeight.bold)),
+              onPressed: () {
+                final text = amountCtrl.text.trim();
+                final val = double.tryParse(text);
+                if (val == null || val < 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('يرجى إدخال مبلغ صحيح')),
+                  );
+                  return;
+                }
+                Navigator.of(dialogCtx).pop(true);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      final collectedPounds = double.tryParse(amountCtrl.text.trim()) ?? 0;
+      final collectedPiasters = (collectedPounds * 100).round();
+      final waivedPiasters = (contract.remainingPiasters - collectedPiasters).clamp(0, contract.remainingPiasters);
+
+      final ok = await cubit.settleEarly(
+        waivedInterestPiasters: waivedPiasters,
+        paymentMethod: paymentMethod,
+        pin: pinCtrl.text.trim(),
+        notes: notesCtrl.text.trim(),
+        settledAt: DateTime.now(),
+      );
+
+      if (ok && context.mounted) {
+        final result = await showPromissoryNoteDeliveryDialog(
+          context,
+          customerName: state.customerName,
+        );
+        if (result != null && context.mounted) {
+          await cubit.markPromissoryNoteDelivered(
+            result != PromissoryNoteDeliveryResult.inSafe,
+            hasNote: result != PromissoryNoteDeliveryResult.noReceipt,
+          );
+        }
+
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.success,
+            content: Text(
+              'تم إثبات التحصيل والتسوية القضائية وإقفال العقد بنجاح — محصل: ${Money(collectedPiasters).toDisplay()} ج.م',
+            ),
+          ),
+        );
+      } else if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.error,
+            content: Text(cubit.state.errorMessage ?? 'تعذر إتمام التسوية القضائية'),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _confirmBadDebtWriteOff(
+    BuildContext context,
+    InstallmentDetailCubit cubit,
+    CustomerInstallmentEntity contract,
+  ) async {
+    final featureGate = getIt<FeatureGate>();
+    final isAdmin = await featureGate.isCurrentUserAdmin();
+    if (!context.mounted) return;
+
+    if (!isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('غير مصرح: إعدام الديون متاح للمدير فقط'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    final isPinRequired = getIt.isRegistered<ManagerPinService>()
+        ? await getIt<ManagerPinService>().isPinRequired()
+        : (await featureGate.getMeta('installments.pin.require')) != '0';
+
+    final reasonCtrl = TextEditingController(text: 'تهرب من السداد / تعذر التحصيل القضائي');
+    final pinCtrl = TextEditingController();
+
+    if (!context.mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.block_rounded, color: AppColors.error, size: 22),
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'إثبات تهرب / إعدام دين العقد',
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+          ],
+        ),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF2F2),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'تحذير هام:',
+                      style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.error),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '• سيتم إعدام الرصيد المتبقي (${Money(contract.remainingPiasters).toDisplay()} ج.م) كخسارة.\n'
+                      '• سيتم إدراج العميل تلقائياً في "القائمة المحظورة" في النظام.\n'
+                      '• تُقفل حالة العقد نهائياً كـ "دين معدوم (تهرب)".',
+                      style: const TextStyle(fontSize: 12.5, height: 1.5, color: Color(0xFF7F1D1D)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: reasonCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'سبب إعدام الدين *',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.report_problem_outlined),
+                ),
+              ),
+              if (isPinRequired) ...[
+                const SizedBox(height: 12),
+                TextField(
+                  controller: pinCtrl,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'الرقم السري للمدير *',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.lock_rounded),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(false),
+            child: const Text('تراجع'),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            icon: const Icon(Icons.delete_forever_rounded, size: 18),
+            label: const Text('تأكيد إعدام الدين والحظر', style: TextStyle(fontWeight: FontWeight.bold)),
+            onPressed: () => Navigator.of(dialogCtx).pop(true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      final success = await cubit.writeOffBadDebt(
+        reason: reasonCtrl.text.trim(),
+        pin: pinCtrl.text.trim(),
+      );
+      if (!context.mounted) return;
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تم إثبات التهرب وإعدام الدين وإدراج العميل في القائمة المحظورة'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(cubit.state.errorMessage ?? 'تعذر إتمام عملية إعدام الدين'),
+            backgroundColor: AppColors.error,
           ),
         );
       }

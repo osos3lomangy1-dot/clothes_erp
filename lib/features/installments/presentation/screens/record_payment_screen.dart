@@ -8,6 +8,7 @@ import '../../../../core/features/feature_gate.dart';
 import '../../../../core/utils/money.dart';
 import '../../domain/facades/installments_facade.dart';
 import '../cubits/record_payment_cubit.dart';
+import '../widgets/promissory_note_delivery_dialog.dart';
 
 /// Opens a polished modal dialog to record an installment payment while
 /// keeping the customer's schedule visible in the background.
@@ -719,49 +720,13 @@ class _RecordPaymentViewState extends State<_RecordPaymentView> {
 
     if (success && context.mounted) {
       if (isFullSettlement) {
-        final delivered = await showDialog<bool>(
-          context: context,
-          barrierDismissible: false,
-          builder: (dialogCtx) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: Row(
-              children: [
-                Icon(Icons.inventory_2_rounded, color: AppColors.primary),
-                const SizedBox(width: 8),
-                const Text(
-                  'تسليم وصل الأمانة',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-              ],
-            ),
-            content: const Text(
-              'تم سداد العقد بالكامل وأصبح الرصيد 0 ج.م.\n\nهل تم تسليم أصل وصل الأمانة للعميل الآن؟',
-              style: TextStyle(fontSize: 14),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogCtx).pop(false),
-                child: const Text('لا، سيتم تسليمه لاحقاً'),
-              ),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                ),
-                onPressed: () => Navigator.of(dialogCtx).pop(true),
-                icon: const Icon(Icons.check_rounded, size: 18),
-                label: const Text('نعم، تم التسليم'),
-              ),
-            ],
-          ),
-        );
-        if (delivered != null && context.mounted) {
+        final result = await showPromissoryNoteDeliveryDialog(context);
+        if (result != null && context.mounted) {
           await getIt<InstallmentsFacade>().markPromissoryNoteDelivered(
             contractId: cubit.contractId,
-            delivered: delivered,
-            deliveredAt: delivered ? DateTime.now() : null,
+            delivered: result != PromissoryNoteDeliveryResult.inSafe,
+            deliveredAt: result == PromissoryNoteDeliveryResult.delivered ? DateTime.now() : null,
+            hasNote: result != PromissoryNoteDeliveryResult.noReceipt,
           );
         }
       }

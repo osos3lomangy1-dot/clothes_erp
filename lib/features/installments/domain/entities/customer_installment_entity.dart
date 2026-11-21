@@ -24,6 +24,7 @@ class CustomerInstallmentEntity extends Equatable {
   final DateTime? deletedAt;
   final bool promissoryNoteDelivered;
   final DateTime? promissoryNoteDeliveredAt;
+  final bool hasPromissoryNote;
 
   const CustomerInstallmentEntity({
     required this.id,
@@ -47,10 +48,12 @@ class CustomerInstallmentEntity extends Equatable {
     this.deletedAt,
     this.promissoryNoteDelivered = false,
     this.promissoryNoteDeliveredAt,
+    this.hasPromissoryNote = true,
   });
 
   String statusAt(DateTime now) {
     if (status == 'completed' || status == 'cancelled') return status;
+    if (status == 'written_off' || status == 'cancelled_bad_debt') return status;
     if (remainingPiasters <= 0) return 'completed';
     if (status == 'legal_case') return status;
     if (now.isAfter(endDate)) return 'overdue';
@@ -90,6 +93,7 @@ class CustomerInstallmentEntity extends Equatable {
     DateTime? deletedAt,
     bool? promissoryNoteDelivered,
     DateTime? promissoryNoteDeliveredAt,
+    bool? hasPromissoryNote,
   }) {
     return CustomerInstallmentEntity(
       id: id ?? this.id,
@@ -113,6 +117,7 @@ class CustomerInstallmentEntity extends Equatable {
       deletedAt: deletedAt ?? this.deletedAt,
       promissoryNoteDelivered: promissoryNoteDelivered ?? this.promissoryNoteDelivered,
       promissoryNoteDeliveredAt: promissoryNoteDeliveredAt ?? this.promissoryNoteDeliveredAt,
+      hasPromissoryNote: hasPromissoryNote ?? this.hasPromissoryNote,
     );
   }
 
@@ -139,5 +144,6 @@ class CustomerInstallmentEntity extends Equatable {
         deletedAt,
         promissoryNoteDelivered,
         promissoryNoteDeliveredAt,
+        hasPromissoryNote,
       ];
 }

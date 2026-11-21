@@ -506,11 +506,17 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
     }
   }
 
-  Future<void> _savePromissoryNote(String contractId, bool delivered, DateTime? deliveredAt) async {
+  Future<void> _savePromissoryNote(
+    String contractId,
+    bool delivered,
+    DateTime? deliveredAt, {
+    bool hasNote = true,
+  }) async {
     final notes = await _loadPromissoryNotes();
     notes[contractId] = {
       'delivered': delivered,
       'deliveredAt': deliveredAt?.toIso8601String(),
+      'hasNote': hasNote,
     };
     final now = DateTime.now();
     await _db.into(_db.appMeta).insertOnConflictUpdate(
@@ -576,6 +582,7 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
   @override
   Future<Either<Failure, List<CustomerInstallmentsSummary>>> getGroupedByCustomer({
     required DateTime now,
+    bool includeInactive = false,
   }) async {
     try {
       final allRows = await (_db.select(_db.customerInstallments)
@@ -584,15 +591,17 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
 
       final notes = await _loadPromissoryNotes();
       final allEntities = allRows.map((r) => _mapContract(r, notes)).toList();
-      final activeOrOverdue = allEntities.where((c) {
+      if (allEntities.isEmpty) return const Right([]);
+
+      final targetEntities = allEntities.where((c) {
+        if (includeInactive) return true;
         final status = c.statusAt(now);
         return status == 'active' || status == 'overdue' || status == 'legal_case';
       }).toList();
-
-      if (activeOrOverdue.isEmpty) return const Right([]);
+      if (targetEntities.isEmpty) return const Right([]);
 
       final byCustomer = <String, List<CustomerInstallmentEntity>>{};
-      for (final c in activeOrOverdue) {
+      for (final c in targetEntities) {
         byCustomer.putIfAbsent(c.customerId, () => []).add(c);
       }
 
@@ -605,7 +614,12 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
       final summaries = byCustomer.entries.map((entry) {
         final contracts = entry.value;
         final totalRemaining = contracts.fold<int>(0, (s, c) => s + c.remainingPiasters);
-        final totalMonthly = contracts.fold<int>(0, (s, c) => s + c.monthlyAmountPiasters);
+        final totalMonthly = contracts
+            .where((c) {
+              final st = c.statusAt(now);
+              return st != 'completed' && st != 'cancelled' && st != 'written_off';
+            })
+            .fold<int>(0, (s, c) => s + c.monthlyAmountPiasters);
         final fallbackName = entry.key.length > 8
             ? 'عميل ${entry.key.substring(0, 8)}'
             : 'عميل ${entry.key}';
@@ -690,46 +704,124 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
     required String contractId,
     required bool isLegalCase,
   }) async {
-    if (!await _featureGate.isEnabled(FeatureKeys.installments)) {
-      return Left(FeatureDisabledFailure(FeatureKeys.installments));
-    }
-    final contract = await (_db.select(_db.customerInstallments)
-      ..where((t) => t.id.equals(contractId) & t.deletedAt.isNull()))
-      .getSingleOrNull();
-    if (contract == null) {
-      return const Left(ServerFailure('العقد غير موجود'));
-    }
-    if (contract.status == 'completed' || contract.status == 'cancelled') {
-      return const Left(ServerFailure('لا يمكن تغيير حالة عقد مكتمل أو ملغي'));
-    }
+    try {
+      if (!await _featureGate.isEnabled(FeatureKeys.installments)) {
+        return Left(FeatureDisabledFailure(FeatureKeys.installments));
+      }
+      final contract = await (_db.select(_db.customerInstallments)
+        ..where((t) => t.id.equals(contractId) & t.deletedAt.isNull()))
+        .getSingleOrNull();
+      if (contract == null) {
+        return const Left(ServerFailure('العقد غير موجود'));
+      }
+      if (contract.status == 'completed' || contract.status == 'cancelled' || contract.status == 'written_off') {
+        return const Left(ServerFailure('لا يمكن تغيير حالة عقد مكتمل أو ملغي أو معدوم'));
+      }
 
-    final newStatus = isLegalCase ? 'legal_case' : 'active';
-    final now = DateTime.now();
-    final branchId = await _branchProvider.getBranchId();
-    final user = await _auth.getCachedUser();
-    final userId = user?.id ?? 'admin';
+      final newStatus = isLegalCase ? 'legal_case' : 'active';
+      final now = DateTime.now();
+      final branchId = await _branchProvider.getBranchId();
+      final user = await _auth.getCachedUser();
+      final userId = user?.id ?? 'admin';
 
-    await _txWriter.write(
-      writeFn: () async {
-        await (_db.update(_db.customerInstallments)..where((t) => t.id.equals(contractId))).write(
-          CustomerInstallmentsCompanion(
-            status: Value(newStatus),
-            updatedAt: Value(now),
-          ),
-        );
-      },
-      branchId: branchId,
-      entity: 'customer_installments',
-      entityId: contractId,
-      operation: isLegalCase ? 'mark_legal_case' : 'unmark_legal_case',
-      userId: userId,
-      oldValue: contract.status,
-      newValue: newStatus,
-      auditAction: isLegalCase ? 'installment_legal_case_opened' : 'installment_legal_case_closed',
-      payload: jsonEncode({'contractId': contractId, 'isLegalCase': isLegalCase}),
-    );
+      await _txWriter.write(
+        writeFn: () async {
+          await (_db.update(_db.customerInstallments)..where((t) => t.id.equals(contractId))).write(
+            CustomerInstallmentsCompanion(
+              status: Value(newStatus),
+              updatedAt: Value(now),
+            ),
+          );
+        },
+        branchId: branchId,
+        entity: 'customer_installments',
+        entityId: contractId,
+        operation: isLegalCase ? 'mark_legal_case' : 'unmark_legal_case',
+        userId: userId,
+        oldValue: contract.status,
+        newValue: newStatus,
+        auditAction: isLegalCase ? 'installment_legal_case_opened' : 'installment_legal_case_closed',
+        payload: jsonEncode({'contractId': contractId, 'isLegalCase': isLegalCase}),
+      );
 
-    return const Right(unit);
+      return const Right(unit);
+    } catch (e) {
+      return Left(ServerFailure('فشل تحديث حالة العقد القانونية: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> writeOffBadDebt({
+    required String contractId,
+    required String reason,
+    required String pin,
+  }) async {
+    try {
+      if (!await _featureGate.isEnabled(FeatureKeys.installments)) {
+        return Left(FeatureDisabledFailure(FeatureKeys.installments));
+      }
+      if (!await _featureGate.isCurrentUserAdmin()) {
+        return const Left(AuthFailure('غير مصرح: إعدام الديون متاح للمدير فقط'));
+      }
+
+      final pinResult = await _pinService.verifyPin(pin: pin, operation: 'write_off_bad_debt');
+      if (!pinResult.ok) {
+        return Left(AuthFailure(pinResult.error ?? 'الرقم السري للمدير غير صحيح'));
+      }
+
+      final contract = await (_db.select(_db.customerInstallments)
+        ..where((t) => t.id.equals(contractId) & t.deletedAt.isNull()))
+        .getSingleOrNull();
+      if (contract == null) {
+        return const Left(ServerFailure('العقد غير موجود'));
+      }
+      if (contract.status == 'completed' || contract.status == 'cancelled' || contract.status == 'written_off') {
+        return const Left(ServerFailure('لا يمكن إعدام دين لعقد مكتمل أو ملغي أو معدوم بالفعل'));
+      }
+
+      final now = DateTime.now();
+      final branchId = await _branchProvider.getBranchId();
+      final user = await _auth.getCachedUser();
+      final userId = user?.id ?? 'admin';
+
+      await _txWriter.write(
+        writeFn: () async {
+          // 1. Mark contract as written off
+          await (_db.update(_db.customerInstallments)..where((t) => t.id.equals(contractId))).write(
+            CustomerInstallmentsCompanion(
+              status: const Value('written_off'),
+              updatedAt: Value(now),
+            ),
+          );
+
+          // 2. Blacklist customer
+          await (_db.update(_db.customers)..where((t) => t.id.equals(contract.customerId))).write(
+            CustomersCompanion(
+              customerType: const Value('blacklisted'),
+              updatedAt: Value(now),
+            ),
+          );
+        },
+        branchId: branchId,
+        entity: 'customer_installments',
+        entityId: contractId,
+        operation: 'write_off_bad_debt',
+        userId: userId,
+        oldValue: contract.status,
+        newValue: 'written_off',
+        auditAction: 'installment_bad_debt_write_off',
+        payload: jsonEncode({
+          'contractId': contractId,
+          'customerId': contract.customerId,
+          'remainingPiasters': contract.remainingPiasters,
+          'reason': reason,
+        }),
+      );
+
+      return const Right(unit);
+    } catch (e) {
+      return Left(ServerFailure('فشل إعدام الدين: $e'));
+    }
   }
 
   @override
@@ -737,11 +829,12 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
     required String contractId,
     required bool delivered,
     DateTime? deliveredAt,
+    bool hasNote = true,
   }) async {
     if (!await _featureGate.isEnabled(FeatureKeys.installments)) {
       return Left(FeatureDisabledFailure(FeatureKeys.installments));
     }
-    await _savePromissoryNote(contractId, delivered, deliveredAt);
+    await _savePromissoryNote(contractId, delivered, deliveredAt, hasNote: hasNote);
     return const Right(unit);
   }
 
@@ -1327,6 +1420,7 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
     Map<String, Map<String, dynamic>>? notesMap,
   ]) {
     final noteInfo = notesMap?[row.id];
+    final bool hasNote = noteInfo?['hasNote'] != false;
     final bool noteDelivered = noteInfo?['delivered'] == true;
     final DateTime? noteDeliveredAt = noteInfo?['deliveredAt'] != null
         ? DateTime.tryParse(noteInfo!['deliveredAt'] as String)
@@ -1354,6 +1448,7 @@ class InstallmentsFacadeImpl implements InstallmentsFacade {
       deletedAt: row.deletedAt,
       promissoryNoteDelivered: noteDelivered,
       promissoryNoteDeliveredAt: noteDeliveredAt,
+      hasPromissoryNote: hasNote,
     );
   }
 

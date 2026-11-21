@@ -231,11 +231,33 @@ class InstallmentDetailCubit extends Cubit<InstallmentDetailState> {
     );
   }
 
-  Future<bool> markPromissoryNoteDelivered(bool delivered) async {
+  Future<bool> writeOffBadDebt({
+    required String reason,
+    required String pin,
+  }) async {
+    final res = await _facade.writeOffBadDebt(
+      contractId: contractId,
+      reason: reason,
+      pin: pin,
+    );
+    return res.fold(
+      (failure) {
+        emit(state.copyWith(errorMessage: failure.message));
+        return false;
+      },
+      (_) {
+        load();
+        return true;
+      },
+    );
+  }
+
+  Future<bool> markPromissoryNoteDelivered(bool delivered, {bool hasNote = true}) async {
     final res = await _facade.markPromissoryNoteDelivered(
       contractId: contractId,
       delivered: delivered,
       deliveredAt: delivered ? DateTime.now() : null,
+      hasNote: hasNote,
     );
     return res.fold(
       (failure) {

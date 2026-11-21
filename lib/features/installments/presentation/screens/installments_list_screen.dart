@@ -12,6 +12,7 @@ import '../../data/services/manager_pin_service.dart';
 import '../cubits/installments_list_cubit.dart';
 import 'installment_detail_screen.dart';
 import 'installment_plans_screen.dart';
+import '../widgets/promissory_note_delivery_dialog.dart';
 
 class InstallmentsListScreen extends StatelessWidget {
   const InstallmentsListScreen({super.key});
@@ -564,7 +565,7 @@ class _CustomerInstallmentsCardState extends State<CustomerInstallmentsCard> {
             ),
           );
         },
-        (bulkResult) {
+        (bulkResult) async {
           _amountController.clear();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -581,11 +582,40 @@ class _CustomerInstallmentsCardState extends State<CustomerInstallmentsCard> {
               ),
             ),
           );
+
+          // Check if any contracts for this customer are now fully completed
+          final contractsRes = await facade.listContracts(customerId: s.customerId);
+          final contracts = contractsRes.getOrElse(() => []);
+          for (final contract in contracts) {
+            if (contract.remainingPiasters <= 0 &&
+                !contract.promissoryNoteDelivered &&
+                contract.hasPromissoryNote) {
+              if (!mounted) break;
+              final result = await showPromissoryNoteDeliveryDialog(
+                context,
+                customerName: s.customerName,
+                contractNumber: contract.id.substring(0, 8).toUpperCase(),
+              );
+              if (result != null && mounted) {
+                await facade.markPromissoryNoteDelivered(
+                  contractId: contract.id,
+                  delivered: result != PromissoryNoteDeliveryResult.inSafe,
+                  deliveredAt: result == PromissoryNoteDeliveryResult.delivered
+                      ? DateTime.now()
+                      : null,
+                  hasNote: result != PromissoryNoteDeliveryResult.noReceipt,
+                );
+              }
+            }
+          }
+
           if (widget.onPaymentSuccess != null) {
             widget.onPaymentSuccess!();
           } else {
             try {
-              context.read<InstallmentsListCubit>().loadGrouped();
+              if (mounted) {
+                context.read<InstallmentsListCubit>().loadGrouped();
+              }
             } catch (_) {}
           }
         },
@@ -703,14 +733,22 @@ class _CustomerInstallmentsCardState extends State<CustomerInstallmentsCard> {
     final s = widget.summary;
     final now = DateTime.now();
 
+    final hasLegalCase = s.contracts.any((c) => c.statusAt(now) == 'legal_case');
     final hasOverdue = s.contracts.any((c) => c.statusAt(now) == 'overdue');
+    final hasActive = s.contracts.any((c) => c.statusAt(now) == 'active');
     final allCompleted =
         s.contracts.every((c) => c.statusAt(now) == 'completed');
-    final overallStatus = hasOverdue
-        ? 'overdue'
-        : allCompleted
-            ? 'completed'
-            : 'active';
+    final overallStatus = hasLegalCase
+        ? 'legal_case'
+        : hasOverdue
+            ? 'overdue'
+            : hasActive
+                ? 'active'
+                : allCompleted
+                    ? 'completed'
+                    : s.contracts.isNotEmpty
+                        ? s.contracts.first.statusAt(now)
+                        : 'active';
 
     final statusBadge = _getStatusBadge(overallStatus);
 
@@ -938,8 +976,15 @@ class _CustomerInstallmentsCardState extends State<CustomerInstallmentsCard> {
       case 'completed':
         return _StatusBadge(
           label: 'مكتمل',
-          color: Colors.green.shade800,
-          backgroundColor: Colors.green.shade50,
+          color: AppColors.success,
+          backgroundColor: const Color(0xFFECFDF5),
+        );
+      case 'written_off':
+      case 'cancelled_bad_debt':
+        return _StatusBadge(
+          label: 'دين معدوم (تهرب)',
+          color: AppColors.error,
+          backgroundColor: const Color(0xFFFEF2F2),
         );
       case 'cancelled':
         return _StatusBadge(

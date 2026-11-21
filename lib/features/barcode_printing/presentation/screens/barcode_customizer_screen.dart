@@ -317,8 +317,9 @@ class _BarcodeCustomizerScreenState extends State<BarcodeCustomizerScreen> {
                     );
                   }),
                   onChanged: (val) {
-                    if (val != null)
+                    if (val != null) {
                       setState(() => _activeSamplePresetIndex = val);
+                    }
                   },
                 ),
               ),

@@ -64,12 +64,18 @@ Color _mapColorNameToColor(String name) {
   if (n.contains('black') || n.contains('أسود')) return Colors.black87;
   if (n.contains('white') || n.contains('أبيض')) return Colors.white;
   if (n.contains('yellow') || n.contains('أصفر')) return Colors.amber.shade700;
-  if (n.contains('purple') || n.contains('بنفسجي')) return Colors.purple.shade600;
-  if (n.contains('grey') || n.contains('gray') || n.contains('رمادي')) return Colors.grey.shade600;
+  if (n.contains('purple') || n.contains('بنفسجي')) {
+    return Colors.purple.shade600;
+  }
+  if (n.contains('grey') || n.contains('gray') || n.contains('رمادي')) {
+    return Colors.grey.shade600;
+  }
   if (n.contains('navy') || n.contains('كحلي')) return const Color(0xFF0D47A1);
   if (n.contains('brown') || n.contains('بني')) return Colors.brown.shade600;
   if (n.contains('pink') || n.contains('وردي')) return Colors.pink.shade400;
-  if (n.contains('orange') || n.contains('برتقالي')) return Colors.orange.shade700;
+  if (n.contains('orange') || n.contains('برتقالي')) {
+    return Colors.orange.shade700;
+  }
   return AppColors.primary;
 }
 
@@ -97,7 +103,8 @@ class _PosView extends StatefulWidget {
 
 class _PosViewState extends State<_PosView> {
   final FocusNode _searchFocusNode = FocusNode();
-  final GlobalKey<_ProductPanelState> _productPanelKey = GlobalKey<_ProductPanelState>();
+  final GlobalKey<_ProductPanelState> _productPanelKey =
+      GlobalKey<_ProductPanelState>();
   final GlobalKey<_CartPanelState> _cartPanelKey = GlobalKey<_CartPanelState>();
   final StringBuffer _scannerBuffer = StringBuffer();
   DateTime _lastScanKeyTime = DateTime.now();
@@ -149,7 +156,8 @@ class _PosViewState extends State<_PosView> {
         _cartPanelKey.currentState?.clearCartAndInputs();
         return true;
       }
-      final clearedSearch = _productPanelKey.currentState?.clearSearchIfNotEmpty() ?? false;
+      final clearedSearch =
+          _productPanelKey.currentState?.clearSearchIfNotEmpty() ?? false;
       return clearedSearch;
     }
 
@@ -162,7 +170,8 @@ class _PosViewState extends State<_PosView> {
       _scannerBuffer.clear();
     }
 
-    if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.numpadEnter) {
+    if (key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.numpadEnter) {
       final code = _scannerBuffer.toString().trim();
       _scannerBuffer.clear();
       if (code.isNotEmpty && code.length >= 3) {
@@ -178,7 +187,10 @@ class _PosViewState extends State<_PosView> {
     }
 
     final char = event.character;
-    if (char != null && char.isNotEmpty && !char.contains('\n') && !char.contains('\r')) {
+    if (char != null &&
+        char.isNotEmpty &&
+        !char.contains('\n') &&
+        !char.contains('\r')) {
       _scannerBuffer.write(char);
     }
 
@@ -201,8 +213,10 @@ class _PosViewState extends State<_PosView> {
         appBar: AppBar(title: const Text('POS Error')),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
-          child: SelectableText('PosView error:\n$e\n\n$st',
-              style: const TextStyle(color: Colors.red, fontSize: 12)),
+          child: SelectableText(
+            'PosView error:\n$e\n\n$st',
+            style: const TextStyle(color: Colors.red, fontSize: 12),
+          ),
         ),
       );
     }
@@ -212,11 +226,17 @@ class _PosViewState extends State<_PosView> {
     return BlocBuilder<ShiftCubit, ShiftState>(
       builder: (context, shiftState) {
         final authState = context.watch<AuthCubit>().state;
-        final isAdmin = authState is! AuthAuthenticated || authState.user.role == 'admin';
-        final cashierId = authState is AuthAuthenticated ? authState.user.id : 'admin';
-        final cashierName = authState is AuthAuthenticated ? authState.user.name : 'المدير';
+        final isAdmin =
+            authState is! AuthAuthenticated || authState.user.role == 'admin';
+        final cashierId = authState is AuthAuthenticated
+            ? authState.user.id
+            : 'admin';
+        final cashierName = authState is AuthAuthenticated
+            ? authState.user.name
+            : 'المدير';
 
-        if (shiftState.status == ShiftStatus.loading && !shiftState.hasActiveShift) {
+        if (shiftState.status == ShiftStatus.loading &&
+            !shiftState.hasActiveShift) {
           return Scaffold(
             backgroundColor: AppColors.surface,
             body: Center(child: CircularProgressIndicator()),
@@ -235,161 +255,230 @@ class _PosViewState extends State<_PosView> {
 
         return Scaffold(
           backgroundColor: AppColors.surface,
-            appBar: AppBar(
-              elevation: 0,
-              backgroundColor: Colors.white,
-              surfaceTintColor: Colors.transparent,
-              shape: const Border(bottom: BorderSide(color: AppColors.outlineVariant)),
-              leading: Navigator.canPop(context)
-                  ? IconButton(
-                      icon: const Icon(Icons.arrow_back_rounded, color: AppColors.onSurface),
-                      onPressed: () => Navigator.of(context).pop(),
-                    )
-                  : null,
-              title: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.point_of_sale_rounded, color: AppColors.primary, size: 22),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'نقطة البيع',
-                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.onSurface),
-                  ),
-                ],
-              ),
-              actions: [
-                if (shiftState.shiftsEnabled && shiftState.activeShift != null)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                    child: InkWell(
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const ShiftScreen()),
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: AppColors.outlineVariant),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.lock_open_rounded, color: AppColors.success, size: 14),
-                            const SizedBox(width: 4),
-                            const Text(
-                              'وردية مفتوحة',
-                              style: TextStyle(fontFamily: 'Cairo', color: AppColors.success, fontSize: 11, fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                      ),
+          appBar: AppBar(
+            elevation: 0,
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
+            shape: const Border(
+              bottom: BorderSide(color: AppColors.outlineVariant),
+            ),
+            leading: Navigator.canPop(context)
+                ? IconButton(
+                    icon: const Icon(
+                      Icons.arrow_back_rounded,
+                      color: AppColors.onSurface,
                     ),
-                  ),
-                IconButton(
-                  icon: const Icon(Icons.moped_rounded, color: AppColors.onSurfaceVariant, size: 22),
-                  tooltip: 'إدارة وتتبع الدليفري والطيارين',
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const DeliveryOrdersScreen(),
-                      ),
-                    );
-                  },
+                    onPressed: () => Navigator.of(context).pop(),
+                  )
+                : null,
+            title: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.point_of_sale_rounded,
+                  color: AppColors.primary,
+                  size: 22,
                 ),
-                // Cashier Badge & Financial Summary Quick Access
+                const SizedBox(width: 8),
+                const Text(
+                  'نقطة البيع',
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: AppColors.onSurface,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              if (shiftState.shiftsEnabled && shiftState.activeShift != null)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Center(
-                    child: BlocBuilder<AuthCubit, AuthState>(
-                      builder: (context, authState) {
-                        final cashierName = authState is AuthAuthenticated
-                            ? authState.user.name
-                            : 'كاشير';
-                        final cashierId = authState is AuthAuthenticated
-                            ? authState.user.id
-                            : '';
-                        return Tooltip(
-                          message: 'عرض ملف ومستحقات الكاشير (الراتب، البونص، الوردية)',
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(20),
-                            onTap: cashierId.isNotEmpty
-                                ? () => CashierProfileDialog.show(context, employeeId: cashierId)
-                                : null,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF1F5F9),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: AppColors.outlineVariant),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.person_rounded, size: 16, color: AppColors.primary),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    cashierName,
-                                    style: const TextStyle(fontFamily: 'Cairo', color: AppColors.onSurface,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  const Icon(Icons.info_outline_rounded, size: 14, color: AppColors.onSurfaceVariant),
-                                ],
-                              ),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 10,
+                    horizontal: 8,
+                  ),
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const ShiftScreen()),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.outlineVariant),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.lock_open_rounded,
+                            color: AppColors.success,
+                            size: 14,
+                          ),
+                          const SizedBox(width: 4),
+                          const Text(
+                            'وردية مفتوحة',
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              color: AppColors.success,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        );
-                      },
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ],
-            ),
-            body: Row(
-              children: [
-                // Right Panel in RTL: Products Catalog
-                Expanded(
-                  child: Builder(
-                    builder: (ctx) {
-                      try {
-                        return _ProductPanel(
-                          key: _productPanelKey,
-                          searchFocusNode: _searchFocusNode,
-                        );
-                      } catch (e, st) {
-                        return SingleChildScrollView(
-                          padding: const EdgeInsets.all(16),
-                          child: Text('ProductPanel error: $e\n$st', style: const TextStyle(color: Colors.red, fontSize: 12)),
-                        );
-                      }
+              IconButton(
+                icon: const Icon(
+                  Icons.moped_rounded,
+                  color: AppColors.onSurfaceVariant,
+                  size: 22,
+                ),
+                tooltip: 'إدارة وتتبع الدليفري والطيارين',
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const DeliveryOrdersScreen(),
+                    ),
+                  );
+                },
+              ),
+              // Cashier Badge & Financial Summary Quick Access
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Center(
+                  child: BlocBuilder<AuthCubit, AuthState>(
+                    builder: (context, authState) {
+                      final cashierName = authState is AuthAuthenticated
+                          ? authState.user.name
+                          : 'كاشير';
+                      final cashierId = authState is AuthAuthenticated
+                          ? authState.user.id
+                          : '';
+                      return Tooltip(
+                        message:
+                            'عرض ملف ومستحقات الكاشير (الراتب، البونص، الوردية)',
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: cashierId.isNotEmpty
+                              ? () => CashierProfileDialog.show(
+                                  context,
+                                  employeeId: cashierId,
+                                )
+                              : null,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: AppColors.outlineVariant,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.person_rounded,
+                                  size: 16,
+                                  color: AppColors.primary,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  cashierName,
+                                  style: const TextStyle(
+                                    fontFamily: 'Cairo',
+                                    color: AppColors.onSurface,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(
+                                  Icons.info_outline_rounded,
+                                  size: 14,
+                                  color: AppColors.onSurfaceVariant,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
                     },
                   ),
                 ),
-                const VerticalDivider(width: 1, thickness: 1, color: AppColors.outlineVariant),
-                // Left Panel in RTL: Cart (Fixed 440px)
-                SizedBox(
-                  width: 440,
-                  child: Builder(
-                    builder: (ctx) {
-                      try {
-                        return _CartPanel(key: _cartPanelKey);
-                      } catch (e, st) {
-                        return SingleChildScrollView(
-                          padding: const EdgeInsets.all(16),
-                          child: Text('CartPanel error: $e\n$st', style: const TextStyle(color: Colors.red, fontSize: 12)),
-                        );
-                      }
-                    },
-                  ),
+              ),
+            ],
+          ),
+          body: Row(
+            children: [
+              // Right Panel in RTL: Products Catalog
+              Expanded(
+                child: Builder(
+                  builder: (ctx) {
+                    try {
+                      return _ProductPanel(
+                        key: _productPanelKey,
+                        searchFocusNode: _searchFocusNode,
+                      );
+                    } catch (e, st) {
+                      return SingleChildScrollView(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          'ProductPanel error: $e\n$st',
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 12,
+                          ),
+                        ),
+                      );
+                    }
+                  },
                 ),
-              ],
-            ),
-          );
+              ),
+              const VerticalDivider(
+                width: 1,
+                thickness: 1,
+                color: AppColors.outlineVariant,
+              ),
+              // Left Panel in RTL: Cart (Fixed 440px)
+              SizedBox(
+                width: 440,
+                child: Builder(
+                  builder: (ctx) {
+                    try {
+                      return _CartPanel(key: _cartPanelKey);
+                    } catch (e, st) {
+                      return SingleChildScrollView(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          'CartPanel error: $e\n$st',
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 12,
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
       },
     );
   }
@@ -407,16 +496,26 @@ class _PosViewState extends State<_PosView> {
         elevation: 0,
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
-        shape: const Border(bottom: BorderSide(color: AppColors.outlineVariant)),
+        shape: const Border(
+          bottom: BorderSide(color: AppColors.outlineVariant),
+        ),
         leading: Navigator.canPop(context)
             ? IconButton(
-                icon: const Icon(Icons.arrow_back_rounded, color: AppColors.onSurface),
+                icon: const Icon(
+                  Icons.arrow_back_rounded,
+                  color: AppColors.onSurface,
+                ),
                 onPressed: () => Navigator.of(context).pop(),
               )
             : null,
         title: const Text(
           'نقطة البيع',
-          style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.onSurface),
+          style: TextStyle(
+            fontFamily: 'Cairo',
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+            color: AppColors.onSurface,
+          ),
         ),
       ),
       body: Center(
@@ -426,35 +525,58 @@ class _PosViewState extends State<_PosView> {
             constraints: const BoxConstraints(maxWidth: 550),
             child: Card(
               elevation: 2,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 40,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: isAdmin ? Colors.blue.shade50 : Colors.red.shade50,
+                        color: isAdmin
+                            ? Colors.blue.shade50
+                            : Colors.red.shade50,
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        isAdmin ? Icons.storefront_rounded : Icons.lock_clock_rounded,
+                        isAdmin
+                            ? Icons.storefront_rounded
+                            : Icons.lock_clock_rounded,
                         size: 48,
-                        color: isAdmin ? AppColors.primary : Colors.red.shade700,
+                        color: isAdmin
+                            ? AppColors.primary
+                            : Colors.red.shade700,
                       ),
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      isAdmin ? 'تنبيه: لا توجد وردية مفتوحة' : 'الوردية مغلقة - الرجاء فتح وردية',
-                      style: TextStyle(fontFamily: 'Cairo', fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.onSurface),
+                      isAdmin
+                          ? 'تنبيه: لا توجد وردية مفتوحة'
+                          : 'الوردية مغلقة - الرجاء فتح وردية',
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.onSurface,
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Text(
                       isAdmin
                           ? 'أهلاً بك يا مدير! يمكنك فتح وردية فورية بضغطة زر لبدء البيع السريع، أو فتح وردية جديدة وتحديد رصيد الفكة.'
                           : 'لا يمكنك إصدار فواتير بيع في نقطة البيع قبل فتح وردية وتحديد عهدة الفكة في الدرج.',
-                      style: TextStyle(fontFamily: 'Cairo', fontSize: 14, color: Colors.grey.shade600, height: 1.5),
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                        height: 1.5,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 28),
@@ -464,7 +586,9 @@ class _PosViewState extends State<_PosView> {
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green.shade700,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
                           onPressed: shiftState.isOperating
@@ -479,7 +603,10 @@ class _PosViewState extends State<_PosView> {
                                   if (!ok && context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text(cubit.state.errorMessage ?? 'تعذر بدء الوردية السريعة'),
+                                        content: Text(
+                                          cubit.state.errorMessage ??
+                                              'تعذر بدء الوردية السريعة',
+                                        ),
                                         backgroundColor: AppColors.error,
                                       ),
                                     );
@@ -489,12 +616,24 @@ class _PosViewState extends State<_PosView> {
                               ? const SizedBox(
                                   width: 20,
                                   height: 20,
-                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
                                 )
-                              : const Icon(Icons.flash_on_rounded, color: Colors.white, size: 22),
+                              : const Icon(
+                                  Icons.flash_on_rounded,
+                                  color: Colors.white,
+                                  size: 22,
+                                ),
                           label: Text(
                             'بدء البيع السريع فوراً (فكة 0 ج.م)',
-                            style: TextStyle(fontFamily: 'Cairo', color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
                           ),
                         ),
                       ),
@@ -503,8 +642,13 @@ class _PosViewState extends State<_PosView> {
                         width: double.infinity,
                         child: OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            side: BorderSide(color: AppColors.primary, width: 1.5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            side: BorderSide(
+                              color: AppColors.primary,
+                              width: 1.5,
+                            ),
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
                           onPressed: () {
@@ -520,17 +664,27 @@ class _PosViewState extends State<_PosView> {
                                     cashierName: cashierName,
                                   );
                                   if (!ok) {
-                                    return cubit.state.errorMessage ?? 'تعذر بدء الوردية. يرجى المحاولة مرة أخرى.';
+                                    return cubit.state.errorMessage ??
+                                        'تعذر بدء الوردية. يرجى المحاولة مرة أخرى.';
                                   }
                                   return null;
                                 },
                               ),
                             );
                           },
-                          icon: Icon(Icons.lock_open_rounded, color: AppColors.primary, size: 20),
+                          icon: Icon(
+                            Icons.lock_open_rounded,
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
                           label: Text(
                             'فتح وردية وتحديد رصيد الفكة',
-                            style: TextStyle(fontFamily: 'Cairo', color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 15),
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
                           ),
                         ),
                       ),
@@ -540,7 +694,9 @@ class _PosViewState extends State<_PosView> {
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
                           onPressed: () {
@@ -556,17 +712,27 @@ class _PosViewState extends State<_PosView> {
                                     cashierName: cashierName,
                                   );
                                   if (!ok) {
-                                    return cubit.state.errorMessage ?? 'تعذر بدء الوردية. يرجى المحاولة مرة أخرى.';
+                                    return cubit.state.errorMessage ??
+                                        'تعذر بدء الوردية. يرجى المحاولة مرة أخرى.';
                                   }
                                   return null;
                                 },
                               ),
                             );
                           },
-                          icon: const Icon(Icons.lock_open_rounded, color: Colors.white, size: 20),
+                          icon: const Icon(
+                            Icons.lock_open_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                           label: Text(
                             'فتح وردية جديدة',
-                            style: TextStyle(fontFamily: 'Cairo', color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
                           ),
                         ),
                       ),
@@ -614,7 +780,10 @@ class _ProductPanelState extends State<_ProductPanel> {
     return true;
   }
 
-  Future<void> _openQuickAddProduct(BuildContext context, {String? initialQuery}) async {
+  Future<void> _openQuickAddProduct(
+    BuildContext context, {
+    String? initialQuery,
+  }) async {
     final posCubit = context.read<PosCubit>();
     final barcodeOrResult = await showDialog<dynamic>(
       context: context,
@@ -647,8 +816,10 @@ class _ProductPanelState extends State<_ProductPanel> {
     } catch (e, st) {
       return SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Text('ProductPanel build error:\n$e\n$st',
-            style: const TextStyle(color: Colors.red, fontSize: 11)),
+        child: Text(
+          'ProductPanel build error:\n$e\n$st',
+          style: const TextStyle(color: Colors.red, fontSize: 11),
+        ),
       );
     }
   }
@@ -666,7 +837,9 @@ class _ProductPanelState extends State<_ProductPanel> {
                   decoration: BoxDecoration(
                     color: AppColors.surfaceContainerLow,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.6)),
+                    border: Border.all(
+                      color: AppColors.outlineVariant.withValues(alpha: 0.6),
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.02),
@@ -682,8 +855,15 @@ class _ProductPanelState extends State<_ProductPanel> {
                     style: const TextStyle(fontFamily: 'Cairo', fontSize: 14),
                     decoration: InputDecoration(
                       hintText: 'بحث بالاسم أو كود الصنف أو المقاس... [F2]',
-                      hintStyle: TextStyle(fontFamily: 'Cairo', color: Colors.grey.shade500, fontSize: 13),
-                      prefixIcon: Icon(Icons.search_rounded, color: AppColors.primary),
+                      hintStyle: TextStyle(
+                        fontFamily: 'Cairo',
+                        color: Colors.grey.shade500,
+                        fontSize: 13,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search_rounded,
+                        color: AppColors.primary,
+                      ),
                       suffixIcon: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -698,11 +878,16 @@ class _ProductPanelState extends State<_ProductPanel> {
                             ),
                           Container(
                             margin: const EdgeInsets.only(left: 8),
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.surfaceContainer,
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: AppColors.outlineVariant),
+                              border: Border.all(
+                                color: AppColors.outlineVariant,
+                              ),
                             ),
                             child: Text(
                               'F2',
@@ -719,7 +904,10 @@ class _ProductPanelState extends State<_ProductPanel> {
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                     ),
                     onChanged: (val) {
                       context.read<PosCubit>().searchProducts(val);
@@ -727,7 +915,9 @@ class _ProductPanelState extends State<_ProductPanel> {
                     },
                     onSubmitted: (val) {
                       if (val.trim().isNotEmpty) {
-                        final added = context.read<PosCubit>().addByBarcode(val.trim());
+                        final added = context.read<PosCubit>().addByBarcode(
+                          val.trim(),
+                        );
                         if (added) {
                           _searchCtrl.clear();
                           context.read<PosCubit>().searchProducts('');
@@ -744,13 +934,22 @@ class _ProductPanelState extends State<_ProductPanel> {
                 icon: const Icon(Icons.add_rounded, size: 20),
                 label: const Text(
                   'صنف جديد',
-                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 13),
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
                 ),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                   elevation: 0,
                 ),
               ),
@@ -772,7 +971,8 @@ class _ProductPanelState extends State<_ProductPanel> {
                     _categoryChip(
                       label: 'الكل',
                       isSelected: allSelected,
-                      onTap: () => context.read<PosCubit>().filterByCategory('All'),
+                      onTap: () =>
+                          context.read<PosCubit>().filterByCategory('All'),
                     ),
                     const SizedBox(width: 6),
                     ...state.categories.map((cat) {
@@ -782,7 +982,8 @@ class _ProductPanelState extends State<_ProductPanel> {
                         child: _categoryChip(
                           label: cat.name,
                           isSelected: isSelected,
-                          onTap: () => context.read<PosCubit>().filterByCategory(cat.id),
+                          onTap: () =>
+                              context.read<PosCubit>().filterByCategory(cat.id),
                         ),
                       );
                     }),
@@ -794,7 +995,10 @@ class _ProductPanelState extends State<_ProductPanel> {
                 height: 44,
                 color: Colors.red.shade50,
                 padding: const EdgeInsets.all(8),
-                child: Text('CatChip error: $e', style: const TextStyle(color: Colors.red, fontSize: 10)),
+                child: Text(
+                  'CatChip error: $e',
+                  style: const TextStyle(color: Colors.red, fontSize: 10),
+                ),
               );
             }
           },
@@ -808,32 +1012,52 @@ class _ProductPanelState extends State<_ProductPanel> {
             builder: (context, state) {
               try {
                 if (state is PosLoading) {
-                  return Center(child: CircularProgressIndicator(color: AppColors.primary));
+                  return Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  );
                 }
                 if (state is PosError) {
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.error_outline_rounded, size: 64, color: AppColors.error),
+                        const Icon(
+                          Icons.error_outline_rounded,
+                          size: 64,
+                          color: AppColors.error,
+                        ),
                         const SizedBox(height: 12),
                         Text(
                           state.message,
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontFamily: 'Cairo', color: AppColors.error,
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            color: AppColors.error,
                             fontSize: 15,
-                            fontWeight: FontWeight.bold,),
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(height: 16),
                         ElevatedButton.icon(
                           onPressed: () => context.read<PosCubit>().init(),
                           icon: const Icon(Icons.refresh_rounded),
-                          label: Text('إعادة المحاولة', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
+                          label: Text(
+                            'إعادة المحاولة',
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
                         ),
                       ],
@@ -846,26 +1070,45 @@ class _ProductPanelState extends State<_ProductPanel> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.inventory_2_outlined, size: 56, color: Colors.grey.shade400),
+                        Icon(
+                          Icons.inventory_2_outlined,
+                          size: 56,
+                          color: Colors.grey.shade400,
+                        ),
                         const SizedBox(height: 12),
                         Text(
                           'لا توجد منتجات مطابقة للبحث',
-                          style: TextStyle(fontFamily: 'Cairo', color: Colors.grey.shade600, fontSize: 15),
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            color: Colors.grey.shade600,
+                            fontSize: 15,
+                          ),
                         ),
                         if (query.isNotEmpty) ...[
                           const SizedBox(height: 12),
                           ElevatedButton.icon(
-                            onPressed: () => _openQuickAddProduct(context, initialQuery: query),
+                            onPressed: () => _openQuickAddProduct(
+                              context,
+                              initialQuery: query,
+                            ),
                             icon: const Icon(Icons.add_rounded, size: 18),
                             label: Text(
                               'إضافة "$query" كصنف جديد',
-                              style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                fontFamily: 'Cairo',
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                           ),
                         ],
@@ -885,14 +1128,19 @@ class _ProductPanelState extends State<_ProductPanel> {
                   itemCount: state.filteredVariants.length,
                   itemBuilder: (context, index) {
                     final variant = state.filteredVariants[index];
-                    final catId = posCubit.getProductCategoryId(variant.productId);
+                    final catId = posCubit.getProductCategoryId(
+                      variant.productId,
+                    );
                     return _ProductCard(variant: variant, categoryId: catId);
                   },
                 );
               } catch (e, st) {
                 return SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
-                  child: Text('Grid error: $e\n$st', style: const TextStyle(color: Colors.red, fontSize: 11)),
+                  child: Text(
+                    'Grid error: $e\n$st',
+                    style: const TextStyle(color: Colors.red, fontSize: 11),
+                  ),
                 );
               }
             },
@@ -914,7 +1162,9 @@ class _ProductPanelState extends State<_ProductPanel> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : AppColors.surfaceContainerLowest,
+          color: isSelected
+              ? AppColors.primary
+              : AppColors.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? AppColors.primary : AppColors.outlineVariant,
@@ -926,16 +1176,19 @@ class _ProductPanelState extends State<_ProductPanel> {
                     color: AppColors.primary.withValues(alpha: 0.25),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
-                  )
+                  ),
                 ]
               : null,
         ),
         child: Center(
           child: Text(
             label,
-            style: TextStyle(fontFamily: 'Cairo', color: isSelected ? AppColors.onPrimary : AppColors.onSurface,
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              color: isSelected ? AppColors.onPrimary : AppColors.onSurface,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-              fontSize: 13,),
+              fontSize: 13,
+            ),
           ),
         ),
       ),
@@ -961,8 +1214,10 @@ class _ProductCard extends StatelessWidget {
         padding: const EdgeInsets.all(8),
         color: Colors.red.shade50,
         child: SingleChildScrollView(
-          child: Text('ProductCard error:\n$e\n$st',
-              style: const TextStyle(color: Colors.red, fontSize: 10)),
+          child: Text(
+            'ProductCard error:\n$e\n$st',
+            style: const TextStyle(color: Colors.red, fontSize: 10),
+          ),
         ),
       );
     }
@@ -971,17 +1226,21 @@ class _ProductCard extends StatelessWidget {
   Widget _buildContent(BuildContext context) {
     final isOut = variant.quantity <= 0;
     final isLow = variant.quantity > 0 && variant.quantity <= 10;
-    final categoryColor = _getCategoryColor(categoryId);
+    _getCategoryColor(categoryId);
     final posCubit = context.read<PosCubit>();
     final productName = posCubit.getProductName(variant.productId);
-    final displayName = productName.isNotEmpty ? productName : variant.productCode;
+    final displayName = productName.isNotEmpty
+        ? productName
+        : variant.productCode;
 
     return BlocBuilder<PosCubit, PosState>(
       buildWhen: (prev, curr) => prev.cart != curr.cart,
       builder: (context, state) {
         SaleItemEntity? cartItem;
         try {
-          cartItem = state.cart.firstWhere((item) => item.variantId == variant.id);
+          cartItem = state.cart.firstWhere(
+            (item) => item.variantId == variant.id,
+          );
         } catch (_) {
           cartItem = null;
         }
@@ -990,7 +1249,9 @@ class _ProductCard extends StatelessWidget {
         return Opacity(
           opacity: isOut ? 0.55 : 1.0,
           child: Material(
-            color: isOut ? Colors.grey.shade100 : AppColors.surfaceContainerLowest,
+            color: isOut
+                ? Colors.grey.shade100
+                : AppColors.surfaceContainerLowest,
             borderRadius: BorderRadius.circular(10),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
@@ -1008,8 +1269,8 @@ class _ProductCard extends StatelessWidget {
                     color: inCartQty > 0
                         ? AppColors.primary
                         : (isOut
-                            ? Colors.grey.shade300
-                            : AppColors.outlineVariant),
+                              ? Colors.grey.shade300
+                              : AppColors.outlineVariant),
                     width: inCartQty > 0 ? 1.8 : 1.0,
                   ),
                 ),
@@ -1046,7 +1307,8 @@ class _ProductCard extends StatelessWidget {
                                 if (!isOut) ...[
                                   const SizedBox(width: 2),
                                   InkWell(
-                                    onTap: () => _showVariantModal(context, variant),
+                                    onTap: () =>
+                                        _showVariantModal(context, variant),
                                     borderRadius: BorderRadius.circular(4),
                                     child: Tooltip(
                                       message: 'المقاسات والألوان',
@@ -1067,12 +1329,15 @@ class _ProductCard extends StatelessWidget {
                             // Row 2: Color • Size chip + SKU
                             Row(
                               children: [
-                                if (!(variant.color == '-' && variant.size == '-') &&
+                                if (!(variant.color == '-' &&
+                                        variant.size == '-') &&
                                     variant.color.isNotEmpty &&
                                     variant.size.isNotEmpty) ...[
                                   Container(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 5, vertical: 1),
+                                      horizontal: 5,
+                                      vertical: 1,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: AppColors.surfaceContainerLow,
                                       borderRadius: BorderRadius.circular(4),
@@ -1128,7 +1393,9 @@ class _ProductCard extends StatelessWidget {
                                 if (inCartQty == 0)
                                   Container(
                                     height: 26,
-                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: isOut
                                           ? Colors.grey.shade300
@@ -1138,8 +1405,11 @@ class _ProductCard extends StatelessWidget {
                                     child: const Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Icon(Icons.add_rounded,
-                                            size: 14, color: Colors.white),
+                                        Icon(
+                                          Icons.add_rounded,
+                                          size: 14,
+                                          color: Colors.white,
+                                        ),
                                         SizedBox(width: 2),
                                         Text(
                                           'إضافة',
@@ -1164,15 +1434,23 @@ class _ProductCard extends StatelessWidget {
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         InkWell(
-                                          onTap: () => posCubit.decreaseQty(variant.id),
+                                          onTap: () =>
+                                              posCubit.decreaseQty(variant.id),
                                           child: const Padding(
-                                            padding: EdgeInsets.symmetric(horizontal: 5),
-                                            child: Icon(Icons.remove_rounded,
-                                                color: Colors.white, size: 14),
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: 5,
+                                            ),
+                                            child: Icon(
+                                              Icons.remove_rounded,
+                                              color: Colors.white,
+                                              size: 14,
+                                            ),
                                           ),
                                         ),
                                         Padding(
-                                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 3,
+                                          ),
                                           child: Text(
                                             '$inCartQty',
                                             style: const TextStyle(
@@ -1186,11 +1464,19 @@ class _ProductCard extends StatelessWidget {
                                         InkWell(
                                           onTap: inCartQty >= variant.quantity
                                               ? null
-                                              : () => posCubit.addToCart(variant, 1),
+                                              : () => posCubit.addToCart(
+                                                  variant,
+                                                  1,
+                                                ),
                                           child: const Padding(
-                                            padding: EdgeInsets.symmetric(horizontal: 5),
-                                            child: Icon(Icons.add_rounded,
-                                                color: Colors.white, size: 14),
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: 5,
+                                            ),
+                                            child: Icon(
+                                              Icons.add_rounded,
+                                              color: Colors.white,
+                                              size: 14,
+                                            ),
                                           ),
                                         ),
                                       ],
@@ -1294,7 +1580,9 @@ class _VariantModalState extends State<_VariantModal> {
     _initialized = true;
     try {
       final posCubit = context.read<PosCubit>();
-      final allProductVariants = posCubit.getVariantsForProduct(widget.initialVariant.productId);
+      final allProductVariants = posCubit.getVariantsForProduct(
+        widget.initialVariant.productId,
+      );
       setState(() {
         _productVariants = allProductVariants.isNotEmpty
             ? allProductVariants
@@ -1323,8 +1611,13 @@ class _VariantModalState extends State<_VariantModal> {
   Widget build(BuildContext context) {
     final v = _currentVariant;
     final maxStock = v.quantity;
-    final availableColors = _productVariants.map((item) => item.color).toSet().toList();
-    final sizesForColor = _productVariants.where((item) => item.color == _selectedColor).toList();
+    final availableColors = _productVariants
+        .map((item) => item.color)
+        .toSet()
+        .toList();
+    final sizesForColor = _productVariants
+        .where((item) => item.color == _selectedColor)
+        .toList();
     final posCubit = context.read<PosCubit>();
     final productName = posCubit.getProductName(v.productId);
     final displayName = productName.isNotEmpty ? productName : v.productCode;
@@ -1353,10 +1646,15 @@ class _VariantModalState extends State<_VariantModal> {
                     ),
                     child: Center(
                       child: Text(
-                        displayName.isNotEmpty ? displayName.substring(0, 1).toUpperCase() : 'P',
-                        style: TextStyle(fontFamily: 'Cairo', color: Colors.white,
+                        displayName.isNotEmpty
+                            ? displayName.substring(0, 1).toUpperCase()
+                            : 'P',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          color: Colors.white,
                           fontSize: 22,
-                          fontWeight: FontWeight.bold,),
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -1367,13 +1665,20 @@ class _VariantModalState extends State<_VariantModal> {
                       children: [
                         Text(
                           displayName,
-                          style: TextStyle(fontFamily: 'Cairo', fontSize: 17,
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 17,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.onSurface,),
+                            color: AppColors.onSurface,
+                          ),
                         ),
                         Text(
                           'كود الصنف: ${v.sku} • السعر: ${Money(v.salePrice).toDisplay()} ج.م',
-                          style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade600),
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
                         ),
                       ],
                     ),
@@ -1389,7 +1694,11 @@ class _VariantModalState extends State<_VariantModal> {
               // Color Selection
               Text(
                 'اللون المختار: $_selectedColor',
-                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 13),
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
               ),
               const SizedBox(height: 8),
               Wrap(
@@ -1408,23 +1717,34 @@ class _VariantModalState extends State<_VariantModal> {
                             .where((item) => item.color == colorName)
                             .toList();
                         if (newSizes.isNotEmpty &&
-                            !newSizes.any((item) => item.size == _selectedSize)) {
+                            !newSizes.any(
+                              (item) => item.size == _selectedSize,
+                            )) {
                           _selectedSize = newSizes.first.size;
                         }
                         if (_qty > _currentVariant.quantity) {
-                          _qty = _currentVariant.quantity > 0 ? _currentVariant.quantity : 1;
+                          _qty = _currentVariant.quantity > 0
+                              ? _currentVariant.quantity
+                              : 1;
                         }
                       });
                     },
                     borderRadius: BorderRadius.circular(10),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppColors.surfaceContainer : AppColors.surfaceContainerLow,
+                        color: isSelected
+                            ? AppColors.surfaceContainer
+                            : AppColors.surfaceContainerLow,
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: isSelected ? AppColors.primary : AppColors.outlineVariant,
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.outlineVariant,
                           width: isSelected ? 1.8 : 1,
                         ),
                       ),
@@ -1437,15 +1757,24 @@ class _VariantModalState extends State<_VariantModal> {
                             decoration: BoxDecoration(
                               color: colorVal,
                               shape: BoxShape.circle,
-                              border: isWhite ? Border.all(color: Colors.grey.shade400) : null,
+                              border: isWhite
+                                  ? Border.all(color: Colors.grey.shade400)
+                                  : null,
                             ),
                           ),
                           const SizedBox(width: 6),
                           Text(
                             colorName,
-                            style: TextStyle(fontFamily: 'Cairo', fontSize: 12,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              color: isSelected ? AppColors.primary : AppColors.onSurface,),
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 12,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : AppColors.onSurface,
+                            ),
                           ),
                         ],
                       ),
@@ -1459,7 +1788,11 @@ class _VariantModalState extends State<_VariantModal> {
               // Size Selection (Grid of buttons showing size and remaining stock)
               Text(
                 'المقاس: $_selectedSize',
-                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 13),
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
               ),
               const SizedBox(height: 8),
               Wrap(
@@ -1483,20 +1816,23 @@ class _VariantModalState extends State<_VariantModal> {
                     borderRadius: BorderRadius.circular(12),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: isSelected
                             ? AppColors.primary
                             : (isOutOfStock
-                                ? Colors.grey.shade100
-                                : AppColors.surfaceContainerLowest),
+                                  ? Colors.grey.shade100
+                                  : AppColors.surfaceContainerLowest),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: isSelected
                               ? AppColors.primary
                               : (isOutOfStock
-                                  ? Colors.grey.shade300
-                                  : AppColors.outlineVariant),
+                                    ? Colors.grey.shade300
+                                    : AppColors.outlineVariant),
                           width: 1.5,
                         ),
                       ),
@@ -1505,19 +1841,27 @@ class _VariantModalState extends State<_VariantModal> {
                         children: [
                           Text(
                             sizeLabel,
-                            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontWeight: FontWeight.bold,
                               fontSize: 14,
                               color: isSelected
                                   ? Colors.white
-                                  : (isOutOfStock ? Colors.grey : AppColors.onSurface),
+                                  : (isOutOfStock
+                                        ? Colors.grey
+                                        : AppColors.onSurface),
                             ),
                           ),
                           Text(
                             isOutOfStock ? 'نفذ' : '$stock متبقي',
-                            style: TextStyle(fontFamily: 'Cairo', fontSize: 10,
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 10,
                               color: isSelected
                                   ? Colors.white.withValues(alpha: 0.85)
-                                  : (isOutOfStock ? Colors.red : Colors.grey.shade600),
+                                  : (isOutOfStock
+                                        ? Colors.red
+                                        : Colors.grey.shade600),
                             ),
                           ),
                         ],
@@ -1538,26 +1882,43 @@ class _VariantModalState extends State<_VariantModal> {
                     children: [
                       Text(
                         'الكمية المطلوبة:',
-                        style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 13),
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
                       ),
                       const SizedBox(height: 6),
                       Row(
                         children: [
                           IconButton(
-                            onPressed: _qty > 1 ? () => setState(() => _qty--) : null,
-                            icon: const Icon(Icons.remove_circle_outline_rounded),
+                            onPressed: _qty > 1
+                                ? () => setState(() => _qty--)
+                                : null,
+                            icon: const Icon(
+                              Icons.remove_circle_outline_rounded,
+                            ),
                             color: AppColors.primary,
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.surfaceContainerLow,
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: AppColors.outlineVariant),
+                              border: Border.all(
+                                color: AppColors.outlineVariant,
+                              ),
                             ),
                             child: Text(
                               '$_qty',
-                              style: TextStyle(fontFamily: 'Cairo', fontSize: 18, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                           IconButton(
@@ -1571,23 +1932,35 @@ class _VariantModalState extends State<_VariantModal> {
                           // Quick preset chips
                           ...[1, 2, 5, 10].map((preset) {
                             return Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 2.0,
+                              ),
                               child: InkWell(
                                 onTap: maxStock >= preset
                                     ? () => setState(() => _qty = preset)
                                     : null,
                                 borderRadius: BorderRadius.circular(6),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 4,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: _qty == preset ? AppColors.primary : AppColors.surfaceContainer,
+                                    color: _qty == preset
+                                        ? AppColors.primary
+                                        : AppColors.surfaceContainer,
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
                                     '$preset',
-                                    style: TextStyle(fontFamily: 'Cairo', fontSize: 11,
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: 11,
                                       fontWeight: FontWeight.bold,
-                                      color: _qty == preset ? Colors.white : AppColors.onSurface,),
+                                      color: _qty == preset
+                                          ? Colors.white
+                                          : AppColors.onSurface,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1602,13 +1975,20 @@ class _VariantModalState extends State<_VariantModal> {
                     children: [
                       Text(
                         'إجمالي الصنف:',
-                        style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade600),
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
                       ),
                       Text(
                         '${Money(v.salePrice * _qty).toDisplay()} ج.م',
-                        style: TextStyle(fontFamily: 'Cairo', fontSize: 18,
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.primary,),
+                          color: AppColors.primary,
+                        ),
                       ),
                     ],
                   ),
@@ -1631,12 +2011,24 @@ class _VariantModalState extends State<_VariantModal> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
-                  icon: const Icon(Icons.add_shopping_cart_rounded, color: Colors.white, size: 18),
+                  icon: const Icon(
+                    Icons.add_shopping_cart_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
                   label: Text(
-                    maxStock <= 0 ? 'المنتج غير متوفر' : 'إضافة إلى السلة ($_qty قطعة - ${Money(v.salePrice * _qty).toDisplay()} ج.م)',
-                    style: TextStyle(fontFamily: 'Cairo', fontSize: 15, fontWeight: FontWeight.bold),
+                    maxStock <= 0
+                        ? 'المنتج غير متوفر'
+                        : 'إضافة إلى السلة ($_qty قطعة - ${Money(v.salePrice * _qty).toDisplay()} ج.م)',
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -1663,7 +2055,8 @@ class _CartPanelState extends State<_CartPanel> {
   final _receivedCtrl = TextEditingController();
   final _creditDownPaymentCtrl = TextEditingController();
   bool _isPercentageDiscount = false;
-  String _paymentMethod = 'cash'; // 'cash', 'card', 'split', 'installment', 'credit'
+  String _paymentMethod =
+      'cash'; // 'cash', 'card', 'split', 'installment', 'credit'
   bool _installmentAvailable = false;
   bool _creditAvailable = true;
   bool _isWholesaleMode = false;
@@ -1722,9 +2115,11 @@ class _CartPanelState extends State<_CartPanel> {
     final gate = getIt<FeatureGate>();
     final featureOn = await gate.isEnabled(FeatureKeys.installments);
     final meta = await gate.getMeta('payment.installment');
+    if (!mounted) return;
 
     final authState = context.read<AuthCubit>().state;
-    final isCashier = authState is AuthAuthenticated && authState.user.role == 'cashier';
+    final isCashier =
+        authState is AuthAuthenticated && authState.user.role == 'cashier';
     final cashierPerms = CashierPermissionsService.current;
 
     final creditAllowed = !isCashier || cashierPerms.allowCreditSale;
@@ -1840,16 +2235,23 @@ class _CartPanelState extends State<_CartPanel> {
       final invoicesRepo = getIt<InvoicesRepository>();
       final res = await invoicesRepo.getInvoices(limit: 1);
       InvoiceDetailsEntity? latestInvoice;
-      res.fold((_) {}, (list) => latestInvoice = list.isNotEmpty ? list.first : null);
+      res.fold(
+        (_) {},
+        (list) => latestInvoice = list.isNotEmpty ? list.first : null,
+      );
 
       if (_deliveryOrder != null) {
         final deliveryRepo = getIt<DeliveryRepository>();
-        final orderRef = latestInvoice?.shortRef ?? 'ORD-${DateTime.now().millisecondsSinceEpoch % 100000}';
-        await deliveryRepo.createDeliveryOrder(_deliveryOrder!.copyWith(
-          saleId: latestInvoice?.id,
-          orderRef: orderRef,
-          orderTotalPiasters: latestInvoice?.total ?? state.total,
-        ));
+        final orderRef =
+            latestInvoice?.shortRef ??
+            'ORD-${DateTime.now().millisecondsSinceEpoch % 100000}';
+        await deliveryRepo.createDeliveryOrder(
+          _deliveryOrder!.copyWith(
+            saleId: latestInvoice?.id,
+            orderRef: orderRef,
+            orderTotalPiasters: latestInvoice?.total ?? state.total,
+          ),
+        );
         setState(() => _deliveryOrder = null);
       }
 
@@ -1864,7 +2266,10 @@ class _CartPanelState extends State<_CartPanel> {
           SnackBar(
             content: Text(
               'تم إتمام عملية البيع بنجاح!',
-              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontWeight: FontWeight.bold,
+              ),
             ),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
@@ -1907,16 +2312,23 @@ class _CartPanelState extends State<_CartPanel> {
       final invoicesRepo = getIt<InvoicesRepository>();
       final res = await invoicesRepo.getInvoices(limit: 1);
       InvoiceDetailsEntity? latestInvoice;
-      res.fold((_) {}, (list) => latestInvoice = list.isNotEmpty ? list.first : null);
+      res.fold(
+        (_) {},
+        (list) => latestInvoice = list.isNotEmpty ? list.first : null,
+      );
 
       if (_deliveryOrder != null) {
         final deliveryRepo = getIt<DeliveryRepository>();
-        final orderRef = latestInvoice?.shortRef ?? 'ORD-${DateTime.now().millisecondsSinceEpoch % 100000}';
-        await deliveryRepo.createDeliveryOrder(_deliveryOrder!.copyWith(
-          saleId: latestInvoice?.id,
-          orderRef: orderRef,
-          orderTotalPiasters: latestInvoice?.total ?? state.total,
-        ));
+        final orderRef =
+            latestInvoice?.shortRef ??
+            'ORD-${DateTime.now().millisecondsSinceEpoch % 100000}';
+        await deliveryRepo.createDeliveryOrder(
+          _deliveryOrder!.copyWith(
+            saleId: latestInvoice?.id,
+            orderRef: orderRef,
+            orderTotalPiasters: latestInvoice?.total ?? state.total,
+          ),
+        );
         setState(() => _deliveryOrder = null);
       }
 
@@ -1931,7 +2343,10 @@ class _CartPanelState extends State<_CartPanel> {
           SnackBar(
             content: Text(
               'تم إتمام عملية البيع المجزأ بنجاح!',
-              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontWeight: FontWeight.bold,
+              ),
             ),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
@@ -1948,24 +2363,33 @@ class _CartPanelState extends State<_CartPanel> {
     if (customer == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('البيع الآجل (على الحساب) يتطلب تحديد العميل أولاً لحساب الرصيد والحد الائتماني.'),
+          content: Text(
+            'البيع الآجل (على الحساب) يتطلب تحديد العميل أولاً لحساب الرصيد والحد الائتماني.',
+          ),
           backgroundColor: AppColors.error,
         ),
       );
       return;
     }
 
-    final downPaymentNum = double.tryParse(_creditDownPaymentCtrl.text.trim()) ?? 0.0;
+    final downPaymentNum =
+        double.tryParse(_creditDownPaymentCtrl.text.trim()) ?? 0.0;
     final downPaymentPiasters = (downPaymentNum * 100).round();
     if (downPaymentPiasters < 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('مبلغ الدفعة المقدمة لا يمكن أن يكون سالباً'), backgroundColor: AppColors.error),
+        const SnackBar(
+          content: Text('مبلغ الدفعة المقدمة لا يمكن أن يكون سالباً'),
+          backgroundColor: AppColors.error,
+        ),
       );
       return;
     }
     if (downPaymentPiasters > state.total) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('الدفعة المقدمة لا يمكن أن تتجاوز إجمالي الفاتورة'), backgroundColor: AppColors.error),
+        const SnackBar(
+          content: Text('الدفعة المقدمة لا يمكن أن تتجاوز إجمالي الفاتورة'),
+          backgroundColor: AppColors.error,
+        ),
       );
       return;
     }
@@ -1974,10 +2398,14 @@ class _CartPanelState extends State<_CartPanel> {
     final customersDs = getIt<CustomersLocalDataSource>();
     final currentDebt = await customersDs.getCustomerCreditDebt(customer.id);
     final projectedDebt = currentDebt + creditPortion;
-    final isLimitExceeded = (customer.creditLimit > 0) && (projectedDebt > customer.creditLimit);
+    final isLimitExceeded =
+        (customer.creditLimit > 0) && (projectedDebt > customer.creditLimit);
 
-    final pinSvc = getIt.isRegistered<ManagerPinService>() ? getIt<ManagerPinService>() : null;
-    final creditPinConfigured = pinSvc != null && (await pinSvc.isCreditPinRequired());
+    final pinSvc = getIt.isRegistered<ManagerPinService>()
+        ? getIt<ManagerPinService>()
+        : null;
+    final creditPinConfigured =
+        pinSvc != null && (await pinSvc.isCreditPinRequired());
     final requirePin = isLimitExceeded || creditPinConfigured;
 
     if (requirePin && pinSvc != null) {
@@ -1990,15 +2418,28 @@ class _CartPanelState extends State<_CartPanel> {
       final pinApproved = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Row(
             children: [
-              Icon(isLimitExceeded ? Icons.warning_amber_rounded : Icons.lock_outline_rounded,
-                  color: isLimitExceeded ? Colors.orange.shade800 : AppColors.primary),
+              Icon(
+                isLimitExceeded
+                    ? Icons.warning_amber_rounded
+                    : Icons.lock_outline_rounded,
+                color: isLimitExceeded
+                    ? Colors.orange.shade800
+                    : AppColors.primary,
+              ),
               const SizedBox(width: 8),
               Text(
-                isLimitExceeded ? 'تجاوز الحد الائتماني (موافقة المدير)' : 'تأكيد المدير للبيع الآجل',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                isLimitExceeded
+                    ? 'تجاوز الحد الائتماني (موافقة المدير)'
+                    : 'تأكيد المدير للبيع الآجل',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
             ],
           ),
@@ -2006,7 +2447,10 @@ class _CartPanelState extends State<_CartPanel> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(reasonMsg, style: const TextStyle(fontSize: 13, height: 1.4)),
+              Text(
+                reasonMsg,
+                style: const TextStyle(fontSize: 13, height: 1.4),
+              ),
               const SizedBox(height: 14),
               TextField(
                 controller: pinCtrl,
@@ -2016,7 +2460,9 @@ class _CartPanelState extends State<_CartPanel> {
                 decoration: InputDecoration(
                   labelText: 'رمز مرور المدير (PIN)',
                   prefixIcon: const Icon(Icons.pin_rounded),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
             ],
@@ -2028,8 +2474,12 @@ class _CartPanelState extends State<_CartPanel> {
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: isLimitExceeded ? Colors.orange.shade800 : AppColors.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                backgroundColor: isLimitExceeded
+                    ? Colors.orange.shade800
+                    : AppColors.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               onPressed: () async {
                 final pin = pinCtrl.text.trim();
@@ -2043,11 +2493,20 @@ class _CartPanelState extends State<_CartPanel> {
                   Navigator.pop(ctx, true);
                 } else {
                   ScaffoldMessenger.of(ctx).showSnackBar(
-                    SnackBar(content: Text(res.error ?? 'رمز المرور غير صحيح'), backgroundColor: AppColors.error),
+                    SnackBar(
+                      content: Text(res.error ?? 'رمز المرور غير صحيح'),
+                      backgroundColor: AppColors.error,
+                    ),
                   );
                 }
               },
-              child: const Text('موافقة وتأكيد', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text(
+                'موافقة وتأكيد',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         ),
@@ -2074,7 +2533,9 @@ class _CartPanelState extends State<_CartPanel> {
 
     final splits = <PaymentSplit>[];
     if (downPaymentPiasters > 0) {
-      splits.add(PaymentSplit(method: 'cash', amountPiasters: downPaymentPiasters));
+      splits.add(
+        PaymentSplit(method: 'cash', amountPiasters: downPaymentPiasters),
+      );
       splits.add(PaymentSplit(method: 'credit', amountPiasters: creditPortion));
     } else {
       splits.add(PaymentSplit(method: 'credit', amountPiasters: state.total));
@@ -2095,16 +2556,23 @@ class _CartPanelState extends State<_CartPanel> {
       final invoicesRepo = getIt<InvoicesRepository>();
       final res = await invoicesRepo.getInvoices(limit: 1);
       InvoiceDetailsEntity? latestInvoice;
-      res.fold((_) {}, (list) => latestInvoice = list.isNotEmpty ? list.first : null);
+      res.fold(
+        (_) {},
+        (list) => latestInvoice = list.isNotEmpty ? list.first : null,
+      );
 
       if (_deliveryOrder != null) {
         final deliveryRepo = getIt<DeliveryRepository>();
-        final orderRef = latestInvoice?.shortRef ?? 'ORD-${DateTime.now().millisecondsSinceEpoch % 100000}';
-        await deliveryRepo.createDeliveryOrder(_deliveryOrder!.copyWith(
-          saleId: latestInvoice?.id,
-          orderRef: orderRef,
-          orderTotalPiasters: latestInvoice?.total ?? state.total,
-        ));
+        final orderRef =
+            latestInvoice?.shortRef ??
+            'ORD-${DateTime.now().millisecondsSinceEpoch % 100000}';
+        await deliveryRepo.createDeliveryOrder(
+          _deliveryOrder!.copyWith(
+            saleId: latestInvoice?.id,
+            orderRef: orderRef,
+            orderTotalPiasters: latestInvoice?.total ?? state.total,
+          ),
+        );
         setState(() => _deliveryOrder = null);
       }
 
@@ -2119,7 +2587,10 @@ class _CartPanelState extends State<_CartPanel> {
           const SnackBar(
             content: Text(
               'تم إتمام البيع الآجل وقيد المديونية على حساب العميل بنجاح!',
-              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontWeight: FontWeight.bold,
+              ),
             ),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
@@ -2143,12 +2614,14 @@ class _CartPanelState extends State<_CartPanel> {
 
     if (customer == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('اختر عميلاً أولاً للتقسيط')));
+        const SnackBar(content: Text('اختر عميلاً أولاً للتقسيط')),
+      );
       return;
     }
     if (totalPiasters <= 0) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('السلة فارغة')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('السلة فارغة')));
       return;
     }
 
@@ -2158,13 +2631,18 @@ class _CartPanelState extends State<_CartPanel> {
         : (await gate.getMeta('installments.pin.require')) != '0';
 
     final plansResult = await getIt<InstallmentsFacade>().listPlans();
-    final activePlans =
-        plansResult.getOrElse(() => []).where((p) => p.isActive).toList();
+    final activePlans = plansResult
+        .getOrElse(() => [])
+        .where((p) => p.isActive)
+        .toList();
 
     if (activePlans.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('لا توجد خطط تقسيط مفعلة. أضف خطة أولاً.')));
+        const SnackBar(
+          content: Text('لا توجد خطط تقسيط مفعلة. أضف خطة أولاً.'),
+        ),
+      );
       return;
     }
 
@@ -2190,10 +2668,12 @@ class _CartPanelState extends State<_CartPanel> {
         );
         if (!mounted) return;
         if (!pinCheck.ok) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(pinCheck.error ?? 'الرقم السري للمدير غير صحيح'),
-            backgroundColor: AppColors.error,
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(pinCheck.error ?? 'الرقم السري للمدير غير صحيح'),
+              backgroundColor: AppColors.error,
+            ),
+          );
           return; // ABORT: DO NOT PROCEED TO CHECKOUT
         }
       }
@@ -2210,8 +2690,9 @@ class _CartPanelState extends State<_CartPanel> {
     if (!mounted) return;
 
     if (!success || createdSale == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('فشل إنشاء الفاتورة')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('فشل إنشاء الفاتورة')));
       return;
     }
 
@@ -2236,41 +2717,50 @@ class _CartPanelState extends State<_CartPanel> {
         // Rollback / cancel created sale so it doesn't remain orphaned
         try {
           final db = getIt<AppDatabase>();
-          await (db.update(db.sales)..where((t) => t.id.equals(createdSale!.id)))
-              .write(SalesCompanion(
-                status: const Value('cancelled'),
-                deletedAt: Value(DateTime.now()),
-                updatedAt: Value(DateTime.now()),
-              ));
+          await (db.update(
+            db.sales,
+          )..where((t) => t.id.equals(createdSale!.id))).write(
+            SalesCompanion(
+              status: const Value('cancelled'),
+              deletedAt: Value(DateTime.now()),
+              updatedAt: Value(DateTime.now()),
+            ),
+          );
         } catch (_) {}
 
         CrashLoggerService.logCrash(
           Exception(
-              'POS installment partial: sale ${createdSale!.id} rolled back, '
-              'contract failed: ${failure.message}'),
+            'POS installment partial: sale ${createdSale!.id} rolled back, '
+            'contract failed: ${failure.message}',
+          ),
           StackTrace.current,
           context: 'POS_INSTALLMENT_PARTIAL',
         );
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
               'فشل إنشاء عقد التقسيط: ${failure.message}\n'
-              'تم إلغاء الفاتورة لعدم اكتمال التقسيط.'),
-          backgroundColor: AppColors.error,
-          duration: const Duration(seconds: 8),
-        ));
+              'تم إلغاء الفاتورة لعدم اكتمال التقسيط.',
+            ),
+            backgroundColor: AppColors.error,
+            duration: const Duration(seconds: 8),
+          ),
+        );
       },
       (contract) {
         // checkout already cleared cart — no clearCart() needed
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('تم إنشاء عقد التقسيط بنجاح'),
-          backgroundColor: Colors.green,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تم إنشاء عقد التقسيط بنجاح'),
+            backgroundColor: Colors.green,
+          ),
+        );
         Navigator.push(
           context,
           MaterialPageRoute(
-              builder: (_) =>
-                  InstallmentDetailScreen(contractId: contract.id)),
+            builder: (_) => InstallmentDetailScreen(contractId: contract.id),
+          ),
         );
       },
     );
@@ -2283,8 +2773,10 @@ class _CartPanelState extends State<_CartPanel> {
     } catch (e, st) {
       return SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Text('CartPanel build error:\n$e\n$st',
-            style: const TextStyle(color: Colors.red, fontSize: 11)),
+        child: Text(
+          'CartPanel build error:\n$e\n$st',
+          style: const TextStyle(color: Colors.red, fontSize: 11),
+        ),
       );
     }
   }
@@ -2292,7 +2784,10 @@ class _CartPanelState extends State<_CartPanel> {
   Widget _buildContent(BuildContext context) {
     return BlocBuilder<PosCubit, PosState>(
       builder: (context, state) {
-        final totalPieces = state.cart.fold<int>(0, (sum, item) => sum + item.quantity);
+        final totalPieces = state.cart.fold<int>(
+          0,
+          (sum, item) => sum + item.quantity,
+        );
         final receivedPiasters = Money.fromString(_receivedCtrl.text).piasters;
         final int changePiasters = receivedPiasters > state.total
             ? (receivedPiasters - state.total).toInt()
@@ -2300,7 +2795,8 @@ class _CartPanelState extends State<_CartPanel> {
 
         return CallbackShortcuts(
           bindings: {
-            const SingleActivator(LogicalKeyboardKey.f12): () => _handleCheckout(state),
+            const SingleActivator(LogicalKeyboardKey.f12): () =>
+                _handleCheckout(state),
           },
           child: LayoutBuilder(
             builder: (context, outerConstraints) {
@@ -2311,895 +2807,1283 @@ class _CartPanelState extends State<_CartPanel> {
                   children: [
                     // Cart Header: Title + Items/Pieces count + Wholesale toggle + Clear [Esc]
                     Padding(
-                      padding: EdgeInsets.fromLTRB(16, isCompact ? 6 : 12, 16, isCompact ? 2 : 4),
+                      padding: EdgeInsets.fromLTRB(
+                        16,
+                        isCompact ? 6 : 12,
+                        16,
+                        isCompact ? 2 : 4,
+                      ),
                       child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'سلة المشتريات',
-                            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: AppColors.onSurface,),
+                          Row(
+                            children: [
+                              Text(
+                                'سلة المشتريات',
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: AppColors.onSurface,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Badge showing items & pieces
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  '${state.cart.length} أصناف • $totalPieces قطع',
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    color: AppColors.onPrimary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          // Badge showing items & pieces
+                          // Wholesale / Retail Toggle Button
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            height: 28,
+                            padding: const EdgeInsets.all(2),
                             decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(10),
+                              color: _isWholesaleMode
+                                  ? Colors.purple.shade50
+                                  : AppColors.surfaceContainerLow,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: _isWholesaleMode
+                                    ? Colors.purple.shade300
+                                    : AppColors.outlineVariant,
+                              ),
                             ),
-                            child: Text(
-                              '${state.cart.length} أصناف • $totalPieces قطع',
-                              style: TextStyle(fontFamily: 'Cairo', color: AppColors.onPrimary,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 10,),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                InkWell(
+                                  onTap: () {
+                                    if (!_isWholesaleMode) return;
+                                    setState(() => _isWholesaleMode = false);
+                                    _toggleWholesalePrices(false);
+                                  },
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: !_isWholesaleMode
+                                          ? AppColors.primary
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      'قطاعي',
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: !_isWholesaleMode
+                                            ? Colors.white
+                                            : Colors.grey.shade700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                InkWell(
+                                  onTap: () {
+                                    if (_isWholesaleMode) return;
+                                    setState(() => _isWholesaleMode = true);
+                                    _toggleWholesalePrices(true);
+                                  },
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _isWholesaleMode
+                                          ? Colors.purple.shade700
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.storefront_rounded,
+                                          size: 12,
+                                          color: _isWholesaleMode
+                                              ? Colors.white
+                                              : Colors.purple.shade700,
+                                        ),
+                                        const SizedBox(width: 3),
+                                        Text(
+                                          'بيع جملة',
+                                          style: TextStyle(
+                                            fontFamily: 'Cairo',
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: _isWholesaleMode
+                                                ? Colors.white
+                                                : Colors.purple.shade700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          TextButton.icon(
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.error,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                              ),
+                            ),
+                            onPressed: state.cart.isEmpty
+                                ? null
+                                : () {
+                                    _receivedCtrl.clear();
+                                    _discountCtrl.clear();
+                                    context.read<PosCubit>().clearCart();
+                                  },
+                            icon: const Icon(
+                              Icons.delete_sweep_rounded,
+                              size: 16,
+                            ),
+                            label: Text(
+                              'مسح',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 11,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                      // Wholesale / Retail Toggle Button
-                      Container(
-                        height: 28,
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: _isWholesaleMode ? Colors.purple.shade50 : AppColors.surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: _isWholesaleMode ? Colors.purple.shade300 : AppColors.outlineVariant,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            InkWell(
-                              onTap: () {
-                                if (!_isWholesaleMode) return;
-                                setState(() => _isWholesaleMode = false);
-                                _toggleWholesalePrices(false);
-                              },
-                              borderRadius: BorderRadius.circular(6),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: !_isWholesaleMode ? AppColors.primary : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  'قطاعي',
-                                  style: TextStyle(fontFamily: 'Cairo', fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: !_isWholesaleMode ? Colors.white : Colors.grey.shade700,),
-                                ),
-                              ),
-                            ),
-                            InkWell(
-                              onTap: () {
-                                if (_isWholesaleMode) return;
-                                setState(() => _isWholesaleMode = true);
-                                _toggleWholesalePrices(true);
-                              },
-                              borderRadius: BorderRadius.circular(6),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: _isWholesaleMode ? Colors.purple.shade700 : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.storefront_rounded,
-                                      size: 12,
-                                      color: _isWholesaleMode ? Colors.white : Colors.purple.shade700,
-                                    ),
-                                    const SizedBox(width: 3),
-                                    Text(
-                                      'بيع جملة',
-                                      style: TextStyle(fontFamily: 'Cairo', fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: _isWholesaleMode ? Colors.white : Colors.purple.shade700,),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      TextButton.icon(
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppColors.error,
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
-                        ),
-                        onPressed: state.cart.isEmpty
-                            ? null
-                            : () {
-                                _receivedCtrl.clear();
-                                _discountCtrl.clear();
-                                context.read<PosCubit>().clearCart();
-                              },
-                        icon: const Icon(Icons.delete_sweep_rounded, size: 16),
-                        label: Text(
-                          'مسح',
-                          style: TextStyle(fontFamily: 'Cairo', fontSize: 11),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Customer Section (Two buttons when guest, full perks when assigned)
-                Container(
-                  margin: EdgeInsets.symmetric(horizontal: 16, vertical: isCompact ? 2 : 4),
-                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: isCompact ? 5 : 8),
-                  decoration: BoxDecoration(
-                    color: state.customer != null ? AppColors.surfaceContainer : AppColors.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: state.customer != null ? AppColors.primary.withValues(alpha: 0.3) : AppColors.outlineVariant,
                     ),
-                  ),
-                  child: state.customer != null
-                      ? Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 16,
-                              backgroundColor: state.customer!.isWholesale ? Colors.purple.shade100 : AppColors.primary,
-                              child: Icon(
-                                state.customer!.isWholesale ? Icons.storefront_rounded : Icons.person_rounded,
-                                size: 18,
-                                color: state.customer!.isWholesale ? Colors.purple.shade900 : Colors.white,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
+
+                    // Customer Section (Two buttons when guest, full perks when assigned)
+                    Container(
+                      margin: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: isCompact ? 2 : 4,
+                      ),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: isCompact ? 5 : 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: state.customer != null
+                            ? AppColors.surfaceContainer
+                            : AppColors.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: state.customer != null
+                              ? AppColors.primary.withValues(alpha: 0.3)
+                              : AppColors.outlineVariant,
+                        ),
+                      ),
+                      child: state.customer != null
+                          ? Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 16,
+                                  backgroundColor: state.customer!.isWholesale
+                                      ? Colors.purple.shade100
+                                      : AppColors.primary,
+                                  child: Icon(
+                                    state.customer!.isWholesale
+                                        ? Icons.storefront_rounded
+                                        : Icons.person_rounded,
+                                    size: 18,
+                                    color: state.customer!.isWholesale
+                                        ? Colors.purple.shade900
+                                        : Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Flexible(
-                                        child: Text(
-                                          state.customer!.name,
-                                          style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
-                                            fontSize: 13,),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
+                                      Row(
+                                        children: [
+                                          Flexible(
+                                            child: Text(
+                                              state.customer!.name,
+                                              style: TextStyle(
+                                                fontFamily: 'Cairo',
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          if (state.customer!.isWholesale) ...[
+                                            const SizedBox(width: 4),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 5,
+                                                    vertical: 1,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.purple.shade50,
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                                border: Border.all(
+                                                  color: Colors.purple.shade200,
+                                                ),
+                                              ),
+                                              child: Text(
+                                                'تاجر جملة',
+                                                style: TextStyle(
+                                                  fontFamily: 'Cairo',
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.purple.shade800,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                          if (state.customer!.discountPercent >
+                                              0) ...[
+                                            const SizedBox(width: 4),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 5,
+                                                    vertical: 1,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.green.shade50,
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                                border: Border.all(
+                                                  color: Colors.green.shade300,
+                                                ),
+                                              ),
+                                              child: Text(
+                                                'خصم ${state.customer!.discountPercent}%',
+                                                style: TextStyle(
+                                                  fontFamily: 'Cairo',
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.green.shade800,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
                                       ),
-                                      if (state.customer!.isWholesale) ...[
-                                        const SizedBox(width: 4),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                          decoration: BoxDecoration(
-                                            color: Colors.purple.shade50,
-                                            borderRadius: BorderRadius.circular(6),
-                                            border: Border.all(color: Colors.purple.shade200),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            state.customer!.phone,
+                                            style: TextStyle(
+                                              fontFamily: 'Cairo',
+                                              fontSize: 11,
+                                              color: Colors.grey.shade600,
+                                            ),
                                           ),
-                                          child: Text(
-                                            'تاجر جملة',
-                                            style: TextStyle(fontFamily: 'Cairo', fontSize: 9,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.purple.shade800,),
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 5,
+                                              vertical: 1,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.amber.shade100,
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(
+                                                  Icons.stars_rounded,
+                                                  size: 10,
+                                                  color: Colors.amber,
+                                                ),
+                                                const SizedBox(width: 2),
+                                                Text(
+                                                  '${state.customer!.loyaltyPoints} نقطة',
+                                                  style: TextStyle(
+                                                    fontFamily: 'Cairo',
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.brown,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
-                                        ),
-                                      ],
-                                      if (state.customer!.discountPercent > 0) ...[
-                                        const SizedBox(width: 4),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                          decoration: BoxDecoration(
-                                            color: Colors.green.shade50,
-                                            borderRadius: BorderRadius.circular(6),
-                                            border: Border.all(color: Colors.green.shade300),
-                                          ),
-                                          child: Text(
-                                            'خصم ${state.customer!.discountPercent}%',
-                                            style: TextStyle(fontFamily: 'Cairo', fontSize: 9,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.green.shade800,),
-                                          ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ],
                                   ),
-                                  Row(
-                                    children: [
-                                      Text(
-                                        state.customer!.phone,
-                                        style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey.shade600),
+                                ),
+                                IconButton(
+                                  icon: Icon(
+                                    Icons.swap_horiz_rounded,
+                                    size: 18,
+                                    color: AppColors.primary,
+                                  ),
+                                  tooltip: 'تغيير العميل',
+                                  onPressed: () async {
+                                    final selected =
+                                        await showDialog<CustomerEntity>(
+                                          context: context,
+                                          builder: (_) =>
+                                              const _AssignCustomerDialog(),
+                                        );
+                                    if (selected != null && context.mounted) {
+                                      _onCustomerSelected(selected);
+                                    }
+                                  },
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.close_rounded,
+                                    size: 18,
+                                    color: Colors.grey,
+                                  ),
+                                  tooltip: 'إزالة العميل والعودة لنقدي',
+                                  onPressed: () {
+                                    context.read<PosCubit>().assignCustomer(
+                                      null,
+                                    );
+                                  },
+                                ),
+                              ],
+                            )
+                          : Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 14,
+                                  backgroundColor: Colors.grey.shade400,
+                                  child: const Icon(
+                                    Icons.person_outline,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'عميل نقدي',
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                      color: AppColors.onSurface,
+                                    ),
+                                  ),
+                                ),
+                                // Single Clean Button: Assign Customer
+                                OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.primary,
+                                    side: BorderSide(
+                                      color: AppColors.primary.withValues(
+                                        alpha: 0.6,
                                       ),
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                        decoration: BoxDecoration(
-                                          color: Colors.amber.shade100,
-                                          borderRadius: BorderRadius.circular(6),
+                                      width: 1.2,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 5,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  icon: const Icon(
+                                    Icons.person_search_rounded,
+                                    size: 15,
+                                  ),
+                                  label: Text(
+                                    'تعيين عميل',
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  onPressed: () async {
+                                    final selected =
+                                        await showDialog<CustomerEntity>(
+                                          context: context,
+                                          builder: (_) =>
+                                              const _AssignCustomerDialog(),
+                                        );
+                                    if (selected != null && context.mounted) {
+                                      _onCustomerSelected(selected);
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                    ),
+
+                    Divider(height: isCompact ? 4 : 8),
+
+                    // Cart Items List
+                    Expanded(
+                      child: state.cart.isEmpty
+                          ? LayoutBuilder(
+                              builder: (context, constraints) {
+                                final safeHeight = constraints.maxHeight > 0
+                                    ? constraints.maxHeight
+                                    : 0.0;
+                                if (safeHeight < 20) {
+                                  return const SizedBox.shrink();
+                                }
+                                final iconSize = (safeHeight * 0.32).clamp(
+                                  20.0,
+                                  56.0,
+                                );
+                                return SingleChildScrollView(
+                                  physics: const ClampingScrollPhysics(),
+                                  child: ConstrainedBox(
+                                    constraints: BoxConstraints(
+                                      minHeight: safeHeight,
+                                    ),
+                                    child: Center(
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 4,
                                         ),
-                                        child: Row(
+                                        child: Column(
                                           mainAxisSize: MainAxisSize.min,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
                                           children: [
-                                            const Icon(Icons.stars_rounded, size: 10, color: Colors.amber),
-                                            const SizedBox(width: 2),
-                                            Text(
-                                              '${state.customer!.loyaltyPoints} نقطة',
-                                              style: TextStyle(fontFamily: 'Cairo', fontSize: 9,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.brown,),
+                                            Icon(
+                                              Icons.shopping_cart_outlined,
+                                              size: iconSize,
+                                              color: Colors.grey.shade300,
                                             ),
+                                            if (safeHeight >= 60) ...[
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                'سلة المشتريات فارغة',
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  fontFamily: 'Cairo',
+                                                  color: Colors.grey.shade500,
+                                                  fontSize: safeHeight < 90
+                                                      ? 11.5
+                                                      : 13.5,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ],
+                                            if (safeHeight >= 115) ...[
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                'انقر على أي منتج لإضافته فوراً إلى الفاتورة',
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  fontFamily: 'Cairo',
+                                                  color: Colors.grey.shade400,
+                                                  fontSize: 10.5,
+                                                ),
+                                              ),
+                                            ],
                                           ],
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.swap_horiz_rounded, size: 18, color: AppColors.primary),
-                              tooltip: 'تغيير العميل',
-                              onPressed: () async {
-                                final selected = await showDialog<CustomerEntity>(
-                                  context: context,
-                                  builder: (_) => const _AssignCustomerDialog(),
-                                );
-                                if (selected != null && context.mounted) {
-                                  _onCustomerSelected(selected);
-                                }
-                              },
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.close_rounded, size: 18, color: Colors.grey),
-                              tooltip: 'إزالة العميل والعودة لنقدي',
-                              onPressed: () {
-                                context.read<PosCubit>().assignCustomer(null);
-                              },
-                            ),
-                          ],
-                        )
-                      : Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 14,
-                              backgroundColor: Colors.grey.shade400,
-                              child: const Icon(Icons.person_outline, size: 16, color: Colors.white),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'عميل نقدي',
-                                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                  color: AppColors.onSurface,),
-                              ),
-                            ),
-                            // Single Clean Button: Assign Customer
-                            OutlinedButton.icon(
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.primary,
-                                side: BorderSide(color: AppColors.primary.withValues(alpha: 0.6), width: 1.2),
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                              ),
-                              icon: const Icon(Icons.person_search_rounded, size: 15),
-                              label: Text(
-                                'تعيين عميل',
-                                style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold),
-                              ),
-                              onPressed: () async {
-                                final selected = await showDialog<CustomerEntity>(
-                                  context: context,
-                                  builder: (_) => const _AssignCustomerDialog(),
-                                );
-                                if (selected != null && context.mounted) {
-                                  _onCustomerSelected(selected);
-                                }
-                              },
-                            ),
-                          ],
-                        ),
-                ),
-
-                Divider(height: isCompact ? 4 : 8),
-
-                // Cart Items List
-                Expanded(
-                  child: state.cart.isEmpty
-                      ? LayoutBuilder(
-                          builder: (context, constraints) {
-                            final safeHeight = constraints.maxHeight > 0
-                                ? constraints.maxHeight
-                                : 0.0;
-                            if (safeHeight < 20) {
-                              return const SizedBox.shrink();
-                            }
-                            final iconSize = (safeHeight * 0.32).clamp(20.0, 56.0);
-                            return SingleChildScrollView(
-                              physics: const ClampingScrollPhysics(),
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(minHeight: safeHeight),
-                                child: Center(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.shopping_cart_outlined,
-                                          size: iconSize,
-                                          color: Colors.grey.shade300,
-                                        ),
-                                        if (safeHeight >= 60) ...[
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            'سلة المشتريات فارغة',
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              fontFamily: 'Cairo',
-                                              color: Colors.grey.shade500,
-                                              fontSize: safeHeight < 90 ? 11.5 : 13.5,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                        if (safeHeight >= 115) ...[
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            'انقر على أي منتج لإضافته فوراً إلى الفاتورة',
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              fontFamily: 'Cairo',
-                                              color: Colors.grey.shade400,
-                                              fontSize: 10.5,
-                                            ),
-                                          ),
-                                        ],
-                                      ],
                                     ),
                                   ),
+                                );
+                              },
+                            )
+                          : ListView.separated(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 4,
+                              ),
+                              itemCount: state.cart.length,
+                              separatorBuilder: (context, index) =>
+                                  const SizedBox(height: 8),
+                              itemBuilder: (context, index) {
+                                final item = state.cart[index];
+                                final posCubit = context.read<PosCubit>();
+                                final v = posCubit.getVariantById(
+                                  item.variantId,
+                                );
+                                final maxStock = v?.quantity ?? 999;
+                                return _CartItemTile(
+                                  key: ValueKey(item.variantId),
+                                  item: item,
+                                  maxStock: maxStock,
+                                );
+                              },
+                            ),
+                    ),
+
+                    const Divider(height: 1),
+
+                    // Checkout Footer
+                    Container(
+                      padding: EdgeInsets.all(isCompact ? 10 : 14),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        border: Border(
+                          top: BorderSide(
+                            color: AppColors.outlineVariant.withValues(
+                              alpha: 0.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Subtotal
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'المجموع الفرعي',
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 13,
+                                  color: Colors.grey.shade600,
                                 ),
                               ),
-                            );
-                          },
-                        )
-                      : ListView.separated(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                          itemCount: state.cart.length,
-                          separatorBuilder: (context, index) => const SizedBox(height: 8),
-                          itemBuilder: (context, index) {
-                            final item = state.cart[index];
-                            final posCubit = context.read<PosCubit>();
-                            final v = posCubit.getVariantById(item.variantId);
-                            final maxStock = v?.quantity ?? 999;
-                            return _CartItemTile(
-                              key: ValueKey(item.variantId),
-                              item: item,
-                              maxStock: maxStock,
-                            );
-                          },
-                        ),
-                ),
-
-                const Divider(height: 1),
-
-                // Checkout Footer
-                Container(
-                  padding: EdgeInsets.all(isCompact ? 10 : 14),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    border: Border(top: BorderSide(color: AppColors.outlineVariant.withValues(alpha: 0.5))),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Subtotal
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'المجموع الفرعي',
-                            style: TextStyle(fontFamily: 'Cairo', fontSize: 13, color: Colors.grey.shade600),
+                              Text(
+                                '${Money(state.subtotal).toDisplay()} ج.م',
+                                style: const TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
-                          Text(
-                            '${Money(state.subtotal).toDisplay()} ج.م',
-                            style: const TextStyle(fontFamily: 'Cairo', fontSize: 14, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: isCompact ? 3 : 6),
+                          SizedBox(height: isCompact ? 3 : 6),
 
-                      // Promotions Discount
-                      if (state.promotionDiscountPiasters > 0) ...[
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
+                          // Promotions Discount
+                          if (state.promotionDiscountPiasters > 0) ...[
                             Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Icon(Icons.local_offer, size: 14, color: AppColors.primary),
-                                const SizedBox(width: 4),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.local_offer,
+                                      size: 14,
+                                      color: AppColors.primary,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'خصم العروض',
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                                 Text(
-                                  'خصم العروض',
+                                  '- ${Money(state.promotionDiscountPiasters).toDisplay()} ج.م',
                                   style: TextStyle(
                                     fontFamily: 'Cairo',
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
                                     color: AppColors.primary,
                                   ),
                                 ),
                               ],
                             ),
-                            Text(
-                              '- ${Money(state.promotionDiscountPiasters).toDisplay()} ج.م',
-                              style: TextStyle(
-                                fontFamily: 'Cairo',
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
-                              ),
-                            ),
+                            SizedBox(height: isCompact ? 3 : 6),
                           ],
-                        ),
-                        SizedBox(height: isCompact ? 3 : 6),
-                      ],
 
-                      // Discount with % and ج.م toggle
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'الخصم',
-                            style: TextStyle(fontFamily: 'Cairo', fontSize: 13, color: Colors.grey.shade600),
-                          ),
+                          // Discount with % and ج.م toggle
                           Row(
-                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: AppColors.surfaceContainerLow,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: AppColors.outlineVariant),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    _toggleBtn(
-                                      label: '%',
-                                      isSelected: _isPercentageDiscount,
-                                      onTap: () {
-                                        setState(() => _isPercentageDiscount = true);
-                                        _recalculateDiscount(state.subtotal);
-                                      },
-                                    ),
-                                    _toggleBtn(
-                                      label: 'ج.م',
-                                      isSelected: !_isPercentageDiscount,
-                                      onTap: () {
-                                        setState(() => _isPercentageDiscount = false);
-                                        _recalculateDiscount(state.subtotal);
-                                      },
-                                    ),
-                                  ],
+                              Text(
+                                'الخصم',
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 13,
+                                  color: Colors.grey.shade600,
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              SizedBox(
-                                width: 85,
-                                height: 34,
-                                child: TextField(
-                                  controller: _discountCtrl,
-                                  keyboardType: TextInputType.number,
-                                  style: const TextStyle(fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.bold),
-                                  textAlign: TextAlign.center,
-                                  decoration: InputDecoration(
-                                    hintText: '0',
-                                    isDense: true,
-                                    filled: true,
-                                    fillColor: AppColors.surfaceContainerLowest,
-                                    border: OutlineInputBorder(
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surfaceContainerLow,
                                       borderRadius: BorderRadius.circular(8),
-                                      borderSide: const BorderSide(color: AppColors.outlineVariant),
+                                      border: Border.all(
+                                        color: AppColors.outlineVariant,
+                                      ),
                                     ),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        _toggleBtn(
+                                          label: '%',
+                                          isSelected: _isPercentageDiscount,
+                                          onTap: () {
+                                            setState(
+                                              () =>
+                                                  _isPercentageDiscount = true,
+                                            );
+                                            _recalculateDiscount(
+                                              state.subtotal,
+                                            );
+                                          },
+                                        ),
+                                        _toggleBtn(
+                                          label: 'ج.م',
+                                          isSelected: !_isPercentageDiscount,
+                                          onTap: () {
+                                            setState(
+                                              () =>
+                                                  _isPercentageDiscount = false,
+                                            );
+                                            _recalculateDiscount(
+                                              state.subtotal,
+                                            );
+                                          },
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                  onChanged: (_) => _recalculateDiscount(state.subtotal),
+                                  const SizedBox(width: 8),
+                                  SizedBox(
+                                    width: 85,
+                                    height: 34,
+                                    child: TextField(
+                                      controller: _discountCtrl,
+                                      keyboardType: TextInputType.number,
+                                      style: const TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                      decoration: InputDecoration(
+                                        hintText: '0',
+                                        isDense: true,
+                                        filled: true,
+                                        fillColor:
+                                            AppColors.surfaceContainerLowest,
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          borderSide: const BorderSide(
+                                            color: AppColors.outlineVariant,
+                                          ),
+                                        ),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 6,
+                                            ),
+                                      ),
+                                      onChanged: (_) =>
+                                          _recalculateDiscount(state.subtotal),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: isCompact ? 4 : 8),
+
+                          // Grand Total: Big, bold, Primary color
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: isCompact ? 5 : 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceContainer,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'الإجمالي النهائي',
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: isCompact ? 13 : 15,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  '${Money(state.total).toDisplay()} ج.م',
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: isCompact ? 18 : 22,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: isCompact ? 4 : 8),
+
+                          // Delivery Order Toggle
+                          Row(
+                            children: [
+                              Text(
+                                'طريقة الدفع:',
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey.shade700,
+                                ),
+                              ),
+                              const Spacer(),
+                              Flexible(
+                                child: InkWell(
+                                  onTap: () => _toggleDeliveryMode(state),
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _deliveryOrder != null
+                                          ? AppColors.primary
+                                          : AppColors.surfaceContainerLow,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: _deliveryOrder != null
+                                            ? AppColors.primary
+                                            : AppColors.outlineVariant,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.delivery_dining_rounded,
+                                          size: 15,
+                                          color: _deliveryOrder != null
+                                              ? Colors.white
+                                              : AppColors.primary,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Flexible(
+                                          child: Text(
+                                            _deliveryOrder != null
+                                                ? 'طلب دليفري (+${Money(_deliveryOrder!.deliveryFeePiasters).toDisplay()} ج.م)'
+                                                : 'طلب دليفري',
+                                            style: TextStyle(
+                                              fontFamily: 'Cairo',
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              color: _deliveryOrder != null
+                                                  ? Colors.white
+                                                  : AppColors.onSurface,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        if (_deliveryOrder != null) ...[
+                                          const SizedBox(width: 4),
+                                          const Icon(
+                                            Icons.close_rounded,
+                                            size: 12,
+                                            color: Colors.white,
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                      SizedBox(height: isCompact ? 4 : 8),
+                          SizedBox(height: isCompact ? 3 : 5),
 
-                      // Grand Total: Big, bold, Primary color
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: isCompact ? 5 : 8),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceContainer,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'الإجمالي النهائي',
-                              style: TextStyle(fontFamily: 'Cairo', fontSize: isCompact ? 13 : 15, fontWeight: FontWeight.bold),
-                            ),
-                            Text(
-                              '${Money(state.total).toDisplay()} ج.م',
-                              style: TextStyle(fontFamily: 'Cairo', fontSize: isCompact ? 18 : 22,
-                                fontWeight: FontWeight.w900,
-                                color: AppColors.primary,),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(height: isCompact ? 4 : 8),
-
-                      // Delivery Order Toggle
-                      Row(
-                        children: [
-                          Text(
-                            'طريقة الدفع:',
-                            style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey.shade700),
-                          ),
-                          const Spacer(),
-                          Flexible(
-                            child: InkWell(
-                              onTap: () => _toggleDeliveryMode(state),
-                              borderRadius: BorderRadius.circular(6),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: _deliveryOrder != null ? AppColors.primary : AppColors.surfaceContainerLow,
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: _deliveryOrder != null ? AppColors.primary : AppColors.outlineVariant),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.delivery_dining_rounded, size: 15, color: _deliveryOrder != null ? Colors.white : AppColors.primary),
-                                    const SizedBox(width: 4),
-                                    Flexible(
-                                      child: Text(
-                                        _deliveryOrder != null
-                                            ? 'طلب دليفري (+${Money(_deliveryOrder!.deliveryFeePiasters).toDisplay()} ج.م)'
-                                            : 'طلب دليفري',
-                                        style: TextStyle(
-                                          fontFamily: 'Cairo',
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: _deliveryOrder != null ? Colors.white : AppColors.onSurface,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
+                          // Payment Method Buttons: crisp single-line uniform height
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () =>
+                                      setState(() => _paymentMethod = 'cash'),
+                                  style: ElevatedButton.styleFrom(
+                                    elevation: _paymentMethod == 'cash' ? 2 : 0,
+                                    backgroundColor: _paymentMethod == 'cash'
+                                        ? AppColors.primary
+                                        : AppColors.surfaceContainerLowest,
+                                    foregroundColor: _paymentMethod == 'cash'
+                                        ? Colors.white
+                                        : AppColors.onSurface,
+                                    side: BorderSide(
+                                      color: _paymentMethod == 'cash'
+                                          ? AppColors.primary
+                                          : AppColors.outlineVariant,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 2,
+                                      vertical: 8,
+                                    ),
+                                    minimumSize: const Size(0, 36),
+                                  ),
+                                  icon: const Icon(
+                                    Icons.payments_outlined,
+                                    size: 14,
+                                  ),
+                                  label: const FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      'كاش',
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 11,
                                       ),
                                     ),
-                                    if (_deliveryOrder != null) ...[
-                                      const SizedBox(width: 4),
-                                      const Icon(Icons.close_rounded, size: 12, color: Colors.white),
-                                    ],
-                                  ],
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: isCompact ? 3 : 5),
-
-                      // Payment Method Buttons: crisp single-line uniform height
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () => setState(() => _paymentMethod = 'cash'),
-                              style: ElevatedButton.styleFrom(
-                                elevation: _paymentMethod == 'cash' ? 2 : 0,
-                                backgroundColor: _paymentMethod == 'cash'
-                                    ? AppColors.primary
-                                    : AppColors.surfaceContainerLowest,
-                                foregroundColor: _paymentMethod == 'cash'
-                                    ? Colors.white
-                                    : AppColors.onSurface,
-                                side: BorderSide(
-                                  color: _paymentMethod == 'cash'
-                                      ? AppColors.primary
-                                      : AppColors.outlineVariant,
-                                ),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
-                                minimumSize: const Size(0, 36),
-                              ),
-                              icon: const Icon(Icons.payments_outlined, size: 14),
-                              label: const FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  'كاش',
-                                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 11),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () => setState(() => _paymentMethod = 'card'),
-                              style: ElevatedButton.styleFrom(
-                                elevation: _paymentMethod == 'card' ? 2 : 0,
-                                backgroundColor: _paymentMethod == 'card'
-                                    ? AppColors.primary
-                                    : AppColors.surfaceContainerLowest,
-                                foregroundColor: _paymentMethod == 'card'
-                                    ? Colors.white
-                                    : AppColors.onSurface,
-                                side: BorderSide(
-                                  color: _paymentMethod == 'card'
-                                      ? AppColors.primary
-                                      : AppColors.outlineVariant,
-                                ),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
-                                minimumSize: const Size(0, 36),
-                              ),
-                              icon: const Icon(Icons.credit_card_rounded, size: 14),
-                              label: const FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  'فيزا',
-                                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 11),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () => setState(() => _paymentMethod = 'split'),
-                              style: ElevatedButton.styleFrom(
-                                elevation: _paymentMethod == 'split' ? 2 : 0,
-                                backgroundColor: _paymentMethod == 'split'
-                                    ? AppColors.primary
-                                    : AppColors.surfaceContainerLowest,
-                                foregroundColor: _paymentMethod == 'split'
-                                    ? Colors.white
-                                    : AppColors.onSurface,
-                                side: BorderSide(
-                                  color: _paymentMethod == 'split'
-                                      ? AppColors.primary
-                                      : AppColors.outlineVariant,
-                                ),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
-                                minimumSize: const Size(0, 36),
-                              ),
-                              icon: const Icon(Icons.call_split_rounded, size: 14),
-                              label: const FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  'مجزأ',
-                                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 11),
-                                ),
-                              ),
-                            ),
-                          ),
-                          if (_installmentAvailable) ...[
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: () => setState(() => _paymentMethod = 'installment'),
-                                style: ElevatedButton.styleFrom(
-                                  elevation: _paymentMethod == 'installment' ? 2 : 0,
-                                  backgroundColor: _paymentMethod == 'installment'
-                                      ? AppColors.primary
-                                      : AppColors.surfaceContainerLowest,
-                                  foregroundColor: _paymentMethod == 'installment'
-                                      ? Colors.white
-                                      : AppColors.onSurface,
-                                  side: BorderSide(
-                                    color: _paymentMethod == 'installment'
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () =>
+                                      setState(() => _paymentMethod = 'card'),
+                                  style: ElevatedButton.styleFrom(
+                                    elevation: _paymentMethod == 'card' ? 2 : 0,
+                                    backgroundColor: _paymentMethod == 'card'
                                         ? AppColors.primary
-                                        : AppColors.outlineVariant,
+                                        : AppColors.surfaceContainerLowest,
+                                    foregroundColor: _paymentMethod == 'card'
+                                        ? Colors.white
+                                        : AppColors.onSurface,
+                                    side: BorderSide(
+                                      color: _paymentMethod == 'card'
+                                          ? AppColors.primary
+                                          : AppColors.outlineVariant,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 2,
+                                      vertical: 8,
+                                    ),
+                                    minimumSize: const Size(0, 36),
                                   ),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
-                                  minimumSize: const Size(0, 36),
-                                ),
-                                icon: const Icon(Icons.payments_rounded, size: 14),
-                                label: const FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Text(
-                                    'تقسيط',
-                                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 11),
+                                  icon: const Icon(
+                                    Icons.credit_card_rounded,
+                                    size: 14,
+                                  ),
+                                  label: const FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      'فيزا',
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 11,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
-                          if (_creditAvailable) ...[
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: () => setState(() => _paymentMethod = 'credit'),
-                                style: ElevatedButton.styleFrom(
-                                  elevation: _paymentMethod == 'credit' ? 2 : 0,
-                                  backgroundColor: _paymentMethod == 'credit'
-                                      ? AppColors.primary
-                                      : AppColors.surfaceContainerLowest,
-                                  foregroundColor: _paymentMethod == 'credit'
-                                      ? Colors.white
-                                      : AppColors.onSurface,
-                                  side: BorderSide(
-                                    color: _paymentMethod == 'credit'
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () =>
+                                      setState(() => _paymentMethod = 'split'),
+                                  style: ElevatedButton.styleFrom(
+                                    elevation: _paymentMethod == 'split'
+                                        ? 2
+                                        : 0,
+                                    backgroundColor: _paymentMethod == 'split'
                                         ? AppColors.primary
-                                        : AppColors.outlineVariant,
+                                        : AppColors.surfaceContainerLowest,
+                                    foregroundColor: _paymentMethod == 'split'
+                                        ? Colors.white
+                                        : AppColors.onSurface,
+                                    side: BorderSide(
+                                      color: _paymentMethod == 'split'
+                                          ? AppColors.primary
+                                          : AppColors.outlineVariant,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 2,
+                                      vertical: 8,
+                                    ),
+                                    minimumSize: const Size(0, 36),
                                   ),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
-                                  minimumSize: const Size(0, 36),
-                                ),
-                                icon: const Icon(Icons.account_balance_wallet_outlined, size: 14),
-                                label: const FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Text(
-                                    'آجل',
-                                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 11),
+                                  icon: const Icon(
+                                    Icons.call_split_rounded,
+                                    size: 14,
+                                  ),
+                                  label: const FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      'مجزأ',
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 11,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
+                              if (_installmentAvailable) ...[
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () => setState(
+                                      () => _paymentMethod = 'installment',
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      elevation: _paymentMethod == 'installment'
+                                          ? 2
+                                          : 0,
+                                      backgroundColor:
+                                          _paymentMethod == 'installment'
+                                          ? AppColors.primary
+                                          : AppColors.surfaceContainerLowest,
+                                      foregroundColor:
+                                          _paymentMethod == 'installment'
+                                          ? Colors.white
+                                          : AppColors.onSurface,
+                                      side: BorderSide(
+                                        color: _paymentMethod == 'installment'
+                                            ? AppColors.primary
+                                            : AppColors.outlineVariant,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 2,
+                                        vertical: 8,
+                                      ),
+                                      minimumSize: const Size(0, 36),
+                                    ),
+                                    icon: const Icon(
+                                      Icons.payments_rounded,
+                                      size: 14,
+                                    ),
+                                    label: const FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        'تقسيط',
+                                        style: TextStyle(
+                                          fontFamily: 'Cairo',
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              if (_creditAvailable) ...[
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () => setState(
+                                      () => _paymentMethod = 'credit',
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      elevation: _paymentMethod == 'credit'
+                                          ? 2
+                                          : 0,
+                                      backgroundColor:
+                                          _paymentMethod == 'credit'
+                                          ? AppColors.primary
+                                          : AppColors.surfaceContainerLowest,
+                                      foregroundColor:
+                                          _paymentMethod == 'credit'
+                                          ? Colors.white
+                                          : AppColors.onSurface,
+                                      side: BorderSide(
+                                        color: _paymentMethod == 'credit'
+                                            ? AppColors.primary
+                                            : AppColors.outlineVariant,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 2,
+                                        vertical: 8,
+                                      ),
+                                      minimumSize: const Size(0, 36),
+                                    ),
+                                    icon: const Icon(
+                                      Icons.account_balance_wallet_outlined,
+                                      size: 14,
+                                    ),
+                                    label: const FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        'آجل',
+                                        style: TextStyle(
+                                          fontFamily: 'Cairo',
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+
+                          if (_paymentMethod == 'credit') ...[
+                            SizedBox(height: isCompact ? 4 : 8),
+                            _buildCreditPaymentSection(state),
                           ],
-                        ],
-                      ),
 
-                      if (_paymentMethod == 'credit') ...[
-                        SizedBox(height: isCompact ? 4 : 8),
-                        _buildCreditPaymentSection(state),
-                      ],
-
-                      // Fast Cash Banknote Presets (when cash mode is active)
-                      if (_paymentMethod == 'cash') ...[
-                        SizedBox(height: isCompact ? 4 : 8),
-                        Row(
-                          children: [
-                            Text(
-                              'الدفع السريع:',
-                              style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey.shade600),
-                            ),
-                            const SizedBox(width: 6),
-                            // Exact Amount Preset
-                            InkWell(
-                              onTap: () {
-                                _receivedCtrl.text = Money(state.total).toDisplay();
-                                setState(() {});
-                              },
-                              borderRadius: BorderRadius.circular(6),
-                              child: Container(
-                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: isCompact ? 2 : 3),
-                                decoration: BoxDecoration(
-                                  color: AppColors.surfaceContainerLow,
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: AppColors.outlineVariant),
+                          // Fast Cash Banknote Presets (when cash mode is active)
+                          if (_paymentMethod == 'cash') ...[
+                            SizedBox(height: isCompact ? 4 : 8),
+                            Row(
+                              children: [
+                                Text(
+                                  'الدفع السريع:',
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 11,
+                                    color: Colors.grey.shade600,
+                                  ),
                                 ),
-                                child: Text(
-                                  'المبلغ بالضبط',
-                                  style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            // 50, 100, 200, 500 EGP chips
-                            ...[50, 100, 200, 500].map((preset) {
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                                child: InkWell(
+                                const SizedBox(width: 6),
+                                // Exact Amount Preset
+                                InkWell(
                                   onTap: () {
-                                    _receivedCtrl.text = '$preset.00';
+                                    _receivedCtrl.text = Money(
+                                      state.total,
+                                    ).toDisplay();
                                     setState(() {});
                                   },
                                   borderRadius: BorderRadius.circular(6),
                                   child: Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: isCompact ? 2 : 3),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: isCompact ? 2 : 3,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: AppColors.surfaceContainerLow,
                                       borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(color: AppColors.outlineVariant),
+                                      border: Border.all(
+                                        color: AppColors.outlineVariant,
+                                      ),
                                     ),
                                     child: Text(
-                                      '$preset',
-                                      style: const TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold),
+                                      'المبلغ بالضبط',
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primary,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              );
-                            }),
-                          ],
-                        ),
-                        SizedBox(height: isCompact ? 4 : 6),
-                        Row(
-                          children: [
-                            Text(
-                              'المستلم:',
-                              style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade600),
+                                const SizedBox(width: 4),
+                                // 50, 100, 200, 500 EGP chips
+                                ...[50, 100, 200, 500].map((preset) {
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 2.0,
+                                    ),
+                                    child: InkWell(
+                                      onTap: () {
+                                        _receivedCtrl.text = '$preset.00';
+                                        setState(() {});
+                                      },
+                                      borderRadius: BorderRadius.circular(6),
+                                      child: Container(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: isCompact ? 2 : 3,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.surfaceContainerLow,
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                          border: Border.all(
+                                            color: AppColors.outlineVariant,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '$preset',
+                                          style: const TextStyle(
+                                            fontFamily: 'Cairo',
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }),
+                              ],
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: SizedBox(
-                                height: isCompact ? 30 : 34,
-                                child: TextField(
-                                  controller: _receivedCtrl,
-                                  keyboardType: TextInputType.number,
-                                  style: const TextStyle(fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.bold),
-                                  decoration: InputDecoration(
-                                    hintText: 'المبلغ المدفوع',
-                                    isDense: true,
-                                    filled: true,
-                                    fillColor: AppColors.surfaceContainerLowest,
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: const BorderSide(color: AppColors.outlineVariant),
+                            SizedBox(height: isCompact ? 4 : 6),
+                            Row(
+                              children: [
+                                Text(
+                                  'المستلم:',
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: SizedBox(
+                                    height: isCompact ? 30 : 34,
+                                    child: TextField(
+                                      controller: _receivedCtrl,
+                                      keyboardType: TextInputType.number,
+                                      style: const TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      decoration: InputDecoration(
+                                        hintText: 'المبلغ المدفوع',
+                                        isDense: true,
+                                        filled: true,
+                                        fillColor:
+                                            AppColors.surfaceContainerLowest,
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 6,
+                                            ),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          borderSide: const BorderSide(
+                                            color: AppColors.outlineVariant,
+                                          ),
+                                        ),
+                                      ),
+                                      onChanged: (_) => setState(() {}),
                                     ),
                                   ),
-                                  onChanged: (_) => setState(() {}),
                                 ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'الباقي: ',
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                                Text(
+                                  '${Money(changePiasters).toDisplay()} ج.م',
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: changePiasters > 0
+                                        ? AppColors.success
+                                        : AppColors.onSurface,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+
+                          SizedBox(height: isCompact ? 6 : 10),
+
+                          // Massive Checkout [F12] Button
+                          SizedBox(
+                            width: double.infinity,
+                            height: isCompact ? 44 : 52,
+                            child: ElevatedButton.icon(
+                              onPressed:
+                                  state.cart.isEmpty || state.isProcessing
+                                  ? null
+                                  : () => _handleCheckout(state),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                elevation: 3,
                               ),
+                              icon: state.isProcessing
+                                  ? const SizedBox.shrink()
+                                  : const Icon(
+                                      Icons.check_circle_rounded,
+                                      size: 22,
+                                      color: Colors.white,
+                                    ),
+                              label: state.isProcessing
+                                  ? const CircularProgressIndicator(
+                                      color: Colors.white,
+                                    )
+                                  : Text(
+                                      'إتمام عملية البيع [F12]',
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontSize: isCompact ? 15 : 17,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                             ),
-                            const SizedBox(width: 12),
-                            Text(
-                              'الباقي: ',
-                              style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade600),
-                            ),
-                            Text(
-                              '${Money(changePiasters).toDisplay()} ج.م',
-                              style: TextStyle(fontFamily: 'Cairo', fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: changePiasters > 0 ? AppColors.success : AppColors.onSurface,),
-                            ),
-                          ],
-                        ),
-                      ],
-
-                      SizedBox(height: isCompact ? 6 : 10),
-
-                      // Massive Checkout [F12] Button
-                      SizedBox(
-                        width: double.infinity,
-                        height: isCompact ? 44 : 52,
-                        child: ElevatedButton.icon(
-                          onPressed: state.cart.isEmpty || state.isProcessing
-                              ? null
-                              : () => _handleCheckout(state),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            elevation: 3,
                           ),
-                          icon: state.isProcessing
-                              ? const SizedBox.shrink()
-                              : const Icon(Icons.check_circle_rounded, size: 22, color: Colors.white),
-                          label: state.isProcessing
-                              ? const CircularProgressIndicator(color: Colors.white)
-                              : Text(
-                                  'إتمام عملية البيع [F12]',
-                                  style: TextStyle(fontFamily: 'Cairo', fontSize: isCompact ? 15 : 17, fontWeight: FontWeight.bold),
-                                ),
-                        ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          );
-        },
-      ),
+              );
+            },
+          ),
+        );
+      },
     );
-  },
-);
-}
+  }
 
   Widget _toggleBtn({
     required String label,
@@ -3217,9 +4101,12 @@ class _CartPanelState extends State<_CartPanel> {
         ),
         child: Text(
           label,
-          style: TextStyle(fontFamily: 'Cairo', fontSize: 12,
+          style: TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 12,
             fontWeight: FontWeight.bold,
-            color: isSelected ? Colors.white : AppColors.onSurface,),
+            color: isSelected ? Colors.white : AppColors.onSurface,
+          ),
         ),
       ),
     );
@@ -3237,12 +4124,20 @@ class _CartPanelState extends State<_CartPanel> {
         ),
         child: Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800, size: 20),
+            Icon(
+              Icons.warning_amber_rounded,
+              color: Colors.orange.shade800,
+              size: 20,
+            ),
             const SizedBox(width: 8),
             const Expanded(
               child: Text(
                 'البيع الآجل يتطلب تحديد عميل لحساب المديونية والحد الائتماني.',
-                style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
@@ -3251,21 +4146,31 @@ class _CartPanelState extends State<_CartPanel> {
     }
 
     return FutureBuilder<int>(
-      future: getIt<CustomersLocalDataSource>().getCustomerCreditDebt(customer.id),
+      future: getIt<CustomersLocalDataSource>().getCustomerCreditDebt(
+        customer.id,
+      ),
       builder: (context, snapshot) {
         final currentDebt = snapshot.data ?? 0;
-        final downPaymentNum = double.tryParse(_creditDownPaymentCtrl.text.trim()) ?? 0.0;
-        final downPaymentPiasters = (downPaymentNum * 100).round().clamp(0, state.total);
+        final downPaymentNum =
+            double.tryParse(_creditDownPaymentCtrl.text.trim()) ?? 0.0;
+        final downPaymentPiasters = (downPaymentNum * 100).round().clamp(
+          0,
+          state.total,
+        );
         final netCredit = state.total - downPaymentPiasters;
         final projectedDebt = currentDebt + netCredit;
-        final limitExceeded = (customer.creditLimit > 0) && (projectedDebt > customer.creditLimit);
+        final limitExceeded =
+            (customer.creditLimit > 0) &&
+            (projectedDebt > customer.creditLimit);
 
         return Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: limitExceeded ? Colors.red.shade50 : Colors.blue.shade50,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: limitExceeded ? Colors.red.shade300 : Colors.blue.shade200),
+            border: Border.all(
+              color: limitExceeded ? Colors.red.shade300 : Colors.blue.shade200,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -3275,13 +4180,21 @@ class _CartPanelState extends State<_CartPanel> {
                 children: [
                   Text(
                     'العميل: ${customer.name}',
-                    style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 13),
+                    style: const TextStyle(
+                      fontFamily: 'Cairo',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
                   ),
                   Text(
                     customer.creditLimit > 0
                         ? 'الحد الائتماني: ${Money(customer.creditLimit).toDisplay()} ج.م'
                         : 'الحد: غير مقيد',
-                    style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5, color: Colors.grey.shade700),
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 11.5,
+                      color: Colors.grey.shade700,
+                    ),
                   ),
                 ],
               ),
@@ -3299,7 +4212,9 @@ class _CartPanelState extends State<_CartPanel> {
                       fontFamily: 'Cairo',
                       fontSize: 12.5,
                       fontWeight: FontWeight.bold,
-                      color: limitExceeded ? Colors.red.shade800 : AppColors.primary,
+                      color: limitExceeded
+                          ? Colors.red.shade800
+                          : AppColors.primary,
                     ),
                   ),
                 ],
@@ -3308,12 +4223,21 @@ class _CartPanelState extends State<_CartPanel> {
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    Icon(Icons.info_outline, size: 14, color: Colors.red.shade800),
+                    Icon(
+                      Icons.info_outline,
+                      size: 14,
+                      color: Colors.red.shade800,
+                    ),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         'تجاوز للحد الائتماني بمقدار ${Money(projectedDebt - customer.creditLimit).toDisplay()} ج.م (يتطلب موافقة المدير)',
-                        style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red.shade800),
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red.shade800,
+                        ),
                       ),
                     ),
                   ],
@@ -3330,10 +4254,17 @@ class _CartPanelState extends State<_CartPanel> {
                         hintText: '0',
                         suffixText: 'ج.م',
                         isDense: true,
-                        prefixIcon: const Icon(Icons.payments_outlined, size: 16),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        prefixIcon: const Icon(
+                          Icons.payments_outlined,
+                          size: 16,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       onChanged: (_) => setState(() {}),
                     ),
                   ),
@@ -3373,7 +4304,8 @@ class _CartItemTileState extends State<_CartItemTile> {
   @override
   void didUpdateWidget(covariant _CartItemTile oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.item.quantity != widget.item.quantity && !_qtyFocus.hasFocus) {
+    if (oldWidget.item.quantity != widget.item.quantity &&
+        !_qtyFocus.hasFocus) {
       _qtyCtrl.text = '${widget.item.quantity}';
     }
   }
@@ -3396,7 +4328,9 @@ class _CartItemTileState extends State<_CartItemTile> {
 
   void _openPriceEditDialog(BuildContext context) {
     final item = widget.item;
-    final priceCtrl = TextEditingController(text: (item.price / 100).toStringAsFixed(2));
+    final priceCtrl = TextEditingController(
+      text: (item.price / 100).toStringAsFixed(2),
+    );
     final formKey = GlobalKey<FormState>();
 
     showDialog(
@@ -3409,7 +4343,11 @@ class _CartItemTileState extends State<_CartItemTile> {
             const SizedBox(width: 8),
             Text(
               'تعديل سعر الصنف (سعر خاص / جملة)',
-              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 16),
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
             ),
           ],
         ),
@@ -3420,24 +4358,35 @@ class _CartItemTileState extends State<_CartItemTile> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                (!(item.color == '-' && item.size == '-') && item.color.isNotEmpty && item.size.isNotEmpty)
+                (!(item.color == '-' && item.size == '-') &&
+                        item.color.isNotEmpty &&
+                        item.size.isNotEmpty)
                     ? '${item.productName} (${item.color} - ${item.size})'
                     : item.productName,
-                style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontFamily: 'Cairo',
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: priceCtrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 autofocus: true,
                 style: TextStyle(fontFamily: 'Cairo', fontSize: 14),
                 decoration: InputDecoration(
                   labelText: 'سعر بيع الوحدة بالج.م *',
                   suffixText: 'ج.م',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
                 validator: (val) {
-                  if (val == null || val.trim().isEmpty) return 'يرجى إدخال السعر';
+                  if (val == null || val.trim().isEmpty) {
+                    return 'يرجى إدخال السعر';
+                  }
                   final num = double.tryParse(val.trim());
                   if (num == null || num < 0) return 'السعر غير صالح';
                   return null;
@@ -3454,18 +4403,27 @@ class _CartItemTileState extends State<_CartItemTile> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             onPressed: () {
               if (formKey.currentState?.validate() != true) return;
               final pounds = double.parse(priceCtrl.text.trim());
               final piasters = (pounds * 100).toInt();
-              context.read<PosCubit>().updateUnitPrice(item.variantId, piasters);
+              context.read<PosCubit>().updateUnitPrice(
+                item.variantId,
+                piasters,
+              );
               Navigator.pop(ctx);
             },
             child: Text(
               'حفظ السعر',
-              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, color: Colors.white),
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
           ),
         ],
@@ -3482,8 +4440,10 @@ class _CartItemTileState extends State<_CartItemTile> {
         padding: const EdgeInsets.all(8),
         color: Colors.red.shade50,
         child: SingleChildScrollView(
-          child: Text('CartItemTile error:\n$e\n$st',
-              style: const TextStyle(color: Colors.red, fontSize: 10)),
+          child: Text(
+            'CartItemTile error:\n$e\n$st',
+            style: const TextStyle(color: Colors.red, fontSize: 10),
+          ),
         ),
       );
     }
@@ -3496,7 +4456,9 @@ class _CartItemTileState extends State<_CartItemTile> {
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.7)),
+        border: Border.all(
+          color: AppColors.outlineVariant.withValues(alpha: 0.7),
+        ),
       ),
       child: Row(
         children: [
@@ -3506,27 +4468,38 @@ class _CartItemTileState extends State<_CartItemTile> {
               children: [
                 Text(
                   item.productName,
-                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontWeight: FontWeight.bold,
                     fontSize: 13,
-                    color: AppColors.onSurface,),
+                    color: AppColors.onSurface,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Row(
                   children: [
-                    if (!(item.color == '-' && item.size == '-') && item.color.isNotEmpty && item.size.isNotEmpty) ...[
+                    if (!(item.color == '-' && item.size == '-') &&
+                        item.color.isNotEmpty &&
+                        item.size.isNotEmpty) ...[
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 1,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.surfaceContainerLow,
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           '${item.color} • ${item.size}',
-                          style: TextStyle(fontFamily: 'Cairo', fontSize: 10,
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 10,
                             fontWeight: FontWeight.bold,
-                            color: Colors.grey.shade700,),
+                            color: Colors.grey.shade700,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -3535,7 +4508,10 @@ class _CartItemTileState extends State<_CartItemTile> {
                       onTap: () => _openPriceEditDialog(context),
                       borderRadius: BorderRadius.circular(6),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 1,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(6),
@@ -3546,12 +4522,19 @@ class _CartItemTileState extends State<_CartItemTile> {
                           children: [
                             Text(
                               '${Money(item.price).toDisplay()} ج.م',
-                              style: TextStyle(fontFamily: 'Cairo', fontSize: 11,
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 11,
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.primary,),
+                                color: AppColors.primary,
+                              ),
                             ),
                             const SizedBox(width: 2),
-                            Icon(Icons.edit_outlined, size: 12, color: AppColors.primary),
+                            Icon(
+                              Icons.edit_outlined,
+                              size: 12,
+                              color: AppColors.primary,
+                            ),
                           ],
                         ),
                       ),
@@ -3559,7 +4542,10 @@ class _CartItemTileState extends State<_CartItemTile> {
                     if (item.promotionDiscount > 0) ...[
                       const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 1,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.green.shade50,
                           borderRadius: BorderRadius.circular(4),
@@ -3568,7 +4554,11 @@ class _CartItemTileState extends State<_CartItemTile> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.local_offer, size: 10, color: Colors.green.shade700),
+                            Icon(
+                              Icons.local_offer,
+                              size: 10,
+                              color: Colors.green.shade700,
+                            ),
                             const SizedBox(width: 2),
                             Text(
                               'عرض: -${Money(item.promotionDiscount).toDisplay()}',
@@ -3602,8 +4592,12 @@ class _CartItemTileState extends State<_CartItemTile> {
                 IconButton(
                   icon: const Icon(Icons.remove_rounded, size: 16),
                   padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                  onPressed: () => context.read<PosCubit>().decreaseQty(item.variantId),
+                  constraints: const BoxConstraints(
+                    minWidth: 28,
+                    minHeight: 28,
+                  ),
+                  onPressed: () =>
+                      context.read<PosCubit>().decreaseQty(item.variantId),
                 ),
                 // Inline Direct Text Input for Quantity
                 Container(
@@ -3612,16 +4606,21 @@ class _CartItemTileState extends State<_CartItemTile> {
                   decoration: BoxDecoration(
                     color: AppColors.surfaceContainerLowest,
                     borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.6)),
+                    border: Border.all(
+                      color: AppColors.outlineVariant.withValues(alpha: 0.6),
+                    ),
                   ),
                   child: TextField(
                     controller: _qtyCtrl,
                     focusNode: _qtyFocus,
                     keyboardType: TextInputType.number,
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontFamily: 'Cairo', fontSize: 13,
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 13,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.primary,),
+                      color: AppColors.primary,
+                    ),
                     decoration: const InputDecoration(
                       contentPadding: EdgeInsets.zero,
                       isDense: true,
@@ -3635,18 +4634,25 @@ class _CartItemTileState extends State<_CartItemTile> {
                 IconButton(
                   icon: const Icon(Icons.add_rounded, size: 16),
                   padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                  constraints: const BoxConstraints(
+                    minWidth: 28,
+                    minHeight: 28,
+                  ),
                   onPressed: item.quantity >= widget.maxStock
                       ? () {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('الرصيد المتاح هو ${widget.maxStock} فقط'),
+                              content: Text(
+                                'الرصيد المتاح هو ${widget.maxStock} فقط',
+                              ),
                               backgroundColor: AppColors.warning,
                               duration: const Duration(milliseconds: 700),
                             ),
                           );
                         }
-                      : () => context.read<PosCubit>().increaseQty(item.variantId),
+                      : () => context.read<PosCubit>().increaseQty(
+                          item.variantId,
+                        ),
                 ),
               ],
             ),
@@ -3657,16 +4663,24 @@ class _CartItemTileState extends State<_CartItemTile> {
           // Line Total
           Text(
             '${Money(item.total).toDisplay()} ج.م',
-            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold,
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              fontWeight: FontWeight.bold,
               fontSize: 13,
-              color: AppColors.primary,),
+              color: AppColors.primary,
+            ),
           ),
 
           IconButton(
-            icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error),
+            icon: const Icon(
+              Icons.delete_outline_rounded,
+              size: 18,
+              color: AppColors.error,
+            ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-            onPressed: () => context.read<PosCubit>().removeFromCart(item.variantId),
+            onPressed: () =>
+                context.read<PosCubit>().removeFromCart(item.variantId),
           ),
         ],
       ),
@@ -3720,16 +4734,13 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
   Future<void> _loadCustomers() async {
     final result = await getIt<CustomerRepository>().getCustomers();
     if (mounted) {
-      result.fold(
-        (_) => setState(() => _isLoading = false),
-        (customers) {
-          setState(() {
-            _allCustomers = customers;
-            _filteredCustomers = customers;
-            _isLoading = false;
-          });
-        },
-      );
+      result.fold((_) => setState(() => _isLoading = false), (customers) {
+        setState(() {
+          _allCustomers = customers;
+          _filteredCustomers = customers;
+          _isLoading = false;
+        });
+      });
     }
   }
 
@@ -3740,8 +4751,9 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
         _filteredCustomers = _allCustomers;
       } else {
         _filteredCustomers = _allCustomers
-            .where((c) =>
-                c.name.toLowerCase().contains(q) || c.phone.contains(q))
+            .where(
+              (c) => c.name.toLowerCase().contains(q) || c.phone.contains(q),
+            )
             .toList();
       }
     });
@@ -3788,7 +4800,9 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
         }
       },
       (_) async {
-        final listRes = await getIt<CustomerRepository>().getCustomers(search: cust.phone);
+        final listRes = await getIt<CustomerRepository>().getCustomers(
+          search: cust.phone,
+        );
         CustomerEntity? createdCust;
         listRes.fold((_) => null, (list) {
           if (list.isNotEmpty) createdCust = list.first;
@@ -3814,14 +4828,20 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
           Row(
             children: [
               Icon(
-                _isCreatingNew ? Icons.person_add_rounded : Icons.person_search_rounded,
+                _isCreatingNew
+                    ? Icons.person_add_rounded
+                    : Icons.person_search_rounded,
                 color: AppColors.primary,
                 size: 22,
               ),
               const SizedBox(width: 8),
               Text(
                 _isCreatingNew ? 'إضافة عميل جديد' : 'تعيين عميل للفاتورة',
-                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 16),
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
             ],
           ),
@@ -3831,7 +4851,11 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
               icon: const Icon(Icons.add, size: 16),
               label: Text(
                 'عميل جديد',
-                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 12),
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
               ),
             )
           else
@@ -3840,7 +4864,11 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
               icon: const Icon(Icons.arrow_back_rounded, size: 16),
               label: Text(
                 'رجوع للبحث',
-                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 12),
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
               ),
             ),
         ],
@@ -3849,7 +4877,9 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
         width: 440,
         child: AnimatedCrossFade(
           duration: const Duration(milliseconds: 200),
-          crossFadeState: _isCreatingNew ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          crossFadeState: _isCreatingNew
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
           firstChild: SizedBox(
             height: 400,
             child: Column(
@@ -3860,7 +4890,11 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
                   decoration: InputDecoration(
                     hintText: 'ابحث بالاسم أو رقم الهاتف...',
                     hintStyle: TextStyle(fontFamily: 'Cairo', fontSize: 12),
-                    prefixIcon: Icon(Icons.search_rounded, color: AppColors.primary, size: 20),
+                    prefixIcon: Icon(
+                      Icons.search_rounded,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
                     suffixIcon: _searchCtrl.text.isNotEmpty
                         ? IconButton(
                             icon: const Icon(Icons.clear_rounded, size: 18),
@@ -3883,122 +4917,186 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
                 const SizedBox(height: 12),
                 Expanded(
                   child: _isLoading
-                      ? Center(child: CircularProgressIndicator(color: AppColors.primary))
+                      ? Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.primary,
+                          ),
+                        )
                       : _filteredCustomers.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.person_off_outlined, size: 44, color: Colors.grey.shade400),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'لا توجد نتائج مطابقة',
-                                    style: TextStyle(fontFamily: 'Cairo', color: Colors.grey.shade600,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  ElevatedButton.icon(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppColors.primary,
-                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                    ),
-                                    onPressed: () => _switchToCreateMode(_searchCtrl.text),
-                                    icon: const Icon(Icons.add, color: Colors.white, size: 16),
-                                    label: Text(
-                                      _searchCtrl.text.trim().isNotEmpty
-                                          ? 'تسجيل "${_searchCtrl.text.trim()}" كعميل جديد'
-                                          : 'إضافة عميل جديد',
-                                      style: TextStyle(fontFamily: 'Cairo', color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,),
-                                    ),
-                                  ),
-                                ],
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.person_off_outlined,
+                                size: 44,
+                                color: Colors.grey.shade400,
                               ),
-                            )
-                          : ListView.separated(
-                              itemCount: _filteredCustomers.length,
-                              separatorBuilder: (context, index) => const Divider(height: 1),
-                              itemBuilder: (context, index) {
-                                final customer = _filteredCustomers[index];
-                                final isWholesale = customer.isWholesale;
-                                return ListTile(
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                  leading: CircleAvatar(
-                                    radius: 18,
-                                    backgroundColor: isWholesale ? Colors.purple.shade50 : AppColors.surfaceContainer,
-                                    child: Icon(
-                                      isWholesale ? Icons.storefront_rounded : Icons.person_rounded,
-                                      size: 18,
-                                      color: isWholesale ? Colors.purple.shade700 : AppColors.primary,
+                              const SizedBox(height: 8),
+                              Text(
+                                'لا توجد نتائج مطابقة',
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  color: Colors.grey.shade600,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 8,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                onPressed: () =>
+                                    _switchToCreateMode(_searchCtrl.text),
+                                icon: const Icon(
+                                  Icons.add,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                                label: Text(
+                                  _searchCtrl.text.trim().isNotEmpty
+                                      ? 'تسجيل "${_searchCtrl.text.trim()}" كعميل جديد'
+                                      : 'إضافة عميل جديد',
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.separated(
+                          itemCount: _filteredCustomers.length,
+                          separatorBuilder: (context, index) =>
+                              const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final customer = _filteredCustomers[index];
+                            final isWholesale = customer.isWholesale;
+                            return ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 2,
+                              ),
+                              leading: CircleAvatar(
+                                radius: 18,
+                                backgroundColor: isWholesale
+                                    ? Colors.purple.shade50
+                                    : AppColors.surfaceContainer,
+                                child: Icon(
+                                  isWholesale
+                                      ? Icons.storefront_rounded
+                                      : Icons.person_rounded,
+                                  size: 18,
+                                  color: isWholesale
+                                      ? Colors.purple.shade700
+                                      : AppColors.primary,
+                                ),
+                              ),
+                              title: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      customer.name,
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                  title: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          customer.name,
-                                          style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 13),
-                                          overflow: TextOverflow.ellipsis,
+                                  if (isWholesale)
+                                    Container(
+                                      margin: const EdgeInsets.only(right: 4),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 1,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.purple.shade50,
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: Colors.purple.shade200,
                                         ),
                                       ),
-                                      if (isWholesale)
-                                        Container(
-                                          margin: const EdgeInsets.only(right: 4),
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                          decoration: BoxDecoration(
-                                            color: Colors.purple.shade50,
-                                            borderRadius: BorderRadius.circular(6),
-                                            border: Border.all(color: Colors.purple.shade200),
-                                          ),
-                                          child: Text(
-                                            'جملة',
-                                            style: TextStyle(fontFamily: 'Cairo', fontSize: 9,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.purple.shade800,),
-                                          ),
+                                      child: Text(
+                                        'جملة',
+                                        style: TextStyle(
+                                          fontFamily: 'Cairo',
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.purple.shade800,
                                         ),
-                                      if (customer.discountPercent > 0)
-                                        Container(
-                                          margin: const EdgeInsets.only(right: 4),
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                          decoration: BoxDecoration(
-                                            color: Colors.green.shade50,
-                                            borderRadius: BorderRadius.circular(6),
-                                            border: Border.all(color: Colors.green.shade200),
-                                          ),
-                                          child: Text(
-                                            '${customer.discountPercent}% خصم',
-                                            style: TextStyle(fontFamily: 'Cairo', fontSize: 9,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.green.shade800,),
-                                          ),
+                                      ),
+                                    ),
+                                  if (customer.discountPercent > 0)
+                                    Container(
+                                      margin: const EdgeInsets.only(right: 4),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 1,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green.shade50,
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: Colors.green.shade200,
                                         ),
-                                    ],
-                                  ),
-                                  subtitle: Text(
-                                    customer.phone,
-                                    style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey.shade600),
-                                  ),
-                                  trailing: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.amber.shade100,
-                                      borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        '${customer.discountPercent}% خصم',
+                                        style: TextStyle(
+                                          fontFamily: 'Cairo',
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.green.shade800,
+                                        ),
+                                      ),
                                     ),
-                                    child: Text(
-                                      '${customer.loyaltyPoints} نقطة',
-                                      style: TextStyle(fontFamily: 'Cairo', fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.brown.shade800,),
-                                    ),
+                                ],
+                              ),
+                              subtitle: Text(
+                                customer.phone,
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 11,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                              trailing: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.shade100,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '${customer.loyaltyPoints} نقطة',
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.brown.shade800,
                                   ),
-                                  onTap: () => Navigator.pop(context, customer),
-                                );
-                              },
-                            ),
+                                ),
+                              ),
+                              onTap: () => Navigator.pop(context, customer),
+                            );
+                          },
+                        ),
                 ),
               ],
             ),
@@ -4020,9 +5118,13 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
                         hintText: 'مثال: محمد أحمد',
                         prefixIcon: const Icon(Icons.person_outline, size: 20),
                         isDense: true,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
-                      validator: (val) => val == null || val.trim().isEmpty ? 'يرجى إدخال اسم العميل' : null,
+                      validator: (val) => val == null || val.trim().isEmpty
+                          ? 'يرجى إدخال اسم العميل'
+                          : null,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
@@ -4034,24 +5136,55 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
                         hintText: 'مثال: 01012345678',
                         prefixIcon: const Icon(Icons.phone_outlined, size: 20),
                         isDense: true,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
-                      validator: (val) => val == null || val.trim().isEmpty ? 'يرجى إدخال رقم الهاتف' : null,
+                      validator: (val) => val == null || val.trim().isEmpty
+                          ? 'يرجى إدخال رقم الهاتف'
+                          : null,
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       initialValue: _customerType,
-                      style: TextStyle(fontFamily: 'Cairo', fontSize: 13, color: AppColors.onSurface),
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 13,
+                        color: AppColors.onSurface,
+                      ),
                       decoration: InputDecoration(
                         labelText: 'تصنيف العميل',
-                        prefixIcon: const Icon(Icons.category_outlined, size: 20),
+                        prefixIcon: const Icon(
+                          Icons.category_outlined,
+                          size: 20,
+                        ),
                         isDense: true,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                       items: [
-                        DropdownMenuItem(value: 'retail', child: Text('عميل عادي (قطاعي)', style: TextStyle(fontFamily: 'Cairo'))),
-                        DropdownMenuItem(value: 'wholesale', child: Text('تاجر جملة', style: TextStyle(fontFamily: 'Cairo'))),
-                        DropdownMenuItem(value: 'vip', child: Text('عميل مميز', style: TextStyle(fontFamily: 'Cairo'))),
+                        DropdownMenuItem(
+                          value: 'retail',
+                          child: Text(
+                            'عميل عادي (قطاعي)',
+                            style: TextStyle(fontFamily: 'Cairo'),
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: 'wholesale',
+                          child: Text(
+                            'تاجر جملة',
+                            style: TextStyle(fontFamily: 'Cairo'),
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: 'vip',
+                          child: Text(
+                            'عميل مميز',
+                            style: TextStyle(fontFamily: 'Cairo'),
+                          ),
+                        ),
                       ],
                       onChanged: (val) {
                         if (val != null) setState(() => _customerType = val);
@@ -4068,7 +5201,9 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
                         suffixText: '%',
                         prefixIcon: const Icon(Icons.percent_rounded, size: 20),
                         isDense: true,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                     ),
                   ],
@@ -4082,23 +5217,51 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
         if (!_isCreatingNew)
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo', color: Colors.grey.shade700)),
+            child: Text(
+              'إلغاء',
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                color: Colors.grey.shade700,
+              ),
+            ),
           )
         else ...[
           TextButton(
             onPressed: () => setState(() => _isCreatingNew = false),
-            child: Text('رجوع', style: TextStyle(fontFamily: 'Cairo', color: Colors.grey.shade700)),
+            child: Text(
+              'رجوع',
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                color: Colors.grey.shade700,
+              ),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             ),
             onPressed: _isSavingNew ? null : _submitNewCustomer,
             child: _isSavingNew
-                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : Text('حفظ وتعيين للفاتورة', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, color: Colors.white)),
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Text(
+                    'حفظ وتعيين للفاتورة',
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
           ),
         ],
       ],

@@ -23,6 +23,7 @@ class CustomerEntity extends Equatable {
 
   bool get isWholesale => customerType == 'wholesale';
   bool get isVip => customerType == 'vip';
+  bool get isBlacklisted => customerType == 'blacklisted';
 
   CustomerEntity copyWith({
     String? id,

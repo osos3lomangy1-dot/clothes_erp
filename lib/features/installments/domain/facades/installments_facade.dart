@@ -48,6 +48,7 @@ abstract class InstallmentsFacade {
   });
   Future<Either<Failure, List<CustomerInstallmentsSummary>>> getGroupedByCustomer({
     required DateTime now,
+    bool includeInactive = false,
   });
   Future<Either<Failure, List<CustomerInstallmentEntity>>> listOverdueContracts();
   Future<Either<Failure, Unit>> cancelContract({
@@ -58,10 +59,16 @@ abstract class InstallmentsFacade {
     required String contractId,
     required bool isLegalCase,
   });
+  Future<Either<Failure, Unit>> writeOffBadDebt({
+    required String contractId,
+    required String reason,
+    required String pin,
+  });
   Future<Either<Failure, Unit>> markPromissoryNoteDelivered({
     required String contractId,
     required bool delivered,
     DateTime? deliveredAt,
+    bool hasNote = true,
   });
 
   // Payments

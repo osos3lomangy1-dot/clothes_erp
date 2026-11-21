@@ -6,43 +6,127 @@ import '../../../../core/constants/retail_sector.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/features/feature_gate.dart';
 import '../../../../core/theme/app_branding.dart';
+import '../../../auth/domain/models/cashier_permissions_config.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
+import '../../../auth/services/cashier_permissions_service.dart';
+import '../../../barcode_printing/domain/models/barcode_config.dart';
+import '../../../barcode_printing/presentation/screens/barcode_customizer_screen.dart';
+import '../../../barcode_printing/services/barcode_settings_service.dart';
 import '../../../installments/data/services/manager_pin_service.dart';
 import '../../../invoices/data/services/receipt_settings_service.dart';
 import '../../../invoices/domain/entities/receipt_config.dart';
 import '../../../invoices/presentation/screens/receipt_customizer_screen.dart';
-import '../../../barcode_printing/domain/models/barcode_config.dart';
-import '../../../barcode_printing/presentation/screens/barcode_customizer_screen.dart';
-import '../../../barcode_printing/services/barcode_settings_service.dart';
-import '../../../auth/domain/models/cashier_permissions_config.dart';
-import '../../../auth/services/cashier_permissions_service.dart';
 import '../cubits/settings_cubit.dart';
 import '../widgets/excel_migration_card.dart';
 import '../widgets/google_drive_backup_card.dart';
 import '../widgets/local_backup_card.dart';
 
 class SystemSettingsScreen extends StatelessWidget {
-  const SystemSettingsScreen({super.key});
+  final String? initialCategory;
+
+  const SystemSettingsScreen({super.key, this.initialCategory});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => getIt<SettingsCubit>()..start(),
-      child: const _SystemSettingsView(),
+      child: _SystemSettingsView(initialCategory: initialCategory),
     );
   }
 }
 
+class _SettingsCategoryItem {
+  final String key;
+  final String label;
+  final String subtitle;
+  final IconData icon;
+
+  const _SettingsCategoryItem({
+    required this.key,
+    required this.label,
+    required this.subtitle,
+    required this.icon,
+  });
+}
+
 class _SystemSettingsView extends StatefulWidget {
-  const _SystemSettingsView();
+  final String? initialCategory;
+
+  const _SystemSettingsView({this.initialCategory});
 
   @override
   State<_SystemSettingsView> createState() => _SystemSettingsViewState();
 }
 
 class _SystemSettingsViewState extends State<_SystemSettingsView> {
-  String _selectedCategory = 'all';
+  String? _selectedCategory;
+
+  static const _categories = <_SettingsCategoryItem>[
+    _SettingsCategoryItem(
+      key: 'pos',
+      label: 'نقطة البيع',
+      subtitle: 'طرق الدفع، الأقساط، الآجل، والعروض',
+      icon: Icons.point_of_sale_rounded,
+    ),
+    _SettingsCategoryItem(
+      key: 'inventory',
+      label: 'المخزون',
+      subtitle: 'الأصناف، حركات المخزن، والمشتريات',
+      icon: Icons.inventory_2_rounded,
+    ),
+    _SettingsCategoryItem(
+      key: 'staff',
+      label: 'العملاء وفريق العمل',
+      subtitle: 'العملاء، الموظفون، وصلاحيات الكاشير',
+      icon: Icons.groups_rounded,
+    ),
+    _SettingsCategoryItem(
+      key: 'treasury',
+      label: 'الخزينة والشركاء',
+      subtitle: 'المصروفات، الشركاء، والتقارير المالية',
+      icon: Icons.account_balance_wallet_rounded,
+    ),
+    _SettingsCategoryItem(
+      key: 'printing',
+      label: 'الطباعة',
+      subtitle: 'الفواتير الحرارية وملصقات الأسعار',
+      icon: Icons.print_rounded,
+    ),
+    _SettingsCategoryItem(
+      key: 'backup',
+      label: 'النسخ السحابي والبيانات',
+      subtitle: 'النسخ المحلي، Google Drive، و Excel',
+      icon: Icons.cloud_sync_rounded,
+    ),
+    _SettingsCategoryItem(
+      key: 'store',
+      label: 'المظهر وهوية المتجر',
+      subtitle: 'نمط النشاط التجاري واسم وألوان المحل',
+      icon: Icons.palette_rounded,
+    ),
+  ];
+
+  String _normalizeCategory(String cat) {
+    if (cat == 'sales') return 'pos';
+    if (cat == 'permissions') return 'staff';
+    if (cat == 'data') return 'backup';
+    if (cat == 'branding') return 'store';
+    return cat;
+  }
+
+  String _currentCategory(SettingsState state) {
+    if (_selectedCategory != null) {
+      return _normalizeCategory(_selectedCategory!);
+    }
+    if (widget.initialCategory != null) {
+      return _normalizeCategory(widget.initialCategory!);
+    }
+    if (state.features[FeatureKeys.installments] == true) {
+      return 'pos';
+    }
+    return 'store';
+  }
 
   bool _isAdmin(BuildContext context) {
     final auth = context.read<AuthCubit>().state;
@@ -56,179 +140,835 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
     return 'admin';
   }
 
-  static const _categories = [
-    ('all', 'عرض الكل', Icons.dashboard_customize_rounded),
-    ('store', 'المتجر والهوية', Icons.storefront_rounded),
-    ('printing', 'الطباعة والباركود', Icons.print_rounded),
-    ('sales', 'المبيعات والدفع', Icons.payment_rounded),
-    ('permissions', 'الصلاحيات والميزات', Icons.shield_rounded),
-    ('data', 'البيانات والنسخ', Icons.cloud_sync_rounded),
-  ];
-
   @override
   Widget build(BuildContext context) {
     final isAdmin = _isAdmin(context);
     if (!isAdmin) {
       return const Scaffold(
-        body: Center(child: Text('إعدادات النظام متاحة للمدير فقط')),
+        backgroundColor: Color(0xFFF8FAFC),
+        body: Center(
+          child: Text(
+            'إعدادات النظام متاحة للمدير فقط',
+            style: TextStyle(fontSize: 16, color: Color(0xFF64748B)),
+          ),
+        ),
       );
     }
 
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text(
-          'إعدادات النظام',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'مركز الإعدادات الموحد',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+            Text(
+              'تحكم شامل في ميزات النظام وصلاحيات العمل وهوية المتجر',
+              style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+            ),
+          ],
         ),
         backgroundColor: Colors.white,
         foregroundColor: AppColors.onSurface,
         elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Divider(height: 1, color: AppColors.outlineVariant),
+        ),
       ),
       body: BlocBuilder<SettingsCubit, SettingsState>(
         builder: (context, state) {
           if (state.isLoading && state.features.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }
-          final togglable = FeatureKeys.definitions
-              .where((d) => !d.coreAlwaysEnabled)
-              .toList();
+
+          final currentCat = _currentCategory(state);
+          final activeCategoryItem = _categories.firstWhere(
+            (c) => c.key == currentCat,
+            orElse: () => _categories.first,
+          );
           final installmentsEnabled =
               state.features[FeatureKeys.installments] ?? false;
-          return Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 960),
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  // Category Navigation Filter Pills
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Row(
-                      children: [
-                        for (final cat in _categories) ...[
-                          Padding(
-                            padding: const EdgeInsets.only(left: 8),
-                            child: ChoiceChip(
-                              selected: _selectedCategory == cat.$1,
-                              avatar: Icon(
-                                cat.$3,
-                                size: 16,
-                                color: _selectedCategory == cat.$1
-                                    ? Colors.white
-                                    : AppColors.onSurfaceVariant,
-                              ),
-                              label: Text(cat.$2),
-                              labelStyle: TextStyle(
+          final userId = _userId(context);
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Settings Sidebar (Right rail in RTL) ──
+              Container(
+                width: 220,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border(
+                    left: BorderSide(color: AppColors.outlineVariant),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      alignment: Alignment.centerRight,
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: AppColors.outlineVariant),
+                        ),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(
+                            Icons.tune_rounded,
+                            size: 16,
+                            color: Color(0xFF64748B),
+                          ),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'أقسام الإعدادات',
+                              style: TextStyle(
+                                fontSize: 12.5,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                color: _selectedCategory == cat.$1
-                                    ? Colors.white
-                                    : AppColors.onSurface,
+                                color: Color(0xFF0F172A),
                               ),
-                              selectedColor: AppColors.primary,
-                              backgroundColor: AppColors.surfaceContainerLowest,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                side: BorderSide(
-                                  color: _selectedCategory == cat.$1
-                                      ? AppColors.primary
-                                      : AppColors.outlineVariant,
-                                ),
-                              ),
-                              onSelected: (_) =>
-                                  setState(() => _selectedCategory = cat.$1),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
-                      ],
+                      ),
                     ),
-                  ),
-
-                  // ─── 1. المتجر والهوية (Store & Branding) ───
-                  if (_selectedCategory == 'all' || _selectedCategory == 'store') ...[
-                    _sectionTitle('نمط النشاط ونوع المتجر'),
-                    _SectorModeSettingsCard(userId: _userId(context)),
-                    const SizedBox(height: 20),
-                    _sectionTitle('هوية النظام والألوان (الاسم والمظهر)'),
-                    _BrandingSettingsCard(userId: _userId(context)),
-                    const SizedBox(height: 20),
-                  ],
-
-                  // ─── 2. الطباعة والباركود (Printing & Hardware) ───
-                  if (_selectedCategory == 'all' || _selectedCategory == 'printing') ...[
-                    _sectionTitle('إعدادات الطباعة (الفواتير وملصقات الباركود)'),
-                    _ReceiptCustomizerSettingsCard(userId: _userId(context)),
-                    const SizedBox(height: 12),
-                    _BarcodeCustomizerSettingsCard(userId: _userId(context)),
-                    const SizedBox(height: 20),
-                  ],
-
-                  // ─── 3. المبيعات وطرق الدفع (Sales & Payments) ───
-                  if (_selectedCategory == 'all' || _selectedCategory == 'sales') ...[
-                    _sectionTitle('طرق الدفع'),
-                    Card(
-                      child: Column(
+                    Expanded(
+                      child: ListView(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 10,
+                          horizontal: 8,
+                        ),
                         children: [
-                          SwitchListTile(
-                            title: const Text('نقدي'),
-                            value: state.cashEnabled,
-                            onChanged: (v) async {
-                              final err = await context
-                                  .read<SettingsCubit>()
-                                  .setPaymentMethod(
+                          for (final cat in _categories)
+                            _SidebarNavItem(
+                              item: cat,
+                              selected: currentCat == cat.key,
+                              onTap: () =>
+                                  setState(() => _selectedCategory = cat.key),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // ── Main Content Area (Left rail in RTL) ──
+              Expanded(
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 860),
+                    child: ListView(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 24,
+                      ),
+                      children: [
+                        // Category Header
+                        _CategoryHeader(
+                          icon: activeCategoryItem.icon,
+                          label: activeCategoryItem.label,
+                          subtitle: activeCategoryItem.subtitle,
+                        ),
+                        const SizedBox(height: 24),
+
+                        // ─── 1. نقطة البيع والمبيعات (POS) ───
+                        if (currentCat == 'pos') ...[
+                          _sectionTitle('ميزات البيع والتسويق'),
+                          _cardWrapper(
+                            child: Column(
+                              children: [
+                                _cardHeader(
+                                  icon: Icons.local_offer_rounded,
+                                  title: 'ميزات البيع والعروض الترويجية',
+                                  subtitle:
+                                      'التحكم في الميزات الإضافية لشاشة البيع وخدمات العملاء',
+                                ),
+                                Divider(
+                                  height: 24,
+                                  color: AppColors.outlineVariant,
+                                ),
+                                _buildFeatureItem(
+                                  title: 'شاشة الكاشير ونقطة البيع (POS)',
+                                  description:
+                                      'المحرك الأساسي لعمليات البيع، مسح الباركود، الفواتير الفورية، وتطبيق الخصومات',
+                                  isCore: true,
+                                  isEnabled: true,
+                                ),
+                                Divider(
+                                  height: 16,
+                                  color: AppColors.outlineVariant,
+                                ),
+                                _buildFeatureItem(
+                                  key: const Key('feature_promotions_toggle'),
+                                  title: 'العروض والخصومات الترويجية',
+                                  description:
+                                      'تفعيل إنشاء عروض الخصم المباشر، باقات الشراء، والخصومات المئوية المؤقتة',
+                                  isCore: false,
+                                  isEnabled:
+                                      state.features[FeatureKeys.promotions] ??
+                                      false,
+                                  onChanged: (v) => _toggleFeature(
+                                    context,
+                                    FeatureKeys.promotions,
+                                    v,
+                                    userId,
+                                  ),
+                                ),
+                                Divider(
+                                  height: 16,
+                                  color: AppColors.outlineVariant,
+                                ),
+                                _buildFeatureItem(
+                                  key: const Key('feature_loyalty_toggle'),
+                                  title: 'برنامج ولاء ونقاط العملاء',
+                                  description:
+                                      'احتساب نقاط مكافآت للمشتريات واستبدالها برصيد أو خصومات في الفواتير القادمة',
+                                  dependencyInfo: 'يعتمد على: العملاء',
+                                  isCore: false,
+                                  isEnabled:
+                                      state.features[FeatureKeys.loyalty] ??
+                                      false,
+                                  onChanged: (v) => _toggleFeature(
+                                    context,
+                                    FeatureKeys.loyalty,
+                                    v,
+                                    userId,
+                                  ),
+                                ),
+                                Divider(
+                                  height: 16,
+                                  color: AppColors.outlineVariant,
+                                ),
+                                _buildFeatureItem(
+                                  key: const Key(
+                                    'feature_installments_master_toggle',
+                                  ),
+                                  title: 'نظام البيع بالتقسيط وإيصالات الأمانة',
+                                  description:
+                                      'تمكين البيع بنظام الأقساط الشهرية، احتساب المرابحة، جدولة السداد، وإيصالات الأمانة والتحصيل القضائي',
+                                  dependencyInfo: 'يعتمد على: العملاء',
+                                  isCore: false,
+                                  isEnabled: installmentsEnabled,
+                                  onChanged: (v) => _toggleFeature(
+                                    context,
+                                    FeatureKeys.installments,
+                                    v,
+                                    userId,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          _sectionTitle('طرق الدفع المعتمدة في الكاشير'),
+                          _cardWrapper(
+                            child: Column(
+                              children: [
+                                _cardHeader(
+                                  icon: Icons.payments_rounded,
+                                  title: 'طرق الدفع المقبولة',
+                                  subtitle:
+                                      'حدد طرق الدفع التي تظهر للكاشير أثناء تقفيل الفاتورة (يلزم طريقة واحدة على الأقل)',
+                                ),
+                                Divider(
+                                  height: 24,
+                                  color: AppColors.outlineVariant,
+                                ),
+                                SwitchListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  title: const Text(
+                                    'نقدي (Cash)',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  subtitle: const Text(
+                                    'الدفع الفوري بالدرج والنقدية',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF64748B),
+                                    ),
+                                  ),
+                                  activeThumbColor: AppColors.primary,
+                                  value: state.cashEnabled,
+                                  onChanged: (v) => _setPaymentMethod(
+                                    context,
                                     'payment.cash',
                                     v,
-                                    _userId(context),
-                                  );
-                              if (err != null && context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(err),
-                                    backgroundColor: AppColors.error,
+                                    userId,
                                   ),
-                                );
-                              }
-                            },
-                          ),
-                          const Divider(height: 1),
-                          SwitchListTile(
-                            title: const Text('بطاقة / فيزا'),
-                            value: state.cardEnabled,
-                            onChanged: (v) async {
-                              final err = await context
-                                  .read<SettingsCubit>()
-                                  .setPaymentMethod(
+                                ),
+                                Divider(
+                                  height: 1,
+                                  color: AppColors.outlineVariant,
+                                ),
+                                SwitchListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  title: const Text(
+                                    'بطاقة بنكية / فيزا (Card)',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  subtitle: const Text(
+                                    'الدفع عبر ماكينات نقاط البيع والمحافظ الإلكترونية',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF64748B),
+                                    ),
+                                  ),
+                                  activeThumbColor: AppColors.primary,
+                                  value: state.cardEnabled,
+                                  onChanged: (v) => _setPaymentMethod(
+                                    context,
                                     'payment.card',
                                     v,
-                                    _userId(context),
-                                  );
-                              if (err != null && context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(err),
-                                    backgroundColor: AppColors.error,
+                                    userId,
                                   ),
-                                );
-                              }
-                            },
+                                ),
+                                Divider(
+                                  height: 1,
+                                  color: AppColors.outlineVariant,
+                                ),
+                                SwitchListTile(
+                                  key: const Key('payment_credit_toggle'),
+                                  contentPadding: EdgeInsets.zero,
+                                  title: const Text(
+                                    'آجل (البيع على الحساب)',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  subtitle: const Text(
+                                    'تسجيل الفاتورة في ذمة العميل مع متابعة التحصيل لاحقاً',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF64748B),
+                                    ),
+                                  ),
+                                  activeThumbColor: AppColors.primary,
+                                  value: state.creditPaymentEnabled,
+                                  onChanged: (v) => _setPaymentMethod(
+                                    context,
+                                    'payment.credit',
+                                    v,
+                                    userId,
+                                  ),
+                                ),
+                                if (installmentsEnabled) ...[
+                                  Divider(
+                                    height: 1,
+                                    color: AppColors.outlineVariant,
+                                  ),
+                                  SwitchListTile(
+                                    key: const Key('payment_installment_toggle'),
+                                    contentPadding: EdgeInsets.zero,
+                                    title: const Text(
+                                      'تقسيط (عقود وجدولة أقساط)',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    subtitle: const Text(
+                                      'إتاحة زر التقسيط وإصدار عقد تقسيط ذكي ومطالبة الضامن',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF64748B),
+                                      ),
+                                    ),
+                                    activeThumbColor: AppColors.primary,
+                                    value: state.installmentPaymentEnabled,
+                                    onChanged: (v) => _setPaymentMethod(
+                                      context,
+                                      'payment.installment',
+                                      v,
+                                      userId,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
+                          const SizedBox(height: 20),
+                          _sectionTitle('إعدادات الدفع الآجل (البيع على الحساب)'),
+                          _CreditSalesSettingsSection(userId: userId),
                           if (installmentsEnabled) ...[
-                            const Divider(height: 1),
-                            SwitchListTile(
-                              key: const Key('payment_installment_toggle'),
-                              title: const Text('تقسيط'),
-                              value: state.installmentPaymentEnabled,
+                            const SizedBox(height: 20),
+                            _sectionTitle('إعدادات التقسيط والأمان'),
+                            const _InstallmentSettingsSection(),
+                          ],
+                        ],
+
+                        // ─── 2. المخزون والتوريد (Inventory) ───
+                        if (currentCat == 'inventory') ...[
+                          _sectionTitle('المخزون وحركات المستودع'),
+                          _cardWrapper(
+                            child: Column(
+                              children: [
+                                _cardHeader(
+                                  icon: Icons.warehouse_rounded,
+                                  title: 'إدارة المستودع والأصناف',
+                                  subtitle:
+                                      'ميزات تتبع المنتجات والأصناف والتدقيق المخزني',
+                                ),
+                                Divider(
+                                  height: 24,
+                                  color: AppColors.outlineVariant,
+                                ),
+                                _buildFeatureItem(
+                                  title: 'إدارة المخزون ودليل المنتجات',
+                                  description:
+                                      'تتبع أرصدة المنتجات، المقاسات، الألوان، الباركودات، وأسعار التكلفة والبيع',
+                                  isCore: true,
+                                  isEnabled: true,
+                                ),
+                                Divider(
+                                  height: 16,
+                                  color: AppColors.outlineVariant,
+                                ),
+                                _buildFeatureItem(
+                                  title: 'سجل حركات المخزن والتدقيق المخزني',
+                                  description:
+                                      'توثيق كل حركة إضافة، بيع، مرتجع، إهلاك، أو تسوية جردية مع هوية المستخدم والتوقيت',
+                                  isCore: true,
+                                  isEnabled: true,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          _sectionTitle('التوريد وإدارة الموردين'),
+                          _cardWrapper(
+                            child: Column(
+                              children: [
+                                _cardHeader(
+                                  icon: Icons.local_shipping_rounded,
+                                  title: 'المشتريات والموردون',
+                                  subtitle:
+                                      'إثبات بضاعة الموردين وتتبع المديونيات وجداول السداد',
+                                ),
+                                Divider(
+                                  height: 24,
+                                  color: AppColors.outlineVariant,
+                                ),
+                                _buildFeatureItem(
+                                  key: const Key('feature_purchases_toggle'),
+                                  title: 'فواتير المشتريات واستلام الشحنات',
+                                  description:
+                                      'إثبات بضاعة الموردين وتحديث التكلفة وكميات المستودع آلياً عند الاستلام',
+                                  isCore: false,
+                                  isEnabled:
+                                      state.features[FeatureKeys.purchases] ??
+                                      true,
+                                  onChanged: (v) => _toggleFeature(
+                                    context,
+                                    FeatureKeys.purchases,
+                                    v,
+                                    userId,
+                                  ),
+                                ),
+                                Divider(
+                                  height: 16,
+                                  color: AppColors.outlineVariant,
+                                ),
+                                _buildFeatureItem(
+                                  key: const Key('feature_suppliers_toggle'),
+                                  title: 'دليل وحسابات الموردين',
+                                  description:
+                                      'متابعة كشوفات حساب الموردين، الدفعات المسددة، والمبالغ المتبقية في الذمة',
+                                  dependencyInfo: 'يعتمد على: المشتريات',
+                                  isCore: false,
+                                  isEnabled:
+                                      state.features[FeatureKeys.suppliers] ??
+                                      true,
+                                  onChanged: (v) => _toggleFeature(
+                                    context,
+                                    FeatureKeys.suppliers,
+                                    v,
+                                    userId,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          _sectionTitle('الرقابة المخزنية الذكية'),
+                          _cardWrapper(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFEF3C7),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.lightbulb_outline_rounded,
+                                    color: Color(0xFFD97706),
+                                    size: 22,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                const Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'تنبيهات حد الطلب والجرد الدوري',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                          color: Color(0xFF0F172A),
+                                        ),
+                                      ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        'يقوم النظام بمراقبة حد إعادة الطلب تلقائياً، وإشعارك عند اقتراب نفاذ أي مقاس أو لون لتفادي توقف المبيعات.',
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          color: Color(0xFF64748B),
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+
+                        // ─── 3. العملاء وفريق العمل (Staff) ───
+                        if (currentCat == 'staff') ...[
+                          _sectionTitle('شؤون العملاء'),
+                          _cardWrapper(
+                            child: Column(
+                              children: [
+                                _cardHeader(
+                                  icon: Icons.person_pin_rounded,
+                                  title: 'قاعدة بيانات العملاء',
+                                  subtitle:
+                                      'دليل العملاء وحسابات الديون والائتمان',
+                                ),
+                                Divider(
+                                  height: 24,
+                                  color: AppColors.outlineVariant,
+                                ),
+                                _buildFeatureItem(
+                                  title: 'دليل العملاء وحسابات الديون',
+                                  description:
+                                      'حفظ بيانات العملاء، أرقام الهواتف، كشف حساب المشتريات، والحدود الائتمانية للآجل والتقسيط',
+                                  isCore: true,
+                                  isEnabled: true,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          _sectionTitle('فريق العمل والرواتب والورديات'),
+                          _cardWrapper(
+                            child: Column(
+                              children: [
+                                _cardHeader(
+                                  icon: Icons.badge_rounded,
+                                  title: 'شؤون الموظفين والورديات',
+                                  subtitle:
+                                      'إدارة المستخدمين، كشوف الرواتب، وجداول الورديات',
+                                ),
+                                Divider(
+                                  height: 24,
+                                  color: AppColors.outlineVariant,
+                                ),
+                                _buildFeatureItem(
+                                  key: const Key('feature_employees_toggle'),
+                                  title: 'إدارة الموظفين ومستخدمي النظام',
+                                  description:
+                                      'إنشاء حسابات المستخدمين وتحديد الأدوار (مدير / كاشير) وكلمات المرور',
+                                  isCore: false,
+                                  isEnabled:
+                                      state.features[FeatureKeys.employees] ??
+                                      true,
+                                  onChanged: (v) => _toggleFeature(
+                                    context,
+                                    FeatureKeys.employees,
+                                    v,
+                                    userId,
+                                  ),
+                                ),
+                                Divider(
+                                  height: 16,
+                                  color: AppColors.outlineVariant,
+                                ),
+                                _buildFeatureItem(
+                                  key: const Key('feature_payroll_toggle'),
+                                  title:
+                                      'مسير الرواتب والمستحقات والخصومات',
+                                  description:
+                                      'تسجيل السلف، المكافآت، الخصومات الشهرية، وصرف الرواتب من الخزينة',
+                                  dependencyInfo: 'يعتمد على: الموظفون',
+                                  isCore: false,
+                                  isEnabled:
+                                      state.features[FeatureKeys.payroll] ??
+                                      true,
+                                  onChanged: (v) => _toggleFeature(
+                                    context,
+                                    FeatureKeys.payroll,
+                                    v,
+                                    userId,
+                                  ),
+                                ),
+                                Divider(
+                                  height: 16,
+                                  color: AppColors.outlineVariant,
+                                ),
+                                _buildFeatureItem(
+                                  key: const Key('feature_shifts_toggle'),
+                                  title: 'إدارة الورديات وتقفيل اليومية',
+                                  description:
+                                      'فتح وردية كاشير بعهدة أولية، ومطابقة الكاش الفعلي مع المسجل بالنظام عند الإغلاق',
+                                  isCore: false,
+                                  isEnabled:
+                                      state.features[FeatureKeys.shifts] ??
+                                      true,
+                                  onChanged: (v) => _toggleFeature(
+                                    context,
+                                    FeatureKeys.shifts,
+                                    v,
+                                    userId,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          _sectionTitle('صلاحيات الكاشير الموثوق'),
+                          _CashierPermissionsSettingsCard(userId: userId),
+                        ],
+
+                        // ─── 4. الخزينة والشركاء (Treasury) ───
+                        if (currentCat == 'treasury') ...[
+                          _sectionTitle('العمليات المالية والتقارير'),
+                          _cardWrapper(
+                            child: Column(
+                              children: [
+                                _cardHeader(
+                                  icon: Icons.monetization_on_rounded,
+                                  title: 'الخزينة والمصروفات النثرية',
+                                  subtitle:
+                                      'توثيق حركة النقدية والمصروفات التشغيلية والتقارير المالية',
+                                ),
+                                Divider(
+                                  height: 24,
+                                  color: AppColors.outlineVariant,
+                                ),
+                                _buildFeatureItem(
+                                  key: const Key('feature_expenses_toggle'),
+                                  title: 'إدارة المصروفات النثرية والتشغيلية',
+                                  description:
+                                      'تسجيل مصاريف المحل اليومية والشهرية (إيجار، كهرباء، بوفيه، نقل) وتأثيرها على صافي الأرباح',
+                                  isCore: false,
+                                  isEnabled:
+                                      state.features[FeatureKeys.expenses] ??
+                                      true,
+                                  onChanged: (v) => _toggleFeature(
+                                    context,
+                                    FeatureKeys.expenses,
+                                    v,
+                                    userId,
+                                  ),
+                                ),
+                                Divider(
+                                  height: 16,
+                                  color: AppColors.outlineVariant,
+                                ),
+                                _buildFeatureItem(
+                                  key: const Key('feature_reports_toggle'),
+                                  title: 'التقارير الإدارية والمالية الشاملة',
+                                  description:
+                                      'كشوف الأرباح والخسائر، حركة الخزينة، تقارير مبيعات الأصناف، وتقارير أداء الكاشير',
+                                  isCore: false,
+                                  isEnabled:
+                                      state.features[FeatureKeys.reports] ??
+                                      true,
+                                  onChanged: (v) => _toggleFeature(
+                                    context,
+                                    FeatureKeys.reports,
+                                    v,
+                                    userId,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          _sectionTitle('الشركاء ورؤوس الأموال'),
+                          _cardWrapper(
+                            child: Column(
+                              children: [
+                                _cardHeader(
+                                  icon: Icons.handshake_rounded,
+                                  title: 'حسابات الشركاء وتوزيع الأرباح',
+                                  subtitle:
+                                      'إدارة مساهمات الشركاء والمسحوبات وتوزيع صافي الأرباح',
+                                ),
+                                Divider(
+                                  height: 24,
+                                  color: AppColors.outlineVariant,
+                                ),
+                                _buildFeatureItem(
+                                  key: const Key('feature_partners_toggle'),
+                                  title: 'نظام الشركاء ورؤوس الأموال',
+                                  description:
+                                      'إدارة حصص الشركاء في رأس مال المتجر، تسجيل المسحوبات الشخصية، والتوزيع الدوري للأرباح',
+                                  isCore: false,
+                                  isEnabled:
+                                      state.features[FeatureKeys.partners] ??
+                                      false,
+                                  onChanged: (v) => _toggleFeature(
+                                    context,
+                                    FeatureKeys.partners,
+                                    v,
+                                    userId,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          _sectionTitle('الأمان والرقابة المالية'),
+                          _cardWrapper(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFECFDF5),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.verified_user_rounded,
+                                    color: Color(0xFF10B981),
+                                    size: 22,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                const Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'سجل التدقيق المالي المحمي (Audit Trail)',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                          color: Color(0xFF0F172A),
+                                        ),
+                                      ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        'جميع العمليات المالية وحركات الخزينة وسندات الصرف والقبض تُوثق في سجل تدقيق محمي لا يمكن حذفه للحفاظ على الشفافية والمساءلة.',
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          color: Color(0xFF64748B),
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+
+                        // ─── 5. الطباعة والباركود (Printing) ───
+                        if (currentCat == 'printing') ...[
+                          _sectionTitle('تخصيص الفاتورة والإيصال'),
+                          _ReceiptCustomizerSettingsCard(userId: userId),
+                          const SizedBox(height: 20),
+                          _sectionTitle('تخصيص ملصقات واستيكرات الباركود'),
+                          _BarcodeCustomizerSettingsCard(userId: userId),
+                        ],
+
+                        // ─── 6. النسخ السحابي والبيانات (Backup) ───
+                        if (currentCat == 'backup') ...[
+                          _sectionTitle('النسخ الاحتياطي المحلي'),
+                          LocalBackupCard(userId: userId),
+                          const SizedBox(height: 20),
+                          _sectionTitle('النسخ الاحتياطي على Google Drive'),
+                          GoogleDriveBackupCard(userId: userId),
+                          const SizedBox(height: 20),
+                          _sectionTitle('تصدير واستيراد البيانات (Excel)'),
+                          ExcelMigrationCard(userId: userId),
+                          const SizedBox(height: 20),
+                          _sectionTitle('المزامنة السحابية'),
+                          _cardWrapper(
+                            child: SwitchListTile(
+                              key: const Key('cloud_sync_toggle'),
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text(
+                                'تفعيل المزامنة السحابية (اختياري)',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: Color(0xFF0F172A),
+                                ),
+                              ),
+                              subtitle: const Text(
+                                'عند التعطيل يعمل النظام محلياً بالكامل (Offline-First) بدون أي اتصال بالإنترنت.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                              secondary: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: state.cloudSyncEnabled
+                                      ? AppColors.primary.withValues(alpha: 0.1)
+                                      : const Color(0xFFF1F5F9),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  state.cloudSyncEnabled
+                                      ? Icons.cloud_done_rounded
+                                      : Icons.cloud_off_rounded,
+                                  color: state.cloudSyncEnabled
+                                      ? AppColors.primary
+                                      : const Color(0xFF94A3B8),
+                                  size: 22,
+                                ),
+                              ),
+                              activeThumbColor: AppColors.primary,
+                              value: state.cloudSyncEnabled,
                               onChanged: (v) async {
                                 final err = await context
                                     .read<SettingsCubit>()
-                                    .setPaymentMethod(
-                                      'payment.installment',
-                                      v,
-                                      _userId(context),
-                                    );
+                                    .setCloudSyncEnabled(v, userId);
                                 if (err != null && context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
@@ -239,181 +979,434 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
                                 }
                               },
                             ),
-                          ],
-                          const Divider(height: 1),
-                          SwitchListTile(
-                            key: const Key('payment_credit_toggle'),
-                            title: const Text('آجل (الدفع على الحساب)'),
-                            value: state.creditPaymentEnabled,
-                            onChanged: (v) async {
-                              final err = await context
-                                  .read<SettingsCubit>()
-                                  .setPaymentMethod(
-                                    'payment.credit',
-                                    v,
-                                    _userId(context),
-                                  );
-                              if (err != null && context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(err),
-                                    backgroundColor: AppColors.error,
-                                  ),
-                                );
-                              }
-                            },
                           ),
                         ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    _sectionTitle('إعدادات الدفع الآجل (البيع على الحساب)'),
-                    _CreditSalesSettingsSection(userId: _userId(context)),
-                    if (installmentsEnabled) ...[
-                      const SizedBox(height: 20),
-                      _sectionTitle('إعدادات التقسيط'),
-                      const _InstallmentSettingsSection(),
-                    ],
-                    const SizedBox(height: 20),
-                  ],
 
-                  // ─── 4. الصلاحيات والميزات (Permissions & Features) ───
-                  if (_selectedCategory == 'all' || _selectedCategory == 'permissions') ...[
-                    _sectionTitle('صلاحيات الكاشير والتحكم الإداري'),
-                    _CashierPermissionsSettingsCard(userId: _userId(context)),
-                    const SizedBox(height: 20),
-                    _sectionTitle('ميزات النظام (تفعيل/تعطيل الأقسام)'),
-                    Card(
-                      child: Column(
-                        children: [
-                          for (final def in togglable) ...[
-                            _featureTile(context, state, def),
-                            if (def != togglable.last) const Divider(height: 1),
-                          ],
+                        // ─── 7. المظهر وهوية المتجر (Store / Branding) ───
+                        if (currentCat == 'store') ...[
+                          _sectionTitle('نمط النشاط ونوع المتجر'),
+                          _SectorModeSettingsCard(userId: userId),
+                          const SizedBox(height: 20),
+                          _sectionTitle('هوية النظام والألوان (الاسم والمظهر)'),
+                          _BrandingSettingsCard(userId: userId),
                         ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 4),
-                      child: Text(
-                        'الميزات الأساسية (المصادقة، نقطة البيع، المخزون، حركات المخزن، العملاء) مفعّلة دائمًا.',
-                        style: TextStyle(color: Colors.grey, fontSize: 12),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
 
-                  // ─── 5. البيانات والنسخ الاحتياطي (Data & Backups) ───
-                  if (_selectedCategory == 'all' || _selectedCategory == 'data') ...[
-                    _sectionTitle('النسخ الاحتياطي والاستعادة (حماية البيانات المحلية)'),
-                    LocalBackupCard(userId: _userId(context)),
-                    const SizedBox(height: 16),
-                    _sectionTitle('النسخ الاحتياطي على حساب Google Drive'),
-                    GoogleDriveBackupCard(userId: _userId(context)),
-                    const SizedBox(height: 16),
-                    _sectionTitle('التصدير والاستيراد الشامل (Excel)'),
-                    ExcelMigrationCard(userId: _userId(context)),
-                    const SizedBox(height: 20),
-                    _sectionTitle('المزامنة السحابية عبر الإنترنت'),
-                    Card(
-                      child: SwitchListTile(
-                        key: const Key('cloud_sync_toggle'),
-                        title: const Text('تفعيل المزامنة السحابية (اختياري)'),
-                        subtitle: const Text(
-                          'عند التعطيل يعمل النظام محلياً بالكامل بدون أي اتصال بالإنترنت، ويختفي زر المزامنة من القائمة الجانبية.',
-                          style: TextStyle(fontSize: 12),
+                        const SizedBox(height: 32),
+                        const Center(
+                          child: Text(
+                            'كل تعديل في الإعدادات يُسجَّل فورياً في سجل تدقيق النظام.',
+                            style: TextStyle(
+                              color: Color(0xFF94A3B8),
+                              fontSize: 12,
+                            ),
+                          ),
                         ),
-                        secondary: Icon(
-                          state.cloudSyncEnabled
-                              ? Icons.cloud_done_rounded
-                              : Icons.cloud_off_rounded,
-                          color: state.cloudSyncEnabled
-                              ? AppColors.primary
-                              : Colors.grey,
-                        ),
-                        value: state.cloudSyncEnabled,
-                        onChanged: (v) async {
-                          final err = await context
-                              .read<SettingsCubit>()
-                              .setCloudSyncEnabled(v, _userId(context));
-                          if (err != null && context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(err),
-                                backgroundColor: AppColors.error,
-                              ),
-                            );
-                          }
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 4),
-                    child: Text(
-                      'كل تغيير يُسجَّل في سجل التدقيق.',
-                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           );
         },
       ),
     );
   }
 
+  Future<void> _toggleFeature(
+    BuildContext context,
+    String key,
+    bool value,
+    String userId,
+  ) async {
+    final err = await context.read<SettingsCubit>().toggleFeature(
+          key,
+          value,
+          userId,
+        );
+    if (err != null && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(err), backgroundColor: AppColors.error),
+      );
+    }
+  }
+
+  Future<void> _setPaymentMethod(
+    BuildContext context,
+    String key,
+    bool value,
+    String userId,
+  ) async {
+    final err = await context.read<SettingsCubit>().setPaymentMethod(
+          key,
+          value,
+          userId,
+        );
+    if (err != null && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(err), backgroundColor: AppColors.error),
+      );
+    }
+  }
+
   Widget _sectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8, right: 4),
+      padding: const EdgeInsets.only(bottom: 12, top: 4),
       child: Text(
         title,
         style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: AppColors.onSurface,
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF0F172A),
+          letterSpacing: 0.2,
         ),
       ),
     );
   }
 
-  Widget _featureTile(
-    BuildContext context,
-    SettingsState state,
-    FeatureDefinition def,
-  ) {
-    final enabled = state.features[def.key] ?? def.defaultEnabled;
-    String? subtitle;
-    if (def.dependencies.isNotEmpty) {
-      final deps = def.dependencies
-          .map((d) => FeatureKeys.byKey[d]?.label ?? d)
-          .join('، ');
-      subtitle = 'يعتمد على: $deps';
-    }
-    return SwitchListTile(
-      title: Text(def.label),
-      subtitle: subtitle != null ? Text(subtitle) : null,
-      value: enabled,
-      onChanged: (v) async {
-        final err = await context.read<SettingsCubit>().toggleFeature(
-          def.key,
-          v,
-          _userId(context),
-        );
-        if (err != null && context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(err), backgroundColor: AppColors.error),
-          );
-        }
-      },
+  Widget _cardWrapper({
+    required Widget child,
+    EdgeInsetsGeometry padding = const EdgeInsets.all(18),
+    Key? key,
+  }) {
+    return Card(
+      key: key,
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: AppColors.outlineVariant),
+      ),
+      child: Padding(
+        padding: padding,
+        child: child,
+      ),
+    );
+  }
+
+  Widget _cardHeader({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: AppColors.primary, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14.5,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFeatureItem({
+    required String title,
+    required String description,
+    required bool isEnabled,
+    required bool isCore,
+    String? dependencyInfo,
+    ValueChanged<bool>? onChanged,
+    Key? key,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    if (isCore) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: const Color(0xFFE2E8F0),
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.lock_outline_rounded,
+                              size: 11,
+                              color: Color(0xFF64748B),
+                            ),
+                            SizedBox(width: 3),
+                            Text(
+                              'أساسي مفعّل',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF475569),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  description,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF64748B),
+                    height: 1.35,
+                  ),
+                ),
+                if (dependencyInfo != null) ...[
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFFBEB),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      dependencyInfo,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFFD97706),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 14),
+          if (isCore)
+            const Switch(
+              value: true,
+              onChanged: null,
+            )
+          else
+            Switch(
+              key: key,
+              value: isEnabled,
+              onChanged: onChanged,
+              activeThumbColor: AppColors.primary,
+            ),
+        ],
+      ),
     );
   }
 }
 
+// ─── Sidebar Nav Item Widget ───
+class _SidebarNavItem extends StatelessWidget {
+  final _SettingsCategoryItem item;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _SidebarNavItem({
+    required this.item,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Material(
+        color: selected
+            ? AppColors.primary.withValues(alpha: 0.08)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border: selected
+                  ? Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.25),
+                      width: 1.2,
+                    )
+                  : null,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? AppColors.primary
+                        : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    item.icon,
+                    size: 18,
+                    color: selected ? Colors.white : const Color(0xFF64748B),
+                  ),
+                ),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.label,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight:
+                              selected ? FontWeight.bold : FontWeight.w600,
+                          color: selected
+                              ? AppColors.primary
+                              : const Color(0xFF0F172A),
+                        ),
+                      ),
+                      const SizedBox(height: 1),
+                      Text(
+                        item.subtitle,
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          color: selected
+                              ? AppColors.primary.withValues(alpha: 0.8)
+                              : const Color(0xFF94A3B8),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                if (selected)
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.primary,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Category Header Widget ───
+class _CategoryHeader extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String subtitle;
+
+  const _CategoryHeader({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: AppColors.primary, size: 26),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Cashier Permissions Settings Card ───
 class _CashierPermissionsSettingsCard extends StatefulWidget {
   final String userId;
 
@@ -455,8 +1448,15 @@ class _CashierPermissionsSettingsCardState
   @override
   Widget build(BuildContext context) {
     return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: AppColors.outlineVariant),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -465,10 +1465,10 @@ class _CashierPermissionsSettingsCardState
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
+                    color: AppColors.primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(Icons.shield_rounded, color: AppColors.primary),
+                  child: Icon(Icons.shield_rounded, color: AppColors.primary, size: 20),
                 ),
                 const SizedBox(width: 12),
                 const Expanded(
@@ -477,63 +1477,82 @@ class _CashierPermissionsSettingsCardState
                     children: [
                       Text(
                         'صلاحيات الكاشير الموثوق (Trusted Cashier)',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14.5,
+                          color: Color(0xFF0F172A),
+                        ),
                       ),
+                      SizedBox(height: 2),
                       Text(
                         'حدد الميزات المسموح بها للكاشير، وتظل باقي العمليات الحساسة محجوبة للمدير فقط.',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                        style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-            const Divider(height: 24),
+            Divider(height: 24, color: AppColors.outlineVariant),
             SwitchListTile(
-              title: const Text('السماح بالبيع الآجل (على الحساب)'),
-              subtitle: const Text('تمكين الكاشير من اختيار الدفع الآجل وربط الفاتورة بمديونية العميل'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text('السماح بالبيع الآجل (على الحساب)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+              subtitle: const Text('تمكين الكاشير من اختيار الدفع الآجل وربط الفاتورة بمديونية العميل', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+              activeThumbColor: AppColors.primary,
               value: _config.allowCreditSale,
               onChanged: (v) => _update(_config.copyWith(allowCreditSale: v)),
             ),
-            const Divider(height: 1),
+            Divider(height: 1, color: AppColors.outlineVariant),
             SwitchListTile(
-              title: const Text('السماح ببيع الأقساط (عقود التقسيط)'),
-              subtitle: const Text('تمكين الكاشير من إنشاء وجدولة عقود أقساط جديدة للعميل من شاشة البيع'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text('السماح ببيع الأقساط (عقود التقسيط)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+              subtitle: const Text('تمكين الكاشير من إنشاء وجدولة عقود أقساط جديدة للعميل من شاشة البيع', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+              activeThumbColor: AppColors.primary,
               value: _config.allowInstallments,
               onChanged: (v) => _update(_config.copyWith(allowInstallments: v)),
             ),
-            const Divider(height: 1),
+            Divider(height: 1, color: AppColors.outlineVariant),
             SwitchListTile(
-              title: const Text('السماح باستلام شحنات بضاعة للمخزن'),
-              subtitle: const Text('إظهار شاشة استلام البضاعة (الشحنة الجديدة) وتحديث كميات المخزن'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text('السماح باستلام شحنات بضاعة للمخزن', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+              subtitle: const Text('إظهار شاشة استلام البضاعة (الشحنة الجديدة) وتحديث كميات المخزن', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+              activeThumbColor: AppColors.primary,
               value: _config.allowGoodsIntake,
               onChanged: (v) => _update(_config.copyWith(allowGoodsIntake: v)),
             ),
-            const Divider(height: 1),
+            Divider(height: 1, color: AppColors.outlineVariant),
             SwitchListTile(
-              title: const Text('السماح بإضافة وتعديل بيانات العملاء'),
-              subtitle: const Text('إتاحة شاشة سجل العملاء للكاشير لتسجيل عميل جديد أو تحديث بياناته'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text('السماح بإضافة وتعديل بيانات العملاء', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+              subtitle: const Text('إتاحة شاشة سجل العملاء للكاشير لتسجيل عميل جديد أو تحديث بياناته', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+              activeThumbColor: AppColors.primary,
               value: _config.allowManageCustomers,
               onChanged: (v) => _update(_config.copyWith(allowManageCustomers: v)),
             ),
-            const Divider(height: 1),
+            Divider(height: 1, color: AppColors.outlineVariant),
             SwitchListTile(
-              title: const Text('السماح بتسجيل مصروفات نثرية من الدرج'),
-              subtitle: const Text('تمكين الكاشير من إثبات مصاريف يومية صغيرة (بوفيه/نظافة) تخصم من الدرج'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text('السماح بتسجيل مصروفات نثرية من الدرج', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+              subtitle: const Text('تمكين الكاشير من إثبات مصاريف يومية صغيرة (بوفيه/نظافة) تخصم من الدرج', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+              activeThumbColor: AppColors.primary,
               value: _config.allowCashExpenses,
               onChanged: (v) => _update(_config.copyWith(allowCashExpenses: v)),
             ),
-            const Divider(height: 1),
+            Divider(height: 1, color: AppColors.outlineVariant),
             SwitchListTile(
-              title: const Text('السماح بالاطلاع على سجل الفواتير العامة'),
-              subtitle: const Text('إتاحة فواتير المحل والورديات السابقة كاملة (بدلاً من الاقتصار على فواتير ورديته)'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text('السماح بالاطلاع على سجل الفواتير العامة', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+              subtitle: const Text('إتاحة فواتير المحل والورديات السابقة كاملة (بدلاً من الاقتصار على فواتير ورديته)', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+              activeThumbColor: AppColors.primary,
               value: _config.allowViewInvoicesHistory,
               onChanged: (v) => _update(_config.copyWith(allowViewInvoicesHistory: v)),
             ),
-            const Divider(height: 1),
+            Divider(height: 1, color: AppColors.outlineVariant),
             SwitchListTile(
-              title: const Text('السماح بخصم يدوي استثنائي على الفاتورة'),
-              subtitle: const Text('تمكين الكاشير من إدخال خصم يدوي إضافي دون طلب موافقة المدير'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text('السماح بخصم يدوي استثنائي على الفاتورة', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+              subtitle: const Text('تمكين الكاشير من إدخال خصم يدوي إضافي دون طلب موافقة المدير', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+              activeThumbColor: AppColors.primary,
               value: _config.allowManualDiscount,
               onChanged: (v) => _update(_config.copyWith(allowManualDiscount: v)),
             ),
@@ -544,6 +1563,7 @@ class _CashierPermissionsSettingsCardState
   }
 }
 
+// ─── Installment Settings Section ───
 class _InstallmentSettingsSection extends StatefulWidget {
   const _InstallmentSettingsSection();
 
@@ -586,10 +1606,17 @@ class _InstallmentSettingsSectionState
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Card(
-        key: Key('installment_settings_section'),
-        child: Padding(
-          padding: EdgeInsets.all(16),
+      return Card(
+        key: const Key('installment_settings_section'),
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: AppColors.outlineVariant),
+        ),
+        child: const Padding(
+          padding: EdgeInsets.all(24),
           child: Center(child: CircularProgressIndicator()),
         ),
       );
@@ -598,38 +1625,65 @@ class _InstallmentSettingsSectionState
     final pinSvc = getIt<ManagerPinService>();
     return Card(
       key: const Key('installment_settings_section'),
-      child: Column(
-        children: [
-          SwitchListTile(
-            key: const Key('installment_pin_required_toggle'),
-            title: const Text('طلب الرقم السري للمدير (Manager PIN) في التقسيط'),
-            subtitle: const Text(
-              'تأكيد المدير عند إنشاء عقد تقسيط، تسجيل دفعة، التسوية المبكرة، أو الإلغاء',
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: AppColors.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          children: [
+            SwitchListTile(
+              key: const Key('installment_pin_required_toggle'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text(
+                'طلب الرقم السري للمدير (Manager PIN) في التقسيط',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
+              ),
+              subtitle: const Text(
+                'تأكيد المدير عند إنشاء عقد تقسيط، تسجيل دفعة، التسوية المبكرة، أو الإلغاء',
+                style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+              ),
+              activeThumbColor: AppColors.primary,
+              value: _pinRequired,
+              onChanged: (v) async {
+                final uid = _userId(context);
+                await pinSvc.setPinRequired(required: v, userId: uid);
+                if (mounted) {
+                  setState(() => _pinRequired = v);
+                }
+              },
             ),
-            value: _pinRequired,
-            onChanged: (v) async {
-              final uid = _userId(context);
-              await pinSvc.setPinRequired(required: v, userId: uid);
-              if (mounted) {
-                setState(() => _pinRequired = v);
-              }
-            },
-          ),
-          const Divider(height: 1),
-          ListTile(
-            enabled: _pinRequired,
-            title: const Text('الرقم السري للمدير'),
-            subtitle: Text(
-              !_pinRequired
-                  ? 'معطّل حالياً في التقسيط'
-                  : (_pinSet ? 'الرقم السري مُعيَّن' : 'لم يتم تعيين الرقم السري بعد'),
+            Divider(height: 16, color: AppColors.outlineVariant),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              enabled: _pinRequired,
+              title: const Text(
+                'الرقم السري للمدير',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
+              ),
+              subtitle: Text(
+                !_pinRequired
+                    ? 'معطّل حالياً في التقسيط'
+                    : (_pinSet ? 'الرقم السري مُعيَّن' : 'لم يتم تعيين الرقم السري بعد'),
+                style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+              ),
+              trailing: OutlinedButton(
+                onPressed: _pinRequired ? () => _showSetPinDialog(context) : null,
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: AppColors.primary),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Text(_pinSet ? 'تغيير' : 'تعيين'),
+              ),
             ),
-            trailing: OutlinedButton(
-              onPressed: _pinRequired ? () => _showSetPinDialog(context) : null,
-              child: Text(_pinSet ? 'تغيير' : 'تعيين'),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -690,6 +1744,7 @@ class _InstallmentSettingsSectionState
   }
 }
 
+// ─── Credit Sales Settings Section ───
 class _CreditSalesSettingsSection extends StatefulWidget {
   final String userId;
 
@@ -728,10 +1783,17 @@ class _CreditSalesSettingsSectionState
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Card(
-        key: Key('credit_settings_section'),
-        child: Padding(
-          padding: EdgeInsets.all(16),
+      return Card(
+        key: const Key('credit_settings_section'),
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: AppColors.outlineVariant),
+        ),
+        child: const Padding(
+          padding: EdgeInsets.all(24),
           child: Center(child: CircularProgressIndicator()),
         ),
       );
@@ -743,73 +1805,120 @@ class _CreditSalesSettingsSectionState
 
     return Card(
       key: const Key('credit_settings_section'),
-      child: Column(
-        children: [
-          SwitchListTile(
-            key: const Key('credit_sales_enabled_toggle'),
-            title: const Text('تفعيل الدفع الآجل في الكاشير (نقطة البيع)'),
-            subtitle: const Text(
-              'إظهار طريقة الدفع "آجل" في شاشة البيع، مع تسجيل الفواتير في ذمة العميل',
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: AppColors.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          children: [
+            SwitchListTile(
+              key: const Key('credit_sales_enabled_toggle'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text(
+                'تفعيل الدفع الآجل في الكاشير (نقطة البيع)',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
+              ),
+              subtitle: const Text(
+                'إظهار طريقة الدفع "آجل" في شاشة البيع، مع تسجيل الفواتير في ذمة العميل',
+                style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+              ),
+              activeThumbColor: AppColors.primary,
+              value: creditEnabled,
+              onChanged: (v) async {
+                final err = await context
+                    .read<SettingsCubit>()
+                    .setPaymentMethod('payment.credit', v, widget.userId);
+                if (err != null && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(err),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+                }
+              },
             ),
-            value: creditEnabled,
-            onChanged: (v) async {
-              final err = await context
-                  .read<SettingsCubit>()
-                  .setPaymentMethod('payment.credit', v, widget.userId);
-              if (err != null && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(err), backgroundColor: AppColors.error),
+            Divider(height: 16, color: AppColors.outlineVariant),
+            SwitchListTile(
+              key: const Key('credit_sales_pin_required_toggle'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text(
+                'طلب الرقم السري للمدير عند البيع الآجل',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
+              ),
+              subtitle: const Text(
+                'طلب موافقة وتأكيد المدير برقم الـ PIN عند إتمام أي عملية بيع بالآجل',
+                style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+              ),
+              activeThumbColor: AppColors.primary,
+              value: _creditPinRequired,
+              onChanged: (v) async {
+                await pinSvc.setCreditPinRequired(
+                  required: v,
+                  userId: widget.userId,
                 );
-              }
-            },
-          ),
-          const Divider(height: 1),
-          SwitchListTile(
-            key: const Key('credit_sales_pin_required_toggle'),
-            title: const Text('طلب الرقم السري للمدير عند البيع الآجل'),
-            subtitle: const Text(
-              'طلب موافقة وتأكيد المدير برقم الـ PIN عند إتمام أي عملية بيع بالآجل',
+                if (mounted) {
+                  setState(() => _creditPinRequired = v);
+                }
+              },
             ),
-            value: _creditPinRequired,
-            onChanged: (v) async {
-              await pinSvc.setCreditPinRequired(required: v, userId: widget.userId);
-              if (mounted) {
-                setState(() => _creditPinRequired = v);
-              }
-            },
-          ),
-          const Divider(height: 1),
-          ListTile(
-            enabled: _creditPinRequired,
-            title: const Text('الرقم السري للمدير (Manager PIN) للآجل'),
-            subtitle: Text(
-              !_creditPinRequired
-                  ? 'معطّل حالياً في البيع الآجل — لن يُطلب الرقم السري'
-                  : (_pinSet ? 'الرقم السري مُعيَّن' : 'لم يتم تعيين الرقم السري بعد'),
-            ),
-            trailing: OutlinedButton(
-              onPressed: _creditPinRequired ? () => _showSetPinDialog(context) : null,
-              child: Text(_pinSet ? 'تغيير' : 'تعيين'),
-            ),
-          ),
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.info_outline_rounded, size: 20, color: AppColors.primary),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Text(
-                    'ملاحظة: يمكن للمدير تحديد "الحد الأقصى للآجل (الائتماني)" لكل عميل من شاشة سجل العملاء. في حال تجاوز العميل للحد الائتماني، يلزم النظام إدخال الرقم السري للمدير للموافقة على الاستثناء.',
-                    style: TextStyle(fontSize: 12.5, color: Colors.grey, height: 1.4),
+            Divider(height: 16, color: AppColors.outlineVariant),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              enabled: _creditPinRequired,
+              title: const Text(
+                'الرقم السري للمدير (Manager PIN) للآجل',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
+              ),
+              subtitle: Text(
+                !_creditPinRequired
+                    ? 'معطّل حالياً في البيع الآجل — لن يُطلب الرقم السري'
+                    : (_pinSet ? 'الرقم السري مُعيَّن' : 'لم يتم تعيين الرقم السري بعد'),
+                style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+              ),
+              trailing: OutlinedButton(
+                onPressed: _creditPinRequired ? () => _showSetPinDialog(context) : null,
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: AppColors.primary),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-              ],
+                child: Text(_pinSet ? 'تغيير' : 'تعيين'),
+              ),
             ),
-          ),
-        ],
+            Divider(height: 16, color: AppColors.outlineVariant),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.info_outline_rounded,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'ملاحظة: يمكن للمدير تحديد "الحد الأقصى للآجل (الائتماني)" لكل عميل من شاشة سجل العملاء. في حال تجاوز العميل للحد الائتماني، يلزم النظام إدخال الرقم السري للمدير للموافقة على الاستثناء.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF64748B),
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -870,6 +1979,7 @@ class _CreditSalesSettingsSectionState
   }
 }
 
+// ─── Branding Settings Card ───
 class _BrandingSettingsCard extends StatefulWidget {
   final String userId;
 
@@ -1002,8 +2112,15 @@ class _BrandingSettingsCardState extends State<_BrandingSettingsCard> {
   @override
   Widget build(BuildContext context) {
     return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: AppColors.outlineVariant),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1013,18 +2130,22 @@ class _BrandingSettingsCardState extends State<_BrandingSettingsCard> {
               controller: _nameCtrl,
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
-                labelText: 'اسم النظام / المحل',
-                hintText: 'مثال: بيعة',
+                labelText: 'اسم النظام / المتجر',
+                hintText: 'مثال: متجر بيعة',
                 prefixIcon: Icon(Icons.storefront_rounded, color: _selectedPrimary),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
             // 2. Curated Theme Color Presets
             const Text(
-              'اختر قالب ألوان النظام:',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              'اختر قالباً لونياً للهوية:',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: Color(0xFF0F172A),
+              ),
             ),
             const SizedBox(height: 10),
             Wrap(
@@ -1041,33 +2162,35 @@ class _BrandingSettingsCardState extends State<_BrandingSettingsCard> {
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? preset.primary.withValues(alpha: 0.1)
-                          : Colors.grey.shade50,
+                          ? preset.primary.withValues(alpha: 0.08)
+                          : const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                        color: isSelected ? preset.primary : Colors.grey.shade300,
-                        width: isSelected ? 2 : 1,
+                        color: isSelected
+                            ? preset.primary
+                            : AppColors.outlineVariant,
+                        width: isSelected ? 1.8 : 1,
                       ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
-                          width: 22,
-                          height: 22,
+                          width: 20,
+                          height: 20,
                           decoration: BoxDecoration(
                             color: preset.primary,
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 1.5),
                           ),
                           child: isSelected
-                              ? const Icon(Icons.check, color: Colors.white, size: 14)
+                              ? const Icon(Icons.check, color: Colors.white, size: 13)
                               : null,
                         ),
                         const SizedBox(width: 4),
                         Container(
-                          width: 16,
-                          height: 16,
+                          width: 15,
+                          height: 15,
                           decoration: BoxDecoration(
                             color: preset.secondary,
                             shape: BoxShape.circle,
@@ -1080,6 +2203,7 @@ class _BrandingSettingsCardState extends State<_BrandingSettingsCard> {
                             fontSize: 12,
                             fontWeight:
                                 isSelected ? FontWeight.bold : FontWeight.w500,
+                            color: const Color(0xFF0F172A),
                           ),
                         ),
                       ],
@@ -1088,7 +2212,7 @@ class _BrandingSettingsCardState extends State<_BrandingSettingsCard> {
                 );
               }).toList(),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
             // 3. Custom Hex Color Inputs
             Row(
@@ -1144,11 +2268,11 @@ class _BrandingSettingsCardState extends State<_BrandingSettingsCard> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
 
             // 4. Live Preview Banner
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: _selectedPrimary,
                 borderRadius: BorderRadius.circular(10),
@@ -1187,7 +2311,7 @@ class _BrandingSettingsCardState extends State<_BrandingSettingsCard> {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
             // 5. Action Buttons
             Wrap(
@@ -1199,12 +2323,20 @@ class _BrandingSettingsCardState extends State<_BrandingSettingsCard> {
                   onPressed: _saving ? null : _resetDefaults,
                   icon: const Icon(Icons.restore_rounded, size: 18),
                   label: const Text('استعادة الافتراضي'),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
                 ),
                 ElevatedButton.icon(
                   key: const Key('branding_save_button'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _selectedPrimary,
                     foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                   onPressed: _saving ? null : _saveBranding,
                   icon: _saving
@@ -1228,6 +2360,7 @@ class _BrandingSettingsCardState extends State<_BrandingSettingsCard> {
   }
 }
 
+// ─── Receipt Customizer Settings Card ───
 class _ReceiptCustomizerSettingsCard extends StatelessWidget {
   final String userId;
 
@@ -1240,24 +2373,26 @@ class _ReceiptCustomizerSettingsCard extends StatelessWidget {
       builder: (context, cfg, _) {
         return Card(
           elevation: 0,
+          margin: EdgeInsets.zero,
+          color: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: Colors.black12),
+            side: BorderSide(color: AppColors.outlineVariant),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(18),
             child: Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
+                    color: AppColors.primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     Icons.receipt_long_rounded,
                     color: AppColors.primary,
-                    size: 28,
+                    size: 26,
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -1269,15 +2404,16 @@ class _ReceiptCustomizerSettingsCard extends StatelessWidget {
                         'الفاتورة الحرارية: ${cfg.storeName}',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 15,
+                          fontSize: 14.5,
+                          color: Color(0xFF0F172A),
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3),
                       Text(
                         'مقاس: ${cfg.paperWidthMm} مم | هاتف: ${cfg.storePhone} | عنوان: ${cfg.storeAddress}',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 12,
-                          color: Colors.grey.shade600,
+                          color: Color(0xFF64748B),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1285,7 +2421,7 @@ class _ReceiptCustomizerSettingsCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 12),
                 FilledButton.icon(
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
@@ -1302,7 +2438,7 @@ class _ReceiptCustomizerSettingsCard extends StatelessWidget {
                     );
                   },
                   icon: const Icon(Icons.tune_rounded, size: 16),
-                  label: const Text('تخصيص وبرمجة الفاتورة'),
+                  label: const Text('تخصيص الفاتورة'),
                 ),
               ],
             ),
@@ -1313,6 +2449,7 @@ class _ReceiptCustomizerSettingsCard extends StatelessWidget {
   }
 }
 
+// ─── Barcode Customizer Settings Card ───
 class _BarcodeCustomizerSettingsCard extends StatelessWidget {
   final String userId;
 
@@ -1325,24 +2462,26 @@ class _BarcodeCustomizerSettingsCard extends StatelessWidget {
       builder: (context, cfg, _) {
         return Card(
           elevation: 0,
+          margin: EdgeInsets.zero,
+          color: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: Colors.black12),
+            side: BorderSide(color: AppColors.outlineVariant),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(18),
             child: Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
+                    color: AppColors.primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     Icons.qr_code_2_rounded,
                     color: AppColors.primary,
-                    size: 28,
+                    size: 26,
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -1354,15 +2493,16 @@ class _BarcodeCustomizerSettingsCard extends StatelessWidget {
                         'ملصقات الباركود والأسعار: ${cfg.storeName}',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 15,
+                          fontSize: 14.5,
+                          color: Color(0xFF0F172A),
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3),
                       Text(
                         'المقاس: ${cfg.selectedSize.name} | السعر: ${cfg.showPrice ? "مفعل" : "معطل"} | المقاس واللون: ${cfg.showColorAndSize ? "مفعل" : "معطل"}',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 12,
-                          color: Colors.grey.shade600,
+                          color: Color(0xFF64748B),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1370,7 +2510,7 @@ class _BarcodeCustomizerSettingsCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 12),
                 FilledButton.icon(
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
@@ -1398,6 +2538,7 @@ class _BarcodeCustomizerSettingsCard extends StatelessWidget {
   }
 }
 
+// ─── Sector Mode Settings Card ───
 class _SectorModeSettingsCard extends StatelessWidget {
   final String userId;
 
@@ -1434,33 +2575,55 @@ class _SectorModeSettingsCard extends StatelessWidget {
         ];
 
         return Card(
-          elevation: 1,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          elevation: 0,
+          margin: EdgeInsets.zero,
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: AppColors.outlineVariant),
+          ),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Icon(Icons.storefront_rounded, color: AppColors.primary),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'تخصيص نمط النظام لنشاط المحل',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.storefront_rounded,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'تخصيص نمط النظام لنشاط المحل',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text(
+                const Text(
                   'اختر نوع نشاط متجرك لتكييف شاشات إضافة المنتجات والكاشير وسلوك الماسح الضوئي تلقائياً.',
-                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                  style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
                 for (final opt in options) ...[
                   InkWell(
                     key: Key('sector_tile_${opt.key}'),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                     onTap: () async {
                       if (currentMode == opt.key) return;
                       final err = await context
@@ -1489,32 +2652,32 @@ class _SectorModeSettingsCard extends StatelessWidget {
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: currentMode == opt.key
-                            ? opt.color.withValues(alpha: 0.08)
-                            : Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(12),
+                            ? opt.color.withValues(alpha: 0.06)
+                            : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           color: currentMode == opt.key
                               ? opt.color
-                              : Colors.grey.shade200,
+                              : AppColors.outlineVariant,
                           width: currentMode == opt.key ? 1.8 : 1,
                         ),
                       ),
                       child: Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(10),
+                            padding: const EdgeInsets.all(9),
                             decoration: BoxDecoration(
                               color: currentMode == opt.key
                                   ? opt.color
-                                  : Colors.grey.shade200,
-                              borderRadius: BorderRadius.circular(10),
+                                  : const Color(0xFFE2E8F0),
+                              borderRadius: BorderRadius.circular(8),
                             ),
                             child: Icon(
                               opt.icon,
                               color: currentMode == opt.key
                                   ? Colors.white
-                                  : Colors.grey.shade700,
-                              size: 22,
+                                  : const Color(0xFF64748B),
+                              size: 20,
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -1522,46 +2685,48 @@ class _SectorModeSettingsCard extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
+                                Wrap(
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: 8,
+                                  runSpacing: 4,
                                   children: [
                                     Text(
                                       opt.title,
                                       style: TextStyle(
-                                        fontSize: 15,
+                                        fontSize: 14,
                                         fontWeight: FontWeight.bold,
                                         color: currentMode == opt.key
                                             ? opt.color
-                                            : AppColors.onSurface,
+                                            : const Color(0xFF0F172A),
                                       ),
                                     ),
-                                    if (currentMode == opt.key) ...[
-                                      const SizedBox(width: 8),
+                                    if (currentMode == opt.key)
                                       Container(
                                         padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 2),
+                                          horizontal: 8,
+                                          vertical: 2,
+                                        ),
                                         decoration: BoxDecoration(
                                           color: opt.color,
-                                          borderRadius:
-                                              BorderRadius.circular(6),
+                                          borderRadius: BorderRadius.circular(6),
                                         ),
                                         child: const Text(
                                           'النشط حالياً',
                                           style: TextStyle(
                                             color: Colors.white,
-                                            fontSize: 11,
+                                            fontSize: 10.5,
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
                                       ),
-                                    ],
                                   ],
                                 ),
-                                const SizedBox(height: 3),
+                                const SizedBox(height: 2),
                                 Text(
                                   opt.desc,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey.shade700,
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    color: Color(0xFF64748B),
                                   ),
                                 ),
                               ],

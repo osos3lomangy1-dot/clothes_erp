@@ -112,7 +112,10 @@ class InstallmentsListCubit extends Cubit<InstallmentsListState> {
     emit(state.copyWith(status: InstallmentsListStatus.loading));
 
     final now = DateTime.now();
-    final groupedRes = await _facade.getGroupedByCustomer(now: now);
+    final groupedRes = await _facade.getGroupedByCustomer(
+      now: now,
+      includeInactive: true,
+    );
     final groups = groupedRes.getOrElse(() => []);
 
     // Fetch customers to map customerId to name

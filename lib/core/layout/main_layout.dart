@@ -563,6 +563,9 @@ class _MainLayoutState extends State<MainLayout> {
                         const Divider(color: Colors.white24, height: 1),
                         _buildSyncSection(),
                       ],
+                      // ── Logout Button ──
+                      const Divider(color: Colors.white24, height: 1),
+                      _buildLogoutButton(collapsed),
                     ],
                   ),
                 ),
@@ -711,6 +714,112 @@ class _MainLayoutState extends State<MainLayout> {
     );
   }
 
+  Widget _buildLogoutButton(bool collapsed) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: collapsed ? 0 : 12,
+        vertical: 10,
+      ),
+      child: collapsed
+          ? Center(
+              child: Tooltip(
+                message: 'تسجيل الخروج',
+                waitDuration: const Duration(milliseconds: 200),
+                child: Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () => _confirmLogout(),
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      alignment: Alignment.center,
+                      child: const Icon(
+                        Icons.logout_rounded,
+                        color: Colors.white70,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            )
+          : Material(
+              color: Colors.white.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () => _confirmLogout(),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(
+                        Icons.logout_rounded,
+                        color: Colors.white70,
+                        size: 20,
+                      ),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'تسجيل الخروج',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+    );
+  }
+
+  Future<void> _confirmLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.logout_rounded, color: AppColors.error),
+            SizedBox(width: 10),
+            Text('تسجيل الخروج', style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: const Text('هل أنت متأكد من تسجيل الخروج؟'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.logout_rounded, size: 18),
+            label: const Text('خروج'),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.error,
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      context.read<AuthCubit>().logout();
+    }
+  }
+
   void _ensureSectionExpandedFor(String title) {
     const salesTitles = {
       'سجل فواتير المبيعات',
@@ -741,16 +850,21 @@ class _MainLayoutState extends State<MainLayout> {
       'سجلات الأعطال',
     };
 
-    if (salesTitles.contains(title))
+    if (salesTitles.contains(title)) {
       _collapsedSections.remove('المبيعات والطلبات');
-    if (invTitles.contains(title))
+    }
+    if (invTitles.contains(title)) {
       _collapsedSections.remove('المخزون والمستودع');
-    if (purchTitles.contains(title))
+    }
+    if (purchTitles.contains(title)) {
       _collapsedSections.remove('المشتريات والموردين');
-    if (financeTitles.contains(title))
+    }
+    if (financeTitles.contains(title)) {
       _collapsedSections.remove('العملاء والمالية');
-    if (adminTitles.contains(title))
+    }
+    if (adminTitles.contains(title)) {
       _collapsedSections.remove('الإدارة والتقارير');
+    }
   }
 
   Widget _navGroup({
