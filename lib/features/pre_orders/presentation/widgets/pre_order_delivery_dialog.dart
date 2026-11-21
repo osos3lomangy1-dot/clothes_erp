@@ -17,7 +17,9 @@ class PreOrderDeliveryDialog extends StatefulWidget {
 
 class _PreOrderDeliveryDialogState extends State<PreOrderDeliveryDialog> {
   late final TextEditingController _finalPaymentCtrl;
-  final TextEditingController _courierFeeCtrl = TextEditingController(text: '0');
+  final TextEditingController _courierFeeCtrl = TextEditingController(
+    text: '0',
+  );
   final TextEditingController _courierNameCtrl = TextEditingController();
 
   String _deliveryType = 'pickup'; // 'pickup' | 'courier'
@@ -51,7 +53,8 @@ class _PreOrderDeliveryDialogState extends State<PreOrderDeliveryDialog> {
       duePiasters = (totalRemaining * ratio).round();
     }
 
-    final courierFee = (double.tryParse(_courierFeeCtrl.text.trim()) ?? 0.0) * 100;
+    final courierFee =
+        (double.tryParse(_courierFeeCtrl.text.trim()) ?? 0.0) * 100;
     duePiasters += courierFee.round();
 
     final remLe = duePiasters > 0 ? duePiasters / 100.0 : 0.0;
@@ -97,8 +100,11 @@ class _PreOrderDeliveryDialogState extends State<PreOrderDeliveryDialog> {
               color: AppColors.success.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.check_circle_rounded,
-                color: AppColors.success, size: 22),
+            child: const Icon(
+              Icons.check_circle_rounded,
+              color: AppColors.success,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -248,15 +254,23 @@ class _PreOrderDeliveryDialogState extends State<PreOrderDeliveryDialog> {
                       child: TextField(
                         controller: _courierNameCtrl,
                         style: const TextStyle(
-                            fontFamily: 'Cairo', fontSize: 12),
+                          fontFamily: 'Cairo',
+                          fontSize: 12,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'شركة الشحن / اسم الطيار',
-                          prefixIcon: Icon(Icons.delivery_dining_rounded,
-                              size: 18, color: AppColors.primary),
+                          prefixIcon: Icon(
+                            Icons.delivery_dining_rounded,
+                            size: 18,
+                            color: AppColors.primary,
+                          ),
                           contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 8),
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
                           border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8)),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                       ),
                     ),
@@ -267,15 +281,19 @@ class _PreOrderDeliveryDialogState extends State<PreOrderDeliveryDialog> {
                         controller: _courierFeeCtrl,
                         keyboardType: TextInputType.number,
                         style: const TextStyle(
-                            fontFamily: 'Cairo',
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold),
+                          fontFamily: 'Cairo',
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'مصاريف الشحن (ج.م)',
                           contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 8),
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
                           border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8)),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                         onChanged: (_) => _recalculatePaymentAmount(),
                       ),
@@ -315,10 +333,13 @@ class _PreOrderDeliveryDialogState extends State<PreOrderDeliveryDialog> {
                               const SizedBox(width: 6),
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 6, vertical: 1.5),
+                                  horizontal: 6,
+                                  vertical: 1.5,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary
-                                      .withValues(alpha: 0.1),
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.1,
+                                  ),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
@@ -342,14 +363,14 @@ class _PreOrderDeliveryDialogState extends State<PreOrderDeliveryDialog> {
                                 _selectedItemIds.clear();
                               } else {
                                 _selectedItemIds.addAll(
-                                    widget.order.items.map((e) => e.id));
+                                  widget.order.items.map((e) => e.id),
+                                );
                               }
                               _recalculatePaymentAmount();
                             });
                           },
                           child: Text(
-                            _selectedItemIds.length ==
-                                    widget.order.items.length
+                            _selectedItemIds.length == widget.order.items.length
                                 ? 'إلغاء تحديد الكل'
                                 : 'تحديد الكل',
                             style: TextStyle(
@@ -481,12 +502,17 @@ class _PreOrderDeliveryDialogState extends State<PreOrderDeliveryDialog> {
                       ),
                       decoration: InputDecoration(
                         labelText: 'المبلغ المحصل الآن (ج.م) *',
-                        prefixIcon: Icon(Icons.payments_outlined,
-                            color: AppColors.primary),
+                        prefixIcon: Icon(
+                          Icons.payments_outlined,
+                          color: AppColors.primary,
+                        ),
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 10),
+                          horizontal: 10,
+                          vertical: 10,
+                        ),
                         border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                     ),
                   ),
@@ -498,21 +524,30 @@ class _PreOrderDeliveryDialogState extends State<PreOrderDeliveryDialog> {
                       decoration: InputDecoration(
                         labelText: 'طريقة الدفع',
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 10),
+                          horizontal: 10,
+                          vertical: 10,
+                        ),
                         border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                       items: const [
                         DropdownMenuItem(
-                            value: 'cash', child: Text('كاش (نقداً)')),
+                          value: 'cash',
+                          child: Text('كاش (نقداً)'),
+                        ),
                         DropdownMenuItem(
-                            value: 'instapay',
-                            child: Text('انستاباي (InstaPay)')),
+                          value: 'instapay',
+                          child: Text('انستاباي (InstaPay)'),
+                        ),
                         DropdownMenuItem(
-                            value: 'vodafone_cash',
-                            child: Text('فودافون كاش')),
+                          value: 'vodafone_cash',
+                          child: Text('فودافون كاش'),
+                        ),
                         DropdownMenuItem(
-                            value: 'card', child: Text('فيزا / بطاقة')),
+                          value: 'card',
+                          child: Text('فيزا / بطاقة'),
+                        ),
                       ],
                       onChanged: (val) {
                         if (val != null) setState(() => _paymentMethod = val);
@@ -529,9 +564,13 @@ class _PreOrderDeliveryDialogState extends State<PreOrderDeliveryDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('إلغاء',
-              style: TextStyle(
-                  fontFamily: 'Cairo', color: AppColors.onSurfaceVariant)),
+          child: const Text(
+            'إلغاء',
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              color: AppColors.onSurfaceVariant,
+            ),
+          ),
         ),
         ElevatedButton.icon(
           style: ElevatedButton.styleFrom(
@@ -540,18 +579,23 @@ class _PreOrderDeliveryDialogState extends State<PreOrderDeliveryDialog> {
                 : AppColors.success,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
-          icon: Icon(_isPartialDelivery
-              ? Icons.playlist_add_check_rounded
-              : Icons.check_circle_rounded),
+          icon: Icon(
+            _isPartialDelivery
+                ? Icons.playlist_add_check_rounded
+                : Icons.check_circle_rounded,
+          ),
           label: Text(
             _isPartialDelivery
                 ? 'تأكيد التسليم الجزئي'
                 : 'تأكيد التسليم الكامل والإغلاق',
             style: const TextStyle(
-                fontFamily: 'Cairo', fontWeight: FontWeight.bold),
+              fontFamily: 'Cairo',
+              fontWeight: FontWeight.bold,
+            ),
           ),
           onPressed: () async {
             if (_selectedItemIds.isEmpty) {
@@ -585,7 +629,9 @@ class _PreOrderDeliveryDialogState extends State<PreOrderDeliveryDialog> {
                     content: Text(
                       'تم تسليم الأوردر بالكامل وإغلاق الحساب بنجاح!',
                       style: TextStyle(
-                          fontFamily: 'Cairo', fontWeight: FontWeight.bold),
+                        fontFamily: 'Cairo',
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     backgroundColor: AppColors.success,
                   ),
@@ -609,7 +655,9 @@ class _PreOrderDeliveryDialogState extends State<PreOrderDeliveryDialog> {
                     content: Text(
                       'تم تسجيل تسليم جزئي لـ ${_selectedItemIds.length} أصناف بنجاح، وتبقى ${widget.order.items.length - _selectedItemIds.length} أصناف قيد الانتظار!',
                       style: const TextStyle(
-                          fontFamily: 'Cairo', fontWeight: FontWeight.bold),
+                        fontFamily: 'Cairo',
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     backgroundColor: AppColors.primary,
                   ),

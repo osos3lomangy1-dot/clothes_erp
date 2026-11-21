@@ -17,17 +17,21 @@ class PreOrdersCubit extends Cubit<PreOrdersState> {
     try {
       final orders = await _repository.getPreOrders();
       final batches = await _repository.getBatches();
-      emit(state.copyWith(
-        status: PreOrdersViewStatus.loaded,
-        allOrders: orders,
-        allBatches: batches,
-        errorMessage: null,
-      ));
+      emit(
+        state.copyWith(
+          status: PreOrdersViewStatus.loaded,
+          allOrders: orders,
+          allBatches: batches,
+          errorMessage: null,
+        ),
+      );
     } catch (e) {
-      emit(state.copyWith(
-        status: PreOrdersViewStatus.error,
-        errorMessage: 'فشل تحميل طلبات الحجز والشحنات: $e',
-      ));
+      emit(
+        state.copyWith(
+          status: PreOrdersViewStatus.error,
+          errorMessage: 'فشل تحميل طلبات الحجز والشحنات: $e',
+        ),
+      );
     }
   }
 
@@ -63,10 +67,12 @@ class PreOrdersCubit extends Cubit<PreOrdersState> {
       emit(state.copyWith(isSubmitting: false));
       return true;
     } catch (e) {
-      emit(state.copyWith(
-        isSubmitting: false,
-        errorMessage: 'فشل إنشاء طلب الحجز: $e',
-      ));
+      emit(
+        state.copyWith(
+          isSubmitting: false,
+          errorMessage: 'فشل إنشاء طلب الحجز: $e',
+        ),
+      );
       return false;
     }
   }
@@ -93,10 +99,12 @@ class PreOrdersCubit extends Cubit<PreOrdersState> {
       emit(state.copyWith(isSubmitting: false));
       return true;
     } catch (e) {
-      emit(state.copyWith(
-        isSubmitting: false,
-        errorMessage: 'فشل تسجيل الدفعة: $e',
-      ));
+      emit(
+        state.copyWith(
+          isSubmitting: false,
+          errorMessage: 'فشل تسجيل الدفعة: $e',
+        ),
+      );
       return false;
     }
   }
@@ -109,10 +117,12 @@ class PreOrdersCubit extends Cubit<PreOrdersState> {
       emit(state.copyWith(isSubmitting: false));
       return true;
     } catch (e) {
-      emit(state.copyWith(
-        isSubmitting: false,
-        errorMessage: 'فشل تحديث حالة الحجز إلى وصل للمحل: $e',
-      ));
+      emit(
+        state.copyWith(
+          isSubmitting: false,
+          errorMessage: 'فشل تحديث حالة الحجز إلى وصل للمحل: $e',
+        ),
+      );
       return false;
     }
   }
@@ -137,10 +147,12 @@ class PreOrdersCubit extends Cubit<PreOrdersState> {
       emit(state.copyWith(isSubmitting: false));
       return true;
     } catch (e) {
-      emit(state.copyWith(
-        isSubmitting: false,
-        errorMessage: 'فشل إتمام تسليم الأوردر: $e',
-      ));
+      emit(
+        state.copyWith(
+          isSubmitting: false,
+          errorMessage: 'فشل إتمام تسليم الأوردر: $e',
+        ),
+      );
       return false;
     }
   }
@@ -161,10 +173,12 @@ class PreOrdersCubit extends Cubit<PreOrdersState> {
       emit(state.copyWith(isSubmitting: false));
       return true;
     } catch (e) {
-      emit(state.copyWith(
-        isSubmitting: false,
-        errorMessage: 'فشل مصادرة العربون: $e',
-      ));
+      emit(
+        state.copyWith(
+          isSubmitting: false,
+          errorMessage: 'فشل مصادرة العربون: $e',
+        ),
+      );
       return false;
     }
   }
@@ -189,10 +203,12 @@ class PreOrdersCubit extends Cubit<PreOrdersState> {
       emit(state.copyWith(isSubmitting: false));
       return true;
     } catch (e) {
-      emit(state.copyWith(
-        isSubmitting: false,
-        errorMessage: 'فشل إلغاء الحجز ورد المبلغ: $e',
-      ));
+      emit(
+        state.copyWith(
+          isSubmitting: false,
+          errorMessage: 'فشل إلغاء الحجز ورد المبلغ: $e',
+        ),
+      );
       return false;
     }
   }
@@ -205,10 +221,9 @@ class PreOrdersCubit extends Cubit<PreOrdersState> {
       emit(state.copyWith(isSubmitting: false));
       return true;
     } catch (e) {
-      emit(state.copyWith(
-        isSubmitting: false,
-        errorMessage: 'فشل حذف الحجز: $e',
-      ));
+      emit(
+        state.copyWith(isSubmitting: false, errorMessage: 'فشل حذف الحجز: $e'),
+      );
       return false;
     }
   }
@@ -237,10 +252,12 @@ class PreOrdersCubit extends Cubit<PreOrdersState> {
       emit(state.copyWith(isSubmitting: false));
       return true;
     } catch (e) {
-      emit(state.copyWith(
-        isSubmitting: false,
-        errorMessage: 'فشل إنشاء الشحنة المجمعة: $e',
-      ));
+      emit(
+        state.copyWith(
+          isSubmitting: false,
+          errorMessage: 'فشل إنشاء الشحنة المجمعة: $e',
+        ),
+      );
       return false;
     }
   }
@@ -253,10 +270,12 @@ class PreOrdersCubit extends Cubit<PreOrdersState> {
       emit(state.copyWith(isSubmitting: false));
       return true;
     } catch (e) {
-      emit(state.copyWith(
-        isSubmitting: false,
-        errorMessage: 'فشل تحديث حالة الشحنة إلى وصلت للمحل: $e',
-      ));
+      emit(
+        state.copyWith(
+          isSubmitting: false,
+          errorMessage: 'فشل تحديث حالة الشحنة إلى وصلت للمحل: $e',
+        ),
+      );
       return false;
     }
   }
@@ -269,10 +288,12 @@ class PreOrdersCubit extends Cubit<PreOrdersState> {
       emit(state.copyWith(isSubmitting: false));
       return true;
     } catch (e) {
-      emit(state.copyWith(
-        isSubmitting: false,
-        errorMessage: 'فشل حذف الشحنة المجمعة: $e',
-      ));
+      emit(
+        state.copyWith(
+          isSubmitting: false,
+          errorMessage: 'فشل حذف الشحنة المجمعة: $e',
+        ),
+      );
       return false;
     }
   }

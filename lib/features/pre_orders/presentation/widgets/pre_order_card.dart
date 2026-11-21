@@ -629,13 +629,13 @@ class PreOrderCard extends StatelessWidget {
                               const Text('وصل للمحل جاهز للتسليم', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
                             ],
                           ),
-                        ),
+                      ),
                     if (order.canForfeit)
                       PopupMenuItem(
                         value: 'forfeit',
                         child: Row(
                           children: [
-                            const Icon(Icons.warning_amber_rounded, size: 18, color: AppColors.error),
+                            Icon(Icons.warning_amber_rounded, size: 18, color: AppColors.error),
                             const SizedBox(width: 8),
                             const Text('مصادرة العربون ونقل للمخزن', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
                           ],

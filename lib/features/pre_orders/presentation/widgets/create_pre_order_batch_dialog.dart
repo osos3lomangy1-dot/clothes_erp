@@ -39,14 +39,14 @@ class _BatchItemEntry {
     String cost = '',
     String commission = '50',
     String price = '',
-  })  : id = id ?? const Uuid().v4(),
-        nameCtrl = TextEditingController(text: name),
-        descCtrl = TextEditingController(text: desc),
-        urlCtrl = TextEditingController(text: url),
-        qtyCtrl = TextEditingController(text: qty),
-        costCtrl = TextEditingController(text: cost),
-        commissionCtrl = TextEditingController(text: commission),
-        priceCtrl = TextEditingController(text: price);
+  }) : id = id ?? const Uuid().v4(),
+       nameCtrl = TextEditingController(text: name),
+       descCtrl = TextEditingController(text: desc),
+       urlCtrl = TextEditingController(text: url),
+       qtyCtrl = TextEditingController(text: qty),
+       costCtrl = TextEditingController(text: cost),
+       commissionCtrl = TextEditingController(text: commission),
+       priceCtrl = TextEditingController(text: price);
 
   void dispose() {
     nameCtrl.dispose();
@@ -92,12 +92,12 @@ class _BatchCustomerEntry {
     String name = '',
     String phone = '',
     String deposit = '',
-  })  : id = id ?? const Uuid().v4(),
-        nameCtrl = TextEditingController(text: name),
-        phoneCtrl = TextEditingController(text: phone),
-        depositCtrl = TextEditingController(text: deposit),
-        customShippingCtrl = TextEditingController(text: '0'),
-        notesCtrl = TextEditingController();
+  }) : id = id ?? const Uuid().v4(),
+       nameCtrl = TextEditingController(text: name),
+       phoneCtrl = TextEditingController(text: phone),
+       depositCtrl = TextEditingController(text: deposit),
+       customShippingCtrl = TextEditingController(text: '0'),
+       notesCtrl = TextEditingController();
 
   void dispose() {
     nameCtrl.dispose();
@@ -127,21 +127,21 @@ class _BatchCustomerEntry {
   }
 
   int get totalPieces => items.fold(0, (sum, it) {
-        final q = int.tryParse(it.qtyCtrl.text.trim()) ?? 1;
-        return sum + (q > 0 ? q : 1);
-      });
+    final q = int.tryParse(it.qtyCtrl.text.trim()) ?? 1;
+    return sum + (q > 0 ? q : 1);
+  });
 
   int get totalSalePiasters => items.fold(0, (sum, it) {
-        final q = int.tryParse(it.qtyCtrl.text.trim()) ?? 1;
-        final p = double.tryParse(it.priceCtrl.text.trim()) ?? 0.0;
-        return sum + (q * (p * 100).round());
-      });
+    final q = int.tryParse(it.qtyCtrl.text.trim()) ?? 1;
+    final p = double.tryParse(it.priceCtrl.text.trim()) ?? 0.0;
+    return sum + (q * (p * 100).round());
+  });
 
   int get totalCostPiasters => items.fold(0, (sum, it) {
-        final q = int.tryParse(it.qtyCtrl.text.trim()) ?? 1;
-        final c = double.tryParse(it.costCtrl.text.trim()) ?? 0.0;
-        return sum + (q * (c * 100).round());
-      });
+    final q = int.tryParse(it.qtyCtrl.text.trim()) ?? 1;
+    final c = double.tryParse(it.costCtrl.text.trim()) ?? 0.0;
+    return sum + (q * (c * 100).round());
+  });
 
   int get depositPiasters {
     final d = double.tryParse(depositCtrl.text.trim()) ?? 0.0;
@@ -197,16 +197,20 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
   void _attachPendingOrders() {
     final cubit = context.read<PreOrdersCubit>();
     final pending = cubit.state.allOrders
-        .where((o) =>
-            o.batchId == null &&
-            o.status == PreOrderStatuses.pendingProcessing &&
-            !_customers.any((c) => c.nameCtrl.text.trim() == o.customerName))
+        .where(
+          (o) =>
+              o.batchId == null &&
+              o.status == PreOrderStatuses.pendingProcessing &&
+              !_customers.any((c) => c.nameCtrl.text.trim() == o.customerName),
+        )
         .toList();
 
     if (pending.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('لا توجد أوردرات فردية معلقة غير مدمجة حالياً لضمها'),
+          content: const Text(
+            'لا توجد أوردرات فردية معلقة غير مدمجة حالياً لضمها',
+          ),
           backgroundColor: AppColors.primary,
         ),
       );
@@ -234,16 +238,20 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                     color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(Icons.link_rounded,
-                      size: 20, color: AppColors.primary),
+                  child: Icon(
+                    Icons.link_rounded,
+                    size: 20,
+                    color: AppColors.primary,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 const Text(
                   'ضم أوردرات فردية معلقة للشحنة',
                   style: TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold),
+                    fontFamily: 'Cairo',
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
@@ -252,7 +260,7 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
               height: 350,
               child: ListView.separated(
                 itemCount: pending.length,
-                separatorBuilder: (_, _) =>
+                separatorBuilder: (context, index) =>
                     const Divider(height: 1, color: AppColors.outlineVariant),
                 itemBuilder: (context, idx) {
                   final po = pending[idx];
@@ -309,17 +317,21 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dCtx),
-                child: const Text('إلغاء',
-                    style: TextStyle(
-                        fontFamily: 'Cairo',
-                        color: AppColors.onSurfaceVariant)),
+                child: const Text(
+                  'إلغاء',
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                ),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
                 onPressed: () {
                   final toAttach = pending
@@ -363,15 +375,20 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                            'تم ضم ${toAttach.length} أوردرات للشحنة وحساب الشحن تلقائياً!'),
+                          'تم ضم ${toAttach.length} أوردرات للشحنة وحساب الشحن تلقائياً!',
+                        ),
                         backgroundColor: AppColors.success,
                       ),
                     );
                   }
                 },
-                child: Text('ضم (${selectedOrderIds.length}) للشحنة',
-                    style: const TextStyle(
-                        fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
+                child: Text(
+                  'ضم (${selectedOrderIds.length}) للشحنة',
+                  style: const TextStyle(
+                    fontFamily: 'Cairo',
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
           );
@@ -449,8 +466,10 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
   int get _batchTotalProfitPiasters {
     final baseProfit = _batchTotalRetailPiasters - _batchTotalCostPiasters;
     if (_shippingSplitMethod == ShippingSplitMethods.freeShipping) {
-      return (baseProfit - _totalShippingPiasters)
-          .clamp(0, _batchTotalRetailPiasters);
+      return (baseProfit - _totalShippingPiasters).clamp(
+        0,
+        _batchTotalRetailPiasters,
+      );
     }
     return baseProfit.clamp(0, _batchTotalRetailPiasters);
   }
@@ -460,8 +479,10 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
     for (final c in _customers) {
       final allocShipping = _calculateCustomerAllocatedShipping(c);
       final totalWithShipping = c.totalSalePiasters + allocShipping;
-      rem += (totalWithShipping - c.depositPiasters)
-          .clamp(0, totalWithShipping);
+      rem += (totalWithShipping - c.depositPiasters).clamp(
+        0,
+        totalWithShipping,
+      );
     }
     return rem;
   }
@@ -522,7 +543,10 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close_rounded, color: AppColors.onSurfaceVariant),
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: AppColors.onSurfaceVariant,
+                      ),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],
@@ -537,8 +561,9 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                       children: [
                         // بيانات الشحنة العامة
                         _buildSectionHeader(
-                            'بيانات الشحنة والمندوب وتكلفة الشحن العام',
-                            Icons.local_shipping_rounded),
+                          'بيانات الشحنة والمندوب وتكلفة الشحن العام',
+                          Icons.local_shipping_rounded,
+                        ),
                         const SizedBox(height: 8),
 
                         Row(
@@ -548,15 +573,17 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                               child: TextFormField(
                                 controller: _batchNumberCtrl,
                                 style: const TextStyle(
-                                    fontFamily: 'Cairo',
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold),
+                                  fontFamily: 'Cairo',
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
                                 decoration: _inputDecoration(
                                   label: 'اسم أو كود الشحنة المجمعة *',
                                   hint: 'مثال: شحنة 25 نوفمبر / BATCH-102',
                                   icon: Icons.tag_rounded,
                                 ),
-                                validator: (v) => (v == null || v.trim().isEmpty)
+                                validator: (v) =>
+                                    (v == null || v.trim().isEmpty)
                                     ? 'مطلوب اسم الشحنة'
                                     : null,
                               ),
@@ -567,7 +594,9 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                               child: TextFormField(
                                 controller: _agentNameCtrl,
                                 style: const TextStyle(
-                                    fontFamily: 'Cairo', fontSize: 13),
+                                  fontFamily: 'Cairo',
+                                  fontSize: 13,
+                                ),
                                 decoration: _inputDecoration(
                                   label: 'المندوب / الوسيط',
                                   hint: 'كابتن فلان أو شركة الشحن',
@@ -581,7 +610,9 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                               child: TextFormField(
                                 controller: _trackingNumberCtrl,
                                 style: const TextStyle(
-                                    fontFamily: 'Cairo', fontSize: 13),
+                                  fontFamily: 'Cairo',
+                                  fontSize: 13,
+                                ),
                                 decoration: _inputDecoration(
                                   label: 'رقم بوليصة الشحن العام',
                                   hint: 'SH-9284102',
@@ -628,23 +659,36 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                                 items: [
                                   DropdownMenuItem(
                                     value: ShippingSplitMethods.perItem,
-                                    child: Text(ShippingSplitMethods.getLabel(
-                                        ShippingSplitMethods.perItem)),
+                                    child: Text(
+                                      ShippingSplitMethods.getLabel(
+                                        ShippingSplitMethods.perItem,
+                                      ),
+                                    ),
                                   ),
                                   DropdownMenuItem(
-                                    value: ShippingSplitMethods.equalPerCustomer,
-                                    child: Text(ShippingSplitMethods.getLabel(
-                                        ShippingSplitMethods.equalPerCustomer)),
+                                    value:
+                                        ShippingSplitMethods.equalPerCustomer,
+                                    child: Text(
+                                      ShippingSplitMethods.getLabel(
+                                        ShippingSplitMethods.equalPerCustomer,
+                                      ),
+                                    ),
                                   ),
                                   DropdownMenuItem(
                                     value: ShippingSplitMethods.customFixed,
-                                    child: Text(ShippingSplitMethods.getLabel(
-                                        ShippingSplitMethods.customFixed)),
+                                    child: Text(
+                                      ShippingSplitMethods.getLabel(
+                                        ShippingSplitMethods.customFixed,
+                                      ),
+                                    ),
                                   ),
                                   DropdownMenuItem(
                                     value: ShippingSplitMethods.freeShipping,
-                                    child: Text(ShippingSplitMethods.getLabel(
-                                        ShippingSplitMethods.freeShipping)),
+                                    child: Text(
+                                      ShippingSplitMethods.getLabel(
+                                        ShippingSplitMethods.freeShipping,
+                                      ),
+                                    ),
                                   ),
                                 ],
                                 onChanged: (val) {
@@ -700,17 +744,24 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                                     foregroundColor: AppColors.primary,
                                     side: BorderSide(color: AppColors.primary),
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 8),
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
                                     shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8)),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
                                   ),
-                                  icon: const Icon(Icons.link_rounded, size: 16),
+                                  icon: const Icon(
+                                    Icons.link_rounded,
+                                    size: 16,
+                                  ),
                                   label: const Text(
                                     'ضم أوردرات فردية معلقة',
                                     style: TextStyle(
-                                        fontFamily: 'Cairo',
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold),
+                                      fontFamily: 'Cairo',
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
@@ -720,18 +771,24 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                                     backgroundColor: AppColors.primary,
                                     foregroundColor: Colors.white,
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 14, vertical: 8),
+                                      horizontal: 14,
+                                      vertical: 8,
+                                    ),
                                     shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8)),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
                                   ),
-                                  icon: const Icon(Icons.person_add_rounded,
-                                      size: 16),
+                                  icon: const Icon(
+                                    Icons.person_add_rounded,
+                                    size: 16,
+                                  ),
                                   label: const Text(
                                     '+ إضافة عميل للشحنة',
                                     style: TextStyle(
-                                        fontFamily: 'Cairo',
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold),
+                                      fontFamily: 'Cairo',
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -741,8 +798,10 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                         const SizedBox(height: 8),
 
                         // كروت العملاء
-                        ...List.generate(_customers.length,
-                            (cIdx) => _buildCustomerCard(cIdx)),
+                        ...List.generate(
+                          _customers.length,
+                          (cIdx) => _buildCustomerCard(cIdx),
+                        ),
 
                         const SizedBox(height: 16),
 
@@ -751,11 +810,13 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                           onTap: () async {
                             final picked = await showDatePicker(
                               context: context,
-                              initialDate:
-                                  DateTime.now().add(const Duration(days: 7)),
+                              initialDate: DateTime.now().add(
+                                const Duration(days: 7),
+                              ),
                               firstDate: DateTime.now(),
-                              lastDate:
-                                  DateTime.now().add(const Duration(days: 365)),
+                              lastDate: DateTime.now().add(
+                                const Duration(days: 365),
+                              ),
                             );
                             if (picked != null) {
                               setState(() => _expectedDeliveryDate = picked);
@@ -787,7 +848,9 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                         // 3. شريط الملخص المالي العام للشحنة بالكامل (متجاوب مع التمرير لمنع أي Overflow)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.surfaceContainerLow,
                             borderRadius: BorderRadius.circular(12),
@@ -797,42 +860,55 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                             scrollDirection: Axis.horizontal,
                             child: Row(
                               children: [
-                                _buildSummaryItem('العملاء',
-                                    '${_customers.length}', AppColors.onSurface),
+                                _buildSummaryItem(
+                                  'العملاء',
+                                  '${_customers.length}',
+                                  AppColors.onSurface,
+                                ),
                                 _summaryDivider(),
                                 _buildSummaryItem(
-                                    'إجمالي القطع',
-                                    '$_allBatchPieces',
-                                    AppColors.onSurface),
+                                  'إجمالي القطع',
+                                  '$_allBatchPieces',
+                                  AppColors.onSurface,
+                                ),
                                 _summaryDivider(),
                                 _buildSummaryItem(
-                                    'المبيعات',
-                                    Money(_batchTotalRetailPiasters).toDisplay(),
-                                    AppColors.onSurface),
+                                  'المبيعات',
+                                  Money(_batchTotalRetailPiasters).toDisplay(),
+                                  AppColors.onSurface,
+                                ),
                                 _summaryDivider(),
                                 _buildSummaryItem(
-                                    'تكلفة المندوب',
-                                    Money(_batchTotalCostPiasters).toDisplay(),
-                                    AppColors.onSurfaceVariant),
+                                  'تكلفة المندوب',
+                                  Money(_batchTotalCostPiasters).toDisplay(),
+                                  AppColors.onSurfaceVariant,
+                                ),
                                 _summaryDivider(),
                                 _buildSummaryItem(
-                                    'الشحن العام',
-                                    Money(_totalShippingPiasters).toDisplay(),
-                                    AppColors.primary),
+                                  'الشحن العام',
+                                  Money(_totalShippingPiasters).toDisplay(),
+                                  AppColors.primary,
+                                ),
                                 _summaryDivider(),
                                 _buildSummaryItem(
-                                    'صافي أرباحك',
-                                    '+${Money(_batchTotalProfitPiasters).toDisplay()}',
-                                    AppColors.primary),
+                                  'صافي أرباحك',
+                                  '+${Money(_batchTotalProfitPiasters).toDisplay()}',
+                                  AppColors.primary,
+                                ),
                                 _summaryDivider(),
                                 _buildSummaryItem(
-                                    'إجمالي العربونات',
-                                    Money(_batchTotalDepositsPiasters).toDisplay(),
-                                    AppColors.success),
+                                  'إجمالي العربونات',
+                                  Money(
+                                    _batchTotalDepositsPiasters,
+                                  ).toDisplay(),
+                                  AppColors.success,
+                                ),
                                 _summaryDivider(),
                                 _buildSummaryItem(
                                   'المتبقي تحصيله',
-                                  Money(_batchTotalRemainingPiasters).toDisplay(),
+                                  Money(
+                                    _batchTotalRemainingPiasters,
+                                  ).toDisplay(),
                                   _batchTotalRemainingPiasters > 0
                                       ? AppColors.error
                                       : AppColors.success,
@@ -854,10 +930,13 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                   children: [
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('إلغاء',
-                          style: TextStyle(
-                              fontFamily: 'Cairo',
-                              color: AppColors.onSurfaceVariant)),
+                      child: const Text(
+                        'إلغاء',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          color: AppColors.onSurfaceVariant,
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
@@ -865,18 +944,22 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 11),
+                          horizontal: 24,
+                          vertical: 11,
+                        ),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                       onPressed: _submitBatch,
                       icon: const Icon(Icons.check_rounded, size: 20),
                       label: const Text(
                         'تأكيد وحفظ الشحنة المجمعة',
                         style: TextStyle(
-                            fontFamily: 'Cairo',
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13.5),
+                          fontFamily: 'Cairo',
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13.5,
+                        ),
                       ),
                     ),
                   ],
@@ -895,9 +978,8 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
     final customer = _customers[cIdx];
     final allocatedShipping = _calculateCustomerAllocatedShipping(customer);
     final totalWithShipping = customer.totalSalePiasters + allocatedShipping;
-    final remainingWithShipping =
-        (totalWithShipping - customer.depositPiasters)
-            .clamp(0, totalWithShipping);
+    final remainingWithShipping = (totalWithShipping - customer.depositPiasters)
+        .clamp(0, totalWithShipping);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -909,8 +991,12 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
       child: ExpansionTile(
         initiallyExpanded: true,
         tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-        childrenPadding:
-            const EdgeInsets.only(left: 14, right: 14, bottom: 12, top: 4),
+        childrenPadding: const EdgeInsets.only(
+          left: 14,
+          right: 14,
+          bottom: 12,
+          top: 4,
+        ),
         leading: CircleAvatar(
           radius: 13,
           backgroundColor: AppColors.primary.withValues(alpha: 0.1),
@@ -942,9 +1028,10 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
               Text(
                 '(${customer.phoneCtrl.text})',
                 style: const TextStyle(
-                    fontFamily: 'Cairo',
-                    fontSize: 11,
-                    color: AppColors.onSurfaceVariant),
+                  fontFamily: 'Cairo',
+                  fontSize: 11,
+                  color: AppColors.onSurfaceVariant,
+                ),
               ),
             const Spacer(),
             Container(
@@ -967,8 +1054,11 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
             if (_customers.length > 1) ...[
               const SizedBox(width: 4),
               IconButton(
-                icon: const Icon(Icons.delete_outline_rounded,
-                    size: 18, color: AppColors.error),
+                icon: const Icon(
+                  Icons.delete_outline_rounded,
+                  size: 18,
+                  color: AppColors.error,
+                ),
                 onPressed: () => _removeCustomer(cIdx),
                 tooltip: 'حذف العميل من الشحنة',
               ),
@@ -986,11 +1076,13 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                     displayStringForOption: (c) => '${c.name} (${c.phone})',
                     optionsBuilder: (textVal) {
                       if (textVal.text.isEmpty) return const [];
-                      return _availableCustomers.where((c) =>
-                          c.name
-                              .toLowerCase()
-                              .contains(textVal.text.toLowerCase()) ||
-                          c.phone.contains(textVal.text));
+                      return _availableCustomers.where(
+                        (c) =>
+                            c.name.toLowerCase().contains(
+                              textVal.text.toLowerCase(),
+                            ) ||
+                            c.phone.contains(textVal.text),
+                      );
                     },
                     onSelected: (selected) {
                       setState(() {
@@ -1001,26 +1093,29 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                     },
                     fieldViewBuilder:
                         (context, textCtrl, focusNode, onFieldSubmitted) {
-                      // مزامنة مبدئية إذا تم إدخال اسم
-                      if (customer.nameCtrl.text.isNotEmpty &&
-                          textCtrl.text.isEmpty) {
-                        textCtrl.text = customer.nameCtrl.text;
-                      }
-                      return TextFormField(
-                        controller: textCtrl,
-                        focusNode: focusNode,
-                        style: const TextStyle(
-                            fontFamily: 'Cairo', fontSize: 12),
-                        decoration: _compactInput(
-                          label: 'اسم العميل (بحث في المسجلين أو كتابة جديد) *',
-                          hint: 'مثال: سارة محمد',
-                        ),
-                        onChanged: (val) {
-                          customer.nameCtrl.text = val;
-                          setState(() {});
+                          // مزامنة مبدئية إذا تم إدخال اسم
+                          if (customer.nameCtrl.text.isNotEmpty &&
+                              textCtrl.text.isEmpty) {
+                            textCtrl.text = customer.nameCtrl.text;
+                          }
+                          return TextFormField(
+                            controller: textCtrl,
+                            focusNode: focusNode,
+                            style: const TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 12,
+                            ),
+                            decoration: _compactInput(
+                              label:
+                                  'اسم العميل (بحث في المسجلين أو كتابة جديد) *',
+                              hint: 'مثال: سارة محمد',
+                            ),
+                            onChanged: (val) {
+                              customer.nameCtrl.text = val;
+                              setState(() {});
+                            },
+                          );
                         },
-                      );
-                    },
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -1075,9 +1170,14 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                   decoration: _compactInput(label: 'طريقة الدفع'),
                   items: const [
                     DropdownMenuItem(value: 'cash', child: Text('كاش')),
-                    DropdownMenuItem(value: 'instapay', child: Text('انستاباي')),
                     DropdownMenuItem(
-                        value: 'vodafone_cash', child: Text('فودافون')),
+                      value: 'instapay',
+                      child: Text('انستاباي'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'vodafone_cash',
+                      child: Text('فودافون'),
+                    ),
                     DropdownMenuItem(value: 'card', child: Text('فيزا')),
                   ],
                   onChanged: (val) {
@@ -1087,8 +1187,7 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                   },
                 ),
               ),
-              if (_shippingSplitMethod ==
-                  ShippingSplitMethods.customFixed) ...[
+              if (_shippingSplitMethod == ShippingSplitMethods.customFixed) ...[
                 const SizedBox(width: 8),
                 SizedBox(
                   width: 90,
@@ -1097,9 +1196,10 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                     keyboardType: TextInputType.number,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                        fontFamily: 'Cairo',
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold),
+                      fontFamily: 'Cairo',
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
                     decoration: _compactInput(label: 'الشحن المخصص'),
                     onChanged: (_) => setState(() {}),
                   ),
@@ -1122,9 +1222,10 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
               child: Text(
                 'لا توجد أصناف لهذا العميل بعد. اكتب بيانات الصنف واضغط Enter',
                 style: TextStyle(
-                    fontFamily: 'Cairo',
-                    fontSize: 11,
-                    color: Colors.grey.shade500),
+                  fontFamily: 'Cairo',
+                  fontSize: 11,
+                  color: Colors.grey.shade500,
+                ),
               ),
             )
           else
@@ -1138,8 +1239,10 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 6),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.grey.shade50,
                   borderRadius: BorderRadius.circular(8),
@@ -1147,8 +1250,10 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                 ),
                 child: Row(
                   children: [
-                    Text('${itIdx + 1}. ',
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(
+                      '${itIdx + 1}. ',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     Expanded(
                       flex: 3,
                       child: Text(
@@ -1156,9 +1261,10 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                             ? it.nameCtrl.text
                             : 'صنف بدون اسم',
                         style: const TextStyle(
-                            fontFamily: 'Cairo',
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold),
+                          fontFamily: 'Cairo',
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -1167,9 +1273,10 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                       Text(
                         '(${it.descCtrl.text})',
                         style: TextStyle(
-                            fontFamily: 'Cairo',
-                            fontSize: 11,
-                            color: Colors.grey.shade600),
+                          fontFamily: 'Cairo',
+                          fontSize: 11,
+                          color: Colors.grey.shade600,
+                        ),
                       ),
                     ],
                     const Spacer(),
@@ -1190,8 +1297,11 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                           removed.dispose();
                         });
                       },
-                      child: const Icon(Icons.close_rounded,
-                          size: 16, color: AppColors.error),
+                      child: const Icon(
+                        Icons.close_rounded,
+                        size: 16,
+                        color: AppColors.error,
+                      ),
                     ),
                   ],
                 ),
@@ -1223,7 +1333,7 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
       final price = customer.fastSalePriceCtrl.text.trim().isNotEmpty
           ? customer.fastSalePriceCtrl.text.trim()
           : ((double.tryParse(cost) ?? 0) + (double.tryParse(comm) ?? 0))
-              .toString();
+                .toString();
       final url = customer.fastUrlCtrl.text.trim();
 
       setState(() {
@@ -1252,25 +1362,25 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
     }
 
     void onCostOrCommissionChanged() {
-      final cost =
-          double.tryParse(customer.fastCostCtrl.text.trim()) ?? 0.0;
-      final comm = double.tryParse(
-              customer.fastCommissionCtrl.text.trim()) ??
+      final cost = double.tryParse(customer.fastCostCtrl.text.trim()) ?? 0.0;
+      final comm =
+          double.tryParse(customer.fastCommissionCtrl.text.trim()) ??
           double.tryParse(_defaultCommissionCtrl.text.trim()) ??
           0.0;
       final total = cost + comm;
-      customer.fastSalePriceCtrl.text =
-          total > 0 ? total.toStringAsFixed(1).replaceAll('.0', '') : '';
+      customer.fastSalePriceCtrl.text = total > 0
+          ? total.toStringAsFixed(1).replaceAll('.0', '')
+          : '';
       setState(() {});
     }
 
     void onSalePriceChanged(String val) {
       final sale = double.tryParse(val.trim()) ?? 0.0;
-      final cost =
-          double.tryParse(customer.fastCostCtrl.text.trim()) ?? 0.0;
+      final cost = double.tryParse(customer.fastCostCtrl.text.trim()) ?? 0.0;
       final comm = (sale - cost).clamp(0.0, double.infinity);
-      customer.fastCommissionCtrl.text =
-          comm > 0 ? comm.toStringAsFixed(1).replaceAll('.0', '') : '';
+      customer.fastCommissionCtrl.text = comm > 0
+          ? comm.toStringAsFixed(1).replaceAll('.0', '')
+          : '';
       setState(() {});
     }
 
@@ -1307,10 +1417,11 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                   controller: customer.fastDescCtrl,
                   focusNode: customer.fastDescFocus,
                   style: const TextStyle(fontFamily: 'Cairo', fontSize: 12),
-                  decoration:
-                      _compactInput(label: 'المقاس/اللون', hint: 'L - أسود'),
-                  onFieldSubmitted: (_) =>
-                      customer.fastQtyFocus.requestFocus(),
+                  decoration: _compactInput(
+                    label: 'المقاس/اللون',
+                    hint: 'L - أسود',
+                  ),
+                  onFieldSubmitted: (_) => customer.fastQtyFocus.requestFocus(),
                 ),
               ),
               const SizedBox(width: 8),
@@ -1322,9 +1433,10 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                   keyboardType: TextInputType.number,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold),
+                    fontFamily: 'Cairo',
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                   decoration: _compactInput(label: 'الكمية'),
                   onFieldSubmitted: (_) =>
                       customer.fastCostFocus.requestFocus(),
@@ -1342,9 +1454,10 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                   keyboardType: TextInputType.number,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold),
+                    fontFamily: 'Cairo',
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                   decoration: _compactInput(label: 'تكلفة المندوب'),
                   onChanged: (_) => onCostOrCommissionChanged(),
                   onFieldSubmitted: (_) =>
@@ -1359,10 +1472,11 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                   keyboardType: TextInputType.number,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary),
+                    fontFamily: 'Cairo',
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
                   decoration: _compactInput(label: 'العمولة'),
                   onChanged: (_) => onCostOrCommissionChanged(),
                   onFieldSubmitted: (_) =>
@@ -1377,9 +1491,10 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                   keyboardType: TextInputType.number,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold),
+                    fontFamily: 'Cairo',
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                   decoration: _compactInput(label: 'سعر البيع'),
                   onChanged: onSalePriceChanged,
                   onFieldSubmitted: (_) => addFastItem(),
@@ -1392,17 +1507,21 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
                 icon: const Icon(Icons.add_rounded, size: 16),
                 label: const Text(
                   'إضافة [Enter]',
                   style: TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.bold),
+                    fontFamily: 'Cairo',
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -1498,8 +1617,8 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
         final iQty = int.tryParse(it.qtyCtrl.text.trim()) ?? 1;
         final iCost = double.tryParse(it.costCtrl.text.trim()) ?? 0.0;
         final iComm = double.tryParse(it.commissionCtrl.text.trim()) ?? 0.0;
-        final iPrice = double.tryParse(it.priceCtrl.text.trim()) ??
-            (iCost + iComm);
+        final iPrice =
+            double.tryParse(it.priceCtrl.text.trim()) ?? (iCost + iComm);
 
         final unitPiasters = (iPrice * 100).round();
         final costPiasters = (iCost * 100).round();
@@ -1524,7 +1643,10 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
         );
       }
 
-      final cTotalSale = items.fold(0, (sum, it) => sum + it.totalPricePiasters);
+      final cTotalSale = items.fold(
+        0,
+        (sum, it) => sum + it.totalPricePiasters,
+      );
       final cDeposit = cEntry.depositPiasters;
 
       orders.add(
@@ -1566,7 +1688,9 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
           content: Text(
             'تم تسجيل الشحنة المجمعة ($batchNum) بنجاح لعدد ${_customers.length} عملاء وإجمالي $_allBatchPieces قطعة',
             style: const TextStyle(
-                fontFamily: 'Cairo', fontWeight: FontWeight.bold),
+              fontFamily: 'Cairo',
+              fontWeight: FontWeight.bold,
+            ),
           ),
           backgroundColor: AppColors.success,
         ),
@@ -1607,7 +1731,10 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
         Text(
           label,
           style: const TextStyle(
-              fontFamily: 'Cairo', fontSize: 10, color: AppColors.onSurfaceVariant),
+            fontFamily: 'Cairo',
+            fontSize: 10,
+            color: AppColors.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 1),
         Text(
@@ -1634,7 +1761,10 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
       prefixIcon: Icon(icon, size: 18, color: AppColors.primary),
       labelStyle: const TextStyle(fontFamily: 'Cairo', fontSize: 12),
       hintStyle: const TextStyle(
-          fontFamily: 'Cairo', fontSize: 11, color: AppColors.onSurfaceVariant),
+        fontFamily: 'Cairo',
+        fontSize: 11,
+        color: AppColors.onSurfaceVariant,
+      ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       enabledBorder: OutlineInputBorder(
@@ -1650,7 +1780,10 @@ class _CreatePreOrderBatchDialogState extends State<CreatePreOrderBatchDialog> {
       hintText: hint,
       labelStyle: const TextStyle(fontFamily: 'Cairo', fontSize: 10.5),
       hintStyle: const TextStyle(
-          fontFamily: 'Cairo', fontSize: 10, color: AppColors.onSurfaceVariant),
+        fontFamily: 'Cairo',
+        fontSize: 10,
+        color: AppColors.onSurfaceVariant,
+      ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
       enabledBorder: OutlineInputBorder(

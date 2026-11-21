@@ -37,8 +37,11 @@ class BagPickupLabelDialog extends StatelessWidget {
               color: AppColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(Icons.label_important_outline,
-                size: 20, color: AppColors.primary),
+            child: Icon(
+              Icons.label_important_outline,
+              size: 20,
+              color: AppColors.primary,
+            ),
           ),
           const SizedBox(width: 10),
           const Expanded(
@@ -54,8 +57,11 @@ class BagPickupLabelDialog extends StatelessWidget {
           ),
           IconButton(
             onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.close_rounded,
-                size: 20, color: AppColors.onSurfaceVariant),
+            icon: const Icon(
+              Icons.close_rounded,
+              size: 20,
+              color: AppColors.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -95,7 +101,9 @@ class BagPickupLabelDialog extends StatelessWidget {
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.surfaceContainerLow,
                         borderRadius: BorderRadius.circular(4),
@@ -145,12 +153,15 @@ class BagPickupLabelDialog extends StatelessWidget {
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(
-                            color: AppColors.primary.withValues(alpha: 0.25)),
+                          color: AppColors.primary.withValues(alpha: 0.25),
+                        ),
                       ),
                       child: Text(
                         order.orderNumber,
@@ -192,8 +203,11 @@ class BagPickupLabelDialog extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(vertical: 2),
                           child: Row(
                             children: [
-                              const Icon(Icons.circle,
-                                  size: 4, color: AppColors.onSurfaceVariant),
+                              const Icon(
+                                Icons.circle,
+                                size: 4,
+                                color: AppColors.onSurfaceVariant,
+                              ),
                               const SizedBox(width: 5),
                               Expanded(
                                 child: Text(
@@ -239,8 +253,10 @@ class BagPickupLabelDialog extends StatelessWidget {
 
                 // 4. الحساب المالي والمتبقي عند الاستلام
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: remainingPiasters > 0
                         ? AppColors.error.withValues(alpha: 0.05)
@@ -318,8 +334,9 @@ class BagPickupLabelDialog extends StatelessWidget {
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.onSurfaceVariant,
             side: const BorderSide(color: AppColors.outlineVariant),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
           child: const Text('إغلاق', style: TextStyle(fontFamily: 'Cairo')),
         ),
@@ -331,7 +348,9 @@ class BagPickupLabelDialog extends StatelessWidget {
                 content: Text(
                   'تم إرسال استيكر الأوردر #${order.orderNumber} لطابعة الملصقات الحرارية بنجاح!',
                   style: const TextStyle(
-                      fontFamily: 'Cairo', fontWeight: FontWeight.bold),
+                    fontFamily: 'Cairo',
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 backgroundColor: AppColors.success,
               ),
@@ -340,8 +359,9 @@ class BagPickupLabelDialog extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           ),
           icon: const Icon(Icons.print_rounded, size: 16),

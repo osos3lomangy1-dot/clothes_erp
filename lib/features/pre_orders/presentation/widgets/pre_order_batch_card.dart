@@ -60,8 +60,11 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                       color: const Color(0xFF25D366).withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.chat_rounded,
-                        color: Color(0xFF25D366), size: 22),
+                    child: const Icon(
+                      Icons.chat_rounded,
+                      color: Color(0xFF25D366),
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -89,8 +92,10 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close_rounded,
-                        color: AppColors.onSurfaceVariant),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: AppColors.onSurfaceVariant,
+                    ),
                     onPressed: () => Navigator.pop(ctx),
                   ),
                 ],
@@ -102,22 +107,26 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                         child: Text(
                           'لا يوجد عملاء في هذه الشحنة',
                           style: TextStyle(
-                              fontFamily: 'Cairo',
-                              color: AppColors.onSurfaceVariant),
+                            fontFamily: 'Cairo',
+                            color: AppColors.onSurfaceVariant,
+                          ),
                         ),
                       )
                     : ListView.separated(
                         itemCount: widget.batch.orders.length,
                         separatorBuilder: (context, _) => const Divider(
-                            height: 12, color: AppColors.outlineVariant),
+                          height: 12,
+                          color: AppColors.outlineVariant,
+                        ),
                         itemBuilder: (context, idx) {
                           final o = widget.batch.orders[idx];
                           final remaining = o.remainingWithShippingPiasters;
                           return ListTile(
                             contentPadding: EdgeInsets.zero,
                             leading: CircleAvatar(
-                              backgroundColor:
-                                  AppColors.primary.withValues(alpha: 0.1),
+                              backgroundColor: AppColors.primary.withValues(
+                                alpha: 0.1,
+                              ),
                               child: Text(
                                 '${idx + 1}',
                                 style: TextStyle(
@@ -150,17 +159,21 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                                 backgroundColor: const Color(0xFF25D366),
                                 foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 6),
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
                                 shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8)),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
                               ),
                               icon: const Icon(Icons.send_rounded, size: 14),
                               label: const Text(
                                 'واتساب',
                                 style: TextStyle(
-                                    fontFamily: 'Cairo',
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.bold),
+                                  fontFamily: 'Cairo',
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                               onPressed: () => _sendWhatsAppToCustomer(o),
                             ),
@@ -184,7 +197,8 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
       formattedPhone = '2$formattedPhone';
     }
 
-    final message = '''
+    final message =
+        '''
 أهلاً بحضرتك أستاذ/ة ${order.customerName}،
 شحنتك رقم #${order.orderNumber} ضمن [${widget.batch.batchNumber}] وصلت المحل وجاهزة للاستلام الآن! 🎉
 
@@ -232,19 +246,25 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
             child: Row(
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                        color: AppColors.primary.withValues(alpha: 0.25)),
+                      color: AppColors.primary.withValues(alpha: 0.25),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.inventory_2_rounded,
-                          size: 15, color: AppColors.primary),
+                      Icon(
+                        Icons.inventory_2_rounded,
+                        size: 15,
+                        color: AppColors.primary,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         batch.batchNumber,
@@ -268,8 +288,11 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                       if (batch.agentName != null) ...[
                         Row(
                           children: [
-                            const Icon(Icons.badge_outlined,
-                                size: 12, color: AppColors.onSurfaceVariant),
+                            const Icon(
+                              Icons.badge_outlined,
+                              size: 12,
+                              color: AppColors.onSurfaceVariant,
+                            ),
                             const SizedBox(width: 3),
                             Text(
                               batch.agentName!,
@@ -281,11 +304,17 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                               ),
                             ),
                             if (batch.trackingNumber != null) ...[
-                              const Text(' • ',
-                                  style: TextStyle(
-                                      color: AppColors.onSurfaceVariant)),
-                              const Icon(Icons.tag_rounded,
-                                  size: 12, color: AppColors.onSurfaceVariant),
+                              const Text(
+                                ' • ',
+                                style: TextStyle(
+                                  color: AppColors.onSurfaceVariant,
+                                ),
+                              ),
+                              const Icon(
+                                Icons.tag_rounded,
+                                size: 12,
+                                color: AppColors.onSurfaceVariant,
+                              ),
                               const SizedBox(width: 2),
                               Text(
                                 batch.trackingNumber!,
@@ -302,9 +331,10 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                       Text(
                         'تاريخ الشحنة: ${batch.createdAt.year}-${batch.createdAt.month.toString().padLeft(2, '0')}-${batch.createdAt.day.toString().padLeft(2, '0')}',
                         style: const TextStyle(
-                            fontFamily: 'Cairo',
-                            fontSize: 10,
-                            color: AppColors.onSurfaceVariant),
+                          fontFamily: 'Cairo',
+                          fontSize: 10,
+                          color: AppColors.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ),
@@ -312,13 +342,16 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
 
                 // بادج الحالة
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3.5,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
-                    border:
-                        Border.all(color: statusColor.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: statusColor.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -353,29 +386,41 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  _buildMetricColumn('العملاء', '${batch.totalOrdersCount}',
-                      AppColors.onSurface),
-                  _divider(),
-                  _buildMetricColumn('إجمالي القطع', '${batch.totalPiecesCount}',
-                      AppColors.onSurface),
+                  _buildMetricColumn(
+                    'العملاء',
+                    '${batch.totalOrdersCount}',
+                    AppColors.onSurface,
+                  ),
                   _divider(),
                   _buildMetricColumn(
-                      'المبيعات',
-                      Money(batch.totalRetailPiasters).toDisplay(),
-                      AppColors.onSurface),
+                    'إجمالي القطع',
+                    '${batch.totalPiecesCount}',
+                    AppColors.onSurface,
+                  ),
                   _divider(),
                   _buildMetricColumn(
-                      'تكلفة المندوب',
-                      Money(batch.totalCostPiasters).toDisplay(),
-                      AppColors.onSurfaceVariant),
+                    'المبيعات',
+                    Money(batch.totalRetailPiasters).toDisplay(),
+                    AppColors.onSurface,
+                  ),
                   _divider(),
                   _buildMetricColumn(
-                      'الشحن العام',
-                      Money(batch.totalShippingPiasters).toDisplay(),
-                      AppColors.primary),
+                    'تكلفة المندوب',
+                    Money(batch.totalCostPiasters).toDisplay(),
+                    AppColors.onSurfaceVariant,
+                  ),
                   _divider(),
-                  _buildMetricColumn('صافي أرباحك',
-                      '+${Money(batch.totalProfitPiasters).toDisplay()}', AppColors.primary),
+                  _buildMetricColumn(
+                    'الشحن العام',
+                    Money(batch.totalShippingPiasters).toDisplay(),
+                    AppColors.primary,
+                  ),
+                  _divider(),
+                  _buildMetricColumn(
+                    'صافي أرباحك',
+                    '+${Money(batch.totalProfitPiasters).toDisplay()}',
+                    AppColors.primary,
+                  ),
                   _divider(),
                   _buildMetricColumn(
                     'المتبقي تحصيله',
@@ -442,8 +487,9 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                       children: [
                         CircleAvatar(
                           radius: 10,
-                          backgroundColor:
-                              AppColors.primary.withValues(alpha: 0.1),
+                          backgroundColor: AppColors.primary.withValues(
+                            alpha: 0.1,
+                          ),
                           child: Text(
                             '${idx + 1}',
                             style: TextStyle(
@@ -494,10 +540,14 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                         IconButton(
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
-                          icon: Icon(Icons.label_important_outline,
-                              size: 15, color: AppColors.primary),
+                          icon: Icon(
+                            Icons.label_important_outline,
+                            size: 15,
+                            color: AppColors.primary,
+                          ),
                           tooltip: 'طباعة استيكر فرز الكيس',
-                          onPressed: () => BagPickupLabelDialog.show(context, o),
+                          onPressed: () =>
+                              BagPickupLabelDialog.show(context, o),
                         ),
                       ],
                     ),
@@ -524,31 +574,39 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
-                      icon: const Icon(Icons.check_circle_outline_rounded,
-                          size: 16),
+                      icon: const Icon(
+                        Icons.check_circle_outline_rounded,
+                        size: 16,
+                      ),
                       label: const Text(
                         'استلام الشحنة بالكامل في المحل',
                         style: TextStyle(
-                            fontFamily: 'Cairo',
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.bold),
+                          fontFamily: 'Cairo',
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       onPressed: () async {
                         final cubit = context.read<PreOrdersCubit>();
-                        final ok =
-                            await cubit.markBatchArrivedAtStore(batch.id);
+                        final ok = await cubit.markBatchArrivedAtStore(
+                          batch.id,
+                        );
                         if (ok && context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
                                 'تم استلام الشحنة (${batch.batchNumber}) بالكامل وتحويل جميع أوردراتها إلى جاهزة للاستلام',
                                 style: const TextStyle(
-                                    fontFamily: 'Cairo',
-                                    fontWeight: FontWeight.bold),
+                                  fontFamily: 'Cairo',
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                               backgroundColor: AppColors.success,
                             ),
@@ -565,17 +623,21 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                       foregroundColor: const Color(0xFF25D366),
                       side: const BorderSide(color: Color(0xFF25D366)),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                     icon: const Icon(Icons.chat_rounded, size: 15),
                     label: const Text(
                       'إرسال واتساب للعملاء',
                       style: TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.bold),
+                        fontFamily: 'Cairo',
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     onPressed: () => _showBatchWhatsAppModal(context),
                   ),
@@ -587,17 +649,21 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                       foregroundColor: AppColors.onSurface,
                       side: const BorderSide(color: AppColors.outlineVariant),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                     icon: const Icon(Icons.file_download_outlined, size: 15),
                     label: const Text(
                       'تصدير كشف للمندوب (Excel)',
                       style: TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold),
+                        fontFamily: 'Cairo',
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     onPressed: () async {
                       final path =
@@ -608,8 +674,9 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                             content: Text(
                               'تم تصدير كشف الشحنة للمندوب بنجاح!\n$path',
                               style: const TextStyle(
-                                  fontFamily: 'Cairo',
-                                  fontWeight: FontWeight.bold),
+                                fontFamily: 'Cairo',
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             backgroundColor: AppColors.success,
                           ),
@@ -621,10 +688,14 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
 
                   // More Menu
                   PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert_rounded,
-                        size: 20, color: AppColors.onSurfaceVariant),
+                    icon: const Icon(
+                      Icons.more_vert_rounded,
+                      size: 20,
+                      color: AppColors.onSurfaceVariant,
+                    ),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     onSelected: (val) {
                       if (val == 'delete') {
                         context.read<PreOrdersCubit>().deleteBatch(batch.id);
@@ -635,12 +706,19 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                         value: 'delete',
                         child: Row(
                           children: [
-                            Icon(Icons.delete_outline_rounded,
-                                size: 18, color: AppColors.error),
+                            Icon(
+                              Icons.delete_outline_rounded,
+                              size: 18,
+                              color: AppColors.error,
+                            ),
                             SizedBox(width: 8),
-                            Text('حذف الشحنة المجمعة',
-                                style: TextStyle(
-                                    fontFamily: 'Cairo', fontSize: 12)),
+                            Text(
+                              'حذف الشحنة المجمعة',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 12,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -670,9 +748,10 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
         Text(
           label,
           style: const TextStyle(
-              fontFamily: 'Cairo',
-              fontSize: 10,
-              color: AppColors.onSurfaceVariant),
+            fontFamily: 'Cairo',
+            fontSize: 10,
+            color: AppColors.onSurfaceVariant,
+          ),
         ),
         Text(
           value,
