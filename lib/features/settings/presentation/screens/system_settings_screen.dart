@@ -3609,7 +3609,7 @@ class _ActivitiesMasterSettingsCardState extends State<_ActivitiesMasterSettings
             ScaffoldMessenger.of(context).hideCurrentSnackBar();
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('تم تطبيق ومزامنة قالب ${preset.title} بنجاح!'),
+                content: Text('تم تطبيق قالب ${preset.title} بنجاح!'),
                 backgroundColor: AppColors.primary,
                 behavior: SnackBarBehavior.floating,
                 duration: const Duration(seconds: 2),
