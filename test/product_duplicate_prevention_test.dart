@@ -54,7 +54,11 @@ class FakeProductRepository implements ProductRepository {
   }
 
   @override
-  Future<Either<Failure, void>> deleteProduct(String id) async => const Right(null);
+  Future<Either<Failure, void>> deleteProduct(
+    String id, {
+    bool forceDeleteForAdmin = false,
+    String? userId,
+  }) async => const Right(null);
 
   @override
   Future<Either<Failure, List<ProductEntity>>> getProducts() async => Right(products);

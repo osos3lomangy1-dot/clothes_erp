@@ -27,7 +27,7 @@ class BarcodeLabelService {
   static Future<Uint8List> generatePdf({
     required List<BarcodeLabelItem> items,
     required BarcodeLabelSize size,
-    String storeName = 'أوركيد للملابس',
+    String storeName = 'بيعة',
     bool showStoreName = true,
     bool showPrice = true,
     bool showColorAndSize = true,
@@ -206,7 +206,7 @@ class BarcodeLabelService {
   static Future<void> printLabels({
     required List<BarcodeLabelItem> items,
     required BarcodeLabelSize size,
-    String storeName = 'أوركيد للملابس',
+    String storeName = 'بيعة',
     bool showStoreName = true,
     bool showPrice = true,
     bool showColorAndSize = true,

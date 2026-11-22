@@ -236,7 +236,10 @@ class _ProductsAndCategoriesViewState
           ),
         );
       } else if (error.contains('مبيعات')) {
-        // Product has sales history — offer 1-click deactivation instead of crashing!
+        // Product has sales history — offer 1-click deactivation or Admin Force Delete
+        final authState = context.read<AuthCubit>().state;
+        final isAdmin = authState is AuthAuthenticated && authState.user.role == 'admin';
+
         await showDialog<void>(
           context: context,
           builder: (ctx) => AlertDialog(
@@ -288,6 +291,63 @@ class _ProductsAndCategoriesViewState
                         ),
                       ),
                     );
+                  },
+                ),
+              if (isAdmin)
+                ElevatedButton.icon(
+                  key: const Key('admin_force_delete_product_button'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.error,
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: const Icon(Icons.delete_forever_rounded, size: 18),
+                  label: const Text('حذف قسري (صنف تجريبي)'),
+                  onPressed: () async {
+                    Navigator.of(ctx).pop();
+                    final confirmedForce = await showDialog<bool>(
+                      context: context,
+                      builder: (forceCtx) => AlertDialog(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        title: const Row(
+                          children: [
+                            Icon(Icons.warning_rounded, color: AppColors.error),
+                            SizedBox(width: 8),
+                            Text('تأكيد الحذف القسري للآدمن', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        content: Text(
+                          'الصنف "${product.name}" مرتبط بعمليات سابقة. هل هذا صنف تجريبي وتريد حذفه نهائياً بصلاحية الآدمن؟\n\nسيتم إخفاء المنتج ومتغيراته نهائياً من النظام مع توثيق العملية بسجل التدقيق.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(forceCtx).pop(false),
+                            child: const Text('إلغاء'),
+                          ),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+                            onPressed: () => Navigator.of(forceCtx).pop(true),
+                            child: const Text('تأكيد الحذف القسري', style: TextStyle(color: Colors.white)),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirmedForce == true && context.mounted) {
+                      final forceErr = await cubit.deleteProduct(
+                        product.id,
+                        forceDeleteForAdmin: true,
+                        userId: authState.user.id,
+                      );
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          backgroundColor: forceErr == null ? Colors.green.shade800 : AppColors.error,
+                          content: Text(
+                            forceErr ?? 'تم الحذف القسري للمنتج التجريبي "${product.name}" بنجاح',
+                          ),
+                        ),
+                      );
+                    }
                   },
                 ),
             ],

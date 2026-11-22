@@ -9,6 +9,7 @@ import '../../../../core/constants/retail_sector.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/features/feature_gate.dart';
 import '../../../../core/services/crash_logger_service.dart';
+import '../../../../core/services/database_reset_service.dart';
 import '../../../../core/theme/app_branding.dart';
 import '../../../auth/domain/models/cashier_permissions_config.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
@@ -152,6 +153,12 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
     final auth = context.read<AuthCubit>().state;
     if (auth is! AuthAuthenticated) return true;
     return auth.user.role != 'cashier';
+  }
+
+  bool _isMasterAdmin(BuildContext context) {
+    final auth = context.read<AuthCubit>().state;
+    if (auth is! AuthAuthenticated) return false;
+    return auth.user.role == 'admin';
   }
 
   String _userId(BuildContext context) {
@@ -1075,6 +1082,11 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
                               ],
                             ),
                           ),
+                          if (_isMasterAdmin(context)) ...[
+                            const SizedBox(height: 24),
+                            _sectionTitle('منطقة العمليات المتقدمة للآدمن (تهيئة النظام وتصفير البيانات)'),
+                            _AdminDangerZoneResetCard(userId: userId),
+                          ],
                         ],
 
                         // ─── 7. المظهر وهوية المتجر (Store / Branding) ───
@@ -4078,6 +4090,315 @@ class _TelegramBotSettingsCardState extends State<_TelegramBotSettingsCard> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AdminDangerZoneResetCard extends StatefulWidget {
+  final String userId;
+
+  const _AdminDangerZoneResetCard({required this.userId});
+
+  @override
+  State<_AdminDangerZoneResetCard> createState() => _AdminDangerZoneResetCardState();
+}
+
+class _AdminDangerZoneResetCardState extends State<_AdminDangerZoneResetCard> {
+  bool _resetStock = false;
+  bool _isProcessing = false;
+
+  Future<void> _openPurgeConfirmation(BuildContext context) async {
+    final passwordCtrl = TextEditingController();
+    final phraseCtrl = TextEditingController();
+    String? localError;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: !_isProcessing,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            final isPhraseMatch = phraseCtrl.text.trim() == 'تصفير البيانات';
+            final canSubmit = isPhraseMatch && passwordCtrl.text.isNotEmpty && !_isProcessing;
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Row(
+                children: [
+                  Icon(Icons.warning_rounded, color: AppColors.error),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'تأكيد تصفير البيانات التجريبية',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+                    ),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: SizedBox(
+                  width: 480,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF2F2),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFFCA5A5)),
+                        ),
+                        child: const Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.shield_outlined, color: AppColors.error, size: 20),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'تنبيه أمان صارم: سيتم تفريغ كافة المبيعات، الورديات، حركات الخزينة، والمصروفات التجريبية. سيتم الاحتفاظ بحسابات المستخدمين والأصناف والتصنيفات والعملاء والموردين.',
+                                style: TextStyle(fontSize: 12.5, color: Color(0xFF991B1B)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        _resetStock
+                            ? 'سيتم تصفير كميات المخزون للأصناف إلى (0) لبدء جرد فعلي جديد.'
+                            : 'سيتم الإبقاء على كميات المخزون الحالية للأصناف دون تعديل.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        '1. أدخل كلمة مرور حساب الآدمن:',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      const SizedBox(height: 6),
+                      TextField(
+                        key: const Key('admin_password_field'),
+                        controller: passwordCtrl,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          hintText: 'كلمة مرور الآدمن',
+                          prefixIcon: const Icon(Icons.lock_outline, size: 18),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        ),
+                        onChanged: (_) => setDialogState(() {}),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        '2. اكتب عبارة "تصفير البيانات" للتأكيد:',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      const SizedBox(height: 6),
+                      TextField(
+                        key: const Key('purge_confirm_phrase_field'),
+                        controller: phraseCtrl,
+                        decoration: InputDecoration(
+                          hintText: 'تصفير البيانات',
+                          prefixIcon: const Icon(Icons.edit_note_rounded, size: 18),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        ),
+                        onChanged: (_) => setDialogState(() {}),
+                      ),
+                      if (localError != null) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          localError!,
+                          style: const TextStyle(color: AppColors.error, fontSize: 12.5, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: _isProcessing ? null : () => Navigator.of(ctx).pop(),
+                  child: const Text('إلغاء'),
+                ),
+                ElevatedButton.icon(
+                  key: const Key('confirm_purge_button'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.error,
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: _isProcessing
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.delete_sweep_rounded, size: 18),
+                  label: Text(_isProcessing ? 'جاري التصفير...' : 'تأكيد التصفير والبدء'),
+                  onPressed: !canSubmit
+                      ? null
+                      : () async {
+                          setDialogState(() {
+                            _isProcessing = true;
+                            localError = null;
+                          });
+
+                          try {
+                            final resetService = getIt<DatabaseResetService>();
+                            final isPasswordValid = await resetService.verifyAdminPassword(passwordCtrl.text);
+                            if (!isPasswordValid) {
+                              setDialogState(() {
+                                _isProcessing = false;
+                                localError = 'عفواً، كلمة مرور حساب الآدمن غير صحيحة.';
+                              });
+                              return;
+                            }
+
+                            final result = await resetService.purgeTestData(
+                              userId: widget.userId,
+                              resetStock: _resetStock,
+                            );
+
+                            if (ctx.mounted) {
+                              Navigator.of(ctx).pop();
+                            }
+
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  backgroundColor: Colors.green.shade800,
+                                  content: Text(
+                                    '${result.message}\nتم حفظ النسخة الاحتياطية في: ${result.backupFilePath}',
+                                  ),
+                                  duration: const Duration(seconds: 5),
+                                ),
+                              );
+                              context.read<SettingsCubit>().start();
+                            }
+                          } catch (e) {
+                            setDialogState(() {
+                              _isProcessing = false;
+                              localError = 'حدث خطأ أثناء التصفير: $e';
+                            });
+                          }
+                        },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.3), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.error.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 22),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'منطقة العمليات المتقدمة للآدمن (تهيئة النظام وتصفير البيانات)',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'مخصصة لتهيئة النظام للافتتاح الحقيقي وتصفير فواتير المبيعات وحركات الخزينة التجريبية.',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0FDF4),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFBBF7D0)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.shield_outlined, color: Colors.green, size: 18),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'أمان وقائي إجباري: يقوم النظام تلقائياً بإنشاء نسخة احتياطية كاملة قبل التصفير لحماية بياناتك.',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF166534), fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          CheckboxListTile(
+            key: const Key('reset_stock_checkbox'),
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+            title: const Text(
+              'تصفير كميات المخزون في جميع الأصناف إلى (0) لبدء جرد فعلي جديد',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+            subtitle: const Text(
+              'عند عدم التحديد، تبقى كميات المخزون للأصناف كما هي ويتم فقط تصفير فواتير المبيعات وحركات الخزينة.',
+              style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+            ),
+            value: _resetStock,
+            activeColor: AppColors.error,
+            onChanged: (val) => setState(() => _resetStock = val ?? false),
+          ),
+          const SizedBox(height: 14),
+          ElevatedButton.icon(
+            key: const Key('purge_test_data_button'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => _openPurgeConfirmation(context),
+            icon: const Icon(Icons.delete_sweep_rounded, size: 18),
+            label: const Text(
+              'تصفير العمليات والبيانات التجريبية',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
       ),
     );
   }

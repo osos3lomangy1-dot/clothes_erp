@@ -65,9 +65,17 @@ class ProductCubit extends Cubit<ProductState> {
 
   /// Deletes a product and returns `null` on success, or an Arabic error message
   /// on failure without replacing the currently loaded product catalog screen.
-  Future<String?> deleteProduct(String id) async {
+  Future<String?> deleteProduct(
+    String id, {
+    bool forceDeleteForAdmin = false,
+    String? userId,
+  }) async {
     try {
-      final result = await _deleteProductUseCase(id);
+      final result = await _deleteProductUseCase(
+        id,
+        forceDeleteForAdmin: forceDeleteForAdmin,
+        userId: userId,
+      );
       return result.fold(
         (failure) => failure.message,
         (_) => null,

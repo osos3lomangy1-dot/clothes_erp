@@ -1,11 +1,11 @@
-; Inno Setup Script for Orkeed Clothes ERP
+; Inno Setup Script for Bay3ah ERP
 ; Automatically checks and installs Microsoft Visual C++ 2015-2022 Redistributable (x64)
 ; to prevent missing MSVCP140.dll / VCRUNTIME140.dll crashes on client machines.
 
-#define MyAppName "Orkeed Clothes ERP"
-#define MyAppArabicName "نظام أوركيد لإدارة محلات الملابس"
-#define MyAppVersion "1.0.1"
-#define MyAppPublisher "Orkeed ERP"
+#define MyAppName "Bay3ah ERP"
+#define MyAppArabicName "بيعة - نظام إدارة المتاجر ونقاط البيع"
+#define MyAppVersion "1.0.2"
+#define MyAppPublisher "Bay3ah ERP"
 #define MyAppExeName "bay3ah.exe"
 #define MyAppSourceDir "..\..\build\windows\x64\runner\Release"
 
@@ -18,7 +18,7 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=..\..\build\installer
-OutputBaseFilename=OrkeedClothesERP_Setup_v{#MyAppVersion}
+OutputBaseFilename=Bay3ahERP_Setup_v{#MyAppVersion}
 SetupIconFile=..\runner\resources\app_icon.ico
 Compression=lzma2/ultra64
 SolidCompression=yes
@@ -39,7 +39,14 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 ; 1. Flutter Release application bundle
 Source: "{#MyAppSourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
-; 2. Optional bundled VC++ Redistributable (if placed in windows\installer\vc_redist.x64.exe at compile time)
+; 2. App-local VC++ 2015-2022 runtimes (guarantees zero missing DLL errors even offline)
+#if FileExists("C:\Windows\System32\vcruntime140_1.dll")
+Source: "C:\Windows\System32\vcruntime140_1.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\Windows\System32\vcruntime140.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\Windows\System32\msvcp140.dll"; DestDir: "{app}"; Flags: ignoreversion
+#endif
+
+; 3. Optional bundled VC++ Redistributable (if placed in windows\installer\vc_redist.x64.exe at compile time)
 #if FileExists("vc_redist.x64.exe")
 Source: "vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 #endif
@@ -64,42 +71,28 @@ Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}
 var
   VCDownloaded: Boolean;
 
-// Function to check if VC++ 2015-2022 (x64) is installed via Registry
+// Function to check if VC++ 2015-2022 (x64) with vcruntime140_1.dll is installed
 function VCRedistNeedsInstall: Boolean;
-var
-  InstalledVal: Cardinal;
-  BitnessKey: string;
 begin
-  Result := True;
-  
-  // 1. Check registry key for Visual Studio 2015-2022 runtime
-  BitnessKey := 'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64';
-  if RegQueryDWordValue(HKEY_LOCAL_MACHINE, BitnessKey, 'Installed', InstalledVal) then
-  begin
-    if InstalledVal = 1 then
-    begin
-      Result := False;
-      Exit;
-    end;
-  end;
-
-  // 2. Check 32-bit registry hive redirection if 64-bit app on WOW64
-  BitnessKey := 'SOFTWARE\WOW6432Node\Microsoft\VisualStudio\14.0\VC\Runtimes\x64';
-  if RegQueryDWordValue(HKEY_LOCAL_MACHINE, BitnessKey, 'Installed', InstalledVal) then
-  begin
-    if InstalledVal = 1 then
-    begin
-      Result := False;
-      Exit;
-    end;
-  end;
-
-  // 3. Fallback: Check if msvcp140.dll and vcruntime140.dll exist in System32
-  if FileExists(ExpandConstant('{sys}\msvcp140.dll')) and FileExists(ExpandConstant('{sys}\vcruntime140.dll')) then
+  // If app-local DLLs exist in the target folder, no system runtime is needed
+  if FileExists(ExpandConstant('{app}\vcruntime140_1.dll')) and FileExists(ExpandConstant('{app}\msvcp140.dll')) then
   begin
     Result := False;
     Exit;
   end;
+
+  // vcruntime140_1.dll was introduced in Visual C++ 2019/2022 (x64) and is strictly
+  // required by Flutter's x64 desktop engine (__CxxFrameHandler4).
+  // If this DLL is missing from System32, VC++ 2015-2022 runtime MUST be installed.
+  if not FileExists(ExpandConstant('{sys}\vcruntime140_1.dll')) or
+     not FileExists(ExpandConstant('{sys}\vcruntime140.dll')) or
+     not FileExists(ExpandConstant('{sys}\msvcp140.dll')) then
+  begin
+    Result := True;
+    Exit;
+  end;
+
+  Result := False;
 end;
 
 // If VC++ is not bundled, download it during setup preparation

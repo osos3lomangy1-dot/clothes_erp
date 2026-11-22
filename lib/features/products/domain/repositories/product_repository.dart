@@ -9,5 +9,9 @@ abstract class ProductRepository {
   Future<Either<Failure, void>> addProduct(ProductEntity product);
   Future<Either<Failure, String>> addProductWithVariants(ProductEntity product, List<VariantInput> variants);
   Future<Either<Failure, void>> updateProduct(ProductEntity product);
-  Future<Either<Failure, void>> deleteProduct(String id);
+  Future<Either<Failure, void>> deleteProduct(
+    String id, {
+    bool forceDeleteForAdmin = false,
+    String? userId,
+  });
 }

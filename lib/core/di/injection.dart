@@ -24,6 +24,7 @@ import '../database/app_database.dart';
 import '../database/branch_provider.dart';
 import '../database/tx_writer.dart';
 import '../features/feature_gate.dart';
+import '../services/database_reset_service.dart';
 import '../services/excel_workbook_service.dart';
 import '../services/google_drive_backup_service.dart';
 import '../services/local_backup_service.dart';
@@ -149,6 +150,14 @@ Future<void> configureDependencies() async {
   if (!getIt.isRegistered<TelegramBotService>()) {
     getIt.registerLazySingleton<TelegramBotService>(
       () => TelegramBotService(getIt<AppDatabase>(), getIt<FeatureGate>()),
+    );
+  }
+  if (!getIt.isRegistered<DatabaseResetService>()) {
+    getIt.registerLazySingleton<DatabaseResetService>(
+      () => DatabaseResetService(
+        getIt<AppDatabase>(),
+        getIt<LocalBackupService>(),
+      ),
     );
   }
 }

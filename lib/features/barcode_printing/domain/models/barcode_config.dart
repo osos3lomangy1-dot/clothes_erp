@@ -14,7 +14,7 @@ class BarcodeConfig extends Equatable {
 
   const BarcodeConfig({
     this.selectedSize = BarcodeLabelSize.roll50x30,
-    this.storeName = 'أوركيد للملابس',
+    this.storeName = 'بيعة',
     this.showStoreName = true,
     this.showProductName = true,
     this.showColorAndSize = true,
@@ -69,7 +69,7 @@ class BarcodeConfig extends Equatable {
 
     return BarcodeConfig(
       selectedSize: size,
-      storeName: map['storeName'] as String? ?? 'أوركيد للملابس',
+      storeName: map['storeName'] as String? ?? 'بيعة',
       showStoreName: map['showStoreName'] as bool? ?? true,
       showProductName: map['showProductName'] as bool? ?? true,
       showColorAndSize: map['showColorAndSize'] as bool? ?? true,

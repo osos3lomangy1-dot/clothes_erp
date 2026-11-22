@@ -9,7 +9,15 @@ class DeleteProductUseCase {
 
   DeleteProductUseCase(this.repository);
 
-  Future<Either<Failure, void>> call(String id) {
-    return repository.deleteProduct(id);
+  Future<Either<Failure, void>> call(
+    String id, {
+    bool forceDeleteForAdmin = false,
+    String? userId,
+  }) {
+    return repository.deleteProduct(
+      id,
+      forceDeleteForAdmin: forceDeleteForAdmin,
+      userId: userId,
+    );
   }
 }

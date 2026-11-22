@@ -73,7 +73,7 @@ void main() {
       final pdfBytes = await BarcodeLabelService.generatePdf(
         items: items,
         size: BarcodeLabelSize.roll50x30,
-        storeName: 'أوركيد فاشون',
+        storeName: 'بيعة فاشون',
         showStoreName: true,
         showPrice: true,
         showColorAndSize: true,

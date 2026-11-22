@@ -28,7 +28,7 @@ void main() {
           'isAvailable': true,
           'nullValue': null,
           'tags': ['cotton', 'casual'],
-          'meta': {'brand': 'Orchid', 'year': 2026},
+          'meta': {'brand': 'Bay3ah', 'year': 2026},
         };
 
         final encoded = RestSyncService.encodeFirestoreFields(input);
@@ -43,7 +43,7 @@ void main() {
           {'stringValue': 'casual'},
         ]);
         expect(encoded['meta']?['mapValue']?['fields']?['brand'], {
-          'stringValue': 'Orchid',
+          'stringValue': 'Bay3ah',
         });
         expect(encoded['meta']?['mapValue']?['fields']?['year'], {
           'integerValue': '2026',

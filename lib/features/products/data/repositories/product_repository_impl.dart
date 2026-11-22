@@ -135,9 +135,17 @@ class ProductRepositoryImpl implements ProductRepository {
   }
 
   @override
-  Future<Either<Failure, void>> deleteProduct(String id) async {
+  Future<Either<Failure, void>> deleteProduct(
+    String id, {
+    bool forceDeleteForAdmin = false,
+    String? userId,
+  }) async {
     try {
-      await _localDataSource.softDeleteProduct(id);
+      await _localDataSource.softDeleteProduct(
+        id,
+        forceDeleteForAdmin: forceDeleteForAdmin,
+        userId: userId,
+      );
       return const Right(null);
     } catch (e) {
       return Left(ServerFailure(e.toString().replaceFirst('Exception: ', '')));

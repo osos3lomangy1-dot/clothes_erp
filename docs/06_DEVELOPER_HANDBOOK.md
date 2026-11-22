@@ -76,11 +76,11 @@ flutter build windows --release
 
 | نوع الملف | المسار الفعلي على جهاز المستخدم |
 |---|---|
-| **قاعدة البيانات النشطة** | `%APPDATA%\Roaming\com.orkeed.clothes_erp\clothes_erp.sqlite` |
-| **سجلات التدوين المسبق (WAL)** | `%APPDATA%\Roaming\com.orkeed.clothes_erp\clothes_erp.sqlite-wal` |
-| **مؤشر الترقية النشط** | `%APPDATA%\Roaming\com.orkeed.clothes_erp\migration.inprogress` |
-| **النسخ الاحتياطية المعتمدة** | `%APPDATA%\Roaming\com.orkeed.clothes_erp\backups\pre_migration_*.sqlite` |
-| **سجلات الأعطال المحلية** | `%APPDATA%\Roaming\com.orkeed.clothes_erp\crash_logs\` |
+| **قاعدة البيانات النشطة** | `%APPDATA%\Roaming\Bay3ah\clothes_erp.sqlite` |
+| **سجلات التدوين المسبق (WAL)** | `%APPDATA%\Roaming\Bay3ah\clothes_erp.sqlite-wal` |
+| **مؤشر الترقية النشط** | `%APPDATA%\Roaming\Bay3ah\migration.inprogress` |
+| **النسخ الاحتياطية المعتمدة** | `%APPDATA%\Roaming\Bay3ah\backups\pre_migration_*.sqlite` |
+| **سجلات الأعطال المحلية** | `%APPDATA%\Roaming\Bay3ah\crash_logs\` |
 
 ---
 

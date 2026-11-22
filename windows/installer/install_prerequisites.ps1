@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Automated Visual C++ Redistributable 2015-2022 (x64) Installer and App Launcher
 .DESCRIPTION
@@ -10,17 +10,15 @@
 $ErrorActionPreference = 'Stop'
 
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host " Orkeed Clothes ERP - Prerequisites & Launcher" -ForegroundColor Cyan
+Write-Host " Bay3ah ERP - Prerequisites & Launcher" -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 
 function Test-VCRedistInstalled {
-    $regPath = "HKLM:\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64"
-    if (Test-Path $regPath) {
-        $val = (Get-ItemProperty -Path $regPath -Name "Installed" -ErrorAction SilentlyContinue).Installed
-        if ($val -eq 1) { return $true }
-    }
+    $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+    $localDll = Join-Path $scriptDir "vcruntime140_1.dll"
+    if (Test-Path $localDll) { return $true }
 
-    $sys32Dll = Join-Path $env:SystemRoot "System32\msvcp140.dll"
+    $sys32Dll = Join-Path $env:SystemRoot "System32\vcruntime140_1.dll"
     if (Test-Path $sys32Dll) {
         return $true
     }

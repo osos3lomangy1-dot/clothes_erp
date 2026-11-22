@@ -318,7 +318,11 @@ class ProductLocalDataSource {
     await updateProduct(id, isActive: false);
   }
 
-  Future<void> softDeleteProduct(String id) async {
+  Future<void> softDeleteProduct(
+    String id, {
+    bool forceDeleteForAdmin = false,
+    String? userId,
+  }) async {
     final now = DateTime.now();
     final branchId = await _branchId();
     // Check if product has active (non-cancelled, non-deleted) sales history
@@ -340,9 +344,11 @@ class ProductLocalDataSource {
             ))
           .get();
       if (activeSaleItems.isNotEmpty) {
-        throw Exception(
-          'لا يمكن حذف هذا المنتج لوجود فواتير مبيعات مرتبطة به. يمكنك تعطيله (إخفاؤه من نقطة البيع) بدلاً من الحذف للحفاظ على سجل المبيعات.',
-        );
+        if (!forceDeleteForAdmin) {
+          throw Exception(
+            'لا يمكن حذف هذا المنتج لوجود فواتير مبيعات مرتبطة به. يمكنك تعطيله (إخفاؤه من نقطة البيع) بدلاً من الحذف للحفاظ على سجل المبيعات.',
+          );
+        }
       }
     }
     await _tx.write(
@@ -357,8 +363,8 @@ class ProductLocalDataSource {
       branchId: branchId,
       entity: 'product',
       entityId: id,
-      operation: 'delete',
-      userId: 'system',
+      operation: forceDeleteForAdmin ? 'force_delete_demo_product' : 'delete',
+      userId: userId ?? 'system',
     );
   }
 

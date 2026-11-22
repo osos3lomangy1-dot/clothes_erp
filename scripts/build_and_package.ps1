@@ -4,7 +4,7 @@
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "=== Orchid ERP - Windows Build Script ===" -ForegroundColor Cyan
+Write-Host "=== Bay3ah ERP - Windows Build Script ===" -ForegroundColor Cyan
 
 # 1. Analyze
 Write-Host "`n[1/5] Running flutter analyze..." -ForegroundColor Yellow
@@ -30,7 +30,7 @@ if (-not $version) { $version = "1.0.0" }
 Write-Host "`n[4/5] Packaging version: $version" -ForegroundColor Yellow
 
 $releaseDir = "build\windows\x64\runner\Release"
-$zipName = "orchid_erp_windows_v${version}.zip"
+$zipName = "bay3ah_erp_windows_v${version}.zip"
 
 if (Test-Path $zipName) { Remove-Item $zipName -Force }
 Compress-Archive -Path "$releaseDir\*" -DestinationPath $zipName -Force

@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-title Orkeed Clothes ERP - فحص متطلبات التشغيل
+title بيعة - فحص متطلبات التشغيل
 
 :: -------------------------------------------------------------
 :: هذا السكريبت يتحقق من وجود حزمة Microsoft Visual C++ Runtime
@@ -11,12 +11,14 @@ title Orkeed Clothes ERP - فحص متطلبات التشغيل
 set "APP_DIR=%~dp0"
 set "EXE_NAME=bay3ah.exe"
 
-:: 1. التحقق من وجود ملفات VC++ Runtime (MSVCP140.dll)
-reg query "HKLM\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" /v Installed 2>nul | findstr /i "0x1" >nul
-if %ERRORLEVEL% EQU 0 goto :RUN_APP
+:: 1. التحقق من وجود ملفات VC++ Runtime الكاملة بما فيها vcruntime140_1.dll
+if exist "%APP_DIR%vcruntime140_1.dll" goto :RUN_APP
+if exist "%APP_DIR%Release\vcruntime140_1.dll" goto :RUN_APP
 
-if exist "%SystemRoot%\System32\msvcp140.dll" (
-    if exist "%SystemRoot%\System32\vcruntime140.dll" goto :RUN_APP
+if exist "%SystemRoot%\System32\vcruntime140_1.dll" (
+    if exist "%SystemRoot%\System32\vcruntime140.dll" (
+        if exist "%SystemRoot%\System32\msvcp140.dll" goto :RUN_APP
+    )
 )
 
 :: 2. الحزمة مفقودة -> إبلاغ المستخدم وتحميلها
@@ -51,7 +53,7 @@ echo [نجاح] اكتمل تثبيت متطلبات التشغيل بنجاح!
 echo.
 
 :RUN_APP
-:: 3. تشغيل برنامج أوركيد لإدارة الملابس
+:: 3. تشغيل برنامج بيعة لإدارة المتاجر ونقاط البيع
 if exist "%APP_DIR%%EXE_NAME%" (
     start "" "%APP_DIR%%EXE_NAME%"
 ) else if exist "%APP_DIR%Release\%EXE_NAME%" (
