@@ -3,6 +3,8 @@ import '../../../../core/errors/failures.dart';
 import '../entities/courier_settlement_summary.dart';
 import '../entities/delivery_courier_entity.dart';
 import '../entities/delivery_order_entity.dart';
+import '../entities/shipping_company_payout_entity.dart';
+import '../entities/shipping_company_statement.dart';
 
 abstract class DeliveryRepository {
   Future<Either<Failure, DeliveryOrderEntity>> createDeliveryOrder(
@@ -18,8 +20,10 @@ abstract class DeliveryRepository {
   Future<Either<Failure, Unit>> assignCourier(
     String orderId,
     String courierId,
-    String courierName,
-  );
+    String courierName, {
+    String? waybillNumber,
+    int? shippingCostPiasters,
+  });
 
   Future<Either<Failure, List<DeliveryOrderEntity>>> getDeliveryOrders({
     String? status,
@@ -47,5 +51,22 @@ abstract class DeliveryRepository {
     List<String> orderIds, {
     String? notes,
   });
-}
 
+  Future<Either<Failure, ShippingCompanyStatement>> getShippingCompanyStatement(
+    String courierId,
+  );
+
+  Future<Either<Failure, Unit>> recordShippingCompanyPayout(
+    ShippingCompanyPayoutEntity payout,
+  );
+
+  Future<Either<Failure, List<ShippingCompanyPayoutEntity>>> getShippingCompanyPayouts(
+    String courierId,
+  );
+
+  Future<Either<Failure, Unit>> reconcileShippingBatch(
+    String courierId,
+    List<String> orderIds,
+    String batchId,
+  );
+}

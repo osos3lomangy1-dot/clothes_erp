@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/database/branch_provider.dart';
 import '../../domain/entities/delivery_courier_entity.dart';
 import '../../domain/entities/delivery_order_entity.dart';
+import '../../domain/entities/shipping_company_payout_entity.dart';
 import '../../domain/repositories/delivery_repository.dart';
 import 'delivery_state.dart';
 
@@ -55,6 +56,10 @@ class DeliveryCubit extends Cubit<DeliveryState> {
     loadOrders();
   }
 
+  void setProviderTypeFilter(String filter) {
+    emit(state.copyWith(providerTypeFilter: filter));
+  }
+
   void setSearchQuery(String query) {
     emit(state.copyWith(searchQuery: query));
   }
@@ -95,9 +100,17 @@ class DeliveryCubit extends Cubit<DeliveryState> {
   Future<void> assignCourier(
     String orderId,
     String courierId,
-    String courierName,
-  ) async {
-    final res = await _repo.assignCourier(orderId, courierId, courierName);
+    String courierName, {
+    String? waybillNumber,
+    int? shippingCostPiasters,
+  }) async {
+    final res = await _repo.assignCourier(
+      orderId,
+      courierId,
+      courierName,
+      waybillNumber: waybillNumber,
+      shippingCostPiasters: shippingCostPiasters,
+    );
     res.fold(
       (failure) => emit(state.copyWith(
         status: DeliveryStatus.error,
@@ -111,6 +124,10 @@ class DeliveryCubit extends Cubit<DeliveryState> {
     required String name,
     required String phone,
     String? vehicleType,
+    String providerType = 'in_house',
+    String? trackingUrlTemplate,
+    int? defaultRatePiasters,
+    String? accountNumber,
   }) async {
     final branchId = await _branchProvider.getBranchId();
     final courier = DeliveryCourierEntity(
@@ -119,6 +136,10 @@ class DeliveryCubit extends Cubit<DeliveryState> {
       name: name.trim(),
       phone: phone.trim(),
       vehicleType: vehicleType,
+      providerType: providerType,
+      trackingUrlTemplate: trackingUrlTemplate,
+      defaultRatePiasters: defaultRatePiasters,
+      accountNumber: accountNumber,
       createdAt: DateTime.now(),
     );
 
@@ -154,5 +175,59 @@ class DeliveryCubit extends Cubit<DeliveryState> {
       },
     );
   }
-}
 
+  Future<void> loadShippingCompanyStatement(String courierId) async {
+    final res = await _repo.getShippingCompanyStatement(courierId);
+    res.fold(
+      (_) => null,
+      (statement) => emit(state.copyWith(shippingStatement: statement)),
+    );
+  }
+
+  Future<bool> recordShippingCompanyPayout({
+    required String courierId,
+    required int amountPiasters,
+    String paymentMethod = 'bank_transfer',
+    String? referenceNumber,
+    String? notes,
+    DateTime? payoutDate,
+  }) async {
+    final branchId = await _branchProvider.getBranchId();
+    final payout = ShippingCompanyPayoutEntity(
+      id: const Uuid().v4(),
+      branchId: branchId,
+      courierId: courierId,
+      amountPiasters: amountPiasters,
+      paymentMethod: paymentMethod,
+      referenceNumber: referenceNumber,
+      notes: notes,
+      payoutDate: payoutDate ?? DateTime.now(),
+      createdAt: DateTime.now(),
+    );
+
+    final res = await _repo.recordShippingCompanyPayout(payout);
+    return res.fold(
+      (failure) => false,
+      (_) {
+        loadShippingCompanyStatement(courierId);
+        return true;
+      },
+    );
+  }
+
+  Future<bool> reconcileShippingBatch({
+    required String courierId,
+    required List<String> orderIds,
+    required String batchId,
+  }) async {
+    final res = await _repo.reconcileShippingBatch(courierId, orderIds, batchId);
+    return res.fold(
+      (failure) => false,
+      (_) {
+        loadOrders();
+        loadShippingCompanyStatement(courierId);
+        return true;
+      },
+    );
+  }
+}

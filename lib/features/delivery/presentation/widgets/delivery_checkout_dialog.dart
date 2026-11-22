@@ -40,10 +40,13 @@ class _DeliveryCheckoutDialogState extends State<DeliveryCheckoutDialog> {
   late TextEditingController _addressCtrl;
   late TextEditingController _feeCtrl;
   late TextEditingController _orderTotalCtrl;
+  late TextEditingController _waybillCtrl;
   late TextEditingController _notesCtrl;
 
   String? _selectedCourierId;
   String _paymentMethod = 'cod'; // 'cod' or 'paid'
+  String _shippingFeePayer = 'store_collected'; // 'store_collected' or 'customer_direct'
+  String? _selectedZone;
 
   @override
   void initState() {
@@ -55,6 +58,7 @@ class _DeliveryCheckoutDialogState extends State<DeliveryCheckoutDialog> {
     _orderTotalCtrl = TextEditingController(
       text: (widget.orderTotalPiasters / 100.0).toStringAsFixed(2),
     );
+    _waybillCtrl = TextEditingController();
     _notesCtrl = TextEditingController();
   }
 
@@ -65,6 +69,7 @@ class _DeliveryCheckoutDialogState extends State<DeliveryCheckoutDialog> {
     _addressCtrl.dispose();
     _feeCtrl.dispose();
     _orderTotalCtrl.dispose();
+    _waybillCtrl.dispose();
     _notesCtrl.dispose();
     super.dispose();
   }
@@ -75,13 +80,29 @@ class _DeliveryCheckoutDialogState extends State<DeliveryCheckoutDialog> {
     return (val * 100).round();
   }
 
+  DeliveryCourierEntity? get _selectedCourier {
+    if (_selectedCourierId == null) return null;
+    return widget.couriers.where((c) => c.id == _selectedCourierId).firstOrNull;
+  }
+
+  void _applyZone(String zoneName, double fee) {
+    setState(() {
+      _selectedZone = zoneName;
+      _feeCtrl.text = fee.toStringAsFixed(2);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final feePiasters = _parsePiasters(_feeCtrl.text);
     final effectiveOrderTotalPiasters = widget.saleId != null
         ? widget.orderTotalPiasters
         : _parsePiasters(_orderTotalCtrl.text);
+
+    // If customer direct, shipping is collected by the shipping company, but total for client is goods + shipping
     final grandTotal = effectiveOrderTotalPiasters + feePiasters;
+    final courier = _selectedCourier;
+    final isShippingCompany = courier?.isShippingCompany ?? false;
 
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -93,20 +114,24 @@ class _DeliveryCheckoutDialogState extends State<DeliveryCheckoutDialog> {
               color: AppColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(Icons.delivery_dining_rounded, color: AppColors.primary, size: 24),
+            child: Icon(
+              isShippingCompany ? Icons.local_shipping_rounded : Icons.delivery_dining_rounded,
+              color: AppColors.primary,
+              size: 24,
+            ),
           ),
           const SizedBox(width: 10),
-          const Expanded(
+          Expanded(
             child: Text(
-              'بيانات طلب التوصيل (دليفري)',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+              isShippingCompany ? 'بيانات الشحن الخارجي (شركة شحن)' : 'بيانات طلب التوصيل (دليفري)',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
             ),
           ),
         ],
       ),
       content: ConstrainedBox(
         constraints: BoxConstraints(
-          maxWidth: 520,
+          maxWidth: 540,
           maxHeight: MediaQuery.of(context).size.height * 0.85,
         ),
         child: Form(
@@ -131,82 +156,100 @@ class _DeliveryCheckoutDialogState extends State<DeliveryCheckoutDialog> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('رقم الفاتورة: ${widget.orderRef}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                          Text('قيمة المنتجات: ${Money(effectiveOrderTotalPiasters).toDisplay()} ج.م', style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                          Text('قيمة المنتجات: ${Money(effectiveOrderTotalPiasters).toDisplay()} ج.م', style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                          if (_shippingFeePayer == 'customer_direct')
+                            const Text(
+                              'نمط الشحن: يدفع للشركة مباشرة (صافي للمحل 100%)',
+                              style: TextStyle(fontSize: 11, color: Colors.teal, fontWeight: FontWeight.bold),
+                            ),
                         ],
                       ),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          const Text('الإجمالي مع التوصيل', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                          const Text('المطلوب من العميل', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
                           Text(
                             '${Money(grandTotal).toDisplay()} ج.م',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary,
-                            ),
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary),
                           ),
                         ],
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
 
-                if (widget.saleId == null) ...[
-                  TextFormField(
-                    controller: _orderTotalCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(
-                      labelText: 'قيمة الطلب / المنتجات (ج.م) *',
-                      prefixIcon: const Icon(Icons.receipt_long_rounded, size: 20),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                // Customer Name & Phone
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: TextFormField(
+                        controller: _nameCtrl,
+                        decoration: InputDecoration(
+                          labelText: 'اسم العميل *',
+                          prefixIcon: const Icon(Icons.person_outline, size: 20),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'اسم العميل مطلوب' : null,
+                      ),
                     ),
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'قيمة الطلب مطلوبة' : null,
-                    onChanged: (_) => setState(() {}),
-                  ),
-                  const SizedBox(height: 10),
-                ],
-
-                // Customer Name
-                TextFormField(
-                  controller: _nameCtrl,
-                  decoration: InputDecoration(
-                    labelText: 'اسم العميل *',
-                    prefixIcon: const Icon(Icons.person_outline_rounded, size: 20),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'اسم العميل مطلوب' : null,
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 2,
+                      child: TextFormField(
+                        controller: _phoneCtrl,
+                        keyboardType: TextInputType.phone,
+                        decoration: InputDecoration(
+                          labelText: 'رقم الهاتف *',
+                          prefixIcon: const Icon(Icons.phone_outlined, size: 20),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'الهاتف مطلوب' : null,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 10),
 
-                // Customer Phone
-                TextFormField(
-                  controller: _phoneCtrl,
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    labelText: 'رقم الهاتف للتواصل *',
-                    prefixIcon: const Icon(Icons.phone_outlined, size: 20),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'رقم الهاتف مطلوب' : null,
-                ),
-                const SizedBox(height: 10),
-
-                // Delivery Address
+                // Address
                 TextFormField(
                   controller: _addressCtrl,
-                  maxLines: 2,
                   decoration: InputDecoration(
-                    labelText: 'عنوان التوصيل بالتفصيل * (المنطقة، الشارع، العمارة، الشقة)',
+                    labelText: 'العنوان بالتفصيل (الشارع، العمارة، الشقة) *',
                     prefixIcon: const Icon(Icons.location_on_outlined, size: 20),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'عنوان التوصيل مطلوب' : null,
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'العنوان مطلوب' : null,
                 ),
                 const SizedBox(height: 10),
 
-                // Delivery Fee & Courier Row
+                // Quick Zone Selection Chips
+                const Text('مناطق التوصيل السريعة:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 6,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('داخل الحي (20 ج.م)', style: TextStyle(fontSize: 11)),
+                      selected: _selectedZone == 'local',
+                      onSelected: (_) => _applyZone('local', 20.0),
+                    ),
+                    ChoiceChip(
+                      label: const Text('أطراف المدينة (35 ج.م)', style: TextStyle(fontSize: 11)),
+                      selected: _selectedZone == 'city_edge',
+                      onSelected: (_) => _applyZone('city_edge', 35.0),
+                    ),
+                    ChoiceChip(
+                      label: const Text('شحن محافظات (60 ج.م)', style: TextStyle(fontSize: 11)),
+                      selected: _selectedZone == 'governorates',
+                      onSelected: (_) => _applyZone('governorates', 60.0),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                // Delivery Fee & Courier / Shipping Company
                 Row(
                   children: [
                     Expanded(
@@ -215,11 +258,12 @@ class _DeliveryCheckoutDialogState extends State<DeliveryCheckoutDialog> {
                         controller: _feeCtrl,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         decoration: InputDecoration(
-                          labelText: 'رسوم التوصيل (ج.م)',
-                          prefixIcon: const Icon(Icons.payments_outlined, size: 20),
+                          labelText: 'رسوم الشحن (ج.م) *',
+                          prefixIcon: const Icon(Icons.attach_money_rounded, size: 20),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                         onChanged: (_) => setState(() {}),
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'أدخل رسوم الشحن' : null,
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -229,8 +273,11 @@ class _DeliveryCheckoutDialogState extends State<DeliveryCheckoutDialog> {
                         initialValue: _selectedCourierId,
                         isExpanded: true,
                         decoration: InputDecoration(
-                          labelText: 'طيار الدليفري (اختياري)',
-                          prefixIcon: const Icon(Icons.two_wheeler_outlined, size: 20),
+                          labelText: 'الطيار / شركة الشحن',
+                          prefixIcon: Icon(
+                            isShippingCompany ? Icons.local_shipping_outlined : Icons.two_wheeler_outlined,
+                            size: 20,
+                          ),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                         items: [
@@ -240,17 +287,97 @@ class _DeliveryCheckoutDialogState extends State<DeliveryCheckoutDialog> {
                           ),
                           ...widget.couriers.map((c) => DropdownMenuItem(
                                 value: c.id,
-                                child: Text(c.name, overflow: TextOverflow.ellipsis),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      c.isShippingCompany ? Icons.apartment_rounded : Icons.two_wheeler_rounded,
+                                      size: 16,
+                                      color: c.isShippingCompany ? Colors.indigo : AppColors.primary,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        '${c.name} (${c.isShippingCompany ? "شركة شحن" : "طيار"})',
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               )),
                         ],
-                        onChanged: (val) => setState(() => _selectedCourierId = val),
+                        onChanged: (val) {
+                          setState(() {
+                            _selectedCourierId = val;
+                            final match = widget.couriers.where((c) => c.id == val).firstOrNull;
+                            if (match != null && match.isShippingCompany && match.defaultRatePiasters != null) {
+                              _feeCtrl.text = (match.defaultRatePiasters! / 100.0).toStringAsFixed(2);
+                            }
+                          });
+                        },
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 10),
 
-                // Payment Method with courier
+                // Shipping Company Specific Settings (Waybill & Payer)
+                if (isShippingCompany) ...[
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.indigo.shade50.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.indigo.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'إعدادات شركة الشحن والبوليصة:',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.indigo),
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          key: const Key('delivery_waybill_input'),
+                          controller: _waybillCtrl,
+                          decoration: InputDecoration(
+                            labelText: 'رقم بوليصة الشحن (Waybill / Tracking No)',
+                            hintText: 'مثال: BOSTA-98234 أو ARAMEX-0192',
+                            prefixIcon: const Icon(Icons.receipt_long_rounded, size: 20),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            filled: true,
+                            fillColor: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text('جهة تحصيل تكلفة الشحن:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ChoiceChip(
+                                label: const Text('محصل للمتجر (Store Collected)', style: TextStyle(fontSize: 11)),
+                                selected: _shippingFeePayer == 'store_collected',
+                                onSelected: (_) => setState(() => _shippingFeePayer = 'store_collected'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: ChoiceChip(
+                                label: const Text('مباشر للشركة (Direct to Courier)', style: TextStyle(fontSize: 11)),
+                                selected: _shippingFeePayer == 'customer_direct',
+                                onSelected: (_) => setState(() => _shippingFeePayer = 'customer_direct'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+
+                // Payment Method
                 Wrap(
                   crossAxisAlignment: WrapCrossAlignment.center,
                   spacing: 8,
@@ -300,9 +427,7 @@ class _DeliveryCheckoutDialogState extends State<DeliveryCheckoutDialog> {
             if (!_formKey.currentState!.validate()) return;
 
             final feePiasters = _parsePiasters(_feeCtrl.text);
-            final courierMatch = widget.couriers
-                .where((c) => c.id == _selectedCourierId)
-                .firstOrNull;
+            final courierMatch = _selectedCourier;
 
             final order = DeliveryOrderEntity(
               id: const Uuid().v4(),
@@ -320,6 +445,10 @@ class _DeliveryCheckoutDialogState extends State<DeliveryCheckoutDialog> {
               paymentMethod: _paymentMethod,
               paymentStatus: _paymentMethod == 'paid' ? 'paid_online' : 'pending',
               status: _selectedCourierId != null ? 'out_for_delivery' : 'preparing',
+              providerType: courierMatch?.providerType ?? 'in_house',
+              shippingFeePayer: _shippingFeePayer,
+              waybillNumber: _waybillCtrl.text.trim().isEmpty ? null : _waybillCtrl.text.trim(),
+              shippingCostPiasters: isShippingCompany ? (courierMatch?.defaultRatePiasters ?? feePiasters) : null,
               notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
               createdAt: DateTime.now(),
               updatedAt: DateTime.now(),

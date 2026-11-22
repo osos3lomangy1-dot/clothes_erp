@@ -5,6 +5,8 @@ import '../../../../core/errors/failures.dart';
 import '../../domain/entities/courier_settlement_summary.dart';
 import '../../domain/entities/delivery_courier_entity.dart';
 import '../../domain/entities/delivery_order_entity.dart';
+import '../../domain/entities/shipping_company_payout_entity.dart';
+import '../../domain/entities/shipping_company_statement.dart';
 import '../../domain/repositories/delivery_repository.dart';
 import '../datasources/delivery_local_data_source.dart';
 
@@ -48,10 +50,18 @@ class DeliveryRepositoryImpl implements DeliveryRepository {
   Future<Either<Failure, Unit>> assignCourier(
     String orderId,
     String courierId,
-    String courierName,
-  ) async {
+    String courierName, {
+    String? waybillNumber,
+    int? shippingCostPiasters,
+  }) async {
     try {
-      await _localDataSource.assignCourier(orderId, courierId, courierName);
+      await _localDataSource.assignCourier(
+        orderId,
+        courierId,
+        courierName,
+        waybillNumber: waybillNumber,
+        shippingCostPiasters: shippingCostPiasters,
+      );
       return const Right(unit);
     } catch (e) {
       return Left(ServerFailure('تعذر تعيين مندوب التوصيل: $e'));
@@ -186,5 +196,112 @@ class DeliveryRepositoryImpl implements DeliveryRepository {
       return Left(ServerFailure('تعذر تسوية عهدة الطيار: $e'));
     }
   }
-}
 
+  @override
+  Future<Either<Failure, ShippingCompanyStatement>> getShippingCompanyStatement(
+    String courierId,
+  ) async {
+    try {
+      final allOrders = await _localDataSource.getDeliveryOrders(courierId: courierId);
+      final couriers = await _localDataSource.getCouriers();
+      final payouts = await _localDataSource.getShippingCompanyPayouts(courierId);
+
+      final courier = couriers.firstWhere(
+        (c) => c.id == courierId,
+        orElse: () => DeliveryCourierEntity(
+          id: courierId,
+          branchId: 'default',
+          name: 'شركة شحن غير معروفة',
+          phone: '',
+          providerType: 'shipping_company',
+          createdAt: DateTime.now(),
+        ),
+      );
+
+      var deliveredCount = 0;
+      var pendingCount = 0;
+      var returnedCount = 0;
+      var totalCodDelivered = 0;
+      var totalShippingFees = 0;
+      var netDueToStore = 0;
+
+      for (final o in allOrders) {
+        if (o.status == 'delivered') {
+          deliveredCount++;
+          if (o.paymentMethod == 'cod') {
+            totalCodDelivered += o.grandTotalPiasters;
+          }
+          final fee = o.shippingCostPiasters ?? o.deliveryFeePiasters;
+          totalShippingFees += fee;
+          netDueToStore += o.netStoreDuePiasters;
+        } else if (o.status == 'returned' || o.status == 'cancelled') {
+          returnedCount++;
+        } else {
+          pendingCount++;
+        }
+      }
+
+      final totalPayouts = payouts.fold<int>(0, (sum, p) => sum + p.amountPiasters);
+      final remainingBalance = netDueToStore - totalPayouts;
+
+      final statement = ShippingCompanyStatement(
+        courierId: courier.id,
+        courierName: courier.name,
+        accountNumber: courier.accountNumber,
+        totalAssignedOrders: allOrders.length,
+        deliveredOrdersCount: deliveredCount,
+        pendingOrdersCount: pendingCount,
+        returnedOrdersCount: returnedCount,
+        totalCodDeliveredPiasters: totalCodDelivered,
+        totalShippingFeesPiasters: totalShippingFees,
+        totalNetDueToStorePiasters: netDueToStore,
+        totalPayoutsReceivedPiasters: totalPayouts,
+        remainingBalancePiasters: remainingBalance,
+        orders: allOrders,
+        payouts: payouts,
+      );
+
+      return Right(statement);
+    } catch (e) {
+      return Left(ServerFailure('تعذر تحميل كشف حساب شركة الشحن: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> recordShippingCompanyPayout(
+    ShippingCompanyPayoutEntity payout,
+  ) async {
+    try {
+      await _localDataSource.recordShippingCompanyPayout(payout);
+      return const Right(unit);
+    } catch (e) {
+      return Left(ServerFailure('تعذر تسجيل الدفعة المستلمة: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<ShippingCompanyPayoutEntity>>> getShippingCompanyPayouts(
+    String courierId,
+  ) async {
+    try {
+      final payouts = await _localDataSource.getShippingCompanyPayouts(courierId);
+      return Right(payouts);
+    } catch (e) {
+      return Left(ServerFailure('تعذر تحميل دفعات شركة الشحن: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> reconcileShippingBatch(
+    String courierId,
+    List<String> orderIds,
+    String batchId,
+  ) async {
+    try {
+      await _localDataSource.reconcileShippingBatch(courierId, orderIds, batchId);
+      return const Right(unit);
+    } catch (e) {
+      return Left(ServerFailure('تعذر إجراء التسوية المجمعة: $e'));
+    }
+  }
+}

@@ -7,6 +7,10 @@ class DeliveryCourierEntity extends Equatable {
   final String phone;
   final bool isActive;
   final String? vehicleType; // موتوسيكل، سيارة، عجلة، تروسيكل
+  final String providerType; // 'in_house', 'shipping_company'
+  final String? trackingUrlTemplate; // e.g. https://track.example.com?no={TRACKING}
+  final int? defaultRatePiasters;
+  final String? accountNumber;
   final DateTime createdAt;
 
   const DeliveryCourierEntity({
@@ -16,8 +20,17 @@ class DeliveryCourierEntity extends Equatable {
     required this.phone,
     this.isActive = true,
     this.vehicleType,
+    this.providerType = 'in_house',
+    this.trackingUrlTemplate,
+    this.defaultRatePiasters,
+    this.accountNumber,
     required this.createdAt,
   });
+
+  bool get isInHouse => providerType == 'in_house';
+  bool get isShippingCompany => providerType == 'shipping_company';
+  double? get defaultRate =>
+      defaultRatePiasters != null ? defaultRatePiasters! / 100.0 : null;
 
   DeliveryCourierEntity copyWith({
     String? id,
@@ -26,6 +39,10 @@ class DeliveryCourierEntity extends Equatable {
     String? phone,
     bool? isActive,
     String? vehicleType,
+    String? providerType,
+    String? trackingUrlTemplate,
+    int? defaultRatePiasters,
+    String? accountNumber,
     DateTime? createdAt,
   }) {
     return DeliveryCourierEntity(
@@ -35,6 +52,10 @@ class DeliveryCourierEntity extends Equatable {
       phone: phone ?? this.phone,
       isActive: isActive ?? this.isActive,
       vehicleType: vehicleType ?? this.vehicleType,
+      providerType: providerType ?? this.providerType,
+      trackingUrlTemplate: trackingUrlTemplate ?? this.trackingUrlTemplate,
+      defaultRatePiasters: defaultRatePiasters ?? this.defaultRatePiasters,
+      accountNumber: accountNumber ?? this.accountNumber,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -47,7 +68,10 @@ class DeliveryCourierEntity extends Equatable {
         phone,
         isActive,
         vehicleType,
+        providerType,
+        trackingUrlTemplate,
+        defaultRatePiasters,
+        accountNumber,
         createdAt,
       ];
 }
-

@@ -17,6 +17,11 @@ class DeliveryOrderEntity extends Equatable {
   final String paymentStatus; // 'pending', 'collected', 'paid_online'
   final String status; // 'preparing', 'out_for_delivery', 'delivered', 'returned', 'cancelled'
   final bool courierSettled; // تم توريد الكاش من الطيار للخزينة
+  final String providerType; // 'in_house', 'shipping_company'
+  final String shippingFeePayer; // 'store_collected', 'customer_direct'
+  final String? waybillNumber;
+  final int? shippingCostPiasters;
+  final String? shippingBatchId;
   final String? notes;
   final DateTime createdAt;
   final DateTime? deliveredAt;
@@ -39,6 +44,11 @@ class DeliveryOrderEntity extends Equatable {
     this.paymentStatus = 'pending',
     this.status = 'preparing',
     this.courierSettled = false,
+    this.providerType = 'in_house',
+    this.shippingFeePayer = 'store_collected',
+    this.waybillNumber,
+    this.shippingCostPiasters,
+    this.shippingBatchId,
     this.notes,
     required this.createdAt,
     this.deliveredAt,
@@ -51,10 +61,30 @@ class DeliveryOrderEntity extends Equatable {
   bool get isReturned => status == 'returned';
   bool get isCancelled => status == 'cancelled';
 
+  bool get isInHouse => providerType == 'in_house';
+  bool get isShippingCompany => providerType == 'shipping_company';
+  bool get isCustomerDirectShipping => shippingFeePayer == 'customer_direct';
+
+  /// إجمالي المبلغ المطلوب تحصيله من العميل
   int get grandTotalPiasters => orderTotalPiasters + deliveryFeePiasters;
   double get deliveryFee => deliveryFeePiasters / 100.0;
   double get orderTotal => orderTotalPiasters / 100.0;
   double get grandTotal => grandTotalPiasters / 100.0;
+  double? get shippingCost =>
+      shippingCostPiasters != null ? shippingCostPiasters! / 100.0 : null;
+
+  /// صافي المبلغ المستحق للمحل من هذه الشحنة:
+  /// - إذا كان الشحن يُدفع للشركة مباشرة من العميل: يحصل المحل على كامل قيمة البضاعة (100% Net).
+  /// - إذا كان الشحن محصلاً للمتجر: يستحق المحل (قيمة البضاعة + رسوم الشحن - تكلفة الشحن للشركة).
+  int get netStoreDuePiasters {
+    if (isCustomerDirectShipping) {
+      return orderTotalPiasters;
+    }
+    final cost = shippingCostPiasters ?? deliveryFeePiasters;
+    return orderTotalPiasters + deliveryFeePiasters - cost;
+  }
+
+  double get netStoreDue => netStoreDuePiasters / 100.0;
 
   DeliveryOrderEntity copyWith({
     String? id,
@@ -73,6 +103,11 @@ class DeliveryOrderEntity extends Equatable {
     String? paymentStatus,
     String? status,
     bool? courierSettled,
+    String? providerType,
+    String? shippingFeePayer,
+    String? waybillNumber,
+    int? shippingCostPiasters,
+    String? shippingBatchId,
     String? notes,
     DateTime? createdAt,
     DateTime? deliveredAt,
@@ -95,6 +130,11 @@ class DeliveryOrderEntity extends Equatable {
       paymentStatus: paymentStatus ?? this.paymentStatus,
       status: status ?? this.status,
       courierSettled: courierSettled ?? this.courierSettled,
+      providerType: providerType ?? this.providerType,
+      shippingFeePayer: shippingFeePayer ?? this.shippingFeePayer,
+      waybillNumber: waybillNumber ?? this.waybillNumber,
+      shippingCostPiasters: shippingCostPiasters ?? this.shippingCostPiasters,
+      shippingBatchId: shippingBatchId ?? this.shippingBatchId,
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
       deliveredAt: deliveredAt ?? this.deliveredAt,
@@ -120,6 +160,11 @@ class DeliveryOrderEntity extends Equatable {
         paymentStatus,
         status,
         courierSettled,
+        providerType,
+        shippingFeePayer,
+        waybillNumber,
+        shippingCostPiasters,
+        shippingBatchId,
         notes,
         createdAt,
         deliveredAt,

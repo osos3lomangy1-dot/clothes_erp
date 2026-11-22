@@ -14,6 +14,7 @@ import '../../data/services/receipt_settings_service.dart';
 import '../../domain/entities/invoice_details_entity.dart';
 import '../../domain/entities/invoice_item_details_entity.dart';
 import '../../domain/entities/receipt_config.dart';
+import '../../../delivery/domain/entities/delivery_order_entity.dart';
 
 class ReceiptPdfService {
   static Future<pw.Font> _loadArabicFont() async {
@@ -63,6 +64,7 @@ class ReceiptPdfService {
   static Future<Uint8List> generateReceiptPdf(
     InvoiceDetailsEntity invoice, {
     ReceiptConfig? config,
+    DeliveryOrderEntity? deliveryOrder,
     String? storeName,
     String? storePhone,
     String? storeAddress,
@@ -404,6 +406,116 @@ class ReceiptPdfService {
                     invoice.shortRef,
                     style: const pw.TextStyle(fontSize: 7),
                   ),
+                ],
+
+                // ── Delivery Slip Attachment (Task 21) ──
+                if (deliveryOrder != null) ...[
+                  pw.SizedBox(height: 8),
+                  _dashedLine(),
+                  pw.SizedBox(height: 4),
+                  pw.Container(
+                    width: double.infinity,
+                    padding: const pw.EdgeInsets.symmetric(vertical: 3, horizontal: 4),
+                    decoration: const pw.BoxDecoration(color: PdfColors.grey300),
+                    child: pw.Text(
+                      deliveryOrder.isShippingCompany
+                          ? 'إشعار شحن خارجي - ${deliveryOrder.courierName ?? "شركة الشحن"}'
+                          : 'قسيمة توصيل دليفري (كابتن المتجر)',
+                      style: pw.TextStyle(font: boldFont, fontSize: 9, fontWeight: pw.FontWeight.bold),
+                      textAlign: pw.TextAlign.center,
+                    ),
+                  ),
+                  pw.SizedBox(height: 4),
+                  if (deliveryOrder.waybillNumber != null && deliveryOrder.waybillNumber!.isNotEmpty) ...[
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('رقم البوليصة (Waybill):', style: pw.TextStyle(font: boldFont, fontSize: 8)),
+                        pw.Text(deliveryOrder.waybillNumber!, style: pw.TextStyle(font: boldFont, fontSize: 9)),
+                      ],
+                    ),
+                    pw.SizedBox(height: 2),
+                  ],
+                  if (deliveryOrder.courierName != null && deliveryOrder.courierName!.isNotEmpty) ...[
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text(deliveryOrder.isShippingCompany ? 'شركة الشحن:' : 'كابتن التوصيل:', style: const pw.TextStyle(fontSize: 8)),
+                        pw.Text(deliveryOrder.courierName!, style: const pw.TextStyle(fontSize: 8)),
+                      ],
+                    ),
+                    pw.SizedBox(height: 2),
+                  ],
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('العميل المستلم:', style: pw.TextStyle(font: boldFont, fontSize: 8)),
+                      pw.Text(deliveryOrder.customerName, style: pw.TextStyle(font: boldFont, fontSize: 8)),
+                    ],
+                  ),
+                  pw.SizedBox(height: 2),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('هاتف العميل:', style: const pw.TextStyle(fontSize: 8)),
+                      pw.Text(deliveryOrder.customerPhone, style: const pw.TextStyle(fontSize: 8)),
+                    ],
+                  ),
+                  pw.SizedBox(height: 2),
+                  pw.Align(
+                    alignment: pw.Alignment.centerRight,
+                    child: pw.Text('العنوان: ${deliveryOrder.deliveryAddress}', style: const pw.TextStyle(fontSize: 8)),
+                  ),
+                  if (deliveryOrder.notes != null && deliveryOrder.notes!.isNotEmpty) ...[
+                    pw.SizedBox(height: 2),
+                    pw.Align(
+                      alignment: pw.Alignment.centerRight,
+                      child: pw.Text('ملاحظات: ${deliveryOrder.notes!}', style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey700)),
+                    ),
+                  ],
+                  pw.SizedBox(height: 4),
+                  _dottedLine(),
+                  pw.SizedBox(height: 4),
+                  if (deliveryOrder.shippingFeePayer == 'customer_direct') ...[
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('قيمة المشتريات (للمحل):', style: const pw.TextStyle(fontSize: 8)),
+                        pw.Text('${Money(deliveryOrder.orderTotalPiasters).toDisplay()} ج.م', style: const pw.TextStyle(fontSize: 8)),
+                      ],
+                    ),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('مصاريف الشحن (تدفع للشركة):', style: const pw.TextStyle(fontSize: 8)),
+                        pw.Text('${Money(deliveryOrder.deliveryFeePiasters).toDisplay()} ج.م', style: const pw.TextStyle(fontSize: 8)),
+                      ],
+                    ),
+                    pw.SizedBox(height: 2),
+                    pw.Container(
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                      child: pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('المبلغ الإجمالي المطلوب:', style: pw.TextStyle(font: boldFont, fontSize: 9)),
+                          pw.Text('${Money(deliveryOrder.grandTotalPiasters).toDisplay()} ج.م', style: pw.TextStyle(font: boldFont, fontSize: 9)),
+                        ],
+                      ),
+                    ),
+                  ] else ...[
+                    pw.Container(
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                      child: pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('المبلغ المطلوب تحصيله (COD):', style: pw.TextStyle(font: boldFont, fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('${Money(deliveryOrder.grandTotalPiasters).toDisplay()} ج.م', style: pw.TextStyle(font: boldFont, fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
 
                 pw.SizedBox(height: 8),
@@ -754,8 +866,11 @@ class ReceiptPdfService {
   }
 
   /// Direct print to physical printer or Windows print dialog
-  static Future<void> printReceipt(InvoiceDetailsEntity invoice) async {
-    final pdfBytes = await generateReceiptPdf(invoice);
+  static Future<void> printReceipt(
+    InvoiceDetailsEntity invoice, {
+    DeliveryOrderEntity? deliveryOrder,
+  }) async {
+    final pdfBytes = await generateReceiptPdf(invoice, deliveryOrder: deliveryOrder);
     await Printing.layoutPdf(
       name: 'فاتورة_${invoice.shortRef}',
       onLayout: (PdfPageFormat format) async => pdfBytes,
@@ -763,8 +878,11 @@ class ReceiptPdfService {
   }
 
   /// Save invoice as a PDF file to user-chosen location
-  static Future<String?> saveReceiptAsPdf(InvoiceDetailsEntity invoice) async {
-    final pdfBytes = await generateReceiptPdf(invoice);
+  static Future<String?> saveReceiptAsPdf(
+    InvoiceDetailsEntity invoice, {
+    DeliveryOrderEntity? deliveryOrder,
+  }) async {
+    final pdfBytes = await generateReceiptPdf(invoice, deliveryOrder: deliveryOrder);
 
     final savePath = await FilePicker.platform.saveFile(
       dialogTitle: 'تنزيل الفاتورة كملف PDF',

@@ -10,6 +10,7 @@ import '../cubits/delivery_cubit.dart';
 import '../cubits/delivery_state.dart';
 import '../../domain/entities/delivery_courier_entity.dart';
 import '../../domain/entities/delivery_order_entity.dart';
+import '../../domain/entities/shipping_company_statement.dart';
 import '../widgets/delivery_checkout_dialog.dart';
 
 class DeliveryOrdersScreen extends StatelessWidget {
@@ -35,6 +36,10 @@ void showAddCourierDialog(BuildContext context) {
   final cubit = context.read<DeliveryCubit>();
   final nameCtrl = TextEditingController();
   final phoneCtrl = TextEditingController();
+  final accountCtrl = TextEditingController();
+  final defaultRateCtrl = TextEditingController();
+  final trackingCtrl = TextEditingController();
+  String providerType = 'in_house';
   String vehicle = 'موتوسيكل';
   final formKey = GlobalKey<FormState>();
 
@@ -47,27 +52,136 @@ void showAddCourierDialog(BuildContext context) {
         ),
         title: Row(
           children: [
-            Icon(Icons.person_add_alt_1_rounded, color: AppColors.primary),
+            Icon(
+              providerType == 'in_house'
+                  ? Icons.person_add_alt_1_rounded
+                  : Icons.local_shipping_outlined,
+              color: AppColors.primary,
+            ),
             const SizedBox(width: 8),
-            const Text(
-              'إضافة مندوب توصيل (طيار)',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+            Text(
+              providerType == 'in_house'
+                  ? 'إضافة مندوب توصيل (طيار)'
+                  : 'إضافة شركة / مكتب شحن خارجي',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
             ),
           ],
         ),
         content: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 400),
+          constraints: const BoxConstraints(maxWidth: 440),
           child: SingleChildScrollView(
             child: Form(
               key: formKey,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Provider Type Selector
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.outlineVariant),
+                    ),
+                    padding: const EdgeInsets.all(4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => setDialogState(() => providerType = 'in_house'),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              decoration: BoxDecoration(
+                                color: providerType == 'in_house'
+                                    ? AppColors.primary
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              alignment: Alignment.center,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.moped_rounded,
+                                    size: 16,
+                                    color: providerType == 'in_house'
+                                        ? Colors.white
+                                        : AppColors.onSurface,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'طيار المحل (داخلي)',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                      color: providerType == 'in_house'
+                                          ? Colors.white
+                                          : AppColors.onSurface,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => setDialogState(() => providerType = 'shipping_company'),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              decoration: BoxDecoration(
+                                color: providerType == 'shipping_company'
+                                    ? AppColors.primary
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              alignment: Alignment.center,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.business_rounded,
+                                    size: 16,
+                                    color: providerType == 'shipping_company'
+                                        ? Colors.white
+                                        : AppColors.onSurface,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'شركة شحن خارجي',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                      color: providerType == 'shipping_company'
+                                          ? Colors.white
+                                          : AppColors.onSurface,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Name field
                   TextFormField(
                     controller: nameCtrl,
                     decoration: InputDecoration(
-                      labelText: 'اسم الطيار *',
-                      prefixIcon: const Icon(Icons.person_outline_rounded),
+                      labelText: providerType == 'in_house'
+                          ? 'اسم الطيار *'
+                          : 'اسم شركة / مكتب الشحن *',
+                      prefixIcon: Icon(
+                        providerType == 'in_house'
+                            ? Icons.person_outline_rounded
+                            : Icons.business_outlined,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -76,11 +190,15 @@ void showAddCourierDialog(BuildContext context) {
                         (v == null || v.trim().isEmpty) ? 'الاسم مطلوب' : null,
                   ),
                   const SizedBox(height: 12),
+
+                  // Phone field
                   TextFormField(
                     controller: phoneCtrl,
                     keyboardType: TextInputType.phone,
                     decoration: InputDecoration(
-                      labelText: 'رقم الهاتف *',
+                      labelText: providerType == 'in_house'
+                          ? 'رقم الهاتف *'
+                          : 'رقم خدمة العملاء / المندوب *',
                       prefixIcon: const Icon(Icons.phone_outlined),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -91,35 +209,76 @@ void showAddCourierDialog(BuildContext context) {
                         : null,
                   ),
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: vehicle,
-                    isExpanded: true,
-                    decoration: InputDecoration(
-                      labelText: 'وسيلة التوصيل',
-                      prefixIcon: const Icon(Icons.two_wheeler_rounded),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
+
+                  if (providerType == 'in_house') ...[
+                    DropdownButtonFormField<String>(
+                      initialValue: vehicle,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: 'وسيلة التوصيل',
+                        prefixIcon: const Icon(Icons.two_wheeler_rounded),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'موتوسيكل',
+                          child: Text('موتوسيكل / فيسبا'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'عجلة',
+                          child: Text('دراجة / عجلة'),
+                        ),
+                        DropdownMenuItem(value: 'سيارة', child: Text('سيارة')),
+                        DropdownMenuItem(
+                          value: 'تروسيكل',
+                          child: Text('تروسيكل'),
+                        ),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setDialogState(() => vehicle = val);
+                      },
+                    ),
+                  ] else ...[
+                    // Shipping Company specific fields
+                    TextFormField(
+                      controller: accountCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'رقم حساب المتجر لدى الشركة (اختياري)',
+                        prefixIcon: const Icon(Icons.badge_outlined),
+                        hintText: 'مثال: ACC-99482',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                     ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'موتوسيكل',
-                        child: Text('موتوسيكل / فيسبا'),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: defaultRateCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: 'التكلفة القياسية للشحنة (ج.م) - اختياري',
+                        prefixIcon: const Icon(Icons.attach_money_rounded),
+                        hintText: 'مثال: 45.00',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
-                      DropdownMenuItem(
-                        value: 'عجلة',
-                        child: Text('دراجة / عجلة'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: trackingCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'قالب رابط التتبع (اختياري)',
+                        prefixIcon: const Icon(Icons.link_rounded),
+                        hintText: 'https://track.example.com?no={TRACKING}',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
-                      DropdownMenuItem(value: 'سيارة', child: Text('سيارة')),
-                      DropdownMenuItem(
-                        value: 'تروسيكل',
-                        child: Text('تروسيكل'),
-                      ),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) setDialogState(() => vehicle = val);
-                    },
-                  ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -139,24 +298,41 @@ void showAddCourierDialog(BuildContext context) {
             ),
             onPressed: () async {
               if (!formKey.currentState!.validate()) return;
+              final isShipping = providerType == 'shipping_company';
+              final ratePiasters = defaultRateCtrl.text.trim().isNotEmpty
+                  ? Money.fromString(defaultRateCtrl.text.trim()).piasters
+                  : null;
+
               final success = await cubit.addCourier(
                 name: nameCtrl.text,
                 phone: phoneCtrl.text,
-                vehicleType: vehicle,
+                vehicleType: isShipping ? null : vehicle,
+                providerType: providerType,
+                accountNumber: isShipping && accountCtrl.text.trim().isNotEmpty
+                    ? accountCtrl.text.trim()
+                    : null,
+                defaultRatePiasters: isShipping ? ratePiasters : null,
+                trackingUrlTemplate: isShipping && trackingCtrl.text.trim().isNotEmpty
+                    ? trackingCtrl.text.trim()
+                    : null,
               );
               if (ctx.mounted) {
                 Navigator.pop(ctx);
                 if (success) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('تمت إضافة مندوب التوصيل بنجاح'),
+                    SnackBar(
+                      content: Text(
+                        isShipping
+                            ? 'تمت إضافة شركة الشحن بنجاح'
+                            : 'تمت إضافة مندوب التوصيل بنجاح',
+                      ),
                       backgroundColor: Colors.green,
                     ),
                   );
                 }
               }
             },
-            child: const Text('حفظ الطيار'),
+            child: Text(providerType == 'in_house' ? 'حفظ الطيار' : 'حفظ شركة الشحن'),
           ),
         ],
       ),
@@ -172,7 +348,7 @@ class _DeliveryOrdersViewState extends State<_DeliveryOrdersView>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -196,7 +372,7 @@ class _DeliveryOrdersViewState extends State<_DeliveryOrdersView>
       builder: (_) => DeliveryCheckoutDialog(
         branchId: 'default',
         orderRef: 'ORD-${DateTime.now().millisecondsSinceEpoch % 10000}',
-        orderTotalPiasters: 15000, // sample 150 EGP
+        orderTotalPiasters: 15000,
         couriers: couriers,
       ),
     ).then((order) {
@@ -229,7 +405,7 @@ class _DeliveryOrdersViewState extends State<_DeliveryOrdersView>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'إدارة وتتبع الدليفري والطيارين',
+              'إدارة وتتبع الدليفري وشركات الشحن',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
@@ -237,7 +413,7 @@ class _DeliveryOrdersViewState extends State<_DeliveryOrdersView>
               ),
             ),
             Text(
-              'توزيع الطلبات الخارجية، متابعة الحالات، وتصفية عهدة الطيارين',
+              'توزيع الطلبات الخارجية، طياري المحل، بوالص الشحن، وكشوف الحسابات',
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ],
@@ -253,7 +429,7 @@ class _DeliveryOrdersViewState extends State<_DeliveryOrdersView>
             ),
             onPressed: () => _openAddCourierDialog(context),
             icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
-            label: const Text('طيار جديد'),
+            label: const Text('جهة توصيل جديدة'),
           ),
           const SizedBox(width: 8),
           IconButton(
@@ -288,6 +464,10 @@ class _DeliveryOrdersViewState extends State<_DeliveryOrdersView>
               icon: Icon(Icons.account_balance_wallet_rounded, size: 20),
               text: 'تصفية عهدة الطيارين',
             ),
+            Tab(
+              icon: Icon(Icons.business_rounded, size: 20),
+              text: 'كشف حساب شركات الشحن',
+            ),
           ],
         ),
       ),
@@ -309,6 +489,7 @@ class _DeliveryOrdersViewState extends State<_DeliveryOrdersView>
         children: [
           _DeliveryOrdersListTab(searchCtrl: _searchCtrl),
           const _CourierSettlementTab(),
+          const _ShippingCompaniesTab(),
         ],
       ),
     );
@@ -346,7 +527,7 @@ class _DeliveryOrdersListTab extends StatelessWidget {
                 Icon(Icons.delivery_dining_rounded, color: AppColors.primary),
                 const SizedBox(width: 8),
                 Text(
-                  'إسناد الطلب ${order.orderRef} إلى طيار:',
+                  'إسناد الطلب ${order.orderRef} إلى جهة توصيل:',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -360,7 +541,7 @@ class _DeliveryOrdersListTab extends StatelessWidget {
                 padding: EdgeInsets.all(16.0),
                 child: Center(
                   child: Text(
-                    'لا يوجد طيارين مسجلين حالياً. يرجى إضافة طيار أولاً.',
+                    'لا يوجد طيارين أو شركات شحن مسجلة حالياً.',
                   ),
                 ),
               )
@@ -368,9 +549,13 @@ class _DeliveryOrdersListTab extends StatelessWidget {
               ...couriers.map(
                 (c) => ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: const Color(0xFFEAF1F7),
+                    backgroundColor: c.isShippingCompany
+                        ? const Color(0xFFF1F5F9)
+                        : const Color(0xFFEAF1F7),
                     child: Icon(
-                      Icons.two_wheeler_rounded,
+                      c.isShippingCompany
+                          ? Icons.business_rounded
+                          : Icons.two_wheeler_rounded,
                       color: AppColors.primary,
                     ),
                   ),
@@ -379,19 +564,27 @@ class _DeliveryOrdersListTab extends StatelessWidget {
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(
-                    'هاتف: ${c.phone} | ${c.vehicleType ?? "موتوسيكل"}',
+                    c.isShippingCompany
+                        ? 'شركة شحن | هاتف: ${c.phone}${c.accountNumber != null ? " | حساب: ${c.accountNumber}" : ""}'
+                        : 'طيار داخلي | هاتف: ${c.phone} | ${c.vehicleType ?? "موتوسيكل"}',
                   ),
                   trailing: const Icon(
                     Icons.arrow_forward_ios_rounded,
                     size: 16,
                   ),
                   onTap: () {
-                    cubit.assignCourier(order.id, c.id, c.name);
+                    cubit.assignCourier(
+                      order.id,
+                      c.id,
+                      c.name,
+                    );
                     Navigator.pop(ctx);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          'تم إسناد الطلب إلى ${c.name} وتغيير حالته إلى (خرج للتوصيل)',
+                          c.isShippingCompany
+                              ? 'تم إسناد الطلب إلى ${c.name} (شركة شحن)'
+                              : 'تم إسناد الطلب إلى ${c.name} وتغيير حالته إلى (خرج للتوصيل)',
                         ),
                         backgroundColor: Colors.green,
                       ),
@@ -416,13 +609,18 @@ class _DeliveryOrdersListTab extends StatelessWidget {
         }
 
         final filteredOrders = state.orders.where((o) {
+          if (state.providerTypeFilter != 'all' &&
+              o.providerType != state.providerTypeFilter) {
+            return false;
+          }
           final q = state.searchQuery.trim().toLowerCase();
           if (q.isEmpty) return true;
           return o.customerName.toLowerCase().contains(q) ||
               o.customerPhone.contains(q) ||
               o.orderRef.toLowerCase().contains(q) ||
               o.deliveryAddress.toLowerCase().contains(q) ||
-              (o.courierName?.toLowerCase().contains(q) ?? false);
+              (o.courierName?.toLowerCase().contains(q) ?? false) ||
+              (o.waybillNumber?.toLowerCase().contains(q) ?? false);
         }).toList();
 
         return ListView(
@@ -442,7 +640,7 @@ class _DeliveryOrdersListTab extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: _MetricCard(
-                    title: 'مع الطيارين',
+                    title: 'مع الطيارين/الشحن',
                     value: '${state.outForDeliveryCount}',
                     icon: Icons.moped_rounded,
                     color: AppColors.primary,
@@ -486,7 +684,7 @@ class _DeliveryOrdersListTab extends StatelessWidget {
                     onChanged: cubit.setSearchQuery,
                     decoration: InputDecoration(
                       hintText:
-                          'ابحث باسم العميل، الهاتف، العنوان، رقم الطلب، أو الطيار...',
+                          'ابحث باسم العميل، الهاتف، العنوان، رقم الطلب، البوليصة، أو الطيار...',
                       prefixIcon: const Icon(Icons.search_rounded, size: 20),
                       suffixIcon: searchCtrl.text.isNotEmpty
                           ? IconButton(
@@ -507,43 +705,61 @@ class _DeliveryOrdersListTab extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 10),
+                  // Filter Chips (Provider Type + Status)
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        _statusFilterChip(
-                          context,
+                        // Provider Filter
+                        _filterChip(
                           label: 'الكل',
-                          value: 'all',
+                          selected: state.providerTypeFilter == 'all',
+                          onTap: () => cubit.setProviderTypeFilter('all'),
+                        ),
+                        const SizedBox(width: 6),
+                        _filterChip(
+                          label: 'طيار داخلي',
+                          selected: state.providerTypeFilter == 'in_house',
+                          onTap: () => cubit.setProviderTypeFilter('in_house'),
+                        ),
+                        const SizedBox(width: 6),
+                        _filterChip(
+                          label: 'شركات الشحن',
+                          selected: state.providerTypeFilter == 'shipping_company',
+                          onTap: () => cubit.setProviderTypeFilter('shipping_company'),
+                        ),
+                        const SizedBox(width: 12),
+                        Container(height: 20, width: 1, color: Colors.grey.shade300),
+                        const SizedBox(width: 12),
+                        // Status Filter
+                        _filterChip(
+                          label: 'كافة الحالات',
                           selected: state.statusFilter == 'all',
+                          onTap: () => cubit.setStatusFilter('all'),
                         ),
                         const SizedBox(width: 6),
-                        _statusFilterChip(
-                          context,
-                          label: 'قيد التجهيز بالمحل',
-                          value: 'preparing',
+                        _filterChip(
+                          label: 'قيد التجهيز',
                           selected: state.statusFilter == 'preparing',
+                          onTap: () => cubit.setStatusFilter('preparing'),
                         ),
                         const SizedBox(width: 6),
-                        _statusFilterChip(
-                          context,
-                          label: 'خرج مع الطيار',
-                          value: 'out_for_delivery',
+                        _filterChip(
+                          label: 'خرج للتوصيل',
                           selected: state.statusFilter == 'out_for_delivery',
+                          onTap: () => cubit.setStatusFilter('out_for_delivery'),
                         ),
                         const SizedBox(width: 6),
-                        _statusFilterChip(
-                          context,
+                        _filterChip(
                           label: 'تم التسليم',
-                          value: 'delivered',
                           selected: state.statusFilter == 'delivered',
+                          onTap: () => cubit.setStatusFilter('delivered'),
                         ),
                         const SizedBox(width: 6),
-                        _statusFilterChip(
-                          context,
+                        _filterChip(
                           label: 'مرتجع / ملغي',
-                          value: 'returned',
                           selected: state.statusFilter == 'returned',
+                          onTap: () => cubit.setStatusFilter('returned'),
                         ),
                       ],
                     ),
@@ -592,14 +808,13 @@ class _DeliveryOrdersListTab extends StatelessWidget {
     );
   }
 
-  Widget _statusFilterChip(
-    BuildContext context, {
+  Widget _filterChip({
     required String label,
-    required String value,
     required bool selected,
+    required VoidCallback onTap,
   }) {
     return InkWell(
-      onTap: () => context.read<DeliveryCubit>().setStatusFilter(value),
+      onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -640,7 +855,7 @@ class _DeliveryOrderCard extends StatelessWidget {
       case 'preparing':
         return 'قيد التجهيز بالمحل';
       case 'out_for_delivery':
-        return 'خرج مع الطيار';
+        return 'خرج مع الطيار / الشحن';
       case 'delivered':
         return 'تم التسليم';
       case 'returned':
@@ -668,7 +883,7 @@ class _DeliveryOrderCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top Row: Ref, Status Badge, and Time
+            // Top Row: Ref, Provider & Waybill, Status Badge, and Time
             Row(
               children: [
                 Container(
@@ -690,6 +905,71 @@ class _DeliveryOrderCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
+
+                // Provider Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: order.isShippingCompany
+                        ? Colors.blue.shade50
+                        : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: order.isShippingCompany
+                          ? Colors.blue.shade300
+                          : AppColors.outlineVariant,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        order.isShippingCompany
+                            ? Icons.business_rounded
+                            : Icons.two_wheeler_rounded,
+                        size: 13,
+                        color: order.isShippingCompany
+                            ? Colors.blue.shade800
+                            : AppColors.onSurface,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        order.isShippingCompany
+                            ? 'شركة شحن: ${order.courierName ?? "غير محدد"}'
+                            : 'طيار: ${order.courierName ?? "غير محدد"}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: order.isShippingCompany
+                              ? Colors.blue.shade900
+                              : AppColors.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                if (order.waybillNumber != null && order.waybillNumber!.isNotEmpty) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.shade50,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.purple.shade200),
+                    ),
+                    child: Text(
+                      'بوليصة: ${order.waybillNumber}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.purple.shade800,
+                      ),
+                    ),
+                  ),
+                ],
+
+                const SizedBox(width: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -708,6 +988,7 @@ class _DeliveryOrderCard extends StatelessWidget {
                     ),
                   ),
                 ),
+
                 if (order.courierSettled) ...[
                   const SizedBox(width: 6),
                   Container(
@@ -730,6 +1011,30 @@ class _DeliveryOrderCard extends StatelessWidget {
                     ),
                   ),
                 ],
+
+                if (order.shippingBatchId != null) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.teal.shade50,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.teal.shade300),
+                    ),
+                    child: Text(
+                      'تسوية مجمعة',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.teal.shade800,
+                      ),
+                    ),
+                  ),
+                ],
+
                 const Spacer(),
                 Text(
                   DateFormat('HH:mm - yyyy/MM/dd').format(order.createdAt),
@@ -836,25 +1141,39 @@ class _DeliveryOrderCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        'المطلوب: ${Money(order.grandTotalPiasters).toDisplay()} ج.م',
+                        'المطلوب تحصيله (COD): ${Money(order.grandTotalPiasters).toDisplay()} ج.م',
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: AppColors.primary,
                         ),
                       ),
                       Text(
-                        '(منتجات: ${Money(order.orderTotalPiasters).toDisplay()} + توصيل: ${Money(order.deliveryFeePiasters).toDisplay()})',
+                        order.isCustomerDirectShipping
+                            ? '(قيمة البضاعة: ${Money(order.orderTotalPiasters).toDisplay()} + الشحن يدفع للشركة: ${Money(order.deliveryFeePiasters).toDisplay()})'
+                            : '(منتجات: ${Money(order.orderTotalPiasters).toDisplay()} + توصيل: ${Money(order.deliveryFeePiasters).toDisplay()})',
                         style: TextStyle(
                           fontSize: 11,
                           color: Colors.grey.shade600,
                         ),
+                        textAlign: TextAlign.end,
                       ),
-                      const SizedBox(height: 6),
+                      if (order.isShippingCompany) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'صافي استحقاق المحل: ${Money(order.netStoreDuePiasters).toDisplay()} ج.م',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green.shade800,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 4),
                       Text(
                         order.courierName != null
-                            ? 'الطيار: ${order.courierName}'
-                            : 'لم يُعين طيار بعد',
+                            ? 'الجهة: ${order.courierName}'
+                            : 'لم تُحدد جهة توصيل بعد',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
@@ -888,8 +1207,15 @@ class _DeliveryOrderCard extends StatelessWidget {
                       ),
                     ),
                     onPressed: onAssignCourier,
-                    icon: const Icon(Icons.moped_rounded, size: 16),
-                    label: const Text('إرسال مع طيار'),
+                    icon: Icon(
+                      order.isShippingCompany
+                          ? Icons.business_rounded
+                          : Icons.moped_rounded,
+                      size: 16,
+                    ),
+                    label: Text(
+                      order.isShippingCompany ? 'إرسال لشركة الشحن' : 'إرسال مع طيار',
+                    ),
                   ),
                 if (order.isOutForDelivery) ...[
                   FilledButton.icon(
@@ -924,6 +1250,44 @@ class _DeliveryOrderCard extends StatelessWidget {
                     label: const Text('مرتجع'),
                   ),
                 ],
+
+                // WhatsApp Dispatch Button
+                OutlinedButton.icon(
+                  key: Key('delivery_whatsapp_btn_${order.id}'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF075E54),
+                    side: const BorderSide(color: Color(0xFF25D366)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                  ),
+                  onPressed: () {
+                    final String msg;
+                    if (order.isShippingCompany) {
+                      final waybillText = (order.waybillNumber != null && order.waybillNumber!.isNotEmpty)
+                          ? ' برقم بوليصة ${order.waybillNumber}'
+                          : '';
+                      msg = 'تم تسليم شحنتك لشركة ${order.courierName ?? "الشحن"}$waybillText للتتبع - المبلغ المطلوب تحصيله (COD): ${Money(order.grandTotalPiasters).toDisplay()} ج.م';
+                    } else {
+                      msg = 'طلبك في الطريق مع الكابتن ${order.courierName ?? "المندوب"} - المبلغ المطلوب: ${Money(order.grandTotalPiasters).toDisplay()} ج.م';
+                    }
+                    Clipboard.setData(ClipboardData(text: msg));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('تم نسخ رسالة الواتساب للعميل بنجاح'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.chat_bubble_outline_rounded, size: 15),
+                  label: const Text('واتساب للعميل'),
+                ),
+
+                // Copy Details for Courier
                 OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.primary,
@@ -937,23 +1301,21 @@ class _DeliveryOrderCard extends StatelessWidget {
                     ),
                   ),
                   onPressed: () {
-                    Clipboard.setData(
-                      ClipboardData(
-                        text:
-                            'طلب #${order.orderRef}\nالعميل: ${order.customerName}\nالهاتف: ${order.customerPhone}\nالعنوان: ${order.deliveryAddress}\nالمطلوب: ${Money(order.grandTotalPiasters).toDisplay()} ج.م',
-                      ),
-                    );
+                    final text = 'طلب #${order.orderRef}\n'
+                        'العميل: ${order.customerName}\n'
+                        'الهاتف: ${order.customerPhone}\n'
+                        'العنوان: ${order.deliveryAddress}\n'
+                        'المطلوب: ${Money(order.grandTotalPiasters).toDisplay()} ج.م';
+                    Clipboard.setData(ClipboardData(text: text));
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text(
-                          'تم نسخ بيانات الطلب كاملة جاهزة للواتساب',
-                        ),
+                        content: Text('تم نسخ بيانات الطلب كاملة'),
                         duration: Duration(seconds: 1),
                       ),
                     );
                   },
                   icon: const Icon(Icons.copy_rounded, size: 15),
-                  label: const Text('نسخ للطيار'),
+                  label: const Text('نسخ البيانات'),
                 ),
               ],
             ),
@@ -984,9 +1346,10 @@ class _CourierSettlementTabState extends State<_CourierSettlementTab> {
 
     return BlocBuilder<DeliveryCubit, DeliveryState>(
       builder: (context, state) {
-        final couriers = state.couriers;
+        // Only show in-house couriers in this settlement tab
+        final inHouseCouriers = state.inHouseCouriers;
 
-        if (couriers.isEmpty) {
+        if (inHouseCouriers.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -998,7 +1361,7 @@ class _CourierSettlementTabState extends State<_CourierSettlementTab> {
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  'لا يوجد طيارين مسجلين في النظام حتى الآن',
+                  'لا يوجد طيارين داخليين مسجلين في النظام حتى الآن',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 const SizedBox(height: 12),
@@ -1018,10 +1381,13 @@ class _CourierSettlementTabState extends State<_CourierSettlementTab> {
           );
         }
 
-        if (_selectedCourierId == null && couriers.isNotEmpty) {
+        if (_selectedCourierId == null ||
+            !inHouseCouriers.any((c) => c.id == _selectedCourierId)) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            setState(() => _selectedCourierId = couriers.first.id);
-            cubit.loadCourierSettlement(couriers.first.id);
+            if (mounted) {
+              setState(() => _selectedCourierId = inHouseCouriers.first.id);
+              cubit.loadCourierSettlement(inHouseCouriers.first.id);
+            }
           });
         }
 
@@ -1040,10 +1406,10 @@ class _CourierSettlementTabState extends State<_CourierSettlementTab> {
                   side: const BorderSide(color: Colors.black12),
                 ),
                 child: ListView.separated(
-                  itemCount: couriers.length,
+                  itemCount: inHouseCouriers.length,
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, index) {
-                    final c = couriers[index];
+                    final c = inHouseCouriers[index];
                     final isSelected = c.id == _selectedCourierId;
 
                     return ListTile(
@@ -1150,11 +1516,11 @@ class _CourierSettlementTabState extends State<_CourierSettlementTab> {
                                                 color: Colors.green,
                                               ),
                                               SizedBox(width: 8),
-                                              Text('تأكيد توريد النقدية'),
+                                              Text('تأكيد توريد النقدية للدرج'),
                                             ],
                                           ),
                                           content: Text(
-                                            'هل استلمت بالفعل مبلغ ${Money(summary.totalCashToCollectPiasters).toDisplay()} ج.م نقداً من الطيار "${summary.courierName}" لتوريدها للخزينة؟',
+                                            'هل استلمت بالفعل مبلغ ${Money(summary.totalCashToCollectPiasters).toDisplay()} ج.م نقداً من الطيار "${summary.courierName}" لإيداعها في درج الوردية النشطة؟',
                                           ),
                                           actions: [
                                             TextButton(
@@ -1170,7 +1536,7 @@ class _CourierSettlementTabState extends State<_CourierSettlementTab> {
                                               onPressed: () =>
                                                   Navigator.pop(ctx, true),
                                               child: const Text(
-                                                'تأكيد التوريد',
+                                                'تأكيد الإيداع في الدرج',
                                               ),
                                             ),
                                           ],
@@ -1192,7 +1558,7 @@ class _CourierSettlementTabState extends State<_CourierSettlementTab> {
                                           ).showSnackBar(
                                             const SnackBar(
                                               content: Text(
-                                                'تمت تصفية وتوريد عهدة الطيار بنجاح!',
+                                                'تمت تصفية وتوريد عهدة الطيار وإيداعها في درج الوردية بنجاح!',
                                               ),
                                               backgroundColor: Colors.green,
                                             ),
@@ -1205,7 +1571,7 @@ class _CourierSettlementTabState extends State<_CourierSettlementTab> {
                                       size: 18,
                                     ),
                                     label: const Text(
-                                      'تصفية وتوريد النقدية للخزينة',
+                                      'تصفية وتوريد النقدية للدرج (Cash-In)',
                                     ),
                                   ),
                               ],
@@ -1309,6 +1675,745 @@ class _CourierSettlementTabState extends State<_CourierSettlementTab> {
                       ],
                     ),
             ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// =============================================================================
+// TAB 3: SHIPPING COMPANIES STATEMENTS & PAYOUTS
+// =============================================================================
+
+class _ShippingCompaniesTab extends StatefulWidget {
+  const _ShippingCompaniesTab();
+
+  @override
+  State<_ShippingCompaniesTab> createState() => _ShippingCompaniesTabState();
+}
+
+class _ShippingCompaniesTabState extends State<_ShippingCompaniesTab> {
+  String? _selectedCompanyId;
+
+  void _showRecordPayoutDialog(
+    BuildContext context,
+    DeliveryCourierEntity company,
+  ) {
+    final cubit = context.read<DeliveryCubit>();
+    final amountCtrl = TextEditingController();
+    final refCtrl = TextEditingController();
+    final notesCtrl = TextEditingController();
+    String method = 'bank_transfer';
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.add_card_rounded, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Text(
+                'تسجيل دفعة من: ${company.name}',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ],
+          ),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: amountCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(
+                      labelText: 'المبلغ المستلم (ج.م) *',
+                      prefixIcon: const Icon(Icons.attach_money_rounded),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'المبلغ مطلوب';
+                      final val = double.tryParse(v.trim());
+                      if (val == null || val <= 0) return 'أدخل مبلغاً صحيحاً';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: method,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: 'طريقة / وجهة الاستلام',
+                      prefixIcon: const Icon(Icons.account_balance_wallet_rounded),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'bank_transfer',
+                        child: Text('تحويل بنكي / حساب الشركة'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'safe',
+                        child: Text('الخزينة الرئيسية للمحل'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'wallet',
+                        child: Text('محفظة إلكترونية (فودافون كاش / إنستاباي)'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'drawer',
+                        child: Text('درج الوردية النشطة'),
+                      ),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) setDialogState(() => method = val);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: refCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'رقم الإيصال / الحوالة / العملية (اختياري)',
+                      prefixIcon: const Icon(Icons.receipt_long_outlined),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: notesCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'ملاحظات (اختياري)',
+                      prefixIcon: const Icon(Icons.notes_rounded),
+                      hintText: 'مثال: دفعة تحت حساب شحنات الأسبوع',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+                final piasters = Money.fromString(amountCtrl.text.trim()).piasters;
+                final success = await cubit.recordShippingCompanyPayout(
+                  courierId: company.id,
+                  amountPiasters: piasters,
+                  paymentMethod: method,
+                  referenceNumber: refCtrl.text.trim().isNotEmpty
+                      ? refCtrl.text.trim()
+                      : null,
+                  notes: notesCtrl.text.trim().isNotEmpty
+                      ? notesCtrl.text.trim()
+                      : null,
+                );
+
+                if (ctx.mounted) {
+                  Navigator.pop(ctx);
+                  if (success) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('تم تسجيل الدفعة وتحديث رصيد شركة الشحن بنجاح'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('تسجيل الدفعة'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showReconcileBatchDialog(
+    BuildContext context,
+    DeliveryCourierEntity company,
+    ShippingCompanyStatement statement,
+  ) {
+    final cubit = context.read<DeliveryCubit>();
+    final unreconciled = statement.orders
+        .where((o) => o.status == 'delivered' && o.shippingBatchId == null)
+        .toList();
+
+    if (unreconciled.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('لا توجد شحنات مسلمة معلقة بانتظار التسوية المجمعة'),
+        ),
+      );
+      return;
+    }
+
+    final batchId = 'BATCH-${DateFormat('yyMMdd').format(DateTime.now())}-${DateTime.now().millisecondsSinceEpoch % 1000}';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.fact_check_outlined, color: Colors.teal),
+            SizedBox(width: 8),
+            Text('إجراء تسوية مجمعة للشحنات'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'هل تريد إغلاق وتسوية ${unreconciled.length} شحنة مسلمة مع شركة "${company.name}" برقم دفعة مجمعة ($batchId)؟',
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'سيتم تثبيت كود الدفعة على هذه البوالص لاعتبارها مسواة في كشوف الحساب.',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.teal.shade700,
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final orderIds = unreconciled.map((o) => o.id).toList();
+              final success = await cubit.reconcileShippingBatch(
+                courierId: company.id,
+                orderIds: orderIds,
+                batchId: batchId,
+              );
+              if (context.mounted && success) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('تمت التسوية المجمعة بنجاح برقم: $batchId'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
+            },
+            child: const Text('تأكيد التسوية المجمعة'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.read<DeliveryCubit>();
+
+    return BlocBuilder<DeliveryCubit, DeliveryState>(
+      builder: (context, state) {
+        final companies = state.shippingCompanies;
+
+        if (companies.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.business_rounded,
+                  size: 56,
+                  color: Colors.grey,
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'لا توجد شركات أو مكاتب شحن مسجلة حتى الآن',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'يمكنك إضافة شركات الشحن المتعاقد معها لتتبع بوالص الشحن وكشوف الحسابات',
+                  style: TextStyle(fontSize: 13, color: Colors.grey),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                  ),
+                  onPressed: () => showAddCourierDialog(context),
+                  icon: const Icon(Icons.add, color: Colors.white),
+                  label: const Text(
+                    'إضافة شركة شحن جديدة',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        if (_selectedCompanyId == null ||
+            !companies.any((c) => c.id == _selectedCompanyId)) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() => _selectedCompanyId = companies.first.id);
+              cubit.loadShippingCompanyStatement(companies.first.id);
+            }
+          });
+        }
+
+        final selectedCompany = companies.firstWhere(
+          (c) => c.id == _selectedCompanyId,
+          orElse: () => companies.first,
+        );
+
+        final statement = state.shippingStatement;
+
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // Top Selection & Action Bar
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: const BorderSide(color: Colors.black12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 22,
+                      backgroundColor: Colors.blue.shade50,
+                      child: Icon(
+                        Icons.business_rounded,
+                        color: Colors.blue.shade800,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        key: const Key('shipping_company_dropdown'),
+                        initialValue: _selectedCompanyId ?? companies.first.id,
+                        decoration: InputDecoration(
+                          labelText: 'اختر شركة الشحن',
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        items: companies.map((c) {
+                          final acc = c.accountNumber != null ? ' (حساب: ${c.accountNumber})' : '';
+                          return DropdownMenuItem(
+                            value: c.id,
+                            child: Text(
+                              '${c.name}$acc',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() => _selectedCompanyId = val);
+                            cubit.loadShippingCompanyStatement(val);
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+
+                    // Record Payout Button
+                    FilledButton.icon(
+                      key: const Key('record_shipping_payout_btn'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.green.shade700,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: () => _showRecordPayoutDialog(context, selectedCompany),
+                      icon: const Icon(Icons.add_card_rounded, size: 18),
+                      label: const Text('تسجيل دفعة مستلمة'),
+                    ),
+                    const SizedBox(width: 8),
+
+                    // Reconcile Batch Button
+                    if (statement != null)
+                      OutlinedButton.icon(
+                        key: const Key('reconcile_shipping_batch_btn'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.teal.shade800,
+                          side: BorderSide(color: Colors.teal.shade400),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: () => _showReconcileBatchDialog(
+                          context,
+                          selectedCompany,
+                          statement,
+                        ),
+                        icon: const Icon(Icons.fact_check_outlined, size: 18),
+                        label: const Text('إجراء تسوية مجمعة'),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            // Financial Summary Metrics
+            if (statement == null)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32.0),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: _MetricCard(
+                      title: 'تحصيل الشحنات المسلمة (COD)',
+                      value:
+                          '${Money(statement.totalCodDeliveredPiasters).toDisplay()} ج.م',
+                      icon: Icons.payments_rounded,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _MetricCard(
+                      title: 'تكلفة الشحن للشركة',
+                      value:
+                          '${Money(statement.totalShippingFeesPiasters).toDisplay()} ج.م',
+                      icon: Icons.local_shipping_outlined,
+                      color: Colors.orange.shade800,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _MetricCard(
+                      title: 'صافي مستحق للمحل',
+                      value:
+                          '${Money(statement.totalNetDueToStorePiasters).toDisplay()} ج.م',
+                      icon: Icons.account_balance_wallet_rounded,
+                      color: Colors.green.shade800,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _MetricCard(
+                      title: 'الدفعات المستلمة',
+                      value:
+                          '${Money(statement.totalPayoutsReceivedPiasters).toDisplay()} ج.م',
+                      icon: Icons.check_circle_outline_rounded,
+                      color: Colors.teal.shade700,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _MetricCard(
+                      title: 'الرصيد المعلق المتبقي',
+                      value:
+                          '${Money(statement.remainingBalancePiasters).toDisplay()} ج.م',
+                      icon: Icons.pending_actions_rounded,
+                      color: statement.remainingBalancePiasters > 0
+                          ? Colors.purple.shade700
+                          : Colors.grey.shade700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+
+              // Two Column Layout: Shipments List & Payouts History
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Left: Shipments List
+                  Expanded(
+                    flex: 3,
+                    child: Card(
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: const BorderSide(color: Colors.black12),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.inventory_2_outlined, color: AppColors.primary, size: 20),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'سجل بوالص وشحنات الشركة:',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                const Spacer(),
+                                Text(
+                                  '${statement.orders.length} شحنة',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Divider(height: 16),
+                            if (statement.orders.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.all(24.0),
+                                child: Center(
+                                  child: Text('لا توجد شحنات مسندة لهذه الشركة حتى الآن'),
+                                ),
+                              )
+                            else
+                              ListView.separated(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: statement.orders.length,
+                                separatorBuilder: (_, _) => const Divider(height: 1),
+                                itemBuilder: (context, index) {
+                                  final o = statement.orders[index];
+                                  final isReconciled = o.shippingBatchId != null;
+
+                                  return ListTile(
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    title: Row(
+                                      children: [
+                                        Text(
+                                          '#${o.orderRef}',
+                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                        ),
+                                        if (o.waybillNumber != null && o.waybillNumber!.isNotEmpty) ...[
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: Colors.purple.shade50,
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              'بوليصة: ${o.waybillNumber}',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.purple.shade800,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                        const Spacer(),
+                                        Text(
+                                          'COD: ${Money(o.grandTotalPiasters).toDisplay()} ج.م',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.primary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    subtitle: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('العميل: ${o.customerName} | العنوان: ${o.deliveryAddress}'),
+                                        Row(
+                                          children: [
+                                            Text(
+                                              'صافي المحل: ${Money(o.netStoreDuePiasters).toDisplay()} ج.م',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.green.shade800,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              'تكلفة الشحن: ${Money(o.shippingCostPiasters ?? 0).toDisplay()} ج.م',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.orange.shade800,
+                                              ),
+                                            ),
+                                            const Spacer(),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: isReconciled
+                                                    ? Colors.teal.shade50
+                                                    : Colors.amber.shade50,
+                                                borderRadius: BorderRadius.circular(4),
+                                                border: Border.all(
+                                                  color: isReconciled
+                                                      ? Colors.teal.shade200
+                                                      : Colors.amber.shade300,
+                                                ),
+                                              ),
+                                              child: Text(
+                                                isReconciled
+                                                    ? 'مسواة (${o.shippingBatchId})'
+                                                    : 'معلق قيد التسوية',
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: isReconciled
+                                                      ? Colors.teal.shade800
+                                                      : Colors.amber.shade900,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+
+                  // Right: Payouts History
+                  Expanded(
+                    flex: 2,
+                    child: Card(
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: const BorderSide(color: Colors.black12),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.history_rounded, color: Colors.green.shade700, size: 20),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'سجل الدفعات المستلمة:',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                const Spacer(),
+                                Text(
+                                  '${statement.payouts.length} دفعة',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Divider(height: 16),
+                            if (statement.payouts.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.all(24.0),
+                                child: Center(
+                                  child: Text('لم يتم تسجيل أي دفعات مستلمة بعد'),
+                                ),
+                              )
+                            else
+                              ListView.separated(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: statement.payouts.length,
+                                separatorBuilder: (_, _) => const Divider(height: 1),
+                                itemBuilder: (context, index) {
+                                  final p = statement.payouts[index];
+                                  final ref = p.referenceNumber != null ? ' | إيصال: ${p.referenceNumber}' : '';
+                                  final notes = p.notes != null ? ' (${p.notes})' : '';
+                                  return ListTile(
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 2,
+                                    ),
+                                    leading: CircleAvatar(
+                                      radius: 16,
+                                      backgroundColor: Colors.green.shade50,
+                                      child: Icon(
+                                        Icons.check_rounded,
+                                        size: 16,
+                                        color: Colors.green.shade700,
+                                      ),
+                                    ),
+                                    title: Text(
+                                      '${Money(p.amountPiasters).toDisplay()} ج.م',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.green.shade800,
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      '${DateFormat('yyyy/MM/dd').format(p.payoutDate)} | ${p.paymentMethod}$ref$notes',
+                                      style: const TextStyle(fontSize: 11),
+                                    ),
+                                  );
+                                },
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         );
       },
