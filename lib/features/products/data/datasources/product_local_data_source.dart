@@ -112,6 +112,10 @@ class ProductLocalDataSource {
     required String categoryId,
     String? description,
     int minStock = 5,
+    String activityType = 'clothing',
+    String? warrantyPeriod,
+    String? brandOrModel,
+    bool isInstallmentEligible = true,
   }) async {
     final now = DateTime.now();
     final id = _uuid.v4();
@@ -137,6 +141,10 @@ class ProductLocalDataSource {
           minStock: Value(minStock),
           createdAt: now,
           updatedAt: now,
+          activityType: Value(activityType),
+          warrantyPeriod: Value(warrantyPeriod),
+          brandOrModel: Value(brandOrModel),
+          isInstallmentEligible: Value(isInstallmentEligible),
         ));
       },
       branchId: branchId,
@@ -154,6 +162,10 @@ class ProductLocalDataSource {
     int minStock = 5,
     required List<VariantInput> variants,
     String userId = 'system',
+    String activityType = 'clothing',
+    String? warrantyPeriod,
+    String? brandOrModel,
+    bool isInstallmentEligible = true,
   }) async {
     final now = DateTime.now();
     final id = _uuid.v4();
@@ -205,6 +217,10 @@ class ProductLocalDataSource {
           minStock: Value(minStock),
           createdAt: now,
           updatedAt: now,
+          activityType: Value(activityType),
+          warrantyPeriod: Value(warrantyPeriod),
+          brandOrModel: Value(brandOrModel),
+          isInstallmentEligible: Value(isInstallmentEligible),
         ));
 
         for (final v in variants) {
@@ -249,7 +265,17 @@ class ProductLocalDataSource {
     return id;
   }
 
-  Future<void> updateProduct(String id, {String? name, String? description, int? minStock, bool? isActive}) async {
+  Future<void> updateProduct(
+    String id, {
+    String? name,
+    String? description,
+    int? minStock,
+    bool? isActive,
+    String? activityType,
+    String? warrantyPeriod,
+    String? brandOrModel,
+    bool? isInstallmentEligible,
+  }) async {
     final now = DateTime.now();
     final branchId = await _branchId();
 
@@ -272,6 +298,10 @@ class ProductLocalDataSource {
             description: description != null ? Value(description) : const Value.absent(),
             minStock: minStock != null ? Value(minStock) : const Value.absent(),
             isActive: isActive != null ? Value(isActive) : const Value.absent(),
+            activityType: activityType != null ? Value(activityType) : const Value.absent(),
+            warrantyPeriod: warrantyPeriod != null ? Value(warrantyPeriod) : const Value.absent(),
+            brandOrModel: brandOrModel != null ? Value(brandOrModel) : const Value.absent(),
+            isInstallmentEligible: isInstallmentEligible != null ? Value(isInstallmentEligible) : const Value.absent(),
             updatedAt: Value(now),
           ),
         );

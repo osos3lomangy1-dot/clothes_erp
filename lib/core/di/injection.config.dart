@@ -69,6 +69,14 @@ import 'package:clothes_erp/features/dashboard/domain/usecases/get_dashboard_sta
     as _i1040;
 import 'package:clothes_erp/features/dashboard/presentation/cubits/dashboard_cubit.dart'
     as _i774;
+import 'package:clothes_erp/features/delivery/data/datasources/delivery_local_data_source.dart'
+    as _i107;
+import 'package:clothes_erp/features/delivery/data/repositories/delivery_repository_impl.dart'
+    as _i197;
+import 'package:clothes_erp/features/delivery/domain/repositories/delivery_repository.dart'
+    as _i632;
+import 'package:clothes_erp/features/delivery/presentation/cubits/delivery_cubit.dart'
+    as _i816;
 import 'package:clothes_erp/features/employees/data/datasources/employee_local_data_source.dart'
     as _i171;
 import 'package:clothes_erp/features/employees/data/repositories/employee_repository_impl.dart'
@@ -157,6 +165,14 @@ import 'package:clothes_erp/features/pos/domain/usecases/create_sale_usecase.dar
     as _i747;
 import 'package:clothes_erp/features/pos/presentation/cubits/pos_cubit.dart'
     as _i403;
+import 'package:clothes_erp/features/pre_orders/data/datasources/pre_orders_local_data_source.dart'
+    as _i413;
+import 'package:clothes_erp/features/pre_orders/data/repositories/pre_orders_repository_impl.dart'
+    as _i60;
+import 'package:clothes_erp/features/pre_orders/domain/repositories/pre_orders_repository.dart'
+    as _i658;
+import 'package:clothes_erp/features/pre_orders/presentation/cubits/pre_orders_cubit.dart'
+    as _i714;
 import 'package:clothes_erp/features/product_variants/data/datasources/variant_local_data_source.dart'
     as _i577;
 import 'package:clothes_erp/features/product_variants/data/repositories/variant_repository_impl.dart'
@@ -215,8 +231,12 @@ import 'package:clothes_erp/features/reports/data/datasources/reports_local_data
     as _i1045;
 import 'package:clothes_erp/features/reports/data/repositories/reports_repository_impl.dart'
     as _i333;
+import 'package:clothes_erp/features/reports/data/repositories/smart_inventory_repository_impl.dart'
+    as _i672;
 import 'package:clothes_erp/features/reports/domain/repositories/reports_repository.dart'
     as _i633;
+import 'package:clothes_erp/features/reports/domain/repositories/smart_inventory_repository.dart'
+    as _i751;
 import 'package:clothes_erp/features/reports/domain/usecases/get_sales_report_usecase.dart'
     as _i957;
 import 'package:clothes_erp/features/reports/presentation/cubits/installments_report_cubit.dart'
@@ -225,6 +245,8 @@ import 'package:clothes_erp/features/reports/presentation/cubits/promotions_repo
     as _i608;
 import 'package:clothes_erp/features/reports/presentation/cubits/reports_cubit.dart'
     as _i119;
+import 'package:clothes_erp/features/reports/presentation/cubits/smart_inventory_cubit.dart'
+    as _i574;
 import 'package:clothes_erp/features/returns/data/datasources/returns_local_data_source.dart'
     as _i207;
 import 'package:clothes_erp/features/returns/data/repositories/returns_repository_impl.dart'
@@ -298,6 +320,21 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i556.PartnersLocalDataSource>(
       () => _i556.PartnersLocalDataSourceImpl(gh<_i110.AppDatabase>()),
     );
+    gh.lazySingleton<_i413.PreOrdersLocalDataSource>(
+      () => _i413.PreOrdersLocalDataSourceImpl(
+        gh<_i110.AppDatabase>(),
+        gh<_i254.BranchProvider>(),
+      ),
+    );
+    gh.lazySingleton<_i107.DeliveryLocalDataSource>(
+      () => _i107.DeliveryLocalDataSourceImpl(
+        gh<_i110.AppDatabase>(),
+        gh<_i254.BranchProvider>(),
+      ),
+    );
+    gh.lazySingleton<_i751.SmartInventoryRepository>(
+      () => _i672.SmartInventoryRepositoryImpl(gh<_i110.AppDatabase>()),
+    );
     gh.lazySingleton<_i558.InvoicesLocalDataSource>(
       () => _i558.InvoicesLocalDataSourceImpl(gh<_i110.AppDatabase>()),
     );
@@ -315,6 +352,12 @@ extension GetItInjectableX on _i174.GetIt {
       ),
     );
     gh.factory<_i874.TxWriter>(() => _i874.TxWriter(gh<_i110.AppDatabase>()));
+    gh.factory<_i574.SmartInventoryCubit>(
+      () => _i574.SmartInventoryCubit(gh<_i751.SmartInventoryRepository>()),
+    );
+    gh.lazySingleton<_i632.DeliveryRepository>(
+      () => _i197.DeliveryRepositoryImpl(gh<_i107.DeliveryLocalDataSource>()),
+    );
     gh.lazySingleton<_i1011.GetAuthStatusUseCase>(
       () => _i1011.GetAuthStatusUseCase(gh<_i689.AuthRepository>()),
     );
@@ -326,6 +369,12 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i682.DashboardRepository>(
       () => _i729.DashboardRepositoryImpl(gh<_i517.DashboardLocalDataSource>()),
+    );
+    gh.factory<_i816.DeliveryCubit>(
+      () => _i816.DeliveryCubit(
+        gh<_i632.DeliveryRepository>(),
+        gh<_i254.BranchProvider>(),
+      ),
     );
     gh.lazySingleton<_i683.InvoicesRepository>(
       () => _i669.InvoicesRepositoryImpl(gh<_i558.InvoicesLocalDataSource>()),
@@ -347,6 +396,9 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i254.BranchProvider>(),
       ),
     );
+    gh.lazySingleton<_i658.PreOrdersRepository>(
+      () => _i60.PreOrdersRepositoryImpl(gh<_i413.PreOrdersLocalDataSource>()),
+    );
     gh.lazySingleton<_i217.AuthCubit>(
       () => _i217.AuthCubit(
         gh<_i443.LoginUseCase>(),
@@ -367,6 +419,9 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i206.FeatureGate>(),
         gh<_i254.BranchProvider>(),
       ),
+    );
+    gh.factory<_i714.PreOrdersCubit>(
+      () => _i714.PreOrdersCubit(gh<_i658.PreOrdersRepository>()),
     );
     gh.factory<_i774.DashboardCubit>(
       () => _i774.DashboardCubit(gh<_i1040.GetDashboardStatsUseCase>()),

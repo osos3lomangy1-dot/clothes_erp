@@ -52,16 +52,22 @@ if (-not (Test-VCRedistInstalled)) {
 }
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$appExe = Join-Path $scriptDir "clothes_erp.exe"
+$appExe = Join-Path $scriptDir "bay3ah.exe"
 
+if (-not (Test-Path $appExe)) {
+    $appExe = Join-Path $scriptDir "clothes_erp.exe"
+}
+if (-not (Test-Path $appExe)) {
+    $appExe = Join-Path $scriptDir "Release\bay3ah.exe"
+}
 if (-not (Test-Path $appExe)) {
     $appExe = Join-Path $scriptDir "Release\clothes_erp.exe"
 }
 
 if (Test-Path $appExe) {
-    Write-Host "[*] Launching Orkeed Clothes ERP..." -ForegroundColor Cyan
+    Write-Host "[*] Launching Bay3ah ERP..." -ForegroundColor Cyan
     Start-Process -FilePath $appExe
 } else {
-    Write-Host "[!] Could not find clothes_erp.exe in $scriptDir" -ForegroundColor Yellow
+    Write-Host "[!] Could not find bay3ah.exe in $scriptDir" -ForegroundColor Yellow
 }
 

@@ -9,6 +9,7 @@ import '../../data/datasources/product_local_data_source.dart';
 import '../../domain/entities/product_entity.dart';
 import '../cubits/product_form_cubit.dart';
 import '../cubits/product_form_state.dart';
+import '../../../settings/data/services/activity_settings_service.dart';
 
 class ProductFormScreen extends StatelessWidget {
   final ProductEntity? product;
@@ -110,14 +111,41 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
   final TextEditingController _batchCostCtrl = TextEditingController(text: '100');
   final TextEditingController _batchSellCtrl = TextEditingController(text: '150');
   final TextEditingController _batchQtyCtrl = TextEditingController(text: '10');
+
+  // Single-item controllers for adaptive forms (accessories, home appliances, general)
+  late final TextEditingController _singleSkuCtrl;
+  final TextEditingController _singleCostCtrl = TextEditingController(text: '100');
+  final TextEditingController _singleSellCtrl = TextEditingController(text: '150');
+  final TextEditingController _singleQtyCtrl = TextEditingController(text: '10');
+
+  // Adaptive product attributes
+  late TextEditingController _warrantyCtrl;
+  late TextEditingController _brandOrModelCtrl;
+  late TextEditingController _imeiCtrl;
+  late TextEditingController _expiryCtrl;
+  String _measurementUnit = 'piece'; // 'piece', 'weight'
+  late bool _isInstallmentEligible;
+
   String? _validationError;
 
   @override
   void initState() {
     super.initState();
+    _singleSkuCtrl = TextEditingController(text: _generateSingleBarcode());
+    _warrantyCtrl = TextEditingController(text: widget.product?.warrantyPeriod ?? '');
+    _brandOrModelCtrl = TextEditingController(text: widget.product?.brandOrModel ?? '');
+    _imeiCtrl = TextEditingController();
+    _expiryCtrl = TextEditingController();
+    _isInstallmentEligible = widget.product?.isInstallmentEligible ?? true;
+
     if (widget.product == null) {
       _initDefaultRows();
     }
+  }
+
+  String _generateSingleBarcode() {
+    final millis = DateTime.now().millisecondsSinceEpoch.toString();
+    return 'SKU-${millis.substring(millis.length - 6)}';
   }
 
   void _initDefaultRows() {
@@ -140,6 +168,14 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
     _batchCostCtrl.dispose();
     _batchSellCtrl.dispose();
     _batchQtyCtrl.dispose();
+    _singleSkuCtrl.dispose();
+    _singleCostCtrl.dispose();
+    _singleSellCtrl.dispose();
+    _singleQtyCtrl.dispose();
+    _warrantyCtrl.dispose();
+    _brandOrModelCtrl.dispose();
+    _imeiCtrl.dispose();
+    _expiryCtrl.dispose();
     super.dispose();
   }
 
@@ -158,13 +194,17 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
     });
   }
 
-  void _loadStandardSizes() {
+  void _loadStandardSizes(ActivityType activityType) {
     setState(() {
       for (final r in _rows) {
         r.dispose();
       }
       _rows.clear();
-      final sizes = ['S', 'M', 'L', 'XL', 'XXL'];
+
+      final sizes = activityType == ActivityType.footwearBags
+          ? ['38', '39', '40', '41', '42', '43']
+          : ['S', 'M', 'L', 'XL', 'XXL'];
+
       final cost = _batchCostCtrl.text.isNotEmpty ? _batchCostCtrl.text : '100';
       final sell = _batchSellCtrl.text.isNotEmpty ? _batchSellCtrl.text : '150';
       final qty = _batchQtyCtrl.text.isNotEmpty ? _batchQtyCtrl.text : '10';
@@ -285,58 +325,91 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
       if (!context.mounted) return;
     }
 
+    final cubit = context.read<ProductFormCubit>();
+    cubit.onWarrantyPeriodChanged(_warrantyCtrl.text.trim().isEmpty ? null : _warrantyCtrl.text.trim());
+    cubit.onBrandOrModelChanged(_brandOrModelCtrl.text.trim().isEmpty ? null : _brandOrModelCtrl.text.trim());
+    cubit.onInstallmentEligibleChanged(_isInstallmentEligible);
+
     if (state.isEdit) {
-      context.read<ProductFormCubit>().submit(widget.product?.id);
+      cubit.submit(widget.product?.id);
       return;
     }
 
-    if (_rows.isEmpty) {
-      setState(() => _validationError = 'يرجى إضافة سطر واحد على الأقل في جدول المقاسات');
-      return;
-    }
-
+    final isSingleItem = state.activityTypeEnum.isSingleItem;
     final List<VariantInput> variants = [];
-    final Set<String> seenSkus = {};
-    for (int i = 0; i < _rows.length; i++) {
-      final r = _rows[i];
-      final size = r.sizeCtrl.text.trim();
-      final color = r.colorCtrl.text.trim();
-      final sku = r.skuCtrl.text.trim();
-      final costPounds = double.tryParse(r.costCtrl.text.trim()) ?? 0.0;
-      final sellPounds = double.tryParse(r.sellCtrl.text.trim()) ?? 0.0;
-      final qty = int.tryParse(r.qtyCtrl.text.trim()) ?? 0;
 
-      if (size.isEmpty || color.isEmpty || sku.isEmpty) {
-        setState(() => _validationError = 'السطر رقم ${i + 1}: المقاس واللون والكود حقول مطلوبة');
+    if (isSingleItem) {
+      final sku = _singleSkuCtrl.text.trim();
+      final costPounds = double.tryParse(_singleCostCtrl.text.trim()) ?? 0.0;
+      final sellPounds = double.tryParse(_singleSellCtrl.text.trim()) ?? 0.0;
+      final qty = int.tryParse(_singleQtyCtrl.text.trim()) ?? 0;
+
+      if (sku.isEmpty) {
+        setState(() => _validationError = 'كود الصنف (الباركود) مطلوب');
         return;
       }
 
-      final skuLower = sku.toLowerCase();
-      if (state.existingSkus.contains(skuLower)) {
-        setState(() => _validationError =
-            'السطر رقم ${i + 1}: عفواً، الكود ("$sku") مسجل بالفعل في النظام لصنف آخر. لا يمكن تكرار الأكواد.');
-        return;
-      }
-      if (!seenSkus.add(skuLower)) {
-        setState(() => _validationError =
-            'السطر رقم ${i + 1}: عفواً، الكود ("$sku") مكرر أكثر من مرة داخل جدول المقاسات.');
+      if (state.existingSkus.contains(sku.toLowerCase())) {
+        setState(() => _validationError = 'الكود ("$sku") مسجل بالفعل لصنف آخر في النظام.');
         return;
       }
 
       variants.add(VariantInput(
         sku: sku,
-        color: color,
-        size: size,
+        color: '-',
+        size: '-',
         costPrice: (costPounds * 100).toInt(),
         sellPrice: (sellPounds * 100).toInt(),
         quantity: qty,
       ));
+    } else {
+      if (_rows.isEmpty) {
+        setState(() => _validationError = 'يرجى إضافة سطر واحد على الأقل في جدول المقاسات');
+        return;
+      }
+
+      final Set<String> seenSkus = {};
+      for (int i = 0; i < _rows.length; i++) {
+        final r = _rows[i];
+        final size = r.sizeCtrl.text.trim();
+        final color = r.colorCtrl.text.trim();
+        final sku = r.skuCtrl.text.trim();
+        final costPounds = double.tryParse(r.costCtrl.text.trim()) ?? 0.0;
+        final sellPounds = double.tryParse(r.sellCtrl.text.trim()) ?? 0.0;
+        final qty = int.tryParse(r.qtyCtrl.text.trim()) ?? 0;
+
+        if (size.isEmpty || color.isEmpty || sku.isEmpty) {
+          setState(() => _validationError = 'السطر رقم ${i + 1}: المقاس واللون والكود حقول مطلوبة');
+          return;
+        }
+
+        final skuLower = sku.toLowerCase();
+        if (state.existingSkus.contains(skuLower)) {
+          setState(() => _validationError =
+              'السطر رقم ${i + 1}: عفواً، الكود ("$sku") مسجل بالفعل في النظام لصنف آخر. لا يمكن تكرار الأكواد.');
+          return;
+        }
+        if (!seenSkus.add(skuLower)) {
+          setState(() => _validationError =
+              'السطر رقم ${i + 1}: عفواً، الكود ("$sku") مكرر أكثر من مرة داخل جدول المقاسات.');
+          return;
+        }
+
+        variants.add(VariantInput(
+          sku: sku,
+          color: color,
+          size: size,
+          costPrice: (costPounds * 100).toInt(),
+          sellPrice: (sellPounds * 100).toInt(),
+          quantity: qty,
+        ));
+      }
     }
 
-    context.read<ProductFormCubit>().submitWithVariants(
-          id: widget.product?.id,
-          variants: variants,
-        );
+    cubit.submitWithVariants(
+      id: widget.product?.id,
+      variants: variants,
+    );
   }
 
   @override
@@ -418,6 +491,107 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      // Audit Metadata Information Card at top of form in edit mode
+                      if (state.isEdit)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.outlineVariant),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF1F5F9),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.verified_outlined,
+                                  size: 20,
+                                  color: Color(0xFF475569),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Wrap(
+                                  spacing: 20,
+                                  runSpacing: 6,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    if (widget.product?.id != null)
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Text(
+                                            'معرّف الصنف: ',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Color(0xFF64748B),
+                                            ),
+                                          ),
+                                          Text(
+                                            widget.product!.id.length > 8
+                                                ? widget.product!.id.substring(0, 8)
+                                                : widget.product!.id,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF0F172A),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    if (state.createdAt != null)
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.calendar_today_outlined,
+                                            size: 13,
+                                            color: Color(0xFF64748B),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'أُضيف: ${state.createdAt!.year}/${state.createdAt!.month.toString().padLeft(2, '0')}/${state.createdAt!.day.toString().padLeft(2, '0')} (${state.createdAt!.hour.toString().padLeft(2, '0')}:${state.createdAt!.minute.toString().padLeft(2, '0')})',
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
+                                              color: Color(0xFF334155),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    if (state.updatedAt != null)
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.update_rounded,
+                                            size: 14,
+                                            color: Color(0xFF64748B),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'آخر تعديل: ${state.updatedAt!.year}/${state.updatedAt!.month.toString().padLeft(2, '0')}/${state.updatedAt!.day.toString().padLeft(2, '0')} (${state.updatedAt!.hour.toString().padLeft(2, '0')}:${state.updatedAt!.minute.toString().padLeft(2, '0')})',
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF0F172A),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
                       // Section 1: Basic Product Information Card
                       Card(
                         elevation: 0.5,
@@ -433,14 +607,110 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                               Row(
                                 children: [
                                   Icon(Icons.info_outline, color: AppColors.primary, size: 20),
-                                  SizedBox(width: 8),
-                                  Text(
+                                  const SizedBox(width: 8),
+                                  const Text(
                                     'البيانات الأساسية للمنتج',
                                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                                   ),
+                                  if (state.isEdit && state.createdAt != null) ...[
+                                    const Spacer(),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF1F5F9),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(color: const Color(0xFFCBD5E1), width: 0.8),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.history_rounded, size: 13, color: Color(0xFF475569)),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'أُضيف: ${state.createdAt!.year}/${state.createdAt!.month.toString().padLeft(2, '0')}/${state.createdAt!.day.toString().padLeft(2, '0')}',
+                                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                                          ),
+                                          if (state.updatedAt != null &&
+                                              state.updatedAt!.difference(state.createdAt!).inMinutes.abs() > 1) ...[
+                                            const SizedBox(width: 8),
+                                            const Icon(Icons.update_rounded, size: 13, color: Color(0xFF475569)),
+                                            const SizedBox(width: 3),
+                                            Text(
+                                              'آخر تعديل: ${state.updatedAt!.year}/${state.updatedAt!.month.toString().padLeft(2, '0')}/${state.updatedAt!.day.toString().padLeft(2, '0')}',
+                                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               ),
                               const SizedBox(height: 14),
+
+                              // Activity Type Selector
+                              const Text(
+                                'نوع النشاط / نمط المنتج:',
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.onSurfaceVariant),
+                              ),
+                              const SizedBox(height: 8),
+                              StreamBuilder<List<ActivityType>>(
+                                stream: getIt.isRegistered<ActivitySettingsService>()
+                                    ? getIt<ActivitySettingsService>().watchEnabledActivities()
+                                    : Stream.value(ActivityType.values),
+                                builder: (context, snapshot) {
+                                  final enabledActs = snapshot.data ?? ActivityType.values;
+                                  final list = {...enabledActs, state.activityTypeEnum}.toList();
+
+                                  return SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: Row(
+                                      children: list.map((act) {
+                                        final isSelected = state.activityTypeEnum == act;
+                                        return Padding(
+                                          padding: const EdgeInsets.only(left: 8.0),
+                                          child: InkWell(
+                                            onTap: () => context.read<ProductFormCubit>().onActivityTypeChanged(act.code),
+                                            borderRadius: BorderRadius.circular(10),
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                              decoration: BoxDecoration(
+                                                color: isSelected ? AppColors.primary.withValues(alpha: 0.08) : Colors.white,
+                                                borderRadius: BorderRadius.circular(10),
+                                                border: Border.all(
+                                                  color: isSelected ? AppColors.primary : AppColors.outlineVariant,
+                                                  width: isSelected ? 1.5 : 1.0,
+                                                ),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    act.icon,
+                                                    size: 18,
+                                                    color: isSelected ? AppColors.primary : AppColors.onSurfaceVariant,
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    act.labelArabic,
+                                                    style: TextStyle(
+                                                      fontSize: 13,
+                                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                                      color: isSelected ? AppColors.primary : AppColors.onSurface,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 14),
+
                               Row(
                                 children: [
                                   Expanded(
@@ -597,6 +867,149 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                   ),
                                 ],
                               ),
+
+                              if (state.activityTypeEnum.supportsBrandOrModel ||
+                                  state.activityTypeEnum.supportsWarranty ||
+                                  state.activityTypeEnum.supportsIMEI ||
+                                  state.activityTypeEnum.supportsWeight ||
+                                  state.activityTypeEnum.supportsExpiry ||
+                                  state.activityTypeEnum.supportsInstallment) ...[
+                                const SizedBox(height: 14),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surfaceContainer.withValues(alpha: 0.4),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: AppColors.outlineVariant),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(state.activityTypeEnum.icon, size: 18, color: AppColors.primary),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            'خصائص ${state.activityTypeEnum.labelArabic}',
+                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 10),
+                                      if (state.activityTypeEnum.supportsBrandOrModel || state.activityTypeEnum.supportsWarranty)
+                                        Row(
+                                          children: [
+                                            if (state.activityTypeEnum.supportsBrandOrModel)
+                                              Expanded(
+                                                child: TextFormField(
+                                                  controller: _brandOrModelCtrl,
+                                                  decoration: InputDecoration(
+                                                    labelText: 'الماركة أو الموديل (اختياري)',
+                                                    hintText: 'مثال: توشيبا، تيفال، سوني',
+                                                    prefixIcon: const Icon(Icons.branding_watermark_outlined),
+                                                    filled: true,
+                                                    fillColor: Colors.white,
+                                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                                  ),
+                                                ),
+                                              ),
+                                            if (state.activityTypeEnum.supportsBrandOrModel && state.activityTypeEnum.supportsWarranty)
+                                              const SizedBox(width: 12),
+                                            if (state.activityTypeEnum.supportsWarranty)
+                                              Expanded(
+                                                child: TextFormField(
+                                                  controller: _warrantyCtrl,
+                                                  decoration: InputDecoration(
+                                                    labelText: 'فترة الضمان بالشهور (اختياري)',
+                                                    hintText: 'مثال: 12 شهر، 24 شهر',
+                                                    prefixIcon: const Icon(Icons.verified_user_outlined),
+                                                    filled: true,
+                                                    fillColor: Colors.white,
+                                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      if (state.activityTypeEnum.supportsIMEI || state.activityTypeEnum.supportsExpiry) ...[
+                                        const SizedBox(height: 10),
+                                        Row(
+                                          children: [
+                                            if (state.activityTypeEnum.supportsIMEI)
+                                              Expanded(
+                                                child: TextFormField(
+                                                  controller: _imeiCtrl,
+                                                  decoration: InputDecoration(
+                                                    labelText: 'السيريال / كود IMEI (اختياري)',
+                                                    hintText: 'مثال: 356938035643809',
+                                                    prefixIcon: const Icon(Icons.qr_code_scanner_rounded),
+                                                    filled: true,
+                                                    fillColor: Colors.white,
+                                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                                  ),
+                                                ),
+                                              ),
+                                            if (state.activityTypeEnum.supportsIMEI && state.activityTypeEnum.supportsExpiry)
+                                              const SizedBox(width: 12),
+                                            if (state.activityTypeEnum.supportsExpiry)
+                                              Expanded(
+                                                child: TextFormField(
+                                                  controller: _expiryCtrl,
+                                                  decoration: InputDecoration(
+                                                    labelText: 'تاريخ الصلاحية / التشغيلة (اختياري)',
+                                                    hintText: 'مثال: 2026/12/31',
+                                                    prefixIcon: const Icon(Icons.event_busy_rounded),
+                                                    filled: true,
+                                                    fillColor: Colors.white,
+                                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ],
+                                      if (state.activityTypeEnum.supportsWeight) ...[
+                                        const SizedBox(height: 10),
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.scale_rounded, size: 18, color: Color(0xFF64748B)),
+                                            const SizedBox(width: 8),
+                                            const Text(
+                                              'نوع القياس والبيع:',
+                                              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            ChoiceChip(
+                                              label: const Text('بالقطعة'),
+                                              selected: _measurementUnit == 'piece',
+                                              onSelected: (val) => setState(() => _measurementUnit = 'piece'),
+                                              selectedColor: AppColors.primary.withValues(alpha: 0.15),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            ChoiceChip(
+                                              label: const Text('بالوزن (كيلو / جرام / ميزان)'),
+                                              selected: _measurementUnit == 'weight',
+                                              onSelected: (val) => setState(() => _measurementUnit = 'weight'),
+                                              selectedColor: AppColors.primary.withValues(alpha: 0.15),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                      if (state.activityTypeEnum.supportsInstallment) ...[
+                                        const SizedBox(height: 8),
+                                        SwitchListTile(
+                                          contentPadding: EdgeInsets.zero,
+                                          title: const Text('متاح للبيع بالتقسيط', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                                          subtitle: const Text('يمكن إدراج هذا الصنف في خطط وعقود التقسيط', style: TextStyle(fontSize: 11)),
+                                          value: _isInstallmentEligible,
+                                          activeThumbColor: AppColors.primary,
+                                          onChanged: (val) => setState(() => _isInstallmentEligible = val),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -604,59 +1017,178 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
 
                       const SizedBox(height: 16),
 
-                      // Section 2: Variants Table (Only for new products or when adding)
+                      // Section 2: Adaptive Product Entry (Single-item card or Variants table)
                       if (!state.isEdit) ...[
-                        Card(
-                          elevation: 0.5,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(color: Colors.grey.shade200),
+                        if (state.activityTypeEnum.isSingleItem) ...[
+                          Card(
+                            elevation: 0.5,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(color: Colors.grey.shade200),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(Icons.inventory_2_outlined, color: AppColors.primary, size: 20),
+                                      const SizedBox(width: 8),
+                                      const Text(
+                                        'بيانات الصنف الفوري (سعر وتكلفة وباركود)',
+                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                      ),
+                                      const Spacer(),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.surfaceContainer,
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: const Text('صنف أحادي بدون مقاسات', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        flex: 3,
+                                        child: TextFormField(
+                                          controller: _singleSkuCtrl,
+                                          decoration: InputDecoration(
+                                            labelText: 'الباركود / كود المنتج (SKU) *',
+                                            prefixIcon: const Icon(Icons.qr_code_scanner_rounded),
+                                            suffixIcon: IconButton(
+                                              tooltip: 'توليد باركود تلقائي',
+                                              icon: const Icon(Icons.autorenew_rounded),
+                                              onPressed: () => setState(() => _singleSkuCtrl.text = _generateSingleBarcode()),
+                                            ),
+                                            filled: true,
+                                            fillColor: Colors.grey.shade50,
+                                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        flex: 2,
+                                        child: TextFormField(
+                                          controller: _singleQtyCtrl,
+                                          keyboardType: TextInputType.number,
+                                          decoration: InputDecoration(
+                                            labelText: 'الكمية الأولية بالمخزن *',
+                                            prefixIcon: const Icon(Icons.warehouse_outlined),
+                                            filled: true,
+                                            fillColor: Colors.grey.shade50,
+                                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 14),
+                                  Builder(
+                                    builder: (context) {
+                                      final authState = context.watch<AuthCubit>().state;
+                                      final isCashier = authState is AuthAuthenticated && authState.user.role.toLowerCase() == 'cashier';
+                                      return Row(
+                                        children: [
+                                          if (!isCashier) ...[
+                                            Expanded(
+                                              child: TextFormField(
+                                                controller: _singleCostCtrl,
+                                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                decoration: InputDecoration(
+                                                  labelText: 'سعر التكلفة (ج.م) *',
+                                                  prefixIcon: const Icon(Icons.monetization_on_outlined),
+                                                  filled: true,
+                                                  fillColor: Colors.grey.shade50,
+                                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 12),
+                                          ],
+                                          Expanded(
+                                            child: TextFormField(
+                                              controller: _singleSellCtrl,
+                                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                              decoration: InputDecoration(
+                                                labelText: 'سعر البيع قطاعي (ج.م) *',
+                                                prefixIcon: const Icon(Icons.point_of_sale_rounded),
+                                                filled: true,
+                                                fillColor: Colors.grey.shade50,
+                                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Icon(Icons.table_chart_outlined, color: AppColors.primary, size: 20),
-                                        SizedBox(width: 8),
-                                        Text(
-                                          'جدول المقاسات والألوان والأسعار والكميات',
-                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                                        ),
-                                      ],
-                                    ),
-                                    Row(
-                                      children: [
-                                        OutlinedButton.icon(
-                                          style: OutlinedButton.styleFrom(
-                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ] else ...[
+                          Card(
+                            elevation: 0.5,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(color: Colors.grey.shade200),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(Icons.table_chart_outlined, color: AppColors.primary, size: 20),
+                                          const SizedBox(width: 8),
+                                          const Text(
+                                            'جدول المقاسات والألوان والأسعار والكميات',
+                                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                                           ),
-                                          icon: const Icon(Icons.flash_on, size: 16),
-                                          label: const Text('مقاسات قياسية (S-XXL)', style: TextStyle(fontSize: 12)),
-                                          onPressed: _loadStandardSizes,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        ElevatedButton.icon(
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: AppColors.surfaceContainer,
-                                            foregroundColor: AppColors.primary,
-                                            elevation: 0,
-                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        ],
+                                      ),
+                                      Row(
+                                        children: [
+                                          OutlinedButton.icon(
+                                            style: OutlinedButton.styleFrom(
+                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                            ),
+                                            icon: const Icon(Icons.flash_on, size: 16),
+                                            label: Text(
+                                              state.activityTypeEnum == ActivityType.footwearBags
+                                                  ? 'نمر قياسية (38-43)'
+                                                  : 'مقاسات قياسية (S-XXL)',
+                                              style: const TextStyle(fontSize: 12),
+                                            ),
+                                            onPressed: () => _loadStandardSizes(state.activityTypeEnum),
                                           ),
-                                          icon: const Icon(Icons.add, size: 16),
-                                          label: const Text('إضافة سطر جديد', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                                          onPressed: _addRow,
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
+                                          const SizedBox(width: 8),
+                                          ElevatedButton.icon(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: AppColors.surfaceContainer,
+                                              foregroundColor: AppColors.primary,
+                                              elevation: 0,
+                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                            ),
+                                            icon: const Icon(Icons.add, size: 16),
+                                            label: const Text('إضافة سطر جديد', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                            onPressed: _addRow,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
 
                                 // Batch Pricing Helper Bar
                                 Builder(
@@ -908,6 +1440,7 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                           ),
                         ),
                       ],
+                    ],
 
                       if (_validationError != null) ...[
                         const SizedBox(height: 12),

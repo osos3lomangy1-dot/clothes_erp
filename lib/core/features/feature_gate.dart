@@ -46,6 +46,18 @@ class FeatureKeys {
   static const loyalty = 'loyalty';
   static const promotions = 'promotions';
   static const preOrders = 'preOrders';
+  static const wholesalePricing = 'wholesalePricing';
+  static const splitPayment = 'splitPayment';
+  static const creditSales = 'creditSales';
+  static const holdBills = 'holdBills';
+  static const lowStockAlerts = 'lowStockAlerts';
+  static const productTimestamps = 'productTimestamps';
+  static const consolidatedBatches = 'consolidatedBatches';
+  static const telegramBot = 'telegramBot';
+  static const whatsappDirect = 'whatsappDirect';
+  static const blindShiftClosing = 'blindShiftClosing';
+  static const drawerPettyCash = 'drawerPettyCash';
+  static const managerPinProtection = 'managerPinProtection';
 
   static const definitions = <FeatureDefinition>[
     FeatureDefinition(
@@ -153,6 +165,78 @@ class FeatureKeys {
       label: 'الحجز المسبق والعربونات',
       coreAlwaysEnabled: false,
       defaultEnabled: true,
+    ),
+    FeatureDefinition(
+      key: wholesalePricing,
+      label: 'البيع بالقطاعي والجملة',
+      coreAlwaysEnabled: false,
+      defaultEnabled: true,
+    ),
+    FeatureDefinition(
+      key: splitPayment,
+      label: 'الدفع المجزأ',
+      coreAlwaysEnabled: false,
+      defaultEnabled: true,
+    ),
+    FeatureDefinition(
+      key: creditSales,
+      label: 'البيع الآجل والشكك',
+      coreAlwaysEnabled: false,
+      defaultEnabled: true,
+    ),
+    FeatureDefinition(
+      key: holdBills,
+      label: 'تعليق الفواتير المتعددة',
+      coreAlwaysEnabled: false,
+      defaultEnabled: true,
+    ),
+    FeatureDefinition(
+      key: lowStockAlerts,
+      label: 'تنبيهات نواقص المخزون',
+      coreAlwaysEnabled: false,
+      defaultEnabled: true,
+    ),
+    FeatureDefinition(
+      key: productTimestamps,
+      label: 'توثيق وتتبع تعديل المنتجات',
+      coreAlwaysEnabled: false,
+      defaultEnabled: true,
+    ),
+    FeatureDefinition(
+      key: consolidatedBatches,
+      label: 'الشحنات المجمعة وتوزيع الشحن',
+      coreAlwaysEnabled: false,
+      defaultEnabled: true,
+    ),
+    FeatureDefinition(
+      key: telegramBot,
+      label: 'سحب رسائل تيليجرام التلقائي',
+      coreAlwaysEnabled: false,
+      defaultEnabled: true,
+    ),
+    FeatureDefinition(
+      key: whatsappDirect,
+      label: 'تنبيهات وتحديثات الواتساب',
+      coreAlwaysEnabled: false,
+      defaultEnabled: true,
+    ),
+    FeatureDefinition(
+      key: blindShiftClosing,
+      label: 'الجرد الأعمى عند تقفيل الوردية',
+      coreAlwaysEnabled: false,
+      defaultEnabled: false,
+    ),
+    FeatureDefinition(
+      key: drawerPettyCash,
+      label: 'حركات الدرج النقدية والسحب والإيداع',
+      coreAlwaysEnabled: false,
+      defaultEnabled: true,
+    ),
+    FeatureDefinition(
+      key: managerPinProtection,
+      label: 'حماية المدير بالرقم السري',
+      coreAlwaysEnabled: false,
+      defaultEnabled: false,
     ),
   ];
 

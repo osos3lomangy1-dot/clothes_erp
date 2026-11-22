@@ -164,7 +164,7 @@ void main() {
             textDirection: TextDirection.rtl,
             child: BlocProvider<AuthCubit>.value(
               value: _FakeAuthCubit(adminUser),
-              child: const SystemSettingsScreen(),
+              child: const SystemSettingsScreen(initialCategory: 'store'),
             ),
           ),
         ),

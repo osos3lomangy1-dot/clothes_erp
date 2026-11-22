@@ -117,6 +117,8 @@ class ZReportService {
                 pw.SizedBox(height: 3),
                 _pdfKeyValue('مبيعات كاش:', '${Money(summary.cashSales).toDisplay()} ج.م'),
                 _pdfKeyValue('مبيعات فيزا:', '${Money(summary.cardSales).toDisplay()} ج.م'),
+                if (summary.totalInstallments > 0)
+                  _pdfKeyValue('مبيعات تقسيط / محصل:', '${Money(summary.totalInstallments).toDisplay()} ج.م'),
                 if (summary.otherSales > 0)
                   _pdfKeyValue('مبيعات أخرى / مجزأة:', '${Money(summary.otherSales).toDisplay()} ج.م'),
                 _pdfKeyValue('إجمالي المبيعات:', '${Money(summary.totalRevenue).toDisplay()} ج.م', isBold: true),
@@ -148,7 +150,7 @@ class ZReportService {
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text('توقيع الكاشير:\n\n.....................', style: const pw.TextStyle(fontSize: 9), textAlign: pw.TextAlign.center),
-                    pw.Text('توقيع المستلم:\n\n.....................', style: const pw.TextStyle(fontSize: 9), textAlign: pw.TextAlign.center),
+                    pw.Text('توقيع المستلم (المدير):\n\n.....................', style: const pw.TextStyle(fontSize: 9), textAlign: pw.TextAlign.center),
                   ],
                 ),
                 pw.SizedBox(height: 8),

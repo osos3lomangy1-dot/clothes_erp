@@ -64,6 +64,12 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             categoryId: product.categoryId,
             categoryName: product.categoryName,
             minStock: product.minStock,
+            activityType: product.activityType,
+            warrantyPeriod: product.warrantyPeriod,
+            brandOrModel: product.brandOrModel,
+            isInstallmentEligible: product.isInstallmentEligible,
+            createdAt: product.createdAt,
+            updatedAt: product.updatedAt,
             categories: categories,
             existingProducts: existingProducts,
             existingSkus: existingSkus,
@@ -73,6 +79,10 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           ));
         } else {
           emit(state.copyWith(
+            activityType: 'clothing',
+            warrantyPeriod: null,
+            brandOrModel: null,
+            isInstallmentEligible: true,
             categories: categories,
             existingProducts: existingProducts,
             existingSkus: existingSkus,
@@ -120,6 +130,22 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     emit(state.copyWith(categoryId: id, categoryName: name));
   }
 
+  void onActivityTypeChanged(String type) {
+    emit(state.copyWith(activityType: type));
+  }
+
+  void onWarrantyPeriodChanged(String? val) {
+    emit(state.copyWith(warrantyPeriod: val));
+  }
+
+  void onBrandOrModelChanged(String? val) {
+    emit(state.copyWith(brandOrModel: val));
+  }
+
+  void onInstallmentEligibleChanged(bool val) {
+    emit(state.copyWith(isInstallmentEligible: val));
+  }
+
   Future<void> submit(String? id) async {
     if (state.name.trim().isEmpty || state.categoryId == null) {
       emit(state.copyWith(
@@ -152,6 +178,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
     emit(state.copyWith(status: ProductFormStatus.loading));
 
+    final now = DateTime.now();
     final product = ProductEntity(
       id: id ?? '',
       name: cleanName,
@@ -159,7 +186,12 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       categoryId: state.categoryId!,
       categoryName: state.categoryName!,
       minStock: state.minStock,
-      createdAt: DateTime.now(),
+      activityType: state.activityType,
+      warrantyPeriod: state.warrantyPeriod,
+      brandOrModel: state.brandOrModel,
+      isInstallmentEligible: state.isInstallmentEligible,
+      createdAt: state.isEdit && state.createdAt != null ? state.createdAt! : now,
+      updatedAt: now,
     );
 
     final result = state.isEdit
@@ -247,6 +279,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
     emit(state.copyWith(status: ProductFormStatus.loading));
 
+    final now = DateTime.now();
     final product = ProductEntity(
       id: id ?? '',
       name: cleanName,
@@ -254,7 +287,12 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       categoryId: state.categoryId!,
       categoryName: state.categoryName ?? '',
       minStock: state.minStock,
-      createdAt: DateTime.now(),
+      activityType: state.activityType,
+      warrantyPeriod: state.warrantyPeriod,
+      brandOrModel: state.brandOrModel,
+      isInstallmentEligible: state.isInstallmentEligible,
+      createdAt: state.isEdit && state.createdAt != null ? state.createdAt! : now,
+      updatedAt: now,
     );
 
     if (state.isEdit) {

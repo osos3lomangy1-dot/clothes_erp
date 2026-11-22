@@ -17,7 +17,9 @@ import '../../features/installments/data/services/manager_pin_service.dart';
 import '../../features/reports/data/repositories/smart_inventory_repository_impl.dart';
 import '../../features/reports/domain/repositories/smart_inventory_repository.dart';
 import '../../features/reports/presentation/cubits/smart_inventory_cubit.dart';
+import '../../features/settings/data/services/activity_settings_service.dart';
 import '../../features/settings/presentation/cubits/settings_cubit.dart';
+import '../../features/pre_orders/data/services/telegram_bot_service.dart';
 import '../database/app_database.dart';
 import '../database/branch_provider.dart';
 import '../database/tx_writer.dart';
@@ -137,6 +139,16 @@ Future<void> configureDependencies() async {
   if (!getIt.isRegistered<PreOrdersCubit>()) {
     getIt.registerFactory<PreOrdersCubit>(
       () => PreOrdersCubit(getIt<PreOrdersRepository>()),
+    );
+  }
+  if (!getIt.isRegistered<ActivitySettingsService>()) {
+    getIt.registerLazySingleton<ActivitySettingsService>(
+      () => ActivitySettingsService(getIt<AppDatabase>(), getIt<FeatureGate>()),
+    );
+  }
+  if (!getIt.isRegistered<TelegramBotService>()) {
+    getIt.registerLazySingleton<TelegramBotService>(
+      () => TelegramBotService(getIt<AppDatabase>(), getIt<FeatureGate>()),
     );
   }
 }

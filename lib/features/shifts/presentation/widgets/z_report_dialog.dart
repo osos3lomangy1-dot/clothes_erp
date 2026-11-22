@@ -154,6 +154,17 @@ class ZReportDialog extends StatelessWidget {
                         Colors.blue.shade700,
                       ),
                     ),
+                    if (summary.totalInstallments > 0) ...[
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _metricCard(
+                          'أقساط محصلة',
+                          '${Money(summary.totalInstallments).toDisplay()} ج.م',
+                          Icons.calendar_month_rounded,
+                          Colors.teal.shade700,
+                        ),
+                      ),
+                    ],
                     const SizedBox(width: 8),
                     Expanded(
                       child: _metricCard(
@@ -274,7 +285,7 @@ class ZReportDialog extends StatelessWidget {
                             ZReportService.printThermalSlip(summary),
                         icon: const Icon(Icons.print_rounded, size: 18),
                         label: const Text(
-                          'بون حراري',
+                          'طباعة حرارية (80mm)',
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),

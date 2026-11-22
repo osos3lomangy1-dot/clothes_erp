@@ -20,6 +20,7 @@ class PosState {
   final List<VariantEntity> filteredVariants;
   final List<CategoryEntity> categories;
   final String selectedCategory;
+  final String selectedActivity;
   final List<SaleItemEntity> cart;
   final CustomerEntity? customer;
   final int subtotal;
@@ -32,6 +33,7 @@ class PosState {
     this.filteredVariants = const [],
     this.categories = const [],
     this.selectedCategory = 'All',
+    this.selectedActivity = 'all',
     this.cart = const [],
     this.customer,
     this.subtotal = 0,
@@ -45,6 +47,7 @@ class PosState {
     List<VariantEntity>? filteredVariants,
     List<CategoryEntity>? categories,
     String? selectedCategory,
+    String? selectedActivity,
     List<SaleItemEntity>? cart,
     CustomerEntity? customer,
     bool clearCustomer = false,
@@ -58,6 +61,7 @@ class PosState {
       filteredVariants: filteredVariants ?? this.filteredVariants,
       categories: categories ?? this.categories,
       selectedCategory: selectedCategory ?? this.selectedCategory,
+      selectedActivity: selectedActivity ?? this.selectedActivity,
       cart: cart ?? this.cart,
       customer: clearCustomer ? null : (customer ?? this.customer),
       subtotal: subtotal ?? this.subtotal,
@@ -79,6 +83,7 @@ class PosLoaded extends PosState {
     super.filteredVariants,
     super.categories,
     super.selectedCategory,
+    super.selectedActivity = 'all',
     super.cart,
     super.customer,
     super.subtotal,
@@ -107,10 +112,13 @@ class PosCubit extends Cubit<PosState> {
   Map<String, String> _productCategoryMap = {};
   Map<String, String> _productNameMap = {};
   Map<String, String> _categoryNameMap = {};
+  Map<String, String> _productActivityTypeMap = {};
+  Map<String, bool> _productInstallmentEligibleMap = {};
   List<Promotion> _activePromotions = [];
   Map<String, Set<String>> _categoryDescendants = {};
   String _currentSearchQuery = '';
   String _currentSelectedCategoryId = 'All';
+  String _currentSelectedActivity = 'all';
   StreamSubscription? _variantsSubscription;
 
   PosCubit(
@@ -143,6 +151,8 @@ class PosCubit extends Cubit<PosState> {
       _productCategoryMap = {for (final p in products) p.id: p.categoryId};
       _productNameMap = {for (final p in products) p.id: p.name};
       _categoryNameMap = {for (final c in categories) c.id: c.name};
+      _productActivityTypeMap = {for (final p in products) p.id: p.activityType};
+      _productInstallmentEligibleMap = {for (final p in products) p.id: p.isInstallmentEligible};
       _categoryDescendants = {for (final c in categories) c.id: {c.id}};
 
       if (_promotionsRepository != null) {
@@ -176,6 +186,11 @@ class PosCubit extends Cubit<PosState> {
               if (isClosed) return;
               final prev = state;
               List<VariantEntity> filtered = _allVariants;
+              if (_currentSelectedActivity != 'all') {
+                filtered = filtered
+                    .where((v) => (_productActivityTypeMap[v.productId] ?? 'clothing') == _currentSelectedActivity)
+                    .toList();
+              }
               if (_currentSelectedCategoryId != 'All') {
                 filtered = filtered
                     .where((v) => _productCategoryMap[v.productId] == _currentSelectedCategoryId)
@@ -205,6 +220,7 @@ class PosCubit extends Cubit<PosState> {
                 filteredVariants: filtered,
                 categories: categories,
                 selectedCategory: _currentSelectedCategoryId,
+                selectedActivity: _currentSelectedActivity,
                 cart: prev.cart,
                 customer: prev.customer,
                 subtotal: prev.subtotal,
@@ -238,8 +254,18 @@ class PosCubit extends Cubit<PosState> {
     _applyFilters();
   }
 
+  void filterByActivity(String activity) {
+    _currentSelectedActivity = activity;
+    _applyFilters();
+  }
+
   String? getProductCategoryId(String productId) => _productCategoryMap[productId];
+  String? getProductActivityType(String productId) => _productActivityTypeMap[productId];
   String getProductName(String productId) => _productNameMap[productId] ?? '';
+  bool isProductInstallmentEligible(String? productId) {
+    if (productId == null) return true;
+    return _productInstallmentEligibleMap[productId] ?? true;
+  }
 
   List<VariantEntity> getVariantsForProduct(String productId) =>
       _allVariants.where((v) => v.productId == productId).toList();
@@ -253,6 +279,12 @@ class PosCubit extends Cubit<PosState> {
     if (isClosed) return;
     final state = this.state;
     List<VariantEntity> result = _allVariants;
+
+    if (_currentSelectedActivity != 'all') {
+      result = result
+          .where((v) => (_productActivityTypeMap[v.productId] ?? 'clothing') == _currentSelectedActivity)
+          .toList();
+    }
 
     if (_currentSelectedCategoryId != 'All') {
       result = result
@@ -286,6 +318,7 @@ class PosCubit extends Cubit<PosState> {
     emit(state.copyWith(
       filteredVariants: result,
       selectedCategory: _currentSelectedCategoryId,
+      selectedActivity: _currentSelectedActivity,
     ));
   }
 

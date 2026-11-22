@@ -66,7 +66,7 @@
 - [x] **المهمة 11.2:** لوحة التحكم الشاملة في المزايا وتصنيفها في الإعدادات (Master Categorized Feature Control Matrix). *(تم)*
 - [x] **المهمة 11.3:** إدارة الوردية، العهدة النقدية، تقرير Z، وفروقات الكاش (Cash Drawer, Shift Closing & Z-Report). *(تم)*
 - [x] **المهمة 11.4:** محرك تعدد وتخصيص الأنشطة التجارية الموسع (Multi-Activity Retail Matrix & Multi-Select Profile). *(تم)*
-- [ ] **المهمة 11.5:** قوالب الأنشطة المتجانسة والتجهيز السريع للمتاجر بنقرة واحدة (Pre-configured Commercial Store Profiles & Smart Presets).
+- [x] **المهمة 11.5:** قوالب الأنشطة المتجانسة والتجهيز السريع للمتاجر بنقرة واحدة (Pre-configured Commercial Store Profiles & Smart Presets). *(تم)*
 
 ---
 

@@ -16,6 +16,7 @@ import '../../domain/entities/product_entity.dart';
 import '../../domain/repositories/product_repository.dart';
 import '../cubits/product_form_cubit.dart';
 import '../cubits/product_form_state.dart';
+import '../../../settings/data/services/activity_settings_service.dart';
 
 class SimpleProductFormDialog extends StatelessWidget {
   final ProductEntity? product;
@@ -77,10 +78,19 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
   bool _loadingVariant = false;
   bool _isSaving = false;
 
+  late ActivityType _activityType;
+  late TextEditingController _warrantyCtrl;
+  late TextEditingController _brandOrModelCtrl;
+  late TextEditingController _imeiCtrl;
+  late TextEditingController _expiryCtrl;
+  String _measurementUnit = 'piece'; // 'piece', 'weight'
+  late bool _isInstallmentEligible;
+
   @override
   void initState() {
     super.initState();
     final p = widget.product;
+    _activityType = p?.activityTypeEnum ?? ActivityType.clothing;
     _nameCtrl = TextEditingController(text: p?.name ?? '');
     _barcodeCtrl = TextEditingController();
     _costCtrl = TextEditingController(text: '0.00');
@@ -89,6 +99,11 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
     _qtyCtrl = TextEditingController(text: '0');
     _minStockCtrl = TextEditingController(text: '${p?.minStock ?? 5}');
     _descCtrl = TextEditingController(text: p?.description ?? '');
+    _warrantyCtrl = TextEditingController(text: p?.warrantyPeriod ?? '');
+    _brandOrModelCtrl = TextEditingController(text: p?.brandOrModel ?? '');
+    _imeiCtrl = TextEditingController();
+    _expiryCtrl = TextEditingController();
+    _isInstallmentEligible = p?.isInstallmentEligible ?? true;
     _selectedCategoryId = p?.categoryId;
 
     if (p != null) {
@@ -145,6 +160,10 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
     _qtyCtrl.dispose();
     _minStockCtrl.dispose();
     _descCtrl.dispose();
+    _warrantyCtrl.dispose();
+    _brandOrModelCtrl.dispose();
+    _imeiCtrl.dispose();
+    _expiryCtrl.dispose();
     super.dispose();
   }
 
@@ -198,6 +217,10 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
         formCubit.onCategoryChanged(_selectedCategoryId!, catMatch.name);
         formCubit.onDescriptionChanged(desc ?? '');
         formCubit.onMinStockChanged(minStock);
+        formCubit.onActivityTypeChanged(_activityType.code);
+        formCubit.onWarrantyPeriodChanged(_warrantyCtrl.text.trim().isEmpty ? null : _warrantyCtrl.text.trim());
+        formCubit.onBrandOrModelChanged(_brandOrModelCtrl.text.trim().isEmpty ? null : _brandOrModelCtrl.text.trim());
+        formCubit.onInstallmentEligibleChanged(_isInstallmentEligible);
 
         final variant = VariantInput(
           size: '-',
@@ -241,6 +264,11 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
           description: desc ?? '',
           minStock: minStock,
           createdAt: prod.createdAt,
+          updatedAt: DateTime.now(),
+          activityType: _activityType.code,
+          warrantyPeriod: _warrantyCtrl.text.trim().isEmpty ? null : _warrantyCtrl.text.trim(),
+          brandOrModel: _brandOrModelCtrl.text.trim().isEmpty ? null : _brandOrModelCtrl.text.trim(),
+          isInstallmentEligible: _isInstallmentEligible,
         );
 
         final productRepo = getIt<ProductRepository>();
@@ -372,6 +400,120 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Audit metadata card for editing mode
+                      if (isEdit && widget.product != null)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.outlineVariant),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.history_rounded,
+                                size: 18,
+                                color: Color(0xFF64748B),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Wrap(
+                                  spacing: 16,
+                                  runSpacing: 4,
+                                  children: [
+                                    Text(
+                                      'أُضيف: ${widget.product!.createdAt.year}/${widget.product!.createdAt.month.toString().padLeft(2, '0')}/${widget.product!.createdAt.day.toString().padLeft(2, '0')}',
+                                      style: const TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w500,
+                                        color: Color(0xFF475569),
+                                      ),
+                                    ),
+                                    if (widget.product!.updatedAt != null)
+                                      Text(
+                                        'آخر تعديل: ${widget.product!.updatedAt!.year}/${widget.product!.updatedAt!.month.toString().padLeft(2, '0')}/${widget.product!.updatedAt!.day.toString().padLeft(2, '0')} (${widget.product!.updatedAt!.hour.toString().padLeft(2, '0')}:${widget.product!.updatedAt!.minute.toString().padLeft(2, '0')})',
+                                        style: const TextStyle(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF0F172A),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      // Activity Type Selector
+                      const Text(
+                        'نوع النشاط / القسم الرئيسي',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      StreamBuilder<List<ActivityType>>(
+                        stream: getIt.isRegistered<ActivitySettingsService>()
+                            ? getIt<ActivitySettingsService>().watchEnabledActivities()
+                            : Stream.value(ActivityType.values),
+                        builder: (context, snapshot) {
+                          final enabledActs = snapshot.data ?? ActivityType.values;
+                          final list = {...enabledActs, _activityType}.toList();
+
+                          return SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: list.map((act) {
+                                final isSelected = _activityType == act;
+                                return Padding(
+                                  padding: const EdgeInsets.only(left: 8.0),
+                                  child: InkWell(
+                                    onTap: () => setState(() => _activityType = act),
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: isSelected ? AppColors.primary.withValues(alpha: 0.08) : Colors.white,
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: isSelected ? AppColors.primary : AppColors.outlineVariant,
+                                          width: isSelected ? 1.5 : 1.0,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            act.icon,
+                                            size: 18,
+                                            color: isSelected ? AppColors.primary : AppColors.onSurfaceVariant,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            act.labelArabic,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                              color: isSelected ? AppColors.primary : AppColors.onSurface,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
                       // Name & Barcode
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -469,6 +611,149 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
                           ),
                         ],
                       ),
+
+                      if (_activityType.supportsBrandOrModel ||
+                          _activityType.supportsWarranty ||
+                          _activityType.supportsIMEI ||
+                          _activityType.supportsWeight ||
+                          _activityType.supportsExpiry ||
+                          _activityType.supportsInstallment) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.outlineVariant),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(_activityType.icon, size: 18, color: AppColors.primary),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'خصائص ${_activityType.labelArabic}',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              if (_activityType.supportsBrandOrModel || _activityType.supportsWarranty)
+                                Row(
+                                  children: [
+                                    if (_activityType.supportsBrandOrModel)
+                                      Expanded(
+                                        child: TextFormField(
+                                          controller: _brandOrModelCtrl,
+                                          decoration: InputDecoration(
+                                            labelText: 'الماركة أو الموديل (اختياري)',
+                                            hintText: 'مثال: توشيبا، تيفال، سوني',
+                                            prefixIcon: const Icon(Icons.branding_watermark_outlined),
+                                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                            filled: true,
+                                            fillColor: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    if (_activityType.supportsBrandOrModel && _activityType.supportsWarranty)
+                                      const SizedBox(width: 10),
+                                    if (_activityType.supportsWarranty)
+                                      Expanded(
+                                        child: TextFormField(
+                                          controller: _warrantyCtrl,
+                                          decoration: InputDecoration(
+                                            labelText: 'فترة الضمان بالشهور (اختياري)',
+                                            hintText: 'مثال: 12 شهر، 24 شهر',
+                                            prefixIcon: const Icon(Icons.verified_user_outlined),
+                                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                            filled: true,
+                                            fillColor: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              if (_activityType.supportsIMEI || _activityType.supportsExpiry) ...[
+                                const SizedBox(height: 10),
+                                Row(
+                                  children: [
+                                    if (_activityType.supportsIMEI)
+                                      Expanded(
+                                        child: TextFormField(
+                                          controller: _imeiCtrl,
+                                          decoration: InputDecoration(
+                                            labelText: 'السيريال / IMEI (اختياري)',
+                                            hintText: 'مثال: 356938035643809',
+                                            prefixIcon: const Icon(Icons.qr_code_scanner_rounded),
+                                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                            filled: true,
+                                            fillColor: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    if (_activityType.supportsIMEI && _activityType.supportsExpiry)
+                                      const SizedBox(width: 10),
+                                    if (_activityType.supportsExpiry)
+                                      Expanded(
+                                        child: TextFormField(
+                                          controller: _expiryCtrl,
+                                          decoration: InputDecoration(
+                                            labelText: 'تاريخ الصلاحية / التشغيلة (اختياري)',
+                                            hintText: 'مثال: 2026/12/31',
+                                            prefixIcon: const Icon(Icons.event_busy_rounded),
+                                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                            filled: true,
+                                            fillColor: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                              if (_activityType.supportsWeight) ...[
+                                const SizedBox(height: 10),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.scale_rounded, size: 18, color: Color(0xFF64748B)),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'نوع القياس والبيع:',
+                                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    ChoiceChip(
+                                      label: const Text('بالقطعة'),
+                                      selected: _measurementUnit == 'piece',
+                                      onSelected: (val) => setState(() => _measurementUnit = 'piece'),
+                                      selectedColor: AppColors.primary.withValues(alpha: 0.15),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    ChoiceChip(
+                                      label: const Text('بالوزن (كيلو / جرام / ميزان)'),
+                                      selected: _measurementUnit == 'weight',
+                                      onSelected: (val) => setState(() => _measurementUnit = 'weight'),
+                                      selectedColor: AppColors.primary.withValues(alpha: 0.15),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                              if (_activityType.supportsInstallment) ...[
+                                const SizedBox(height: 10),
+                                SwitchListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  title: const Text('متاح للبيع بالتقسيط', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                                  subtitle: const Text('يمكن إدراج هذا الصنف في خطط وعقود التقسيط', style: TextStyle(fontSize: 11)),
+                                  value: _isInstallmentEligible,
+                                  activeThumbColor: AppColors.primary,
+                                  onChanged: (val) => setState(() => _isInstallmentEligible = val),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
 
                       const SizedBox(height: 18),
                       const Divider(),

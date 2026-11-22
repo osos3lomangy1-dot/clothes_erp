@@ -13,6 +13,10 @@ import '../../domain/entities/installment_payment_entity.dart';
 import '../../domain/entities/installment_schedule_entry.dart';
 import '../../domain/facades/installments_facade.dart';
 import '../../domain/services/installment_calculator.dart';
+import '../../../invoices/domain/entities/invoice_details_entity.dart';
+import '../../../invoices/domain/entities/invoice_item_details_entity.dart';
+import '../../../invoices/domain/repositories/invoices_repository.dart';
+import '../../../invoices/presentation/services/receipt_pdf_service.dart';
 import '../cubits/installment_detail_cubit.dart';
 import '../widgets/early_settlement_dialog.dart';
 import '../widgets/promissory_note_delivery_dialog.dart';
@@ -93,6 +97,57 @@ class _InstallmentDetailViewState extends State<_InstallmentDetailView> {
           ),
         ),
         actions: [
+          BlocBuilder<InstallmentDetailCubit, InstallmentDetailState>(
+            builder: (context, state) {
+              if (state.contract == null) return const SizedBox.shrink();
+              return IconButton(
+                icon: const Icon(Icons.print_outlined, color: AppColors.onSurface),
+                tooltip: 'طباعة العقد وجدول السداد',
+                onPressed: () async {
+                  final contract = state.contract!;
+                  final invoicesRepo = getIt<InvoicesRepository>();
+                  final invRes = await invoicesRepo.getInvoiceById(contract.saleId);
+                  InvoiceDetailsEntity? invoice = invRes.fold((_) => null, (i) => i);
+
+                  invoice ??= InvoiceDetailsEntity(
+                    id: contract.saleId,
+                    shortRef: contract.saleId.length >= 8
+                        ? contract.saleId.substring(0, 8).toUpperCase()
+                        : contract.saleId,
+                    date: contract.createdAt,
+                    cashierId: contract.createdBy,
+                    customerName: state.customerName,
+                    subtotal: contract.totalPiasters,
+                    total: contract.totalPiasters,
+                    paymentMethod: 'installment',
+                    items: [
+                      InvoiceItemDetailsEntity(
+                        id: contract.id,
+                        variantId: contract.id,
+                        productName: 'سلع مشتراة بالتقسيط',
+                        color: '',
+                        size: '',
+                        qty: 1,
+                        price: contract.totalPiasters,
+                        lineTotal: contract.totalPiasters,
+                      ),
+                    ],
+                  );
+
+                  final customerResult = await getIt<CustomerRepository>()
+                      .getCustomerById(contract.customerId);
+                  final customer = customerResult.fold((_) => null, (c) => c);
+
+                  await ReceiptPdfService.printInstallmentContractReceipt(
+                    invoice: invoice,
+                    contract: contract,
+                    schedule: state.schedule,
+                    customer: customer,
+                  );
+                },
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: AppColors.onSurface),
             tooltip: 'تحديث',

@@ -54,6 +54,14 @@ class Products extends Table {
   DateTimeColumn get updatedAt => dateTime()();
   DateTimeColumn get deletedAt => dateTime().nullable()();
 
+  // Multi-Activity & Adaptive Attributes Engine (Task 8.6)
+  TextColumn get activityType =>
+      text().withDefault(const Constant('clothing'))();
+  TextColumn get warrantyPeriod => text().nullable()();
+  TextColumn get brandOrModel => text().nullable()();
+  BoolColumn get isInstallmentEligible =>
+      boolean().withDefault(const Constant(true))();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -1320,6 +1328,26 @@ class AppDatabase extends _$AppDatabase {
         'sale_items',
         'promotion_discount_piasters',
         'INTEGER NOT NULL DEFAULT 0',
+      );
+      await addColumnIfNotExists(
+        'products',
+        'activity_type',
+        "TEXT NOT NULL DEFAULT 'clothing'",
+      );
+      await addColumnIfNotExists(
+        'products',
+        'warranty_period',
+        'TEXT',
+      );
+      await addColumnIfNotExists(
+        'products',
+        'brand_or_model',
+        'TEXT',
+      );
+      await addColumnIfNotExists(
+        'products',
+        'is_installment_eligible',
+        'INTEGER NOT NULL DEFAULT 1',
       );
     },
   );

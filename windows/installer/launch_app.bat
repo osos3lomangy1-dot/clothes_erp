@@ -9,7 +9,7 @@ title Orkeed Clothes ERP - فحص متطلبات التشغيل
 :: -------------------------------------------------------------
 
 set "APP_DIR=%~dp0"
-set "EXE_NAME=clothes_erp.exe"
+set "EXE_NAME=bay3ah.exe"
 
 :: 1. التحقق من وجود ملفات VC++ Runtime (MSVCP140.dll)
 reg query "HKLM\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" /v Installed 2>nul | findstr /i "0x1" >nul

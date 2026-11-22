@@ -21,6 +21,10 @@ import '../cubits/settings_cubit.dart';
 import '../widgets/excel_migration_card.dart';
 import '../widgets/google_drive_backup_card.dart';
 import '../widgets/local_backup_card.dart';
+import '../../../pre_orders/data/services/telegram_bot_service.dart';
+import '../../../pre_orders/presentation/widgets/telegram_inbox_dialog.dart';
+import '../../../products/domain/entities/activity_type.dart';
+import '../../data/services/activity_settings_service.dart';
 
 class SystemSettingsScreen extends StatelessWidget {
   final String? initialCategory;
@@ -63,6 +67,18 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
   String? _selectedCategory;
 
   static const _categories = <_SettingsCategoryItem>[
+    _SettingsCategoryItem(
+      key: 'features',
+      label: 'لوحة التحكم في المزايا',
+      subtitle: 'التحكم الشامل في تفعيل المزايا وموديولات النظام والأنشطة',
+      icon: Icons.tune_rounded,
+    ),
+    _SettingsCategoryItem(
+      key: 'activities',
+      label: 'الأنشطة وخطوط العمل',
+      subtitle: 'تخصيص أقسام المتجر، الحجز المسبق، وتيليجرام',
+      icon: Icons.dashboard_customize_rounded,
+    ),
     _SettingsCategoryItem(
       key: 'pos',
       label: 'نقطة البيع',
@@ -108,6 +124,8 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
   ];
 
   String _normalizeCategory(String cat) {
+    if (cat == 'features' || cat == 'feature_matrix') return 'features';
+    if (cat == 'activities' || cat == 'activity') return 'activities';
     if (cat == 'sales') return 'pos';
     if (cat == 'permissions') return 'staff';
     if (cat == 'data') return 'backup';
@@ -122,10 +140,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
     if (widget.initialCategory != null) {
       return _normalizeCategory(widget.initialCategory!);
     }
-    if (state.features[FeatureKeys.installments] == true) {
-      return 'pos';
-    }
-    return 'store';
+    return 'features';
   }
 
   bool _isAdmin(BuildContext context) {
@@ -286,6 +301,34 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
                           subtitle: activeCategoryItem.subtitle,
                         ),
                         const SizedBox(height: 24),
+
+                        // ─── لوحة التحكم الشاملة في المزايا (Master Categorized Feature Control Matrix) ───
+                        if (currentCat == 'features') ...[
+                          _sectionTitle('1. مزايا الكاشير ونقطة البيع (POS)'),
+                          _buildPosFeaturesCard(state, userId),
+                          const SizedBox(height: 24),
+
+                          _sectionTitle('2. مزايا المخزون والأنشطة التجارية'),
+                          _buildInventoryFeaturesCard(state, userId),
+                          const SizedBox(height: 24),
+
+                          _sectionTitle('3. مزايا التجارة المتعددة والحجز المسبق'),
+                          _buildOmnichannelFeaturesCard(state, userId),
+                          const SizedBox(height: 24),
+
+                          _sectionTitle('4. مزايا الحسابات والورديات والأمان'),
+                          _buildFinancialAndSecurityFeaturesCard(state, userId),
+                          const SizedBox(height: 32),
+                        ],
+
+                        // ─── 0. الأنشطة وخطوط العمل (Activities & Telegram) ───
+                        if (currentCat == 'activities') ...[
+                          _sectionTitle('أقسام المنتجات والأنشطة التجارية'),
+                          _ActivitiesMasterSettingsCard(userId: userId),
+                          const SizedBox(height: 24),
+                          _sectionTitle('مجمع وبوت تيليجرام للحجوزات والطلبيات'),
+                          _TelegramBotSettingsCard(userId: userId),
+                        ],
 
                         // ─── 1. نقطة البيع والمبيعات (POS) ───
                         if (currentCat == 'pos') ...[
@@ -1049,6 +1092,358 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
     }
   }
 
+  // ─── 1. كارت مزايا الكاشير ونقطة البيع (POS) ───
+  Widget _buildPosFeaturesCard(SettingsState state, String userId) {
+    final installmentsEnabled = state.features[FeatureKeys.installments] ?? false;
+    return _cardWrapper(
+      child: Column(
+        children: [
+          _cardHeader(
+            icon: Icons.point_of_sale_rounded,
+            title: 'مزايا الكاشير ونقطة البيع (POS)',
+            subtitle: 'التحكم في وظائف المبيعات، التسعير، طرق السداد، وإدارة الفواتير',
+          ),
+          Divider(height: 24, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            title: 'شاشة الكاشير ونقطة البيع (POS)',
+            description: 'المحرك الأساسي لعمليات البيع، مسح الباركود، الفواتير الفورية، والطباعة',
+            isCore: true,
+            isEnabled: true,
+          ),
+          Divider(height: 16, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            key: const Key('feature_wholesale_pricing_toggle'),
+            title: 'البيع بسعر القطاعي والجملة',
+            description: 'تمكين زر التبديل السريع بين سعر القطاعي وسعر الجملة مباشرة على شاشة الكاشير',
+            isCore: false,
+            isEnabled: state.features[FeatureKeys.wholesalePricing] ?? true,
+            onChanged: (v) => _toggleFeature(context, FeatureKeys.wholesalePricing, v, userId),
+          ),
+          Divider(height: 16, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            key: const Key('feature_split_payment_toggle'),
+            title: 'الدفع المجزأ (Split Payment)',
+            description: 'السماح بسداد الفاتورة الواحدة بجزء نقدي بالدرج وجزء بطاقة بنكية أو محفظة إلكترونية',
+            isCore: false,
+            isEnabled: state.features[FeatureKeys.splitPayment] ?? true,
+            onChanged: (v) => _toggleFeature(context, FeatureKeys.splitPayment, v, userId),
+          ),
+          Divider(height: 16, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            key: const Key('feature_credit_sales_toggle'),
+            title: 'البيع الآجل والشكك (Credit Sales)',
+            description: 'تمكين خيار "أجل / متبقي" وترحيل المبالغ المتبقية كديون في كشف حساب العميل',
+            dependencyInfo: 'يعتمد على: العملاء',
+            isCore: false,
+            isEnabled: state.features[FeatureKeys.creditSales] ?? true,
+            onChanged: (v) => _toggleFeature(context, FeatureKeys.creditSales, v, userId),
+          ),
+          Divider(height: 16, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            key: const Key('feature_hold_bills_toggle'),
+            title: 'فواتير متعددة وتعليق الفاتورة (Hold / Multi-Bills)',
+            description: 'إتاحة شريط تبويبات الفواتير لتعليق فاتورة وخدمة عميل آخر في الطابور دون فقد البيانات',
+            isCore: false,
+            isEnabled: state.features[FeatureKeys.holdBills] ?? true,
+            onChanged: (v) => _toggleFeature(context, FeatureKeys.holdBills, v, userId),
+          ),
+          Divider(height: 16, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            key: const Key('feature_promotions_toggle'),
+            title: 'العروض والخصومات الترويجية',
+            description: 'تفعيل إنشاء عروض الخصم المباشر، باقات الشراء، والخصومات المئوية المؤقتة',
+            isCore: false,
+            isEnabled: state.features[FeatureKeys.promotions] ?? false,
+            onChanged: (v) => _toggleFeature(context, FeatureKeys.promotions, v, userId),
+          ),
+          Divider(height: 16, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            key: const Key('feature_loyalty_toggle'),
+            title: 'برنامج ولاء ونقاط العملاء',
+            description: 'احتساب نقاط مكافآت للمشتريات واستبدالها برصيد أو خصومات في الفواتير القادمة',
+            dependencyInfo: 'يعتمد على: العملاء',
+            isCore: false,
+            isEnabled: state.features[FeatureKeys.loyalty] ?? false,
+            onChanged: (v) => _toggleFeature(context, FeatureKeys.loyalty, v, userId),
+          ),
+          Divider(height: 16, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            key: const Key('feature_installments_master_toggle'),
+            title: 'نظام البيع بالتقسيط وإيصالات الأمانة',
+            description: 'تمكين البيع بنظام الأقساط الشهرية، احتساب المرابحة، جدولة السداد، وإيصالات الأمانة والتحصيل القضائي',
+            dependencyInfo: 'يعتمد على: العملاء',
+            isCore: false,
+            isEnabled: installmentsEnabled,
+            onChanged: (v) => _toggleFeature(context, FeatureKeys.installments, v, userId),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── 2. كارت مزايا المخزون والأنشطة التجارية ───
+  Widget _buildInventoryFeaturesCard(SettingsState state, String userId) {
+    return _cardWrapper(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _cardHeader(
+            icon: Icons.inventory_2_rounded,
+            title: 'مزايا المخزون والأنشطة التجارية',
+            subtitle: 'التحكم في دليل المنتجات، المشتريات، الموردين، وتتبع الحركات',
+          ),
+          Divider(height: 24, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            title: 'إدارة المخزون ودليل المنتجات',
+            description: 'المحرك الأساسي لبطاقات الأصناف، الأقسام، المقاسات والألوان، وأسعار التكلفة والبيع',
+            isCore: true,
+            isEnabled: true,
+          ),
+          Divider(height: 16, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            title: 'سجل حركات المخزن والتدقيق المخزني',
+            description: 'تتبع حركات الإدخال، الصرف، التسوية، الجرد الدوري، وتاريخ كل حركة بالوقت والمسؤول',
+            isCore: true,
+            isEnabled: true,
+          ),
+          Divider(height: 16, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            key: const Key('feature_purchases_toggle'),
+            title: 'إدارة المشتريات وفواتير الشراء',
+            description: 'تسجيل فواتير الشراء الواردة، تكلفة الأصناف، وتحديث أرصدة المخازن آلياً',
+            isCore: false,
+            isEnabled: state.features[FeatureKeys.purchases] ?? true,
+            onChanged: (v) => _toggleFeature(context, FeatureKeys.purchases, v, userId),
+          ),
+          Divider(height: 16, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            key: const Key('feature_suppliers_toggle'),
+            title: 'دليل الموردين وحسابات التوريد',
+            description: 'إدارة سجلات الموردين، متابعة الديون المستحقة، ودفعات فواتير التوريد',
+            dependencyInfo: 'يعتمد على: المشتريات',
+            isCore: false,
+            isEnabled: state.features[FeatureKeys.suppliers] ?? true,
+            onChanged: (v) => _toggleFeature(context, FeatureKeys.suppliers, v, userId),
+          ),
+          Divider(height: 16, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            key: const Key('feature_low_stock_alerts_toggle'),
+            title: 'تنبيهات النواقص والحد الأدنى للمخزون',
+            description: 'إبراز الأصناف التي أوشكت على النفاد وإظهار مؤشرات تنبيه في الكروت وشريط الإشعارات',
+            isCore: false,
+            isEnabled: state.features[FeatureKeys.lowStockAlerts] ?? true,
+            onChanged: (v) => _toggleFeature(context, FeatureKeys.lowStockAlerts, v, userId),
+          ),
+          Divider(height: 16, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            key: const Key('feature_product_timestamps_toggle'),
+            title: 'عرض تواريخ التعديل والإنشاء على كروت المنتجات',
+            description: 'إظهار سطر التوثيق الرمادي الهادئ (أُضيف: ... • آخر تعديل: ...) أسفل بطاقات المنتجات',
+            isCore: false,
+            isEnabled: state.features[FeatureKeys.productTimestamps] ?? true,
+            onChanged: (v) => _toggleFeature(context, FeatureKeys.productTimestamps, v, userId),
+          ),
+          Divider(height: 16, color: AppColors.outlineVariant),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.outlineVariant),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.dashboard_customize_rounded, size: 18, color: AppColors.primary),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'تخصيص أقسام الأنشطة (ملابس، أحذية، إكسسوارات، أدوات منزلية)',
+                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                      ),
+                      Text(
+                        'التحكم في ظهور أو إخفاء حقول المقاسات والضمان والألوان في شاشة الإضافة ونقطة البيع',
+                        style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                      ),
+                    ],
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _selectedCategory = 'activities';
+                    });
+                  },
+                  icon: const Icon(Icons.arrow_back_rounded, size: 15),
+                  label: const Text('إدارة الأنشطة'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── 3. كارت مزايا التجارة المتعددة والحجز المسبق ───
+  Widget _buildOmnichannelFeaturesCard(SettingsState state, String userId) {
+    return _cardWrapper(
+      child: Column(
+        children: [
+          _cardHeader(
+            icon: Icons.local_shipping_rounded,
+            title: 'مزايا التجارة المتعددة والحجز المسبق',
+            subtitle: 'إدارة طلبات الحجز المسبق، الشحنات المجمعة، وتكامل تيليجرام وواتساب',
+          ),
+          Divider(height: 24, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            key: const Key('feature_pre_orders_toggle'),
+            title: 'موديول الحجز المسبق والطلبات الخاصة (Pre-Orders)',
+            description: 'إدارة طلبات الاستيراد والحجز المسبق، تسجيل العربونات، وتتبع حالة وصول الشحنات',
+            isCore: false,
+            isEnabled: state.features[FeatureKeys.preOrders] ?? true,
+            onChanged: (v) => _toggleFeature(context, FeatureKeys.preOrders, v, userId),
+          ),
+          Divider(height: 16, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            key: const Key('feature_consolidated_batches_toggle'),
+            title: 'الشحنات المجمعة وتوزيع الشحن (Consolidated Batches)',
+            description: 'تمكين دورة شحن الكراتين المجمعة وتوزيع تكلفة الشحن على بنود العملاء بحسابات مرنة عادلة',
+            dependencyInfo: 'يعتمد على: الحجز المسبق',
+            isCore: false,
+            isEnabled: state.features[FeatureKeys.consolidatedBatches] ?? true,
+            onChanged: (v) => _toggleFeature(context, FeatureKeys.consolidatedBatches, v, userId),
+          ),
+          Divider(height: 16, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            key: const Key('feature_telegram_bot_toggle'),
+            title: 'سحب رسائل تيليجرام التلقائي (Telegram Bot Polling)',
+            description: 'الاستقبال الآلي للرسائل وحجوزات العملاء من جروبات وقنوات تيليجرام وتحويلها لأوردرات بضغطة زر',
+            dependencyInfo: 'يعتمد على: الحجز المسبق',
+            isCore: false,
+            isEnabled: state.features[FeatureKeys.telegramBot] ?? true,
+            onChanged: (v) => _toggleFeature(context, FeatureKeys.telegramBot, v, userId),
+          ),
+          Divider(height: 16, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            key: const Key('feature_whatsapp_direct_toggle'),
+            title: 'تنبيهات وتحديثات العملاء عبر واتساب (WhatsApp Direct)',
+            description: 'أزرار مراسلة فورية للعميل برقم التتبع وتنبيهه عند وصول الشحنة للمحل واستحقاق المتبقي',
+            dependencyInfo: 'يعتمد على: الحجز المسبق',
+            isCore: false,
+            isEnabled: state.features[FeatureKeys.whatsappDirect] ?? true,
+            onChanged: (v) => _toggleFeature(context, FeatureKeys.whatsappDirect, v, userId),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── 4. كارت مزايا الحسابات والورديات والأمان ───
+  Widget _buildFinancialAndSecurityFeaturesCard(SettingsState state, String userId) {
+    return _cardWrapper(
+      child: Column(
+        children: [
+          _cardHeader(
+            icon: Icons.admin_panel_settings_rounded,
+            title: 'مزايا الحسابات والورديات والأمان',
+            subtitle: 'إدارة دورة الكاش، إغلاق الوردية، التقارير المالية، وصلاحيات الحماية',
+          ),
+          Divider(height: 24, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            key: const Key('feature_shifts_toggle'),
+            title: 'إدارة الورديات وتقفيل الكاشير (Shift Z-Report)',
+            description: 'إلزام الكاشير بفتح وردية وتحديد العهدة الافتتاحية وجرد الدرج النقدي عند تقفيل الوردية',
+            isCore: false,
+            isEnabled: state.features[FeatureKeys.shifts] ?? true,
+            onChanged: (v) => _toggleFeature(context, FeatureKeys.shifts, v, userId),
+          ),
+          Divider(height: 16, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            key: const Key('feature_blind_shift_closing_toggle'),
+            title: 'الجرد الأعمى عند تقفيل الوردية (Blind Shift Closing)',
+            description: 'إخفاء الرصيد المتوقع للدرج وإلزام الكاشير بعدّ النقدية يدوياً لمنع التلاعب وتوليد تقرير العجز/الزيادة للمدير فقط',
+            dependencyInfo: 'يعتمد على: الورديات',
+            isCore: false,
+            isEnabled: state.features[FeatureKeys.blindShiftClosing] ?? false,
+            onChanged: (v) => _toggleFeature(context, FeatureKeys.blindShiftClosing, v, userId),
+          ),
+          Divider(height: 16, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            key: const Key('feature_drawer_petty_cash_toggle'),
+            title: 'حركات الدرج النقدية (مصروفات نثرية / إيداع)',
+            description: 'تمكين أزرار السحب والإيداع السريع للنقدية من درج الكاشير أثناء الوردية مع تدوين السبب',
+            dependencyInfo: 'يعتمد على: الورديات',
+            isCore: false,
+            isEnabled: state.features[FeatureKeys.drawerPettyCash] ?? true,
+            onChanged: (v) => _toggleFeature(context, FeatureKeys.drawerPettyCash, v, userId),
+          ),
+          Divider(height: 16, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            key: const Key('feature_expenses_toggle'),
+            title: 'المصروفات اليومية وسجل النثريات',
+            description: 'تسجيل بنود المصروفات التشغيلية اليومية والإيجارات والفواتير وخصمها من الخزينة العامة',
+            isCore: false,
+            isEnabled: state.features[FeatureKeys.expenses] ?? true,
+            onChanged: (v) => _toggleFeature(context, FeatureKeys.expenses, v, userId),
+          ),
+          Divider(height: 16, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            key: const Key('feature_reports_toggle'),
+            title: 'التقارير المالية والتحليلية',
+            description: 'لوحات مؤشرات الأداء، الأرباح، تقارير الضرائب، وحركة المبيعات والمنتجات الأكثر مبيعاً',
+            isCore: false,
+            isEnabled: state.features[FeatureKeys.reports] ?? true,
+            onChanged: (v) => _toggleFeature(context, FeatureKeys.reports, v, userId),
+          ),
+          Divider(height: 16, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            key: const Key('feature_partners_toggle'),
+            title: 'حسابات الشركاء وتوزيع الأرباح',
+            description: 'إدارة حصص الشركاء ورؤوس الأموال، تسجيل المسحوبات، وتوزيع الأرباح الصافية',
+            isCore: false,
+            isEnabled: state.features[FeatureKeys.partners] ?? false,
+            onChanged: (v) => _toggleFeature(context, FeatureKeys.partners, v, userId),
+          ),
+          Divider(height: 16, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            key: const Key('feature_employees_toggle'),
+            title: 'شؤون الموظفين وفريق العمل',
+            description: 'إدارة ملفات الموظفين، ساعات العمل، والصلاحيات الوظيفية',
+            isCore: false,
+            isEnabled: state.features[FeatureKeys.employees] ?? true,
+            onChanged: (v) => _toggleFeature(context, FeatureKeys.employees, v, userId),
+          ),
+          Divider(height: 16, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            key: const Key('feature_payroll_toggle'),
+            title: 'مسير الرواتب والمستحقات',
+            description: 'احتساب الرواتب الشهرية، الخصومات، البدلات، والمكافآت وترحيلها للخزينة',
+            dependencyInfo: 'يعتمد على: الموظفون',
+            isCore: false,
+            isEnabled: state.features[FeatureKeys.payroll] ?? true,
+            onChanged: (v) => _toggleFeature(context, FeatureKeys.payroll, v, userId),
+          ),
+          Divider(height: 16, color: AppColors.outlineVariant),
+          _buildFeatureItem(
+            key: const Key('feature_manager_pin_protection_toggle'),
+            title: 'طلب الرقم السري للمدير عند الخصم أو المرتجع',
+            description: 'قفل عمليات الخصم العالي أو إلغاء واسترجاع الفواتير بطلب PIN المدير لمنع تلاعب الكاشير',
+            isCore: false,
+            isEnabled: state.features[FeatureKeys.managerPinProtection] ?? false,
+            onChanged: (v) => _toggleFeature(context, FeatureKeys.managerPinProtection, v, userId),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _sectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12, top: 4),
@@ -1148,12 +1543,14 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
               children: [
                 Row(
                   children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF0F172A),
+                    Flexible(
+                      child: Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF0F172A),
+                        ),
                       ),
                     ),
                     if (isCore) ...[
@@ -2763,6 +3160,836 @@ class _SectorModeSettingsCard extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+// ─── Activities Master Settings Card ───
+class _ActivitiesMasterSettingsCard extends StatefulWidget {
+  final String userId;
+
+  const _ActivitiesMasterSettingsCard({required this.userId});
+
+  @override
+  State<_ActivitiesMasterSettingsCard> createState() => _ActivitiesMasterSettingsCardState();
+}
+
+class _ActivitiesMasterSettingsCardState extends State<_ActivitiesMasterSettingsCard> {
+  final _activityService = getIt<ActivitySettingsService>();
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<ActivityType>>(
+      stream: _activityService.watchEnabledActivities(),
+      builder: (context, snapshot) {
+        final enabledActivities = snapshot.data ?? [ActivityType.clothing];
+
+        return Card(
+          elevation: 0,
+          margin: EdgeInsets.zero,
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: AppColors.outlineVariant),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(Icons.storefront_rounded, color: AppColors.primary, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'أقسام المنتجات والأنشطة المتوفرة بالمحل',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14.5,
+                              color: Color(0xFF0F172A),
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'تفعيل أو إيقاف الأقسام يحدّث فورياً تبويبات الكاشير ونماذج إضافة المنتجات',
+                            style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        OutlinedButton.icon(
+                          key: const Key('activities_select_all_btn'),
+                          icon: const Icon(Icons.select_all_rounded, size: 16),
+                          label: const Text(
+                            'تحديد الكل',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.primary,
+                            side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          onPressed: () async {
+                            await _activityService.setAllActivities(true, userId: widget.userId);
+                          },
+                        ),
+                        OutlinedButton.icon(
+                          key: const Key('activities_deselect_all_btn'),
+                          icon: const Icon(Icons.deselect_rounded, size: 16),
+                          label: const Text(
+                            'إلغاء التحديد',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF64748B),
+                            side: BorderSide(color: AppColors.outlineVariant),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          onPressed: () async {
+                            await _activityService.setAllActivities(false, userId: widget.userId);
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                Divider(height: 24, color: AppColors.outlineVariant),
+
+                // Smart Store Presets Bar
+                _buildPresetsSection(enabledActivities),
+                const SizedBox(height: 20),
+
+                // 6 Sectors with Checkbox Matrix
+                for (final sector in ActivitySector.values) ...[
+                  _buildSectorSection(
+                    sector: sector,
+                    enabledActivities: enabledActivities,
+                  ),
+                  if (sector != ActivitySector.values.last)
+                    const SizedBox(height: 16),
+                ],
+
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.outlineVariant),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFF64748B)),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'قاعدة الأمان التجاري: يلزم النظام الإبقاء على قسم تجاري واحد مفعل على الأقل لضمان استقرار العمل.',
+                          style: TextStyle(fontSize: 11.5, color: Color(0xFF475569)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPresetsSection(List<ActivityType> enabledActivities) {
+    final activePreset = StorePreset.detect(enabledActivities.toSet());
+
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.outlineVariant),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.auto_awesome_rounded, size: 16, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'القوالب التجارية الجاهزة (تجهيز المتجر بنقرة واحدة):',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      'القالب الحالي: ${activePreset.title}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'اختر نوع نشاط محلك لتجهيز وتفعيل الأقسام المناسبة وإعداداتها فوراً، أو عدّل الأنشطة يدوياً من المصفوفة بالأسفل.',
+            style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+          ),
+          const SizedBox(height: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final preset in StorePreset.values) ...[
+                  _buildPresetCard(
+                    preset: preset,
+                    isActive: activePreset == preset,
+                  ),
+                  if (preset != StorePreset.values.last)
+                    const SizedBox(width: 8),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPresetCard({
+    required StorePreset preset,
+    required bool isActive,
+  }) {
+    return InkWell(
+      key: Key('store_preset_${preset.code}'),
+      onTap: () async {
+        try {
+          await _activityService.applyStorePreset(preset, userId: widget.userId);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('تم تطبيق قالب ${preset.title} بنجاح!'),
+                backgroundColor: AppColors.primary,
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(e.toString().replaceAll('Exception: ', '')),
+                backgroundColor: AppColors.error,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        }
+      },
+      borderRadius: BorderRadius.circular(10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.primary.withValues(alpha: 0.08) : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isActive ? AppColors.primary : AppColors.outlineVariant,
+            width: isActive ? 1.6 : 1.0,
+          ),
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: isActive ? AppColors.primary : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                preset.icon,
+                size: 16,
+                color: isActive ? Colors.white : const Color(0xFF475569),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      preset.title,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
+                        color: isActive ? AppColors.primary : const Color(0xFF0F172A),
+                      ),
+                    ),
+                    if (isActive) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'نشط',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  preset.description,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    color: isActive ? AppColors.primary.withValues(alpha: 0.8) : const Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectorSection({
+    required ActivitySector sector,
+    required List<ActivityType> enabledActivities,
+  }) {
+    final sectorActivities = ActivityType.values.where((a) => a.sector == sector).toList();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Sector Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(9)),
+              border: Border(bottom: BorderSide(color: AppColors.outlineVariant.withValues(alpha: 0.7))),
+            ),
+            child: Row(
+              children: [
+                Icon(sector.icon, size: 18, color: AppColors.primary),
+                const SizedBox(width: 8),
+                Text(
+                  sector.label,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13.5,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${sectorActivities.where((a) => enabledActivities.contains(a)).length} من ${sectorActivities.length} مفعل',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF64748B),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Activities List with Checkboxes
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            child: Column(
+              children: [
+                for (int i = 0; i < sectorActivities.length; i++) ...[
+                  _buildActivityCheckboxRow(
+                    act: sectorActivities[i],
+                    isEnabled: enabledActivities.contains(sectorActivities[i]),
+                  ),
+                  if (i != sectorActivities.length - 1)
+                    Divider(height: 1, color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActivityCheckboxRow({
+    required ActivityType act,
+    required bool isEnabled,
+  }) {
+    return InkWell(
+      onTap: () => _toggleActivity(act, !isEnabled),
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: isEnabled ? AppColors.primary.withValues(alpha: 0.08) : Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isEnabled ? AppColors.primary.withValues(alpha: 0.3) : AppColors.outlineVariant,
+                ),
+              ),
+              child: Icon(
+                act.icon,
+                size: 17,
+                color: isEnabled ? AppColors.primary : const Color(0xFF64748B),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    act.labelArabic,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: isEnabled ? FontWeight.bold : FontWeight.w600,
+                      color: isEnabled ? const Color(0xFF0F172A) : const Color(0xFF475569),
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    _activityDescription(act),
+                    style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                  ),
+                ],
+              ),
+            ),
+            Checkbox(
+              key: Key('activity_checkbox_${act.code}'),
+              value: isEnabled,
+              activeColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              onChanged: (val) => _toggleActivity(act, val ?? false),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _toggleActivity(ActivityType act, bool enable) async {
+    try {
+      await _activityService.setActivityEnabled(act, enable, userId: widget.userId);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  static String _activityDescription(ActivityType type) {
+    switch (type) {
+      case ActivityType.clothing:
+        return 'إدارة المقاسات والألوان ومصفوفة أصناف الملابس الجاهزة';
+      case ActivityType.footwearBags:
+        return 'مقاسات الأحذية، كولكشن الحقائب والجلديات ومستلزماتها';
+      case ActivityType.accessoriesBeauty:
+        return 'المجوهرات والإكسسوارات الفردية وقطع الزينة';
+      case ActivityType.perfumesCosmetics:
+        return 'مستحضرات التجميل، العطور، السعة بالمللي، وتواريخ الصلاحية';
+      case ActivityType.watchesEyewear:
+        return 'الساعات، النظارات الشمسية والطبية، وفترات الضمان';
+      case ActivityType.electronicsMobiles:
+        return 'الهواتف، الأجهزة الذكية، تتبع السيريال والـ IMEI والتقسيط';
+      case ActivityType.homeLiving:
+        return 'الأجهزة الكهربائية، الأدوات المنزلية، الموديلات وفترات الضمان';
+      case ActivityType.supermarketGroceries:
+        return 'المواد الغذائية، البقالة، باركود الميزان، وتواريخ الصلاحية';
+      case ActivityType.spicesNuts:
+        return 'العطارة، التوابل، المكسرات والياميش بالوزن (كيلو/جرام)';
+      case ActivityType.sweetsBakery:
+        return 'الحلويات الشرقية والغربية، المخبوزات والقطع الطازجة';
+      case ActivityType.restaurantsCafes:
+        return 'المطاعم والكافيهات، الصالة والتيك أواي والدليفري وبون المطبخ';
+      case ActivityType.kidsToys:
+        return 'ألعاب الأطفال، الهدايا، ومستلزمات المواليد والرضع';
+      case ActivityType.pharmacySupplies:
+        return 'الصيدليات، المستلزمات الطبية، الباتشات وتواريخ الصلاحية';
+      case ActivityType.sportsFitness:
+        return 'الملابس الرياضية، الأجهزة، المكملات الغذائية ومعدات الجيم';
+      case ActivityType.bookstoreStationery:
+        return 'الكتب، الأدوات المدرسية والمكتبية، الروايات والمطبوعات';
+      case ActivityType.textilesDecor:
+        return 'المفروشات، الستائر، أقمشة الديكور، ومقاييس الأمتار';
+      case ActivityType.petShop:
+        return 'أغذية ومستلزمات الحيوانات الأليفة، الأوزان والتطعيمات';
+      case ActivityType.general:
+        return 'الأصناف العامة والمتنوعة والمنتجات غير المصنفة بنشاط خاص';
+    }
+  }
+}
+
+// ─── Telegram Bot Settings Card ───
+class _TelegramBotSettingsCard extends StatefulWidget {
+  final String userId;
+
+  const _TelegramBotSettingsCard({required this.userId});
+
+  @override
+  State<_TelegramBotSettingsCard> createState() => _TelegramBotSettingsCardState();
+}
+
+class _TelegramBotSettingsCardState extends State<_TelegramBotSettingsCard> {
+  final _botService = getIt<TelegramBotService>();
+  final _tokenController = TextEditingController();
+  bool _isLoading = false;
+  bool _testingConnection = false;
+  String? _statusMessage;
+  bool _isSuccessStatus = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  @override
+  void dispose() {
+    _tokenController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadSettings() async {
+    setState(() => _isLoading = true);
+    final token = await _botService.getBotToken();
+    if (mounted) {
+      setState(() {
+        _tokenController.text = token ?? '';
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _testAndSave() async {
+    final token = _tokenController.text.trim();
+    if (token.isEmpty) {
+      setState(() {
+        _statusMessage = 'يرجى إدخال توكن البوت';
+        _isSuccessStatus = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _testingConnection = true;
+      _statusMessage = null;
+    });
+
+    final res = await _botService.testBotToken(token);
+    if (!mounted) return;
+
+    res.fold(
+      (err) {
+        setState(() {
+          _testingConnection = false;
+          _statusMessage = 'فشل الاتصال: $err';
+          _isSuccessStatus = false;
+        });
+      },
+      (botData) async {
+        final username = botData['username']?.toString() ?? '';
+        final botName = botData['first_name']?.toString() ?? '';
+        await _botService.saveBotToken(token, userId: widget.userId);
+        if (username.isNotEmpty) {
+          await _botService.saveBotUsername(username, userId: widget.userId);
+        }
+        if (mounted) {
+          setState(() {
+            _testingConnection = false;
+            _statusMessage = 'تم الاتصال بنجاح بالبوت: $botName (@$username)';
+            _isSuccessStatus = true;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('تم التحقق من البوت وحفظ الإعدادات بنجاح'),
+              backgroundColor: AppColors.primary,
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  Future<void> _pullMessages() async {
+    setState(() => _testingConnection = true);
+    final res = await _botService.fetchNewMessages();
+    if (!mounted) return;
+    setState(() => _testingConnection = false);
+
+    res.fold(
+      (err) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(err), backgroundColor: AppColors.error),
+        );
+      },
+      (count) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(count > 0 ? 'تم سحب $count طلب جديد بنجاح' : 'صندوق الوارد محدث، لا توجد طلبات جديدة حالياً'),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()));
+    }
+
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: AppColors.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.send_rounded, color: AppColors.primary, size: 20),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'مجمع وارد تيليجرام المجاني المباشر',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14.5,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'استقبال حجوزات وطلبيات الزبائن مباشرة بدون وسطاء وبصفر تكلفة اشتراكات',
+                        style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            Divider(height: 24, color: AppColors.outlineVariant),
+
+            const Text(
+              'توكن البوت (Telegram Bot Token) *',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+            ),
+            const SizedBox(height: 6),
+            TextFormField(
+              controller: _tokenController,
+              decoration: InputDecoration(
+                hintText: '123456789:ABCdefGHIjklmNoPQRsTUVwxyZ',
+                prefixIcon: const Icon(Icons.key_rounded, size: 18),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.clear_rounded, size: 18),
+                  onPressed: () => _tokenController.clear(),
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppColors.outlineVariant),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'احصل على التوكن مجاناً وبثوانٍ عبر مراسلة @BotFather داخل تطبيق تيليجرام وإنشاء بوت جديد.',
+              style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+            ),
+
+            if (_statusMessage != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: _isSuccessStatus ? const Color(0xFFF0FDF4) : const Color(0xFFFEF2F2),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: _isSuccessStatus ? const Color(0xFFBBF7D0) : const Color(0xFFFECACA),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _isSuccessStatus ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+                      size: 18,
+                      color: _isSuccessStatus ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _statusMessage!,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: _isSuccessStatus ? const Color(0xFF15803D) : const Color(0xFFB91C1C),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: _testingConnection ? null : _testAndSave,
+                  icon: _testingConnection
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.verified_outlined, size: 16),
+                  label: const Text('تحقق من صحة البوت وحفظ'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _testingConnection ? null : _pullMessages,
+                  icon: const Icon(Icons.sync_rounded, size: 16),
+                  label: const Text('سحب الرسائل الجديدة الآن'),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+                FilledButton.tonalIcon(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (_) => const TelegramInboxDialog(),
+                    );
+                  },
+                  icon: const Icon(Icons.inbox_rounded, size: 16),
+                  label: const Text('فتح صندوق وارد تيليجرام'),
+                  style: FilledButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

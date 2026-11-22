@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/di/injection.dart';
 import '../../../../core/utils/money.dart';
 import '../../../customers/domain/entities/customer_entity.dart';
 import '../../data/services/pre_order_excel_service.dart';
@@ -12,8 +13,23 @@ import '../cubits/pre_orders_cubit.dart';
 
 class CreatePreOrderDialog extends StatefulWidget {
   final CustomerEntity? initialCustomer;
+  final String? initialCustomerName;
+  final String? initialCustomerPhone;
+  final String? initialNotes;
+  final String? initialPlatform;
+  final List<PreOrderItemEntity>? initialItems;
+  final String? initialDeposit;
 
-  const CreatePreOrderDialog({super.key, this.initialCustomer});
+  const CreatePreOrderDialog({
+    super.key,
+    this.initialCustomer,
+    this.initialCustomerName,
+    this.initialCustomerPhone,
+    this.initialNotes,
+    this.initialPlatform,
+    this.initialItems,
+    this.initialDeposit,
+  });
 
   @override
   State<CreatePreOrderDialog> createState() => _CreatePreOrderDialogState();
@@ -38,14 +54,14 @@ class _ItemEntry {
     String cost = '',
     String commission = '',
     String price = '',
-  })  : id = id ?? const Uuid().v4(),
-        nameCtrl = TextEditingController(text: name),
-        descCtrl = TextEditingController(text: desc),
-        urlCtrl = TextEditingController(text: url),
-        qtyCtrl = TextEditingController(text: qty),
-        costCtrl = TextEditingController(text: cost),
-        commissionCtrl = TextEditingController(text: commission),
-        priceCtrl = TextEditingController(text: price);
+  }) : id = id ?? const Uuid().v4(),
+       nameCtrl = TextEditingController(text: name),
+       descCtrl = TextEditingController(text: desc),
+       urlCtrl = TextEditingController(text: url),
+       qtyCtrl = TextEditingController(text: qty),
+       costCtrl = TextEditingController(text: cost),
+       commissionCtrl = TextEditingController(text: commission),
+       priceCtrl = TextEditingController(text: price);
 
   void dispose() {
     nameCtrl.dispose();
@@ -60,6 +76,8 @@ class _ItemEntry {
 
 class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
   final _formKey = GlobalKey<FormState>();
+  final _scrollController = ScrollController();
+  bool _isSubmitting = false;
 
   // بيانات العميل
   final _customerNameCtrl = TextEditingController();
@@ -107,11 +125,46 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
       _selectedCustomer = widget.initialCustomer;
       _customerNameCtrl.text = widget.initialCustomer!.name;
       _customerPhoneCtrl.text = widget.initialCustomer!.phone;
+    } else {
+      if (widget.initialCustomerName != null) {
+        _customerNameCtrl.text = widget.initialCustomerName!;
+      }
+      if (widget.initialCustomerPhone != null) {
+        _customerPhoneCtrl.text = widget.initialCustomerPhone!;
+      }
+    }
+    if (widget.initialDeposit != null && widget.initialDeposit!.isNotEmpty) {
+      _depositCtrl.text = widget.initialDeposit!;
+    }
+    if (widget.initialNotes != null && widget.initialNotes!.isNotEmpty) {
+      _notesCtrl.text = widget.initialNotes!;
+    }
+    if (widget.initialPlatform != null && widget.initialPlatform!.isNotEmpty) {
+      _selectedPlatform = widget.initialPlatform!;
+    }
+    if (widget.initialItems != null && widget.initialItems!.isNotEmpty) {
+      for (final item in widget.initialItems!) {
+        _items.add(
+          _ItemEntry(
+            id: item.id,
+            name: item.productName,
+            desc: item.variantDescription ?? '',
+            url: item.itemUrl ?? '',
+            qty: item.quantity.toString(),
+            cost: item.costPricePiasters > 0
+                ? (item.costPricePiasters / 100).toStringAsFixed(0)
+                : '',
+            commission: (item.commissionPiasters / 100).toStringAsFixed(0),
+            price: (item.unitPricePiasters / 100).toStringAsFixed(0),
+          ),
+        );
+      }
     }
   }
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _customerNameCtrl.dispose();
     _customerPhoneCtrl.dispose();
     _agentNameCtrl.dispose();
@@ -151,12 +204,14 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
 
   void _onFastCostOrCommissionChanged() {
     final cost = double.tryParse(_fastCostCtrl.text.trim()) ?? 0.0;
-    final comm = double.tryParse(_fastCommissionCtrl.text.trim()) ??
+    final comm =
+        double.tryParse(_fastCommissionCtrl.text.trim()) ??
         double.tryParse(_defaultCommissionCtrl.text.trim()) ??
         0.0;
     final total = cost + comm;
-    _fastSalePriceCtrl.text =
-        total > 0 ? total.toStringAsFixed(1).replaceAll('.0', '') : '';
+    _fastSalePriceCtrl.text = total > 0
+        ? total.toStringAsFixed(1).replaceAll('.0', '')
+        : '';
     setState(() {});
   }
 
@@ -164,8 +219,9 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
     final sale = double.tryParse(val.trim()) ?? 0.0;
     final cost = double.tryParse(_fastCostCtrl.text.trim()) ?? 0.0;
     final comm = (sale - cost).clamp(0.0, double.infinity);
-    _fastCommissionCtrl.text =
-        comm > 0 ? comm.toStringAsFixed(1).replaceAll('.0', '') : '';
+    _fastCommissionCtrl.text = comm > 0
+        ? comm.toStringAsFixed(1).replaceAll('.0', '')
+        : '';
     setState(() {});
   }
 
@@ -184,14 +240,17 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
     }
 
     final desc = _fastDescCtrl.text.trim();
-    final qty = _fastQtyCtrl.text.trim().isNotEmpty ? _fastQtyCtrl.text.trim() : '1';
+    final qty = _fastQtyCtrl.text.trim().isNotEmpty
+        ? _fastQtyCtrl.text.trim()
+        : '1';
     final cost = _fastCostCtrl.text.trim();
     final comm = _fastCommissionCtrl.text.trim().isNotEmpty
         ? _fastCommissionCtrl.text.trim()
         : _defaultCommissionCtrl.text.trim();
     final price = _fastSalePriceCtrl.text.trim().isNotEmpty
         ? _fastSalePriceCtrl.text.trim()
-        : ((double.tryParse(cost) ?? 0) + (double.tryParse(comm) ?? 0)).toString();
+        : ((double.tryParse(cost) ?? 0) + (double.tryParse(comm) ?? 0))
+              .toString();
     final url = _fastUrlCtrl.text.trim();
 
     setState(() {
@@ -280,9 +339,15 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                 name: it.productName,
                 desc: it.variantDescription ?? '',
                 qty: it.quantity.toString(),
-                cost: (it.costPricePiasters / 100).toStringAsFixed(1).replaceAll('.0', ''),
-                commission: (it.commissionPiasters / 100).toStringAsFixed(1).replaceAll('.0', ''),
-                price: (it.unitPricePiasters / 100).toStringAsFixed(1).replaceAll('.0', ''),
+                cost: (it.costPricePiasters / 100)
+                    .toStringAsFixed(1)
+                    .replaceAll('.0', ''),
+                commission: (it.commissionPiasters / 100)
+                    .toStringAsFixed(1)
+                    .replaceAll('.0', ''),
+                price: (it.unitPricePiasters / 100)
+                    .toStringAsFixed(1)
+                    .replaceAll('.0', ''),
                 url: it.itemUrl ?? '',
               ),
             );
@@ -291,7 +356,9 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('تم استيراد ${imported.length} صنف بنجاح من ملف الإكسيل'),
+            content: Text(
+              'تم استيراد ${imported.length} صنف بنجاح من ملف الإكسيل',
+            ),
             backgroundColor: AppColors.success,
           ),
         );
@@ -340,8 +407,10 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
     final totalCostPiasters = _calculatedTotalCostPiasters;
     final totalProfitPiasters = _calculatedTotalProfitPiasters;
     final depositPiasters = _depositPiasters;
-    final remainingPiasters =
-        (totalSalePiasters - depositPiasters).clamp(0, totalSalePiasters);
+    final remainingPiasters = (totalSalePiasters - depositPiasters).clamp(
+      0,
+      totalSalePiasters,
+    );
 
     return Dialog(
       backgroundColor: Colors.white,
@@ -407,11 +476,15 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                 // 2. محتوى النموذج
                 Expanded(
                   child: SingleChildScrollView(
+                    controller: _scrollController,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // قسم مصدر الطلب / المنصة
-                        _buildSectionHeader('مصدر الطلب / جهة الشراء والتوريد', Icons.shopping_bag_outlined),
+                        _buildSectionHeader(
+                          'مصدر الطلب / جهة الشراء والتوريد',
+                          Icons.shopping_bag_outlined,
+                        ),
                         const SizedBox(height: 8),
                         Wrap(
                           spacing: 8,
@@ -419,16 +492,24 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                           children: PreOrderPlatforms.all.map((platform) {
                             final isSel = _selectedPlatform == platform;
                             return InkWell(
-                              onTap: () => setState(() => _selectedPlatform = platform),
+                              onTap: () =>
+                                  setState(() => _selectedPlatform = platform),
                               borderRadius: BorderRadius.circular(8),
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 150),
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 7,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: isSel ? AppColors.primary : AppColors.surfaceContainerLow,
+                                  color: isSel
+                                      ? AppColors.primary
+                                      : AppColors.surfaceContainerLow,
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
-                                    color: isSel ? AppColors.primary : AppColors.outlineVariant,
+                                    color: isSel
+                                        ? AppColors.primary
+                                        : AppColors.outlineVariant,
                                   ),
                                 ),
                                 child: Text(
@@ -436,8 +517,12 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                                   style: TextStyle(
                                     fontFamily: 'Cairo',
                                     fontSize: 12,
-                                    fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
-                                    color: isSel ? Colors.white : AppColors.onSurface,
+                                    fontWeight: isSel
+                                        ? FontWeight.bold
+                                        : FontWeight.w500,
+                                    color: isSel
+                                        ? Colors.white
+                                        : AppColors.onSurface,
                                   ),
                                 ),
                               ),
@@ -448,7 +533,10 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                         const SizedBox(height: 16),
 
                         // قسم العميل
-                        _buildSectionHeader('بيانات العميل', Icons.person_rounded),
+                        _buildSectionHeader(
+                          'بيانات العميل',
+                          Icons.person_rounded,
+                        ),
                         const SizedBox(height: 8),
                         Row(
                           children: [
@@ -456,14 +544,19 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                               flex: 3,
                               child: TextFormField(
                                 controller: _customerNameCtrl,
-                                style: const TextStyle(fontFamily: 'Cairo', fontSize: 13),
+                                style: const TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 13,
+                                ),
                                 decoration: _inputDecoration(
                                   label: 'اسم العميل *',
                                   hint: 'مثال: سارة محمد أو أحمد علي',
                                   icon: Icons.person_outline_rounded,
                                 ),
                                 validator: (v) =>
-                                    (v == null || v.trim().isEmpty) ? 'مطلوب اسم العميل' : null,
+                                    (v == null || v.trim().isEmpty)
+                                    ? 'مطلوب اسم العميل'
+                                    : null,
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -472,14 +565,28 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                               child: TextFormField(
                                 controller: _customerPhoneCtrl,
                                 keyboardType: TextInputType.phone,
-                                style: const TextStyle(fontFamily: 'Cairo', fontSize: 13),
+                                style: const TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 13,
+                                ),
                                 decoration: _inputDecoration(
-                                  label: 'رقم الهاتف (واتساب) *',
+                                  label: 'رقم الهاتف (واتساب) - اختياري',
                                   hint: '01xxxxxxxxx',
                                   icon: Icons.phone_android_rounded,
                                 ),
-                                validator: (v) =>
-                                    (v == null || v.trim().isEmpty) ? 'مطلوب رقم الهاتف' : null,
+                                validator: (v) {
+                                  if (v == null || v.trim().isEmpty) {
+                                    return null;
+                                  }
+                                  final clean = v.trim().replaceAll(
+                                    RegExp(r'[\s\-]'),
+                                    '',
+                                  );
+                                  if (clean.length < 8) {
+                                    return 'رقم الهاتف غير صالح';
+                                  }
+                                  return null;
+                                },
                               ),
                             ),
                           ],
@@ -488,7 +595,10 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                         const SizedBox(height: 16),
 
                         // قسم المندوب والشحن والعمولة الافتراضية
-                        _buildSectionHeader('بيانات وسيط الشراء / المندوب والتتبع', Icons.local_shipping_rounded),
+                        _buildSectionHeader(
+                          'بيانات وسيط الشراء / المندوب والتتبع',
+                          Icons.local_shipping_rounded,
+                        ),
                         const SizedBox(height: 8),
                         Row(
                           children: [
@@ -496,7 +606,10 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                               flex: 3,
                               child: TextFormField(
                                 controller: _agentNameCtrl,
-                                style: const TextStyle(fontFamily: 'Cairo', fontSize: 13),
+                                style: const TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 13,
+                                ),
                                 decoration: _inputDecoration(
                                   label: 'اسم المندوب / الوسيط (اختياري)',
                                   hint: 'مثال: كابتن أحمد / وسيط شحن',
@@ -509,9 +622,13 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                               flex: 3,
                               child: TextFormField(
                                 controller: _trackingNumberCtrl,
-                                style: const TextStyle(fontFamily: 'Cairo', fontSize: 13),
+                                style: const TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 13,
+                                ),
                                 decoration: _inputDecoration(
-                                  label: 'رقم البوليصة / كود التتبع (Tracking #)',
+                                  label:
+                                      'رقم البوليصة / كود التتبع (Tracking #)',
                                   hint: 'مثال: SH-9284102',
                                   icon: Icons.tag_rounded,
                                 ),
@@ -546,36 +663,62 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            _buildSectionHeader('إضافة أصناف الحجز (سريع بالـ Enter)', Icons.bolt_rounded),
+                            _buildSectionHeader(
+                              'إضافة أصناف الحجز (سريع بالـ Enter)',
+                              Icons.bolt_rounded,
+                            ),
                             Row(
                               children: [
                                 TextButton.icon(
                                   onPressed: _handleDownloadTemplate,
-                                  icon: const Icon(Icons.download_rounded, size: 16),
+                                  icon: const Icon(
+                                    Icons.download_rounded,
+                                    size: 16,
+                                  ),
                                   label: const Text(
                                     'تحميل نموذج إكسيل',
-                                    style: TextStyle(fontFamily: 'Cairo', fontSize: 11),
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: 11,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 4),
                                 ElevatedButton.icon(
-                                  onPressed: _isImportingExcel ? null : _handleImportExcel,
+                                  onPressed: _isImportingExcel
+                                      ? null
+                                      : _handleImportExcel,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.teal.shade700,
                                     foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
                                   ),
                                   icon: _isImportingExcel
                                       ? const SizedBox(
                                           width: 14,
                                           height: 14,
-                                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2,
+                                          ),
                                         )
-                                      : const Icon(Icons.upload_file_rounded, size: 16),
+                                      : const Icon(
+                                          Icons.upload_file_rounded,
+                                          size: 16,
+                                        ),
                                   label: const Text(
                                     'استيراد من إكسيل',
-                                    style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -597,26 +740,44 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                             decoration: BoxDecoration(
                               color: AppColors.surfaceContainerLowest,
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.6)),
+                              border: Border.all(
+                                color: AppColors.outlineVariant.withValues(
+                                  alpha: 0.6,
+                                ),
+                              ),
                             ),
                             child: Column(
                               children: [
-                                Icon(Icons.shopping_bag_outlined, size: 36, color: Colors.grey.shade400),
+                                Icon(
+                                  Icons.shopping_bag_outlined,
+                                  size: 36,
+                                  color: Colors.grey.shade400,
+                                ),
                                 const SizedBox(height: 6),
                                 Text(
                                   'لم يتم إضافة أصناف بعد. استخدم سطر الإدخال السريع أعلاه أو زر استيراد إكسيل',
-                                  style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade600),
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
                                 ),
                               ],
                             ),
                           )
                         else
-                          ...List.generate(_items.length, (idx) => _buildItemRow(idx)),
+                          ...List.generate(
+                            _items.length,
+                            (idx) => _buildItemRow(idx),
+                          ),
 
                         const SizedBox(height: 16),
 
                         // قسم العربون وطريقة الدفع
-                        _buildSectionHeader('العربون والماليات والتسليم', Icons.payments_rounded),
+                        _buildSectionHeader(
+                          'العربون والماليات والتسليم',
+                          Icons.payments_rounded,
+                        ),
                         const SizedBox(height: 8),
                         Row(
                           children: [
@@ -649,13 +810,27 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                                   icon: Icons.payment_rounded,
                                 ),
                                 items: const [
-                                  DropdownMenuItem(value: 'cash', child: Text('كاش (نقداً في الخزينة)')),
-                                  DropdownMenuItem(value: 'instapay', child: Text('انستاباي (InstaPay)')),
-                                  DropdownMenuItem(value: 'vodafone_cash', child: Text('فودافون كاش / محفظة')),
-                                  DropdownMenuItem(value: 'card', child: Text('فيزا / بطاقة بنكية')),
+                                  DropdownMenuItem(
+                                    value: 'cash',
+                                    child: Text('كاش (نقداً في الخزينة)'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'instapay',
+                                    child: Text('انستاباي (InstaPay)'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'vodafone_cash',
+                                    child: Text('فودافون كاش / محفظة'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'card',
+                                    child: Text('فيزا / بطاقة بنكية'),
+                                  ),
                                 ],
                                 onChanged: (val) {
-                                  if (val != null) setState(() => _paymentMethod = val);
+                                  if (val != null) {
+                                    setState(() => _paymentMethod = val);
+                                  }
                                 },
                               ),
                             ),
@@ -672,12 +847,18 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                                 onTap: () async {
                                   final picked = await showDatePicker(
                                     context: context,
-                                    initialDate: DateTime.now().add(const Duration(days: 7)),
+                                    initialDate: DateTime.now().add(
+                                      const Duration(days: 7),
+                                    ),
                                     firstDate: DateTime.now(),
-                                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                                    lastDate: DateTime.now().add(
+                                      const Duration(days: 365),
+                                    ),
                                   );
                                   if (picked != null) {
-                                    setState(() => _expectedDeliveryDate = picked);
+                                    setState(
+                                      () => _expectedDeliveryDate = picked,
+                                    );
                                   }
                                 },
                                 borderRadius: BorderRadius.circular(10),
@@ -705,7 +886,10 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                             Expanded(
                               child: TextFormField(
                                 controller: _notesCtrl,
-                                style: const TextStyle(fontFamily: 'Cairo', fontSize: 12.5),
+                                style: const TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 12.5,
+                                ),
                                 decoration: _inputDecoration(
                                   label: 'ملاحظات إضافية',
                                   hint: 'أية تعليمات خاصة بالشحن أو الاستلام',
@@ -720,7 +904,10 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
 
                         // 3. شريط الملخص المالي أسفل النموذج (5 خانات ذكية)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.surfaceContainerLow,
                             borderRadius: BorderRadius.circular(12),
@@ -729,18 +916,52 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
-                              _buildSummaryItem('إجمالي العميل', Money(totalSalePiasters).toDisplay(), AppColors.onSurface),
-                              Container(width: 1, height: 30, color: AppColors.outlineVariant),
-                              _buildSummaryItem('تكلفة المندوب', Money(totalCostPiasters).toDisplay(), Colors.blueGrey.shade700),
-                              Container(width: 1, height: 30, color: AppColors.outlineVariant),
-                              _buildSummaryItem('صافي ربحك', '+${Money(totalProfitPiasters).toDisplay()}', AppColors.primary),
-                              Container(width: 1, height: 30, color: AppColors.outlineVariant),
-                              _buildSummaryItem('العربون المقبوض', Money(depositPiasters).toDisplay(), AppColors.success),
-                              Container(width: 1, height: 30, color: AppColors.outlineVariant),
+                              _buildSummaryItem(
+                                'إجمالي العميل',
+                                Money(totalSalePiasters).toDisplay(),
+                                AppColors.onSurface,
+                              ),
+                              Container(
+                                width: 1,
+                                height: 30,
+                                color: AppColors.outlineVariant,
+                              ),
+                              _buildSummaryItem(
+                                'تكلفة المندوب',
+                                Money(totalCostPiasters).toDisplay(),
+                                Colors.blueGrey.shade700,
+                              ),
+                              Container(
+                                width: 1,
+                                height: 30,
+                                color: AppColors.outlineVariant,
+                              ),
+                              _buildSummaryItem(
+                                'صافي ربحك',
+                                '+${Money(totalProfitPiasters).toDisplay()}',
+                                AppColors.primary,
+                              ),
+                              Container(
+                                width: 1,
+                                height: 30,
+                                color: AppColors.outlineVariant,
+                              ),
+                              _buildSummaryItem(
+                                'العربون المقبوض',
+                                Money(depositPiasters).toDisplay(),
+                                AppColors.success,
+                              ),
+                              Container(
+                                width: 1,
+                                height: 30,
+                                color: AppColors.outlineVariant,
+                              ),
                               _buildSummaryItem(
                                 'المتبقي عند الاستلام',
                                 Money(remainingPiasters).toDisplay(),
-                                remainingPiasters > 0 ? AppColors.error : AppColors.success,
+                                remainingPiasters > 0
+                                    ? AppColors.error
+                                    : AppColors.success,
                               ),
                             ],
                           ),
@@ -758,21 +979,44 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                   children: [
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
+                      child: const Text(
+                        'إلغاء',
+                        style: TextStyle(fontFamily: 'Cairo'),
+                      ),
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 11),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 11,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
-                      onPressed: _submit,
-                      icon: const Icon(Icons.check_rounded, size: 20),
-                      label: const Text(
-                        'تأكيد وحفظ أوردر الحجز',
-                        style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 13.5),
+                      onPressed: _isSubmitting ? null : _submit,
+                      icon: _isSubmitting
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.check_rounded, size: 20),
+                      label: Text(
+                        _isSubmitting
+                            ? 'جاري الحفظ...'
+                            : 'تأكيد وحفظ أوردر الحجز',
+                        style: const TextStyle(
+                          fontFamily: 'Cairo',
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13.5,
+                        ),
                       ),
                     ),
                   ],
@@ -840,7 +1084,11 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                   focusNode: _fastQtyFocus,
                   keyboardType: TextInputType.number,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                   decoration: _compactInput(label: 'الكمية'),
                   onFieldSubmitted: (_) => _fastCostFocus.requestFocus(),
                 ),
@@ -859,7 +1107,11 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                   focusNode: _fastCostFocus,
                   keyboardType: TextInputType.number,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                   decoration: _compactInput(label: 'سعر الجملة (التكلفة) *'),
                   onChanged: (_) => _onFastCostOrCommissionChanged(),
                   onFieldSubmitted: (_) => _fastCommissionFocus.requestFocus(),
@@ -874,7 +1126,12 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                   focusNode: _fastCommissionFocus,
                   keyboardType: TextInputType.number,
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
                   decoration: _compactInput(label: 'العمولة'),
                   onChanged: (_) => _onFastCostOrCommissionChanged(),
                   onFieldSubmitted: (_) => _fastSalePriceFocus.requestFocus(),
@@ -889,8 +1146,14 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                   focusNode: _fastSalePriceFocus,
                   keyboardType: TextInputType.number,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold),
-                  decoration: _compactInput(label: 'سعر البيع النهائي للعميل *'),
+                  style: const TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  decoration: _compactInput(
+                    label: 'سعر البيع النهائي للعميل *',
+                  ),
                   onChanged: _onFastSalePriceChanged,
                   onFieldSubmitted: (_) => _addFastItem(),
                 ),
@@ -903,11 +1166,23 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
                 icon: const Icon(Icons.add_rounded, size: 17),
-                label: const Text('إضافة [Enter]', style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5, fontWeight: FontWeight.bold)),
+                label: const Text(
+                  'إضافة [Enter]',
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
           ),
@@ -995,7 +1270,11 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                   controller: item.qtyCtrl,
                   keyboardType: TextInputType.number,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                   decoration: _compactInput(label: 'الكمية'),
                   onChanged: (_) => setState(() {}),
                 ),
@@ -1009,12 +1288,18 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                   controller: item.costCtrl,
                   keyboardType: TextInputType.number,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                   decoration: _compactInput(label: 'تكلفة المندوب'),
                   onChanged: (val) {
                     final c = double.tryParse(val) ?? 0;
                     final comm = double.tryParse(item.commissionCtrl.text) ?? 0;
-                    item.priceCtrl.text = (c + comm).toStringAsFixed(1).replaceAll('.0', '');
+                    item.priceCtrl.text = (c + comm)
+                        .toStringAsFixed(1)
+                        .replaceAll('.0', '');
                     setState(() {});
                   },
                 ),
@@ -1028,12 +1313,19 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                   controller: item.commissionCtrl,
                   keyboardType: TextInputType.number,
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
                   decoration: _compactInput(label: 'العمولة'),
                   onChanged: (val) {
                     final comm = double.tryParse(val) ?? 0;
                     final c = double.tryParse(item.costCtrl.text) ?? 0;
-                    item.priceCtrl.text = (c + comm).toStringAsFixed(1).replaceAll('.0', '');
+                    item.priceCtrl.text = (c + comm)
+                        .toStringAsFixed(1)
+                        .replaceAll('.0', '');
                     setState(() {});
                   },
                 ),
@@ -1047,13 +1339,19 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                   controller: item.priceCtrl,
                   keyboardType: TextInputType.number,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                   decoration: _compactInput(label: 'سعر البيع'),
                   onChanged: (val) {
                     final s = double.tryParse(val) ?? 0;
                     final c = double.tryParse(item.costCtrl.text) ?? 0;
                     final comm = (s - c).clamp(0.0, double.infinity);
-                    item.commissionCtrl.text = comm.toStringAsFixed(1).replaceAll('.0', '');
+                    item.commissionCtrl.text = comm
+                        .toStringAsFixed(1)
+                        .replaceAll('.0', '');
                     setState(() {});
                   },
                 ),
@@ -1062,7 +1360,11 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
 
               // زر الحذف
               IconButton(
-                icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error),
+                icon: const Icon(
+                  Icons.delete_outline_rounded,
+                  size: 18,
+                  color: AppColors.error,
+                ),
                 onPressed: () => _removeItem(idx),
                 tooltip: 'حذف الصنف',
               ),
@@ -1092,7 +1394,11 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
                 ),
                 child: Text(
                   'التكلفة: ${totalCost.toStringAsFixed(1)} ج | البيع: ${totalSale.toStringAsFixed(1)} ج | الربح: +${totalProfit.toStringAsFixed(1)} ج',
-                  style: const TextStyle(fontFamily: 'Cairo', fontSize: 10.5, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -1125,7 +1431,11 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
       children: [
         Text(
           label,
-          style: const TextStyle(fontFamily: 'Cairo', fontSize: 10.5, color: Colors.grey),
+          style: const TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 10.5,
+            color: Colors.grey,
+          ),
         ),
         const SizedBox(height: 2),
         Text(
@@ -1151,7 +1461,11 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
       hintText: hint,
       prefixIcon: Icon(icon, size: 18, color: AppColors.primary),
       labelStyle: const TextStyle(fontFamily: 'Cairo', fontSize: 12),
-      hintStyle: const TextStyle(fontFamily: 'Cairo', fontSize: 11.5, color: Colors.grey),
+      hintStyle: const TextStyle(
+        fontFamily: 'Cairo',
+        fontSize: 11.5,
+        color: Colors.grey,
+      ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       enabledBorder: OutlineInputBorder(
@@ -1166,7 +1480,11 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
       labelText: label,
       hintText: hint,
       labelStyle: const TextStyle(fontFamily: 'Cairo', fontSize: 11),
-      hintStyle: const TextStyle(fontFamily: 'Cairo', fontSize: 10.5, color: Colors.grey),
+      hintStyle: const TextStyle(
+        fontFamily: 'Cairo',
+        fontSize: 10.5,
+        color: Colors.grey,
+      ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
       enabledBorder: OutlineInputBorder(
@@ -1177,7 +1495,23 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'يرجى التأكد من ملء اسم العميل والحقول المطلوبة باللون الأحمر',
+            style: TextStyle(fontFamily: 'Cairo'),
+          ),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
 
     if (_items.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1193,7 +1527,9 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
     if (totalSalePiasters <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('يرجى تحديد أسعار الأصناف بحيث يكون إجمالي البيع أكبر من صفر'),
+          content: Text(
+            'يرجى تحديد أسعار الأصناف بحيث يكون إجمالي البيع أكبر من صفر',
+          ),
           backgroundColor: AppColors.error,
         ),
       );
@@ -1221,7 +1557,8 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
 
       final costNum = double.tryParse(item.costCtrl.text.trim()) ?? 0.0;
       final commNum = double.tryParse(item.commissionCtrl.text.trim()) ?? 0.0;
-      final priceNum = double.tryParse(item.priceCtrl.text.trim()) ?? (costNum + commNum);
+      final priceNum =
+          double.tryParse(item.priceCtrl.text.trim()) ?? (costNum + commNum);
 
       final unitPricePiasters = (priceNum * 100).round();
       final costPiasters = (costNum * 100).round();
@@ -1245,15 +1582,35 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
       );
     }
 
+    if (items.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'يرجى التأكد من كتابة اسم صنف واحد على الأقل في قائمة الأصناف',
+          ),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    final phone = _customerPhoneCtrl.text.trim().isNotEmpty
+        ? _customerPhoneCtrl.text.trim()
+        : 'بدون هاتف';
+
     final order = PreOrderEntity(
       id: const Uuid().v4(),
       branchId: '',
       orderNumber: '',
       customerId: _selectedCustomer?.id,
       customerName: _customerNameCtrl.text.trim(),
-      customerPhone: _customerPhoneCtrl.text.trim(),
-      agentName: _agentNameCtrl.text.trim().isNotEmpty ? _agentNameCtrl.text.trim() : null,
-      trackingNumber: _trackingNumberCtrl.text.trim().isNotEmpty ? _trackingNumberCtrl.text.trim() : null,
+      customerPhone: phone,
+      agentName: _agentNameCtrl.text.trim().isNotEmpty
+          ? _agentNameCtrl.text.trim()
+          : null,
+      trackingNumber: _trackingNumberCtrl.text.trim().isNotEmpty
+          ? _trackingNumberCtrl.text.trim()
+          : null,
       sourcePlatform: _selectedPlatform,
       notes: _notesCtrl.text.trim().isNotEmpty ? _notesCtrl.text.trim() : null,
       expectedDeliveryDate: _expectedDeliveryDate,
@@ -1265,24 +1622,63 @@ class _CreatePreOrderDialogState extends State<CreatePreOrderDialog> {
       items: items,
     );
 
-    final cubit = context.read<PreOrdersCubit>();
-    final ok = await cubit.createPreOrder(
-      order,
-      initialDepositPiasters: depositPiasters,
-      paymentMethod: _paymentMethod,
-    );
+    setState(() => _isSubmitting = true);
 
-    if (ok && mounted) {
-      Navigator.of(context).pop(true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'تم تسجيل طلب الحجز بنجاح بقيمة ${Money(totalSalePiasters).toDisplay()} ج.م وعربون ${Money(depositPiasters).toDisplay()} ج.م',
-            style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
-          ),
-          backgroundColor: AppColors.success,
-        ),
+    try {
+      PreOrdersCubit cubit;
+      try {
+        cubit = context.read<PreOrdersCubit>();
+      } catch (_) {
+        cubit = getIt<PreOrdersCubit>();
+      }
+
+      final ok = await cubit.createPreOrder(
+        order,
+        initialDepositPiasters: depositPiasters,
+        paymentMethod: _paymentMethod,
       );
+
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+
+      if (ok) {
+        Navigator.of(context).pop(true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'تم تسجيل طلب الحجز بنجاح بقيمة ${Money(totalSalePiasters).toDisplay()} ج.م وعربون ${Money(depositPiasters).toDisplay()} ج.م',
+              style: const TextStyle(
+                fontFamily: 'Cairo',
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      } else {
+        final err =
+            cubit.state.errorMessage ??
+            'فشل في حفظ طلب الحجز في قاعدة البيانات';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(err, style: const TextStyle(fontFamily: 'Cairo')),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'حدث خطأ أثناء حفظ الأوردر: $e',
+              style: const TextStyle(fontFamily: 'Cairo'),
+            ),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     }
   }
 }

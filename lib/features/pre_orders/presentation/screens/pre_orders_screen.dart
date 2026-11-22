@@ -3,11 +3,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../data/services/telegram_bot_service.dart';
 import '../../domain/entities/pre_order_entity.dart';
 import '../cubits/pre_orders_cubit.dart';
 import '../cubits/pre_orders_state.dart';
 import '../widgets/create_pre_order_dialog.dart';
 import '../widgets/create_pre_order_batch_dialog.dart';
+import '../widgets/telegram_inbox_dialog.dart';
 import '../widgets/pre_order_card.dart';
 import '../widgets/pre_order_batch_card.dart';
 import '../widgets/pre_order_delivery_dialog.dart';
@@ -153,6 +155,47 @@ class _PreOrdersViewState extends State<_PreOrdersView> {
             ),
 
             const SizedBox(width: 12),
+
+            // الزر 0: مجمع وصندوق وارد تيليجرام
+            FutureBuilder<int>(
+              future: getIt<TelegramBotService>().getPendingCount(),
+              builder: (context, snapshot) {
+                final pendingCount = snapshot.data ?? 0;
+                return OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: pendingCount > 0 ? AppColors.primary : AppColors.onSurfaceVariant,
+                    side: BorderSide(
+                      color: pendingCount > 0 ? AppColors.primary : AppColors.outlineVariant,
+                      width: pendingCount > 0 ? 1.4 : 1.0,
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+                  ),
+                  icon: const Icon(Icons.inbox_rounded, size: 17),
+                  label: Text(
+                    pendingCount > 0 ? 'وارد تيليجرام ($pendingCount)' : 'وارد تيليجرام',
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      color: pendingCount > 0 ? AppColors.primary : AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                  onPressed: () async {
+                    await showDialog(
+                      context: context,
+                      builder: (_) => const TelegramInboxDialog(),
+                    );
+                    if (context.mounted) {
+                      context.read<PreOrdersCubit>().loadPreOrders();
+                      setState(() {});
+                    }
+                  },
+                );
+              },
+            ),
+
+            const SizedBox(width: 8),
 
             // الزر 1: إضافة أوردر فردي
             OutlinedButton.icon(

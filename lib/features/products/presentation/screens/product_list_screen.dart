@@ -1168,6 +1168,7 @@ class _ProductsAndCategoriesViewState
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
+                    // سطر البادجات (القسم والحالة):
                     Row(
                       children: [
                         Container(
@@ -1220,6 +1221,45 @@ class _ProductsAndCategoriesViewState
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 4),
+                    // سطر التواريخ المستقل والمحمي بـ Flexible:
+                    StreamBuilder<Map<String, bool>>(
+                      stream: getIt.isRegistered<FeatureGate>()
+                          ? getIt<FeatureGate>().watchFeatures()
+                          : null,
+                      builder: (context, featSnap) {
+                        final showTimestamps =
+                            featSnap.data?[FeatureKeys.productTimestamps] ?? true;
+                        if (!showTimestamps) return const SizedBox.shrink();
+
+                        final c = product.createdAt;
+                        final cStr = 'أُضيف: ${c.year}/${c.month.toString().padLeft(2, '0')}/${c.day.toString().padLeft(2, '0')}';
+                        final hasUpdate = product.updatedAt != null &&
+                            product.updatedAt!.difference(product.createdAt).inMinutes.abs() > 1;
+                        final u = product.updatedAt;
+                        final uStr = (hasUpdate && u != null)
+                            ? ' • عُدّل: ${u.year}/${u.month.toString().padLeft(2, '0')}/${u.day.toString().padLeft(2, '0')}'
+                            : '';
+                        return Row(
+                          children: [
+                            const Icon(Icons.history_rounded, size: 11, color: Color(0xFF94A3B8)),
+                            const SizedBox(width: 3),
+                            Flexible(
+                              child: Text(
+                                '$cStr$uStr',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF94A3B8),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ],
                 ),

@@ -22,8 +22,13 @@ class ProductRepositoryImpl implements ProductRepository {
         categoryId: r.product.categoryId,
         categoryName: r.categoryName,
         createdAt: r.product.createdAt,
+        updatedAt: r.product.updatedAt,
         minStock: r.product.minStock,
         isActive: r.product.isActive,
+        activityType: r.product.activityType,
+        warrantyPeriod: r.product.warrantyPeriod,
+        brandOrModel: r.product.brandOrModel,
+        isInstallmentEligible: r.product.isInstallmentEligible,
         variants: r.variants.map((v) => VariantSummary(
           id: v.id,
           sku: v.sku,
@@ -49,8 +54,13 @@ class ProductRepositoryImpl implements ProductRepository {
           categoryId: r.product.categoryId,
           categoryName: r.categoryName,
           createdAt: r.product.createdAt,
+          updatedAt: r.product.updatedAt,
           minStock: r.product.minStock,
           isActive: r.product.isActive,
+          activityType: r.product.activityType,
+          warrantyPeriod: r.product.warrantyPeriod,
+          brandOrModel: r.product.brandOrModel,
+          isInstallmentEligible: r.product.isInstallmentEligible,
           variants: r.variants.map((v) => VariantSummary(
             id: v.id,
             sku: v.sku,
@@ -74,6 +84,10 @@ class ProductRepositoryImpl implements ProductRepository {
         categoryId: product.categoryId,
         description: product.description,
         minStock: product.minStock,
+        activityType: product.activityType,
+        warrantyPeriod: product.warrantyPeriod,
+        brandOrModel: product.brandOrModel,
+        isInstallmentEligible: product.isInstallmentEligible,
       );
       return const Right(null);
     } catch (e) {
@@ -90,6 +104,10 @@ class ProductRepositoryImpl implements ProductRepository {
         description: product.description,
         minStock: product.minStock,
         variants: variants,
+        activityType: product.activityType,
+        warrantyPeriod: product.warrantyPeriod,
+        brandOrModel: product.brandOrModel,
+        isInstallmentEligible: product.isInstallmentEligible,
       );
       return Right(id);
     } catch (e) {
@@ -105,6 +123,10 @@ class ProductRepositoryImpl implements ProductRepository {
         description: product.description,
         minStock: product.minStock,
         isActive: product.isActive,
+        activityType: product.activityType,
+        warrantyPeriod: product.warrantyPeriod,
+        brandOrModel: product.brandOrModel,
+        isInstallmentEligible: product.isInstallmentEligible,
       );
       return const Right(null);
     } catch (e) {

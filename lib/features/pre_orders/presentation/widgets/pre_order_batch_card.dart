@@ -513,9 +513,12 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                   child: _buildMetricCard(
                     icon: Icons.people_outline_rounded,
                     label: 'العملاء والقطع',
-                    mainValue: '${batch.totalOrdersCount} عميل (${batch.totalPiecesCount} ق)',
+                    mainValue:
+                        '${batch.totalOrdersCount} عميل (${batch.totalPiecesCount} ق)',
                     mainColor: AppColors.onSurface,
-                    subValue: ShippingSplitMethods.getLabel(batch.shippingSplitMethod),
+                    subValue: ShippingSplitMethods.getLabel(
+                      batch.shippingSplitMethod,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -523,9 +526,11 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                   child: _buildMetricCard(
                     icon: Icons.point_of_sale_rounded,
                     label: 'المبيعات والمتبقي',
-                    mainValue: '${Money(batch.totalRetailPiasters).toDisplay()} ج',
+                    mainValue:
+                        '${Money(batch.totalRetailPiasters).toDisplay()} ج',
                     mainColor: AppColors.onSurface,
-                    subValue: 'المتبقي: ${Money(batch.totalRemainingWithShippingPiasters).toDisplay()} ج',
+                    subValue:
+                        'المتبقي: ${Money(batch.totalRemainingWithShippingPiasters).toDisplay()} ج',
                     subColor: batch.totalRemainingWithShippingPiasters > 0
                         ? AppColors.error
                         : AppColors.success,
@@ -536,9 +541,11 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                   child: _buildMetricCard(
                     icon: Icons.trending_up_rounded,
                     label: 'صافي ربحك والشحن',
-                    mainValue: '+${Money(batch.totalProfitPiasters).toDisplay()} ج',
+                    mainValue:
+                        '+${Money(batch.totalProfitPiasters).toDisplay()} ج',
                     mainColor: AppColors.primary,
-                    subValue: 'شحن المندوب: ${Money(batch.totalShippingPiasters).toDisplay()} ج',
+                    subValue:
+                        'شحن المندوب: ${Money(batch.totalShippingPiasters).toDisplay()} ج',
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -546,9 +553,11 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                   child: _buildMetricCard(
                     icon: Icons.account_balance_wallet_outlined,
                     label: 'العربونات والتكلفة',
-                    mainValue: '${Money(batch.totalDepositsPiasters).toDisplay()} ج عربون',
+                    mainValue:
+                        '${Money(batch.totalDepositsPiasters).toDisplay()} ج عربون',
                     mainColor: AppColors.onSurface,
-                    subValue: 'الجملة: ${Money(batch.totalCostPiasters).toDisplay()} ج',
+                    subValue:
+                        'الجملة: ${Money(batch.totalCostPiasters).toDisplay()} ج',
                   ),
                 ),
               ],
@@ -980,7 +989,9 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.onSurface,
-                          side: const BorderSide(color: AppColors.outlineVariant),
+                          side: const BorderSide(
+                            color: AppColors.outlineVariant,
+                          ),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 12,
                             vertical: 8,
@@ -1084,7 +1095,9 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
                       tooltip: 'كشف المندوب إكسيل',
                       onPressed: () async {
                         final path =
-                            await PreOrderExcelService.exportBatchToExcel(batch);
+                            await PreOrderExcelService.exportBatchToExcel(
+                              batch,
+                            );
                         if (path != null && context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
@@ -1267,5 +1280,4 @@ class _PreOrderBatchCardState extends State<PreOrderBatchCard> {
       ),
     );
   }
-}
 }

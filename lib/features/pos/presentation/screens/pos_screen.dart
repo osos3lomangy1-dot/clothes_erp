@@ -19,6 +19,10 @@ import '../../../shifts/presentation/screens/shift_screen.dart';
 import '../../../invoices/domain/entities/invoice_details_entity.dart';
 import '../../../invoices/domain/repositories/invoices_repository.dart';
 import '../../../invoices/presentation/widgets/sale_success_dialog.dart';
+import '../../../invoices/presentation/services/receipt_pdf_service.dart';
+import '../../../installments/domain/entities/customer_installment_entity.dart';
+import '../../../installments/domain/entities/installment_schedule_entry.dart';
+import '../../../installments/domain/services/installment_calculator.dart';
 import '../../../employees/presentation/widgets/cashier_profile_dialog.dart';
 import '../../../../core/features/feature_gate.dart';
 import '../../../../core/services/crash_logger_service.dart';
@@ -38,6 +42,8 @@ import '../../../delivery/presentation/screens/delivery_orders_screen.dart';
 import '../../../delivery/presentation/widgets/delivery_checkout_dialog.dart';
 import '../../../pre_orders/presentation/screens/pre_orders_screen.dart';
 import '../../../auth/services/cashier_permissions_service.dart';
+import '../../../products/domain/entities/activity_type.dart';
+import '../../../settings/data/services/activity_settings_service.dart';
 
 Color _getCategoryColor(String? categoryId) {
   if (categoryId == null || categoryId.isEmpty) return const Color(0xFF673AB7);
@@ -973,6 +979,70 @@ class _ProductPanel extends StatelessWidget {
     return Column(
       children: [
         const SizedBox(height: 10),
+        // Activity Filter Bar: Multi-Activity store tabs
+        BlocBuilder<PosCubit, PosState>(
+          buildWhen: (prev, curr) => prev.selectedActivity != curr.selectedActivity,
+          builder: (context, state) {
+            final selected = state.selectedActivity;
+            return StreamBuilder<List<ActivityType>>(
+              stream: getIt.isRegistered<ActivitySettingsService>()
+                  ? getIt<ActivitySettingsService>().watchEnabledActivities()
+                  : Stream.value(ActivityType.values),
+              builder: (context, actSnap) {
+                final enabledActs = actSnap.data ?? ActivityType.values;
+
+                return StreamBuilder<bool>(
+                  stream: getIt.isRegistered<ActivitySettingsService>()
+                      ? getIt<ActivitySettingsService>().watchPreOrdersEnabled()
+                      : Stream.value(true),
+                  builder: (context, preOrderSnap) {
+                    final preOrdersOn = preOrderSnap.data ?? true;
+
+                    return Container(
+                      height: 38,
+                      margin: const EdgeInsets.symmetric(horizontal: 12),
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: [
+                          _activityTab(
+                            label: 'الكل',
+                            icon: Icons.apps_rounded,
+                            isSelected: selected == 'all',
+                            onTap: () => context.read<PosCubit>().filterByActivity('all'),
+                          ),
+                          for (final act in enabledActs) ...[
+                            const SizedBox(width: 8),
+                            _activityTab(
+                              label: act.labelArabic,
+                              icon: act.icon,
+                              isSelected: selected == act.code,
+                              onTap: () => context.read<PosCubit>().filterByActivity(act.code),
+                            ),
+                          ],
+                          if (preOrdersOn) ...[
+                            const SizedBox(width: 8),
+                            _activityTab(
+                              label: 'حجز مسبق',
+                              icon: Icons.event_note_rounded,
+                              isSelected: false,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const PreOrdersScreen()),
+                                );
+                              },
+                            ),
+                          ],
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            );
+          },
+        ),
+        const SizedBox(height: 8),
         // Category Chips: Horizontal scrollable row
         BlocBuilder<PosCubit, PosState>(
           builder: (context, state) {
@@ -1160,6 +1230,59 @@ class _ProductPanel extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _activityTab({
+    required String label,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.outlineVariant,
+            width: 1,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.25),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isSelected ? Colors.white : AppColors.onSurfaceVariant,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? Colors.white : AppColors.onSurface,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1390,16 +1513,19 @@ class _ProductCard extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
                                 Flexible(
-                                  child: Text(
-                                    '${Money(variant.salePrice).toDisplay()} ج.م',
-                                    style: TextStyle(
-                                      fontFamily: 'Cairo',
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                      color: AppColors.primary,
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: Alignment.centerRight,
+                                    child: Text(
+                                      '${Money(variant.salePrice).toDisplay()} ج.م',
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                        color: AppColors.primary,
+                                      ),
+                                      maxLines: 1,
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                                 const SizedBox(width: 4),
@@ -2066,6 +2192,7 @@ class PosHeldBill {
   String receivedText;
   String paymentMethod;
   DeliveryOrderEntity? deliveryOrder;
+  String hospitalityOrderType; // 'dineIn', 'takeaway', 'delivery'
   DateTime heldAt;
 
   PosHeldBill({
@@ -2078,6 +2205,7 @@ class PosHeldBill {
     this.receivedText = '',
     this.paymentMethod = 'cash',
     this.deliveryOrder,
+    this.hospitalityOrderType = 'dineIn',
     DateTime? heldAt,
   }) : heldAt = heldAt ?? DateTime.now();
 }
@@ -2103,6 +2231,7 @@ class _CartPanelState extends State<_CartPanel> {
   bool _creditAvailable = true;
   bool _isWholesaleMode = false;
   DeliveryOrderEntity? _deliveryOrder;
+  String _hospitalityOrderType = 'dineIn';
 
   int _nextBillId = 2;
   int _activeBillIndex = 0;
@@ -2122,6 +2251,7 @@ class _CartPanelState extends State<_CartPanel> {
         receivedText: _receivedCtrl.text,
         paymentMethod: _paymentMethod,
         deliveryOrder: _deliveryOrder,
+        hospitalityOrderType: _hospitalityOrderType,
       );
     }
   }
@@ -2144,6 +2274,7 @@ class _CartPanelState extends State<_CartPanel> {
       _isPercentageDiscount = false;
       _paymentMethod = 'cash';
       _deliveryOrder = null;
+      _hospitalityOrderType = 'dineIn';
     });
 
     posCubit.loadCart(cart: const [], customer: null);
@@ -2175,6 +2306,7 @@ class _CartPanelState extends State<_CartPanel> {
       _isPercentageDiscount = targetBill.isPercentageDiscount;
       _paymentMethod = targetBill.paymentMethod;
       _deliveryOrder = targetBill.deliveryOrder;
+      _hospitalityOrderType = targetBill.hospitalityOrderType;
     });
 
     posCubit.loadCart(
@@ -2205,6 +2337,7 @@ class _CartPanelState extends State<_CartPanel> {
     _isPercentageDiscount = activeBill.isPercentageDiscount;
     _paymentMethod = activeBill.paymentMethod;
     _deliveryOrder = activeBill.deliveryOrder;
+    _hospitalityOrderType = activeBill.hospitalityOrderType;
 
     posCubit.loadCart(
       cart: activeBill.cart,
@@ -2251,6 +2384,61 @@ class _CartPanelState extends State<_CartPanel> {
     );
   }
 
+  Widget _orderTypeButton({
+    required Key key,
+    required String label,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      key: key,
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : Colors.transparent,
+            width: 1.2,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 15,
+              color: isSelected ? AppColors.primary : const Color(0xFF64748B),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontSize: 11.5,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                color: isSelected ? AppColors.primary : const Color(0xFF475569),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _toggleDeliveryMode(PosState state) async {
     if (_deliveryOrder != null) {
       setState(() => _deliveryOrder = null);
@@ -2291,7 +2479,10 @@ class _CartPanelState extends State<_CartPanel> {
     context.read<PosCubit>().clearCart();
     _discountCtrl.clear();
     _receivedCtrl.clear();
-    setState(() => _isWholesaleMode = false);
+    setState(() {
+      _isWholesaleMode = false;
+      _hospitalityOrderType = 'dineIn';
+    });
     if (_activeBillIndex < _bills.length) {
       _bills[_activeBillIndex] = PosHeldBill(
         id: _bills[_activeBillIndex].id,
@@ -2808,27 +2999,62 @@ class _CartPanelState extends State<_CartPanel> {
   }
 
   Future<void> _handleInstallmentCheckout() async {
-    // TD-006: Atomic POS+installment checkout.
-    // Sale and contract are created in two separate transactions.
-    // If createContract fails after checkout succeeds, the sale is orphaned.
-    // Future fix requires TxWriter continuation callback.
-    // TD-010: SaleEntity uses double for money — inconsistent with piasters-as-int.
-
-    // CRITICAL: Capture BEFORE checkout (state resets on success)
-    final posState = context.read<PosCubit>().state;
-    final customer = posState.customer;
+    final posCubit = context.read<PosCubit>();
+    final posState = posCubit.state;
+    var customer = posState.customer;
     final totalPiasters = posState.total;
 
-    if (customer == null) {
+    if (totalPiasters <= 0 || posState.cart.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('اختر عميلاً أولاً للتقسيط')),
+        const SnackBar(
+          content: Text('السلة فارغة، أضف أصنافاً أولاً', style: TextStyle(fontFamily: 'Cairo')),
+        ),
       );
       return;
     }
-    if (totalPiasters <= 0) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('السلة فارغة')));
+
+    // Step 1: Smart Customer Validation (Auto-prompt without clearing cart)
+    if (customer == null || customer.name.trim() == 'عميل نقدي' || customer.name.trim().isEmpty) {
+      final selected = await showDialog<CustomerEntity>(
+        context: context,
+        builder: (_) => const _AssignCustomerDialog(),
+      );
+      if (!mounted) return;
+      if (selected == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'البيع بالتقسيط يتطلب تحديد أو تسجيل عميل لحفظ حقوق التاجر',
+              style: TextStyle(fontFamily: 'Cairo'),
+            ),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        return;
+      }
+      _onCustomerSelected(selected);
+      customer = selected;
+    }
+
+    // Step 2: Smart Cart Items Eligibility Check
+    final ineligibleItems = <String>[];
+    for (final item in posState.cart) {
+      final isEligible = posCubit.isProductInstallmentEligible(item.productId);
+      if (!isEligible) {
+        ineligibleItems.add(item.productName.isNotEmpty ? item.productName : 'صنف غير معروف');
+      }
+    }
+    if (ineligibleItems.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'السلة تحتوي على أصناف غير مؤهلة للتقسيط:\n• ${ineligibleItems.join("\n• ")}',
+            style: const TextStyle(fontFamily: 'Cairo'),
+          ),
+          backgroundColor: AppColors.error,
+          duration: const Duration(seconds: 6),
+        ),
+      );
       return;
     }
 
@@ -2842,16 +3068,6 @@ class _CartPanelState extends State<_CartPanel> {
         .getOrElse(() => [])
         .where((p) => p.isActive)
         .toList();
-
-    if (activePlans.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('لا توجد خطط تقسيط مفعلة. أضف خطة أولاً.'),
-        ),
-      );
-      return;
-    }
 
     if (!mounted) return;
 
@@ -2877,7 +3093,7 @@ class _CartPanelState extends State<_CartPanel> {
         if (!pinCheck.ok) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(pinCheck.error ?? 'الرقم السري للمدير غير صحيح'),
+              content: Text(pinCheck.error ?? 'الرقم السري للمدير غير صحيح', style: const TextStyle(fontFamily: 'Cairo')),
               backgroundColor: AppColors.error,
             ),
           );
@@ -2886,8 +3102,7 @@ class _CartPanelState extends State<_CartPanel> {
       }
     }
 
-    // Step 1: create sale, capture via callback
-    final posCubit = context.read<PosCubit>();
+    // Step 3: Create sale, capture via callback
     SaleEntity? createdSale;
     final success = await posCubit.checkout(
       paymentMethod: 'installment',
@@ -2899,11 +3114,11 @@ class _CartPanelState extends State<_CartPanel> {
     if (!success || createdSale == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('فشل إنشاء الفاتورة')));
+      ).showSnackBar(const SnackBar(content: Text('فشل إنشاء الفاتورة', style: TextStyle(fontFamily: 'Cairo'))));
       return;
     }
 
-    // Step 2: create contract
+    // Step 4: Create Contract (supports planId: null for instant custom plans)
     final contractResult = await getIt<InstallmentsFacade>().createContract(
       saleId: createdSale!.id,
       customerId: customer.id,
@@ -2919,7 +3134,7 @@ class _CartPanelState extends State<_CartPanel> {
 
     if (!mounted) return;
 
-    contractResult.fold(
+    await contractResult.fold(
       (failure) async {
         // Rollback / cancel created sale so it doesn't remain orphaned
         try {
@@ -2949,26 +3164,56 @@ class _CartPanelState extends State<_CartPanel> {
             content: Text(
               'فشل إنشاء عقد التقسيط: ${failure.message}\n'
               'تم إلغاء الفاتورة لعدم اكتمال التقسيط.',
+              style: const TextStyle(fontFamily: 'Cairo'),
             ),
             backgroundColor: AppColors.error,
             duration: const Duration(seconds: 8),
           ),
         );
       },
-      (contract) {
-        // checkout already cleared cart — no clearCart() needed
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم إنشاء عقد التقسيط بنجاح'),
-            backgroundColor: Colors.green,
-          ),
+      (contract) async {
+        // Fetch created invoice & schedule for professional receipt printing
+        final invoicesRepo = getIt<InvoicesRepository>();
+        final invRes = await invoicesRepo.getInvoiceById(createdSale!.id);
+        final invoice = invRes.fold((_) => null, (inv) => inv);
+
+        final scheduleRes = InstallmentCalculator.calculateSchedule(
+          principalPiasters: contract.totalPiasters,
+          durationMonths: contract.durationMonths,
+          interestModel: config.interestModel,
+          interestValue: contract.interestBp,
+          downPaymentPiasters: contract.downPaymentPiasters,
+          startDate: contract.startDate,
         );
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => InstallmentDetailScreen(contractId: contract.id),
-          ),
-        );
+        final schedule = scheduleRes.fold((_) => <InstallmentScheduleEntry>[], (s) => s);
+
+        if (!mounted) return;
+
+        if (invoice != null) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => _PosInstallmentSuccessDialog(
+              invoice: invoice,
+              contract: contract,
+              schedule: schedule,
+              customer: customer!,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('تم إنشاء عقد التقسيط بنجاح', style: TextStyle(fontFamily: 'Cairo')),
+              backgroundColor: AppColors.success,
+            ),
+          );
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => InstallmentDetailScreen(contractId: contract.id),
+            ),
+          );
+        }
       },
     );
   }
@@ -3182,6 +3427,61 @@ class _CartPanelState extends State<_CartPanel> {
                           ),
                         ],
                       ),
+                    ),
+
+                    // 1.5 Hospitality Order Type Bar (When restaurantsCafes activity is active)
+                    StreamBuilder<List<ActivityType>>(
+                      stream: getIt.isRegistered<ActivitySettingsService>()
+                          ? getIt<ActivitySettingsService>().watchEnabledActivities()
+                          : Stream.value(ActivityType.values),
+                      builder: (context, actSnap) {
+                        final enabledActs = actSnap.data ?? [];
+                        if (!enabledActs.contains(ActivityType.restaurantsCafes)) {
+                          return const SizedBox.shrink();
+                        }
+                        return Container(
+                          margin: const EdgeInsets.fromLTRB(12, 6, 12, 2),
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceContainer,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.outlineVariant),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _orderTypeButton(
+                                  key: const Key('hospitality_dine_in'),
+                                  label: 'صالة / طاولة',
+                                  icon: Icons.table_restaurant_rounded,
+                                  isSelected: _hospitalityOrderType == 'dineIn',
+                                  onTap: () => setState(() => _hospitalityOrderType = 'dineIn'),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: _orderTypeButton(
+                                  key: const Key('hospitality_takeaway'),
+                                  label: 'تيك أواي',
+                                  icon: Icons.takeout_dining_rounded,
+                                  isSelected: _hospitalityOrderType == 'takeaway',
+                                  onTap: () => setState(() => _hospitalityOrderType = 'takeaway'),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: _orderTypeButton(
+                                  key: const Key('hospitality_delivery'),
+                                  label: 'دليفري',
+                                  icon: Icons.delivery_dining_rounded,
+                                  isSelected: _hospitalityOrderType == 'delivery',
+                                  onTap: () => setState(() => _hospitalityOrderType = 'delivery'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
 
                     // Cart Header: Title + Items/Pieces count + Wholesale toggle + Clear [Esc]
@@ -5526,6 +5826,252 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
           ),
         ],
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// POS INSTALLMENT SUCCESS & CONTRACT PRINT DIALOG
+// ---------------------------------------------------------------------------
+class _PosInstallmentSuccessDialog extends StatelessWidget {
+  final InvoiceDetailsEntity invoice;
+  final CustomerInstallmentEntity contract;
+  final List<InstallmentScheduleEntry> schedule;
+  final CustomerEntity customer;
+
+  const _PosInstallmentSuccessDialog({
+    required this.invoice,
+    required this.contract,
+    required this.schedule,
+    required this.customer,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final shortContractId = contract.id.length >= 8
+        ? contract.id.substring(0, 8).toUpperCase()
+        : contract.id.toUpperCase();
+
+    final totalFinanced = contract.monthlyAmountPiasters * contract.durationMonths;
+    final totalObligation = totalFinanced + contract.downPaymentPiasters;
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.check_circle_rounded, color: Colors.green.shade700, size: 48),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'تم إنشاء الفاتورة وعقد التقسيط بنجاح!',
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.onSurface,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'فاتورة: #${invoice.shortRef} | عقد رقم: #$shortContractId',
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 12.5,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Financial Breakdown Box
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.outlineVariant),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('اسم العميل:', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade600)),
+                          Text(customer.name, style: const TextStyle(fontFamily: 'Cairo', fontSize: 12.5, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('إجمالي الفاتورة:', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade600)),
+                          Text('${Money(invoice.total).toDisplay()} ج.م', style: const TextStyle(fontFamily: 'Cairo', fontSize: 12.5, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Text('المقدم المُسدد (بالخزينة):', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade600)),
+                              const SizedBox(width: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.shade50,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: Colors.green.shade300),
+                                ),
+                                child: Text(
+                                  'مُقيد بالدرج',
+                                  style: TextStyle(fontFamily: 'Cairo', fontSize: 9.5, color: Colors.green.shade800, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            '${Money(contract.downPaymentPiasters).toDisplay()} ج.م',
+                            style: TextStyle(fontFamily: 'Cairo', fontSize: 12.5, fontWeight: FontWeight.bold, color: AppColors.primary),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('المبلغ المقسط (أصل الدين):', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade600)),
+                          Text('${Money(contract.principalPiasters).toDisplay()} ج.م', style: const TextStyle(fontFamily: 'Cairo', fontSize: 12.5, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: Divider(height: 1),
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('القسط الشهري:', style: TextStyle(fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                          Text(
+                            '${Money(contract.monthlyAmountPiasters).toDisplay()} ج.م / شهر (${contract.durationMonths} شهور)',
+                            style: TextStyle(fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('إجمالي التزام العميل:', style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5, color: Colors.grey.shade600)),
+                          Text('${Money(totalObligation).toDisplay()} ج.م', style: const TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Actions: Print & Download
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          side: const BorderSide(color: AppColors.outlineVariant),
+                        ),
+                        onPressed: () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          final path = await ReceiptPdfService.saveInstallmentContractReceiptAsPdf(
+                            invoice: invoice,
+                            contract: contract,
+                            schedule: schedule,
+                            customer: customer,
+                          );
+                          if (path != null) {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text('تم حفظ ملف PDF للعقد:\n$path', style: const TextStyle(fontFamily: 'Cairo')),
+                                backgroundColor: AppColors.success,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.picture_as_pdf_rounded, color: Colors.red, size: 18),
+                        label: const Text('تنزيل PDF', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 12)),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: () async {
+                          await ReceiptPdfService.printInstallmentContractReceipt(
+                            invoice: invoice,
+                            contract: contract,
+                            schedule: schedule,
+                            customer: customer,
+                          );
+                        },
+                        icon: const Icon(Icons.print_rounded, size: 18),
+                        label: const Text('طباعة العقد والإيصال', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 12)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => InstallmentDetailScreen(contractId: contract.id),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                        label: const Text('عرض تفاصيل العقد', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('فاتورة جديدة (متابعة البيع)', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 12)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

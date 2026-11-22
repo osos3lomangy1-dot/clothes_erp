@@ -9,10 +9,16 @@ class ProductModel extends ProductEntity {
     required super.categoryName,
     super.images,
     required super.createdAt,
+    super.updatedAt,
     super.minStock,
     super.isActive,
+    super.activityType,
+    super.warrantyPeriod,
+    super.brandOrModel,
+    super.isInstallmentEligible,
   });
 
+  @override
   ProductModel copyWith({
     String? id,
     String? name,
@@ -21,8 +27,14 @@ class ProductModel extends ProductEntity {
     String? categoryName,
     List<String>? images,
     DateTime? createdAt,
+    DateTime? updatedAt,
     int? minStock,
     bool? isActive,
+    List<VariantSummary>? variants,
+    String? activityType,
+    String? warrantyPeriod,
+    String? brandOrModel,
+    bool? isInstallmentEligible,
   }) {
     return ProductModel(
       id: id ?? this.id,
@@ -32,8 +44,14 @@ class ProductModel extends ProductEntity {
       categoryName: categoryName ?? this.categoryName,
       images: images ?? this.images,
       createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
       minStock: minStock ?? this.minStock,
       isActive: isActive ?? this.isActive,
+      activityType: activityType ?? this.activityType,
+      warrantyPeriod: warrantyPeriod ?? this.warrantyPeriod,
+      brandOrModel: brandOrModel ?? this.brandOrModel,
+      isInstallmentEligible:
+          isInstallmentEligible ?? this.isInstallmentEligible,
     );
   }
 
@@ -46,8 +64,13 @@ class ProductModel extends ProductEntity {
       categoryName: entity.categoryName,
       images: entity.images,
       createdAt: entity.createdAt,
+      updatedAt: entity.updatedAt,
       minStock: entity.minStock,
       isActive: entity.isActive,
+      activityType: entity.activityType,
+      warrantyPeriod: entity.warrantyPeriod,
+      brandOrModel: entity.brandOrModel,
+      isInstallmentEligible: entity.isInstallmentEligible,
     );
   }
 
@@ -61,9 +84,16 @@ class ProductModel extends ProductEntity {
       images: (json['images'] as List?)?.map((e) => e.toString()).toList(),
       minStock: json['minStock'] ?? 5,
       isActive: json['isActive'] ?? true,
+      activityType: json['activityType'] ?? 'clothing',
+      warrantyPeriod: json['warrantyPeriod'],
+      brandOrModel: json['brandOrModel'],
+      isInstallmentEligible: json['isInstallmentEligible'] ?? true,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : DateTime.now(),
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.tryParse(json['updatedAt'])
+          : null,
     );
   }
 
@@ -77,7 +107,12 @@ class ProductModel extends ProductEntity {
       'images': images,
       'minStock': minStock,
       'isActive': isActive,
+      'activityType': activityType,
+      'warrantyPeriod': warrantyPeriod,
+      'brandOrModel': brandOrModel,
+      'isInstallmentEligible': isInstallmentEligible,
       'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt?.toIso8601String(),
     };
   }
 
@@ -94,11 +129,20 @@ class ProductModel extends ProductEntity {
       images: (data['images'] as List?)?.map((e) => e.toString()).toList(),
       minStock: data['minStock'] ?? 5,
       isActive: data['isActive'] ?? true,
+      activityType: data['activityType'] ?? 'clothing',
+      warrantyPeriod: data['warrantyPeriod'],
+      brandOrModel: data['brandOrModel'],
+      isInstallmentEligible: data['isInstallmentEligible'] ?? true,
       createdAt: data['createdAt'] is DateTime
           ? data['createdAt'] as DateTime
           : (data['createdAt'] is String
               ? DateTime.tryParse(data['createdAt']) ?? DateTime.now()
               : DateTime.now()),
+      updatedAt: data['updatedAt'] is DateTime
+          ? data['updatedAt'] as DateTime
+          : (data['updatedAt'] is String
+              ? DateTime.tryParse(data['updatedAt'])
+              : null),
     );
   }
 
@@ -111,7 +155,12 @@ class ProductModel extends ProductEntity {
       'images': images,
       'minStock': minStock,
       'isActive': isActive,
+      'activityType': activityType,
+      'warrantyPeriod': warrantyPeriod,
+      'brandOrModel': brandOrModel,
+      'isInstallmentEligible': isInstallmentEligible,
       'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt?.toIso8601String(),
     };
   }
 }

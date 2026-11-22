@@ -267,14 +267,14 @@ class PreOrderCard extends StatelessWidget {
         children: [
           // 1. Header Row
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
             child: Row(
               children: [
                 // Order Number Badge
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
+                    horizontal: 7,
+                    vertical: 2.5,
                   ),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.08),
@@ -287,13 +287,13 @@ class PreOrderCard extends StatelessWidget {
                     order.orderNumber,
                     style: TextStyle(
                       fontFamily: 'Cairo',
-                      fontSize: 12,
+                      fontSize: 11.5,
                       fontWeight: FontWeight.bold,
                       color: AppColors.primary,
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
 
                 // Customer Info
                 Expanded(
@@ -307,33 +307,36 @@ class PreOrderCard extends StatelessWidget {
                               order.customerName,
                               style: const TextStyle(
                                 fontFamily: 'Cairo',
-                                fontSize: 13,
+                                fontSize: 12.5,
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.onSurface,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 1.5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceContainerLow,
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(
-                                color: AppColors.outlineVariant,
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 5,
+                                vertical: 1.5,
                               ),
-                            ),
-                            child: Text(
-                              order.displaySourcePlatform,
-                              style: const TextStyle(
-                                fontFamily: 'Cairo',
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.onSurfaceVariant,
+                              decoration: BoxDecoration(
+                                color: AppColors.surfaceContainerLow,
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: AppColors.outlineVariant,
+                                ),
+                              ),
+                              child: Text(
+                                order.displaySourcePlatform,
+                                style: const TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.onSurfaceVariant,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ),
@@ -343,9 +346,10 @@ class PreOrderCard extends StatelessWidget {
                         order.customerPhone,
                         style: TextStyle(
                           fontFamily: 'Cairo',
-                          fontSize: 11,
+                          fontSize: 10.5,
                           color: Colors.grey.shade600,
                         ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                       if (order.agentName != null ||
                           order.trackingNumber != null) ...[
@@ -355,17 +359,20 @@ class PreOrderCard extends StatelessWidget {
                             if (order.agentName != null) ...[
                               const Icon(
                                 Icons.badge_outlined,
-                                size: 12,
+                                size: 11,
                                 color: AppColors.onSurfaceVariant,
                               ),
-                              const SizedBox(width: 3),
-                              Text(
-                                order.agentName!,
-                                style: const TextStyle(
-                                  fontFamily: 'Cairo',
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.onSurfaceVariant,
+                              const SizedBox(width: 2),
+                              Flexible(
+                                child: Text(
+                                  order.agentName!,
+                                  style: const TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.onSurfaceVariant,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
@@ -375,22 +382,26 @@ class PreOrderCard extends StatelessWidget {
                                 ' • ',
                                 style: TextStyle(
                                   color: AppColors.onSurfaceVariant,
+                                  fontSize: 10,
                                 ),
                               ),
                             if (order.trackingNumber != null) ...[
                               const Icon(
                                 Icons.tag_rounded,
-                                size: 12,
+                                size: 11,
                                 color: AppColors.onSurfaceVariant,
                               ),
                               const SizedBox(width: 2),
-                              Text(
-                                order.trackingNumber!,
-                                style: const TextStyle(
-                                  fontFamily: 'Cairo',
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.onSurfaceVariant,
+                              Flexible(
+                                child: Text(
+                                  order.trackingNumber!,
+                                  style: const TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.onSurfaceVariant,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
@@ -400,12 +411,13 @@ class PreOrderCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                const SizedBox(width: 6),
 
                 // Status Badge
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3.5,
+                    horizontal: 7,
+                    vertical: 3,
                   ),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.1),
@@ -417,13 +429,13 @@ class PreOrderCard extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      CircleAvatar(radius: 3.5, backgroundColor: statusColor),
-                      const SizedBox(width: 5),
+                      CircleAvatar(radius: 3, backgroundColor: statusColor),
+                      const SizedBox(width: 4),
                       Text(
                         PreOrderStatuses.getLabel(order.status),
                         style: TextStyle(
                           fontFamily: 'Cairo',
-                          fontSize: 11,
+                          fontSize: 10.5,
                           fontWeight: FontWeight.bold,
                           color: statusColor,
                         ),

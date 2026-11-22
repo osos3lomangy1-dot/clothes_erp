@@ -1347,6 +1347,55 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _activityTypeMeta = const VerificationMeta(
+    'activityType',
+  );
+  @override
+  late final GeneratedColumn<String> activityType = GeneratedColumn<String>(
+    'activity_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('clothing'),
+  );
+  static const VerificationMeta _warrantyPeriodMeta = const VerificationMeta(
+    'warrantyPeriod',
+  );
+  @override
+  late final GeneratedColumn<String> warrantyPeriod = GeneratedColumn<String>(
+    'warranty_period',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _brandOrModelMeta = const VerificationMeta(
+    'brandOrModel',
+  );
+  @override
+  late final GeneratedColumn<String> brandOrModel = GeneratedColumn<String>(
+    'brand_or_model',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isInstallmentEligibleMeta =
+      const VerificationMeta('isInstallmentEligible');
+  @override
+  late final GeneratedColumn<bool> isInstallmentEligible =
+      GeneratedColumn<bool>(
+        'is_installment_eligible',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("is_installment_eligible" IN (0, 1))',
+        ),
+        defaultValue: const Constant(true),
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1359,6 +1408,10 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
     createdAt,
     updatedAt,
     deletedAt,
+    activityType,
+    warrantyPeriod,
+    brandOrModel,
+    isInstallmentEligible,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1444,6 +1497,42 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
         deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
       );
     }
+    if (data.containsKey('activity_type')) {
+      context.handle(
+        _activityTypeMeta,
+        activityType.isAcceptableOrUnknown(
+          data['activity_type']!,
+          _activityTypeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('warranty_period')) {
+      context.handle(
+        _warrantyPeriodMeta,
+        warrantyPeriod.isAcceptableOrUnknown(
+          data['warranty_period']!,
+          _warrantyPeriodMeta,
+        ),
+      );
+    }
+    if (data.containsKey('brand_or_model')) {
+      context.handle(
+        _brandOrModelMeta,
+        brandOrModel.isAcceptableOrUnknown(
+          data['brand_or_model']!,
+          _brandOrModelMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_installment_eligible')) {
+      context.handle(
+        _isInstallmentEligibleMeta,
+        isInstallmentEligible.isAcceptableOrUnknown(
+          data['is_installment_eligible']!,
+          _isInstallmentEligibleMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1493,6 +1582,22 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}deleted_at'],
       ),
+      activityType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}activity_type'],
+      )!,
+      warrantyPeriod: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}warranty_period'],
+      ),
+      brandOrModel: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}brand_or_model'],
+      ),
+      isInstallmentEligible: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_installment_eligible'],
+      )!,
     );
   }
 
@@ -1513,6 +1618,10 @@ class Product extends DataClass implements Insertable<Product> {
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
+  final String activityType;
+  final String? warrantyPeriod;
+  final String? brandOrModel;
+  final bool isInstallmentEligible;
   const Product({
     required this.id,
     required this.branchId,
@@ -1524,6 +1633,10 @@ class Product extends DataClass implements Insertable<Product> {
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
+    required this.activityType,
+    this.warrantyPeriod,
+    this.brandOrModel,
+    required this.isInstallmentEligible,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1542,6 +1655,14 @@ class Product extends DataClass implements Insertable<Product> {
     if (!nullToAbsent || deletedAt != null) {
       map['deleted_at'] = Variable<DateTime>(deletedAt);
     }
+    map['activity_type'] = Variable<String>(activityType);
+    if (!nullToAbsent || warrantyPeriod != null) {
+      map['warranty_period'] = Variable<String>(warrantyPeriod);
+    }
+    if (!nullToAbsent || brandOrModel != null) {
+      map['brand_or_model'] = Variable<String>(brandOrModel);
+    }
+    map['is_installment_eligible'] = Variable<bool>(isInstallmentEligible);
     return map;
   }
 
@@ -1561,6 +1682,14 @@ class Product extends DataClass implements Insertable<Product> {
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(deletedAt),
+      activityType: Value(activityType),
+      warrantyPeriod: warrantyPeriod == null && nullToAbsent
+          ? const Value.absent()
+          : Value(warrantyPeriod),
+      brandOrModel: brandOrModel == null && nullToAbsent
+          ? const Value.absent()
+          : Value(brandOrModel),
+      isInstallmentEligible: Value(isInstallmentEligible),
     );
   }
 
@@ -1580,6 +1709,12 @@ class Product extends DataClass implements Insertable<Product> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      activityType: serializer.fromJson<String>(json['activityType']),
+      warrantyPeriod: serializer.fromJson<String?>(json['warrantyPeriod']),
+      brandOrModel: serializer.fromJson<String?>(json['brandOrModel']),
+      isInstallmentEligible: serializer.fromJson<bool>(
+        json['isInstallmentEligible'],
+      ),
     );
   }
   @override
@@ -1596,6 +1731,10 @@ class Product extends DataClass implements Insertable<Product> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'activityType': serializer.toJson<String>(activityType),
+      'warrantyPeriod': serializer.toJson<String?>(warrantyPeriod),
+      'brandOrModel': serializer.toJson<String?>(brandOrModel),
+      'isInstallmentEligible': serializer.toJson<bool>(isInstallmentEligible),
     };
   }
 
@@ -1610,6 +1749,10 @@ class Product extends DataClass implements Insertable<Product> {
     DateTime? createdAt,
     DateTime? updatedAt,
     Value<DateTime?> deletedAt = const Value.absent(),
+    String? activityType,
+    Value<String?> warrantyPeriod = const Value.absent(),
+    Value<String?> brandOrModel = const Value.absent(),
+    bool? isInstallmentEligible,
   }) => Product(
     id: id ?? this.id,
     branchId: branchId ?? this.branchId,
@@ -1621,6 +1764,12 @@ class Product extends DataClass implements Insertable<Product> {
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    activityType: activityType ?? this.activityType,
+    warrantyPeriod: warrantyPeriod.present
+        ? warrantyPeriod.value
+        : this.warrantyPeriod,
+    brandOrModel: brandOrModel.present ? brandOrModel.value : this.brandOrModel,
+    isInstallmentEligible: isInstallmentEligible ?? this.isInstallmentEligible,
   );
   Product copyWithCompanion(ProductsCompanion data) {
     return Product(
@@ -1638,6 +1787,18 @@ class Product extends DataClass implements Insertable<Product> {
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      activityType: data.activityType.present
+          ? data.activityType.value
+          : this.activityType,
+      warrantyPeriod: data.warrantyPeriod.present
+          ? data.warrantyPeriod.value
+          : this.warrantyPeriod,
+      brandOrModel: data.brandOrModel.present
+          ? data.brandOrModel.value
+          : this.brandOrModel,
+      isInstallmentEligible: data.isInstallmentEligible.present
+          ? data.isInstallmentEligible.value
+          : this.isInstallmentEligible,
     );
   }
 
@@ -1653,7 +1814,11 @@ class Product extends DataClass implements Insertable<Product> {
           ..write('isActive: $isActive, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('deletedAt: $deletedAt')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('activityType: $activityType, ')
+          ..write('warrantyPeriod: $warrantyPeriod, ')
+          ..write('brandOrModel: $brandOrModel, ')
+          ..write('isInstallmentEligible: $isInstallmentEligible')
           ..write(')'))
         .toString();
   }
@@ -1670,6 +1835,10 @@ class Product extends DataClass implements Insertable<Product> {
     createdAt,
     updatedAt,
     deletedAt,
+    activityType,
+    warrantyPeriod,
+    brandOrModel,
+    isInstallmentEligible,
   );
   @override
   bool operator ==(Object other) =>
@@ -1684,7 +1853,11 @@ class Product extends DataClass implements Insertable<Product> {
           other.isActive == this.isActive &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
-          other.deletedAt == this.deletedAt);
+          other.deletedAt == this.deletedAt &&
+          other.activityType == this.activityType &&
+          other.warrantyPeriod == this.warrantyPeriod &&
+          other.brandOrModel == this.brandOrModel &&
+          other.isInstallmentEligible == this.isInstallmentEligible);
 }
 
 class ProductsCompanion extends UpdateCompanion<Product> {
@@ -1698,6 +1871,10 @@ class ProductsCompanion extends UpdateCompanion<Product> {
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
+  final Value<String> activityType;
+  final Value<String?> warrantyPeriod;
+  final Value<String?> brandOrModel;
+  final Value<bool> isInstallmentEligible;
   final Value<int> rowid;
   const ProductsCompanion({
     this.id = const Value.absent(),
@@ -1710,6 +1887,10 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
+    this.activityType = const Value.absent(),
+    this.warrantyPeriod = const Value.absent(),
+    this.brandOrModel = const Value.absent(),
+    this.isInstallmentEligible = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ProductsCompanion.insert({
@@ -1723,6 +1904,10 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     required DateTime createdAt,
     required DateTime updatedAt,
     this.deletedAt = const Value.absent(),
+    this.activityType = const Value.absent(),
+    this.warrantyPeriod = const Value.absent(),
+    this.brandOrModel = const Value.absent(),
+    this.isInstallmentEligible = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        branchId = Value(branchId),
@@ -1741,6 +1926,10 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
+    Expression<String>? activityType,
+    Expression<String>? warrantyPeriod,
+    Expression<String>? brandOrModel,
+    Expression<bool>? isInstallmentEligible,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1754,6 +1943,11 @@ class ProductsCompanion extends UpdateCompanion<Product> {
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
+      if (activityType != null) 'activity_type': activityType,
+      if (warrantyPeriod != null) 'warranty_period': warrantyPeriod,
+      if (brandOrModel != null) 'brand_or_model': brandOrModel,
+      if (isInstallmentEligible != null)
+        'is_installment_eligible': isInstallmentEligible,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1769,6 +1963,10 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<DateTime?>? deletedAt,
+    Value<String>? activityType,
+    Value<String?>? warrantyPeriod,
+    Value<String?>? brandOrModel,
+    Value<bool>? isInstallmentEligible,
     Value<int>? rowid,
   }) {
     return ProductsCompanion(
@@ -1782,6 +1980,11 @@ class ProductsCompanion extends UpdateCompanion<Product> {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
+      activityType: activityType ?? this.activityType,
+      warrantyPeriod: warrantyPeriod ?? this.warrantyPeriod,
+      brandOrModel: brandOrModel ?? this.brandOrModel,
+      isInstallmentEligible:
+          isInstallmentEligible ?? this.isInstallmentEligible,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1819,6 +2022,20 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     if (deletedAt.present) {
       map['deleted_at'] = Variable<DateTime>(deletedAt.value);
     }
+    if (activityType.present) {
+      map['activity_type'] = Variable<String>(activityType.value);
+    }
+    if (warrantyPeriod.present) {
+      map['warranty_period'] = Variable<String>(warrantyPeriod.value);
+    }
+    if (brandOrModel.present) {
+      map['brand_or_model'] = Variable<String>(brandOrModel.value);
+    }
+    if (isInstallmentEligible.present) {
+      map['is_installment_eligible'] = Variable<bool>(
+        isInstallmentEligible.value,
+      );
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1838,6 +2055,10 @@ class ProductsCompanion extends UpdateCompanion<Product> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
+          ..write('activityType: $activityType, ')
+          ..write('warrantyPeriod: $warrantyPeriod, ')
+          ..write('brandOrModel: $brandOrModel, ')
+          ..write('isInstallmentEligible: $isInstallmentEligible, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -23083,6 +23304,10 @@ typedef $$ProductsTableCreateCompanionBuilder =
       required DateTime createdAt,
       required DateTime updatedAt,
       Value<DateTime?> deletedAt,
+      Value<String> activityType,
+      Value<String?> warrantyPeriod,
+      Value<String?> brandOrModel,
+      Value<bool> isInstallmentEligible,
       Value<int> rowid,
     });
 typedef $$ProductsTableUpdateCompanionBuilder =
@@ -23097,6 +23322,10 @@ typedef $$ProductsTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<DateTime?> deletedAt,
+      Value<String> activityType,
+      Value<String?> warrantyPeriod,
+      Value<String?> brandOrModel,
+      Value<bool> isInstallmentEligible,
       Value<int> rowid,
     });
 
@@ -23198,6 +23427,26 @@ class $$ProductsTableFilterComposer
 
   ColumnFilters<DateTime> get deletedAt => $composableBuilder(
     column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get activityType => $composableBuilder(
+    column: $table.activityType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get warrantyPeriod => $composableBuilder(
+    column: $table.warrantyPeriod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get brandOrModel => $composableBuilder(
+    column: $table.brandOrModel,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isInstallmentEligible => $composableBuilder(
+    column: $table.isInstallmentEligible,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -23304,6 +23553,26 @@ class $$ProductsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get activityType => $composableBuilder(
+    column: $table.activityType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get warrantyPeriod => $composableBuilder(
+    column: $table.warrantyPeriod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get brandOrModel => $composableBuilder(
+    column: $table.brandOrModel,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isInstallmentEligible => $composableBuilder(
+    column: $table.isInstallmentEligible,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CategoriesTableOrderingComposer get categoryId {
     final $$CategoriesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -23365,6 +23634,26 @@ class $$ProductsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get deletedAt =>
       $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get activityType => $composableBuilder(
+    column: $table.activityType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get warrantyPeriod => $composableBuilder(
+    column: $table.warrantyPeriod,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get brandOrModel => $composableBuilder(
+    column: $table.brandOrModel,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isInstallmentEligible => $composableBuilder(
+    column: $table.isInstallmentEligible,
+    builder: (column) => column,
+  );
 
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
@@ -23453,6 +23742,10 @@ class $$ProductsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
+                Value<String> activityType = const Value.absent(),
+                Value<String?> warrantyPeriod = const Value.absent(),
+                Value<String?> brandOrModel = const Value.absent(),
+                Value<bool> isInstallmentEligible = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ProductsCompanion(
                 id: id,
@@ -23465,6 +23758,10 @@ class $$ProductsTableTableManager
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
+                activityType: activityType,
+                warrantyPeriod: warrantyPeriod,
+                brandOrModel: brandOrModel,
+                isInstallmentEligible: isInstallmentEligible,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -23479,6 +23776,10 @@ class $$ProductsTableTableManager
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<DateTime?> deletedAt = const Value.absent(),
+                Value<String> activityType = const Value.absent(),
+                Value<String?> warrantyPeriod = const Value.absent(),
+                Value<String?> brandOrModel = const Value.absent(),
+                Value<bool> isInstallmentEligible = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ProductsCompanion.insert(
                 id: id,
@@ -23491,6 +23792,10 @@ class $$ProductsTableTableManager
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
+                activityType: activityType,
+                warrantyPeriod: warrantyPeriod,
+                brandOrModel: brandOrModel,
+                isInstallmentEligible: isInstallmentEligible,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

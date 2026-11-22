@@ -19,6 +19,12 @@ class ProductFormState extends Equatable {
   final List<ProductEntity> similarProducts;
   final ProductEntity? exactDuplicateProduct;
   final Set<String> existingSkus;
+  final String activityType;
+  final String? warrantyPeriod;
+  final String? brandOrModel;
+  final bool isInstallmentEligible;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   const ProductFormState({
     this.name = '',
@@ -35,7 +41,15 @@ class ProductFormState extends Equatable {
     this.similarProducts = const [],
     this.exactDuplicateProduct,
     this.existingSkus = const {},
+    this.activityType = 'clothing',
+    this.warrantyPeriod,
+    this.brandOrModel,
+    this.isInstallmentEligible = true,
+    this.createdAt,
+    this.updatedAt,
   });
+
+  ActivityType get activityTypeEnum => ActivityType.fromString(activityType);
 
   bool get hasDuplicate => exactDuplicateProduct != null;
   bool get hasSimilar => similarProducts.isNotEmpty;
@@ -61,6 +75,12 @@ class ProductFormState extends Equatable {
     ProductEntity? exactDuplicateProduct,
     bool clearExactDuplicate = false,
     Set<String>? existingSkus,
+    String? activityType,
+    String? warrantyPeriod,
+    String? brandOrModel,
+    bool? isInstallmentEligible,
+    DateTime? createdAt,
+    DateTime? updatedAt,
   }) {
     return ProductFormState(
       name: name ?? this.name,
@@ -77,6 +97,12 @@ class ProductFormState extends Equatable {
       similarProducts: similarProducts ?? this.similarProducts,
       exactDuplicateProduct: clearExactDuplicate ? null : (exactDuplicateProduct ?? this.exactDuplicateProduct),
       existingSkus: existingSkus ?? this.existingSkus,
+      activityType: activityType ?? this.activityType,
+      warrantyPeriod: warrantyPeriod ?? this.warrantyPeriod,
+      brandOrModel: brandOrModel ?? this.brandOrModel,
+      isInstallmentEligible: isInstallmentEligible ?? this.isInstallmentEligible,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
@@ -96,5 +122,11 @@ class ProductFormState extends Equatable {
         similarProducts,
         exactDuplicateProduct,
         existingSkus,
+        activityType,
+        warrantyPeriod,
+        brandOrModel,
+        isInstallmentEligible,
+        createdAt,
+        updatedAt,
       ];
 }
