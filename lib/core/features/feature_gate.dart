@@ -257,6 +257,9 @@ class FeatureGate {
   final TxWriter _txWriter;
   final BranchProvider _branchProvider;
 
+  StreamController<Map<String, bool>>? _featuresController;
+  StreamSubscription? _driftFeaturesSub;
+
   FeatureGate(
     this._db,
     this._authLocalDataSource,
@@ -309,12 +312,24 @@ class FeatureGate {
   }
 
   Stream<Map<String, bool>> watchFeatures() {
-    final query = _db.select(_db.appMeta)
-      ..where((t) => t.key.like('feature.%'));
-    return query.watch().map((rows) {
-      final stored = <String, String>{for (final r in rows) r.key: r.value};
-      return resolveEnabledMap(stored);
-    });
+    if (_featuresController == null || _featuresController!.isClosed) {
+      _featuresController = StreamController<Map<String, bool>>.broadcast();
+      _driftFeaturesSub = (_db.select(_db.appMeta)
+            ..where((t) => t.key.like('feature.%')))
+          .watch()
+          .listen((rows) {
+        final stored = <String, String>{for (final r in rows) r.key: r.value};
+        if (_featuresController != null && !_featuresController!.isClosed) {
+          _featuresController!.add(resolveEnabledMap(stored));
+        }
+      });
+    }
+    return _featuresController!.stream;
+  }
+
+  void dispose() {
+    _driftFeaturesSub?.cancel();
+    _featuresController?.close();
   }
 
   Future<Map<String, bool>> getFeatures() async {

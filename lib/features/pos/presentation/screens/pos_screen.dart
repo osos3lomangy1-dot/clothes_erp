@@ -120,7 +120,8 @@ class _PosViewState extends State<_PosView> {
   DateTime _lastScanKeyTime = DateTime.now();
   InvoiceDetailsEntity? _lastCompletedInvoice;
   bool _deliveryEnabled = false;
-  StreamSubscription? _deliverySub;
+  bool _preOrdersEnabled = false;
+  StreamSubscription? _featuresSub;
 
   @override
   void initState() {
@@ -128,15 +129,25 @@ class _PosViewState extends State<_PosView> {
     HardwareKeyboard.instance.addHandler(_handleHardwareScan);
     _loadLatestInvoice();
     if (getIt.isRegistered<FeatureGate>()) {
-      getIt<FeatureGate>().isEnabled(FeatureKeys.delivery).then((val) {
+      final gate = getIt<FeatureGate>();
+      gate.isEnabled(FeatureKeys.delivery).then((val) {
         if (mounted && _deliveryEnabled != val) {
           setState(() => _deliveryEnabled = val);
         }
       });
-      _deliverySub = getIt<FeatureGate>().watchFeatures().listen((features) {
-        final on = features[FeatureKeys.delivery] ?? false;
-        if (mounted && _deliveryEnabled != on) {
-          setState(() => _deliveryEnabled = on);
+      gate.isEnabled(FeatureKeys.preOrders).then((val) {
+        if (mounted && _preOrdersEnabled != val) {
+          setState(() => _preOrdersEnabled = val);
+        }
+      });
+      _featuresSub = gate.watchFeatures().listen((features) {
+        final del = features[FeatureKeys.delivery] ?? false;
+        final pre = features[FeatureKeys.preOrders] ?? false;
+        if (mounted && (_deliveryEnabled != del || _preOrdersEnabled != pre)) {
+          setState(() {
+            _deliveryEnabled = del;
+            _preOrdersEnabled = pre;
+          });
         }
       });
     }
@@ -489,7 +500,7 @@ class _PosViewState extends State<_PosView> {
 
   @override
   void dispose() {
-    _deliverySub?.cancel();
+    _featuresSub?.cancel();
     HardwareKeyboard.instance.removeHandler(_handleHardwareScan);
     _searchFocusNode.dispose();
     _searchCtrl.dispose();
@@ -863,51 +874,42 @@ class _PosViewState extends State<_PosView> {
                 const SizedBox(width: 8),
 
                 // Pre-Orders Button [F7]
-                StreamBuilder<bool>(
-                  stream: getIt.isRegistered<ActivitySettingsService>()
-                      ? getIt<ActivitySettingsService>().watchPreOrdersEnabled()
-                      : (getIt.isRegistered<FeatureGate>()
-                          ? getIt<FeatureGate>().watchFeatures().map((m) => m[FeatureKeys.preOrders] ?? false)
-                          : Stream.value(false)),
-                  builder: (context, snap) {
-                    if (snap.data != true) return const SizedBox.shrink();
-                    return Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: ElevatedButton.icon(
-                        key: const Key('pos_preorders_header_btn'),
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const PreOrdersScreen(),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.bookmark_added_rounded, size: 16),
-                        label: const Text(
-                          'حجز مسبق [F7]',
-                          style: TextStyle(
-                            fontFamily: 'Cairo',
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.bold,
+                if (_preOrdersEnabled)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: ElevatedButton.icon(
+                      key: const Key('pos_preorders_header_btn'),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const PreOrdersScreen(),
                           ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.surfaceContainerLow,
-                          foregroundColor: AppColors.primary,
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          minimumSize: const Size(0, 36),
-                          side: BorderSide(
-                            color: AppColors.primary.withValues(alpha: 0.3),
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          elevation: 0,
+                        );
+                      },
+                      icon: const Icon(Icons.bookmark_added_rounded, size: 16),
+                      label: const Text(
+                        'حجز مسبق [F7]',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    );
-                  },
-                ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.surfaceContainerLow,
+                        foregroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        minimumSize: const Size(0, 36),
+                        side: BorderSide(
+                          color: AppColors.primary.withValues(alpha: 0.3),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        elevation: 0,
+                      ),
+                    ),
+                  ),
 
                 const SizedBox(width: 8),
 
