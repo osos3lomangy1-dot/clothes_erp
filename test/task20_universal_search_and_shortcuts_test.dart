@@ -92,8 +92,8 @@ void main() {
       expect(all['completeSale'], equals('F12'));
       expect(all['holdBill'], equals('F10'));
       expect(all['recallBill'], equals('F11'));
-      expect(all['quickPayCash'], equals('Alt+1'));
-      expect(all['quickPayCard'], equals('Alt+2'));
+      expect(all['quickPayCash'], equals('F5'));
+      expect(all['quickPayCard'], equals('F6'));
       expect(all['focusDiscount'], equals('Ctrl+D'));
 
       final act = shortcutService.getActivator('completeSale');
@@ -105,9 +105,15 @@ void main() {
       expect(ctrlK.trigger, equals(LogicalKeyboardKey.keyK));
       expect(ctrlK.control, isTrue);
 
-      final alt1 = shortcutService.getActivator('quickPayCash');
-      expect(alt1.trigger, equals(LogicalKeyboardKey.digit1));
-      expect(alt1.alt, isTrue);
+      final f5 = shortcutService.getActivator('quickPayCash');
+      expect(f5.trigger, equals(LogicalKeyboardKey.f5));
+      expect(f5.alt, isFalse);
+      expect(f5.control, isFalse);
+
+      final f6 = shortcutService.getActivator('quickPayCard');
+      expect(f6.trigger, equals(LogicalKeyboardKey.f6));
+      expect(f6.alt, isFalse);
+      expect(f6.control, isFalse);
     });
 
     test('detects conflicting shortcuts accurately', () async {

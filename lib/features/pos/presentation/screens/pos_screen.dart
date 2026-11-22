@@ -426,13 +426,6 @@ class _PosViewState extends State<_PosView> {
       return true;
     }
 
-    // Shortcut [F8]: Add new bill tab / Hold current bill
-    if (key == LogicalKeyboardKey.f8) {
-      _scannerBuffer.clear();
-      _cartPanelKey.currentState?.addNewBillTab();
-      return true;
-    }
-
     // Shortcut [F9]: Quick Re-Print Last Invoice
     if (key == LogicalKeyboardKey.f9) {
       _scannerBuffer.clear();
@@ -544,8 +537,6 @@ class _PosViewState extends State<_PosView> {
       const SingleActivator(LogicalKeyboardKey.f2): () => _searchFocusNode.requestFocus(),
       const SingleActivator(LogicalKeyboardKey.f5): () => _cartPanelKey.currentState?.setPaymentMethod('cash'),
       const SingleActivator(LogicalKeyboardKey.f6): () => _cartPanelKey.currentState?.setPaymentMethod('card'),
-      const SingleActivator(LogicalKeyboardKey.digit1, alt: true): () => _cartPanelKey.currentState?.setPaymentMethod('cash'),
-      const SingleActivator(LogicalKeyboardKey.digit2, alt: true): () => _cartPanelKey.currentState?.setPaymentMethod('card'),
       const SingleActivator(LogicalKeyboardKey.f10): () => _cartPanelKey.currentState?.addNewBillTab(),
       const SingleActivator(LogicalKeyboardKey.f11): () => _cartPanelKey.currentState?.switchNextHeldBill(),
       const SingleActivator(LogicalKeyboardKey.f12): () => _cartPanelKey.currentState?.triggerCheckout(),
@@ -2835,7 +2826,7 @@ class _CartPanelState extends State<_CartPanel> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('تم تعليق الفاتورة السابقة وفتح ${newBill.title} جديدة [F8]'),
+        content: Text('تم تعليق الفاتورة السابقة وفتح ${newBill.title} جديدة [F10]'),
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
         backgroundColor: AppColors.primary,
@@ -3831,13 +3822,8 @@ class _CartPanelState extends State<_CartPanel> {
             ? (receivedPiasters - state.total).toInt()
             : 0;
 
-        return CallbackShortcuts(
-          bindings: {
-            const SingleActivator(LogicalKeyboardKey.f12): () =>
-                _handleCheckout(state),
-          },
-          child: LayoutBuilder(
-            builder: (context, outerConstraints) {
+        return LayoutBuilder(
+          builder: (context, outerConstraints) {
               final isCompact = outerConstraints.maxHeight < 750;
               return Container(
                 color: AppColors.surfaceContainerLowest,
@@ -3973,7 +3959,7 @@ class _CartPanelState extends State<_CartPanel> {
                           ),
                           const SizedBox(width: 4),
                           Tooltip(
-                            message: 'فاتورة جديدة / تعليق الحالية [F8]',
+                            message: 'فاتورة جديدة / تعليق الحالية [F10]',
                             child: InkWell(
                               onTap: addNewBillTab,
                               borderRadius: BorderRadius.circular(6),
@@ -3998,7 +3984,7 @@ class _CartPanelState extends State<_CartPanel> {
                                     ),
                                     const SizedBox(width: 2),
                                     Text(
-                                      'F8',
+                                      'F10',
                                       style: TextStyle(
                                         fontFamily: 'Cairo',
                                         fontSize: 10,
@@ -5264,8 +5250,7 @@ class _CartPanelState extends State<_CartPanel> {
                 ),
               );
             },
-          ),
-        );
+          );
       },
     );
   }
