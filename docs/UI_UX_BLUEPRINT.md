@@ -68,8 +68,10 @@
 - [x] **المهمة 11.4:** محرك تعدد وتخصيص الأنشطة التجارية الموسع (Multi-Activity Retail Matrix & Multi-Select Profile). *(تم)*
 - [x] **المهمة 11.5:** قوالب الأنشطة المتجانسة والتجهيز السريع للمتاجر بنقرة واحدة (Pre-configured Commercial Store Profiles & Smart Presets). *(تم)*
 - [x] **المهمة 12.1:** النسخ الاحتياطي التلقائي عند إغلاق الوردية (Auto-Backup on Shift Close). *(تم)*
-- [ ] **المهمة 12.2:** أمان طباعة الفواتير وزر إعادة طباعة الفاتورة الأخيرة الفوري بالـ POS (Safe Printing Fallback & Quick Re-Print `[F9]`).
+- [x] **المهمة 12.2:** أمان طباعة الفواتير وزر إعادة طباعة الفاتورة الأخيرة الفوري بالـ POS (Safe Printing Fallback & Quick Re-Print `[F9]`). *(تم)*
 - [ ] **المهمة 12.3:** سجل التشخيص وتصدير تقرير الدعم الفني بنقرة واحدة (One-Click Diagnostic Support Export).
+- [ ] **المهمة 12.4:** تطبيع الأرقام العربية الهندية ومنع أخطاء الـ Parsing (Universal Arabic Digits Normalization in `Money` & POS).
+- [ ] **المهمة 12.5:** منع تشغيل نسختين في نفس الوقت عبر Win32 Mutex (Single-Instance Application Mutex).
 
 ---
 
@@ -1206,6 +1208,64 @@ enum ActivityType {
 4. **معالجة أخطاء الطابعة الهادئة (Graceful Printer Error Handling):**
    - في حال تعذر الاتصال بالطابعة أو انقطاع الكابل، تظهر رسالة هادئة عائمة:
      `"تم حفظ الفاتورة بنجاح. تعذر الاتصال بالطابعة، يمكنك إعادة المحاولة بالضغط على [F9] بعد التحقق من الورق والكابل."`.
+
+---
+
+## 🔢 المهمة 12.4: تطبيع الأرقام العربية الهندية ومنع أخطاء الـ Parsing (Universal Arabic Digits Normalization)
+
+### 🎯 الهدف والاحتياج التشغيلي:
+إذا كانت لغة الإدخال في كيبورد ويندوز مضبوطة على اللغة العربية وكتب الكاشير الخصم أو السعر بالأرقام العربية (مثلاً: `٥٠` أو `١٥٠`)، فإن دوال التحويل القياسية `double.tryParse` تفشل وتعتبرها `null` (أي خصم 0!)، أو ترمي استثناء غير معالج `FormatException` عند استخدام `double.parse`.
+الهدف هو حماية كافة العمليات الحسابية والمالية:
+1. **في كلاس `Money` (`lib/core/utils/money.dart`):**
+   - إضافة دالة عامة:
+     ```dart
+     static String normalizeDigits(String input) {
+       const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+       const english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+       var res = input;
+       for (int i = 0; i < 10; i++) {
+         res = res.replaceAll(arabic[i], english[i]);
+       }
+       return res;
+     }
+     ```
+   - استدعاء `normalizeDigits` داخل `Money.fromString` قبل أي عملية إزالة محارف أو تحليل.
+2. **في نقطة البيع (`pos_screen.dart`):**
+   - استبدال أي استخدام لـ `double.parse` المباشر بـ `double.tryParse(Money.normalizeDigits(...)) ?? 0.0`.
+   - تطبيع مدخلات الخصم والنقدية المستلمة والدفعة المقدمة لمنع أي سقوط أو تصفير للقيم.
+
+---
+
+## 🔒 المهمة 12.5: منع تشغيل نسختين في نفس الوقت عبر Win32 Mutex (Single-Instance Application Mutex)
+
+### 🎯 الهدف والاحتياج التشغيلي:
+عندما يقوم الكاشير بالنقر المزدوج السريع على أيقونة البرنامج أو النقر عليها أثناء تشغيل التطبيق، قد يفتح ويندوز نسختين متزامنتين من `bay3ah.exe` على نفس ملف قاعدة البيانات، مما يسبب ارتباكاً للكاشير في رصيد الدرج أو فواتير متعددة معلقة.
+الهدف هو ضمان وجود **نسخة تشغيلية واحدة فقط (Single Instance)**:
+1. **في ملف `windows/runner/main.cpp`:**
+   - استخدام Win32 Named Mutex في بداية دالة `wWinMain`:
+     ```cpp
+     HANDLE hMutex = ::CreateMutexW(nullptr, TRUE, L"Bay3ah_ERP_Single_Instance_Mutex");
+     if (::GetLastError() == ERROR_ALREADY_EXISTS) {
+       HWND existingWnd = ::FindWindowW(nullptr, L"\u0628\u064A\u0639\u0629 - Bay3ah");
+       if (existingWnd != nullptr) {
+         ::ShowWindow(existingWnd, SW_RESTORE);
+         ::SetForegroundWindow(existingWnd);
+       }
+       if (hMutex != nullptr) {
+         ::CloseHandle(hMutex);
+       }
+       return EXIT_SUCCESS;
+     }
+     ```
+   - تنظيف مقبض الـ Mutex قبل إنهاء التطبيق:
+     ```cpp
+     if (hMutex != nullptr) {
+       ::ReleaseMutex(hMutex);
+       ::CloseHandle(hMutex);
+     }
+     ```
+   - النتيجة: في حال كان البرنامج مفتوحاً مسبقاً، يتم فوراً استعادة النافذة المفتوحة وإبرازها لمقدمة الشاشة والخروج النظيف دون فتح نسخة ثانية.
+
 
 
 
