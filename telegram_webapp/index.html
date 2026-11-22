@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>استمارة الحجز المسبق | أوركيد ستور</title>
+  <!-- Telegram Web App SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --bg: #F8FAFC;
+      --card-bg: #FFFFFF;
+      --text: #0F172A;
+      --text-muted: #64748B;
+      --border: #E2E8F0;
+      --primary: #0284C7;
+      --primary-hover: #0369A1;
+      --primary-light: #E0F2FE;
+      --success: #10B981;
+      --danger: #EF4444;
+      --radius: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Cairo", "Tajawal", sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 16px;
+      padding-bottom: 90px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      padding: 16px 0 20px;
+    }
+
+    .header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .header p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .required {
+      color: var(--danger);
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      color: var(--text);
+      background-color: #FFFFFF;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .col {
+      flex: 1;
+    }
+
+    /* Product Item Box */
+    .product-item {
+      background: #F8FAFC;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+      position: relative;
+    }
+
+    .product-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .product-number {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .btn-remove {
+      background: none;
+      border: none;
+      color: var(--danger);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+
+    .btn-remove:hover {
+      background-color: #FEE2E2;
+    }
+
+    .btn-add-product {
+      width: 100%;
+      background: var(--primary-light);
+      color: var(--primary);
+      border: 1px dashed var(--primary);
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-add-product:hover {
+      background: #BAE6FD;
+    }
+
+    /* Calculation Summary */
+    .summary-card {
+      background: #F1F5F9;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-top: 12px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      margin-bottom: 6px;
+      color: var(--text-muted);
+    }
+
+    .summary-row.total {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px dashed var(--border);
+      margin-bottom: 0;
+    }
+
+    /* Bottom Sticky Action Bar */
+    .bottom-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #FFFFFF;
+      border-top: 1px solid var(--border);
+      padding: 12px 16px;
+      box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
+      z-index: 100;
+    }
+
+    .bottom-bar .container {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-submit {
+      flex: 1;
+      background: var(--primary);
+      color: #FFFFFF;
+      border: none;
+      padding: 14px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(2, 132, 199, 0.2);
+      transition: background-color 0.2s;
+    }
+
+    .btn-submit:hover {
+      background: var(--primary-hover);
+    }
+
+    /* Success / Fallback Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 23, 42, 0.6);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .modal-content {
+      background: #FFFFFF;
+      border-radius: 16px;
+      padding: 24px;
+      width: 100%;
+      max-width: 450px;
+      text-align: center;
+    }
+
+    .modal-title {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .modal-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .copy-box {
+      background: #F8FAFC;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 12px;
+      text-align: right;
+      white-space: pre-wrap;
+      max-height: 180px;
+      overflow-y: auto;
+      margin-bottom: 14px;
+      color: var(--text);
+    }
+
+    .btn-copy {
+      background: var(--primary);
+      color: #FFFFFF;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      margin-bottom: 8px;
+    }
+
+    .btn-close-modal {
+      background: #F1F5F9;
+      color: var(--text-muted);
+      border: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <h1>استمارة الحجز المسبق 🌸</h1>
+      <p>متجر أوركيد ستور | تأكيد طلبات الحجز والشحن</p>
+    </div>
+
+    <form id="orderForm" onsubmit="handleFormSubmit(event)">
+      <!-- 1. Customer Info -->
+      <div class="card">
+        <div class="card-title">بيانات العميل</div>
+        
+        <div class="form-group">
+          <label>اسم العميل <span class="required">*</span></label>
+          <input type="text" id="customerName" placeholder="مثال: مريم خالد" required>
+        </div>
+
+        <div class="form-group">
+          <label>رقم الهاتف / الواتساب <span class="required">*</span></label>
+          <input type="tel" id="customerPhone" placeholder="مثال: 01012345678" required pattern="[0-9+ ]{10,15}">
+        </div>
+
+        <div class="form-group">
+          <label>المحافظة أو العنوان (اختياري)</label>
+          <input type="text" id="customerAddress" placeholder="مثال: القاهرة - المعادي">
+        </div>
+      </div>
+
+      <!-- 2. Products List -->
+      <div class="card">
+        <div class="card-title">تفاصيل المنتجات المطلوبة</div>
+        <div id="productsContainer">
+          <!-- Products will be dynamically added here -->
+        </div>
+
+        <button type="button" class="btn-add-product" onclick="addProductItem()">
+          + إضافة منتج آخر للطلب
+        </button>
+
+        <div class="summary-card">
+          <div class="summary-row">
+            <span>إجمالي سعر البيع:</span>
+            <span id="sumRetail">0 ج.م</span>
+          </div>
+          <div class="summary-row">
+            <span>إجمالي العمولة:</span>
+            <span id="sumCommission">0 ج.م</span>
+          </div>
+          <div class="summary-row total">
+            <span>صافي المستحق من العميل:</span>
+            <span id="sumTotal">0 ج.م</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Payment & Deposit -->
+      <div class="card">
+        <div class="card-title">العربون وتفاصيل الدفع</div>
+
+        <div class="row">
+          <div class="col form-group">
+            <label>مبلغ العربون المدفوع (ج.م) <span class="required">*</span></label>
+            <input type="number" id="depositAmount" placeholder="مثال: 50" min="0" value="50" oninput="calculateTotals()" required>
+          </div>
+          <div class="col form-group">
+            <label>طريقة دفع العربون</label>
+            <select id="paymentMethod">
+              <option value="فودافون كاش">فودافون كاش</option>
+              <option value="إنستاباي">إنستاباي (InstaPay)</option>
+              <option value="محفظة إلكترونية">محفظة إلكترونية أخرى</option>
+              <option value="كاش في المحل">كاش بالمحل</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>ملاحظات إضافية على الطلب</label>
+          <textarea id="orderNotes" rows="2" placeholder="أي تفاصيل خاصة بالشحن أو ميعاد الاستلام..."></textarea>
+        </div>
+      </div>
+
+      <div class="bottom-bar">
+        <div class="container">
+          <button type="submit" class="btn-submit">
+            تأكيد وإرسال الطلب للبوت
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Modal for Direct Fallback Copy -->
+  <div class="modal" id="resultModal">
+    <div class="modal-content">
+      <div class="modal-title">تم تجهيز طلبك بنجاح!</div>
+      <div class="modal-desc">تم إرسال الطلب للبوت، وفي حال لم يظهر تلقائياً يمكنك نسخ الرسالة وإرسالها في شات البوت:</div>
+      <div class="copy-box" id="resultMessageText"></div>
+      <button type="button" class="btn-copy" onclick="copyAndOpenTelegram()">نسخ النص وفتح المحادثة</button>
+      <button type="button" class="btn-close-modal" onclick="closeModal()">إغلاق</button>
+    </div>
+  </div>
+
+  <script>
+    // Initialize Telegram WebApp
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+      // Auto-fill customer name if Telegram user is available
+      if (tg.initDataUnsafe?.user) {
+        const u = tg.initDataUnsafe.user;
+        const fullName = [u.first_name, u.last_name].filter(Boolean).join(' ');
+        const nameInput = document.getElementById('customerName');
+        if (nameInput && !nameInput.value && fullName) {
+          nameInput.value = fullName;
+        }
+      }
+    }
+
+    let productCount = 0;
+
+    function addProductItem(defaultData = {}) {
+      productCount++;
+      const container = document.getElementById('productsContainer');
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'product-item';
+      itemDiv.id = `product_${productCount}`;
+
+      itemDiv.innerHTML = `
+        <div class="product-header">
+          <span class="product-number">المنتج ${productCount}</span>
+          ${productCount > 1 ? `<button type="button" class="btn-remove" onclick="removeProductItem(${productCount})">حذف</button>` : ''}
+        </div>
+        <div class="form-group">
+          <label>اسم المنتج <span class="required">*</span></label>
+          <input type="text" class="prod-name" placeholder="مثال: فستان سهرة / دبلة الخطوبة" required value="${defaultData.name || ''}">
+        </div>
+        <div class="form-group">
+          <label>رابط المنتج أو المتجر (اللينك)</label>
+          <input type="url" class="prod-link" placeholder="https://..." value="${defaultData.link || ''}">
+        </div>
+        <div class="row">
+          <div class="col form-group">
+            <label>المقاس / اللون</label>
+            <input type="text" class="prod-variant" placeholder="مثال: مقاس 50 - أسود" value="${defaultData.variant || ''}">
+          </div>
+          <div class="col form-group">
+            <label>الكمية</label>
+            <input type="number" class="prod-qty" min="1" value="${defaultData.qty || 1}">
+          </div>
+        </div>
+        <div class="row">
+          <div class="col form-group">
+            <label>سعر البيع (ج.م) <span class="required">*</span></label>
+            <input type="number" class="prod-retail" min="0" placeholder="مثال: 400" oninput="calculateTotals()" required value="${defaultData.retail || ''}">
+          </div>
+          <div class="col form-group">
+            <label>سعر الجملة (اختياري)</label>
+            <input type="number" class="prod-wholesale" min="0" placeholder="مثال: 300" oninput="calculateTotals()" value="${defaultData.wholesale || ''}">
+          </div>
+          <div class="col form-group">
+            <label>العمولة (اختياري)</label>
+            <input type="number" class="prod-commission" min="0" placeholder="مثال: 50" oninput="calculateTotals()" value="${defaultData.commission || ''}">
+          </div>
+        </div>
+      `;
+
+      container.appendChild(itemDiv);
+      calculateTotals();
+    }
+
+    function removeProductItem(id) {
+      const el = document.getElementById(`product_${id}`);
+      if (el) {
+        el.remove();
+        calculateTotals();
+      }
+    }
+
+    function calculateTotals() {
+      let sumRetail = 0;
+      let sumCommission = 0;
+
+      const items = document.querySelectorAll('.product-item');
+      items.forEach(item => {
+        const retail = parseFloat(item.querySelector('.prod-retail')?.value) || 0;
+        const comm = parseFloat(item.querySelector('.prod-commission')?.value) || 0;
+        const qty = parseInt(item.querySelector('.prod-qty')?.value) || 1;
+
+        sumRetail += (retail * qty);
+        sumCommission += (comm * qty);
+      });
+
+      document.getElementById('sumRetail').innerText = `${sumRetail.toFixed(2)} ج.م`;
+      document.getElementById('sumCommission').innerText = `${sumCommission.toFixed(2)} ج.م`;
+      document.getElementById('sumTotal').innerText = `${sumRetail.toFixed(2)} ج.م`;
+    }
+
+    function buildMessageText() {
+      const name = document.getElementById('customerName').value.trim();
+      const phone = document.getElementById('customerPhone').value.trim();
+      const address = document.getElementById('customerAddress').value.trim();
+      const deposit = document.getElementById('depositAmount').value.trim();
+      const method = document.getElementById('paymentMethod').value;
+      const notes = document.getElementById('orderNotes').value.trim();
+
+      let text = `الاسم: ${name}\n`;
+      text += `رقم الهاتف: ${phone}\n`;
+      if (address) text += `العنوان: ${address}\n`;
+
+      const items = document.querySelectorAll('.product-item');
+      items.forEach((item, index) => {
+        const pName = item.querySelector('.prod-name')?.value.trim() || 'صنف بدون اسم';
+        const link = item.querySelector('.prod-link')?.value.trim();
+        const variant = item.querySelector('.prod-variant')?.value.trim();
+        const qty = item.querySelector('.prod-qty')?.value.trim() || '1';
+        const retail = item.querySelector('.prod-retail')?.value.trim();
+        const wholesale = item.querySelector('.prod-wholesale')?.value.trim();
+        const commission = item.querySelector('.prod-commission')?.value.trim();
+
+        text += `\nالمنتج ${index + 1}: ${pName}\n`;
+        if (link) text += `اللينك: ${link}\n`;
+        if (variant) text += `المواصفات: ${variant} - الكمية: ${qty}\n`;
+        if (wholesale) text += `سعر الجملة: ${wholesale}\n`;
+        if (retail) text += `سعر البيع: ${retail}\n`;
+        if (commission) text += `العمولة: ${commission}\n`;
+      });
+
+      text += `\nعربون: ${deposit}\n`;
+      text += `طريقة الدفع: ${method}\n`;
+      if (notes) text += `ملاحظات: ${notes}\n`;
+
+      return text;
+    }
+
+    let globalMessageText = '';
+
+    function handleFormSubmit(e) {
+      e.preventDefault();
+      globalMessageText = buildMessageText();
+
+      // If running inside Telegram WebApp, send data directly to Bot!
+      if (tg && typeof tg.sendData === 'function') {
+        try {
+          tg.sendData(globalMessageText);
+          tg.close();
+          return;
+        } catch (err) {
+          console.warn('sendData failed, fallback to modal:', err);
+        }
+      }
+
+      // Fallback for regular browser or external opening
+      document.getElementById('resultMessageText').innerText = globalMessageText;
+      document.getElementById('resultModal').style.display = 'flex';
+    }
+
+    function copyAndOpenTelegram() {
+      navigator.clipboard.writeText(globalMessageText).then(() => {
+        alert('تم نسخ تفاصيل الطلب بنجاح! الصقها في محادثة البوت الآن.');
+        if (tg) {
+          tg.close();
+        }
+      });
+    }
+
+    function closeModal() {
+      document.getElementById('resultModal').style.display = 'none';
+    }
+
+    // Initialize with 1 default product
+    window.addEventListener('DOMContentLoaded', () => {
+      addProductItem({ name: 'دبلة الخطوبة', retail: '400', wholesale: '300', commission: '50' });
+    });
+  </script>
+</body>
+</html>
