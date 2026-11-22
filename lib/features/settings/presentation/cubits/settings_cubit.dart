@@ -85,6 +85,11 @@ class SettingsCubit extends Cubit<SettingsState> {
     : super(const SettingsState(isLoading: true));
 
   void start() {
+    _featureGate.getFeatures().then((features) {
+      if (!isClosed) {
+        emit(state.copyWith(features: features, isLoading: false, clearError: true));
+      }
+    });
     _sub?.cancel();
     _sub = _featureGate.watchFeatures().listen((features) {
       emit(

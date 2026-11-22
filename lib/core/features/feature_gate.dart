@@ -257,6 +257,7 @@ class FeatureGate {
   final TxWriter _txWriter;
   final BranchProvider _branchProvider;
 
+  Map<String, bool>? _lastFeatures;
   StreamController<Map<String, bool>>? _featuresController;
   StreamSubscription? _driftFeaturesSub;
 
@@ -311,7 +312,16 @@ class FeatureGate {
     return map;
   }
 
-  Stream<Map<String, bool>> watchFeatures() {
+  Stream<Map<String, bool>> watchFeatures() async* {
+    if (_lastFeatures != null) {
+      yield _lastFeatures!;
+    } else {
+      yield await getFeatures();
+    }
+    yield* _getOrCreateFeaturesStream();
+  }
+
+  Stream<Map<String, bool>> _getOrCreateFeaturesStream() {
     if (_featuresController == null || _featuresController!.isClosed) {
       _featuresController = StreamController<Map<String, bool>>.broadcast();
       _driftFeaturesSub = (_db.select(_db.appMeta)
@@ -319,8 +329,10 @@ class FeatureGate {
           .watch()
           .listen((rows) {
         final stored = <String, String>{for (final r in rows) r.key: r.value};
+        final resolved = resolveEnabledMap(stored);
+        _lastFeatures = resolved;
         if (_featuresController != null && !_featuresController!.isClosed) {
-          _featuresController!.add(resolveEnabledMap(stored));
+          _featuresController!.add(resolved);
         }
       });
     }
@@ -330,6 +342,8 @@ class FeatureGate {
   void dispose() {
     _driftFeaturesSub?.cancel();
     _featuresController?.close();
+    _featuresController = null;
+    _driftFeaturesSub = null;
   }
 
   Future<Map<String, bool>> getFeatures() async {
@@ -337,7 +351,9 @@ class FeatureGate {
       _db.appMeta,
     )..where((t) => t.key.like('feature.%'))).get();
     final stored = <String, String>{for (final r in rows) r.key: r.value};
-    return resolveEnabledMap(stored);
+    final resolved = resolveEnabledMap(stored);
+    _lastFeatures = resolved;
+    return resolved;
   }
 
   Future<bool> isEnabled(String key) async {
