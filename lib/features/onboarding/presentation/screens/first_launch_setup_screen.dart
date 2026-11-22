@@ -32,8 +32,20 @@ class _FirstLaunchSetupScreenState extends State<FirstLaunchSetupScreen> {
   final _storePhoneController = TextEditingController();
   final _storeAddressController = TextEditingController();
 
-  // Step 2: Store Preset
+  // Step 2: Store Preset & Operational Features
   StorePreset _selectedPreset = StorePreset.fashion;
+  bool _enableDelivery = false;
+  bool _enablePreOrders = false;
+  bool _enableInstallments = false;
+
+  void _selectPreset(StorePreset preset) {
+    setState(() {
+      _selectedPreset = preset;
+      _enableDelivery = (preset == StorePreset.hospitality);
+      _enableInstallments = (preset == StorePreset.electronics);
+      _enablePreOrders = false;
+    });
+  }
 
   // Step 3: Master Admin
   final _adminUsernameController = TextEditingController(text: 'admin');
@@ -184,6 +196,11 @@ class _FirstLaunchSetupScreenState extends State<FirstLaunchSetupScreen> {
         activityService: activityService,
         userId: 'system',
       );
+
+      // Save modular operational features chosen by merchant in setup wizard
+      await gate.setFeatureEnabled(FeatureKeys.delivery, _enableDelivery, userId: 'system');
+      await gate.setFeatureEnabled(FeatureKeys.preOrders, _enablePreOrders, userId: 'system');
+      await gate.setFeatureEnabled(FeatureKeys.installments, _enableInstallments, userId: 'system');
 
       // 3. Save Branding
       await AppBranding.save(
@@ -522,7 +539,7 @@ class _FirstLaunchSetupScreenState extends State<FirstLaunchSetupScreen> {
 
                 return InkWell(
                   key: Key('preset_card_${preset.code}'),
-                  onTap: () => setState(() => _selectedPreset = preset),
+                  onTap: () => _selectPreset(preset),
                   borderRadius: BorderRadius.circular(10),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
@@ -591,6 +608,66 @@ class _FirstLaunchSetupScreenState extends State<FirstLaunchSetupScreen> {
               },
             );
           },
+        ),
+        const SizedBox(height: 20),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.tune_rounded, size: 18, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'الخدمات والأنظمة التشغيلية الإضافية (اختياري):',
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'حدد المزايا التشغيلية التي يحتاجها متجرك الآن، ويمكنك دائماً تغييرها لاحقاً من الإعدادات:',
+                style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+              ),
+              const SizedBox(height: 14),
+              _buildFeatureToggleTile(
+                key: const Key('setup_feature_delivery_switch'),
+                title: 'توصيل الطلبات والدليفري (Delivery)',
+                subtitle: 'إدارة أوردرات الدليفري وتعيين الطيارين ومصاريف الشحن في نقطة البيع',
+                icon: Icons.moped_rounded,
+                value: _enableDelivery,
+                onChanged: (val) => setState(() => _enableDelivery = val),
+              ),
+              const Divider(color: Color(0xFFE2E8F0), height: 16),
+              _buildFeatureToggleTile(
+                key: const Key('setup_feature_preorders_switch'),
+                title: 'حجز البضائع والعربونات (Pre-Orders)',
+                subtitle: 'تسجيل طلبات وحجوزات مسبقة ودفع العربون وتتبع وصول الشحنات',
+                icon: Icons.bookmark_added_rounded,
+                value: _enablePreOrders,
+                onChanged: (val) => setState(() => _enablePreOrders = val),
+              ),
+              const Divider(color: Color(0xFFE2E8F0), height: 16),
+              _buildFeatureToggleTile(
+                key: const Key('setup_feature_installments_switch'),
+                title: 'إدارة التقسيط والبيع الآجل (Installments)',
+                subtitle: 'جدولة الأقساط الشهرية وإصدار العقود وإيصالات الأمانة ومتابعة التحصيل',
+                icon: Icons.calendar_month_rounded,
+                value: _enableInstallments,
+                onChanged: (val) => setState(() => _enableInstallments = val),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -764,6 +841,22 @@ class _FirstLaunchSetupScreenState extends State<FirstLaunchSetupScreen> {
               ),
               const Divider(color: Color(0xFFE2E8F0), height: 18),
               _buildReviewRow(
+                icon: Icons.tune_rounded,
+                label: 'الخدمات التشغيلية:',
+                value: [
+                  if (_enableDelivery) 'الدليفري',
+                  if (_enablePreOrders) 'الحجز المسبق',
+                  if (_enableInstallments) 'التقسيط',
+                ].isEmpty
+                    ? 'المبيعات الفورية الأساسية'
+                    : [
+                        if (_enableDelivery) 'الدليفري',
+                        if (_enablePreOrders) 'الحجز المسبق',
+                        if (_enableInstallments) 'التقسيط',
+                      ].join(' • '),
+              ),
+              const Divider(color: Color(0xFFE2E8F0), height: 18),
+              _buildReviewRow(
                 icon: Icons.admin_panel_settings_rounded,
                 label: 'حساب الآدمن الرئيسي:',
                 value: _adminUsernameController.text.trim(),
@@ -823,6 +916,65 @@ class _FirstLaunchSetupScreenState extends State<FirstLaunchSetupScreen> {
             value,
             style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A), fontWeight: FontWeight.w600),
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFeatureToggleTile({
+    required Key key,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color: value
+                ? AppColors.primary.withValues(alpha: 0.1)
+                : const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            size: 18,
+            color: value ? AppColors.primary : const Color(0xFF64748B),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 1),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Switch(
+          key: key,
+          value: value,
+          onChanged: onChanged,
+          activeThumbColor: AppColors.primary,
         ),
       ],
     );

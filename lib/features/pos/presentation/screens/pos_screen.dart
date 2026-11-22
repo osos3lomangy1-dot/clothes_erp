@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -117,12 +118,27 @@ class _PosViewState extends State<_PosView> {
   final StringBuffer _scannerBuffer = StringBuffer();
   DateTime _lastScanKeyTime = DateTime.now();
   InvoiceDetailsEntity? _lastCompletedInvoice;
+  bool _deliveryEnabled = false;
+  StreamSubscription? _deliverySub;
 
   @override
   void initState() {
     super.initState();
     HardwareKeyboard.instance.addHandler(_handleHardwareScan);
     _loadLatestInvoice();
+    if (getIt.isRegistered<FeatureGate>()) {
+      getIt<FeatureGate>().isEnabled(FeatureKeys.delivery).then((val) {
+        if (mounted && _deliveryEnabled != val) {
+          setState(() => _deliveryEnabled = val);
+        }
+      });
+      _deliverySub = getIt<FeatureGate>().watchFeatures().listen((features) {
+        final on = features[FeatureKeys.delivery] ?? false;
+        if (mounted && _deliveryEnabled != on) {
+          setState(() => _deliveryEnabled = on);
+        }
+      });
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _searchFocusNode.requestFocus();
@@ -472,6 +488,7 @@ class _PosViewState extends State<_PosView> {
 
   @override
   void dispose() {
+    _deliverySub?.cancel();
     HardwareKeyboard.instance.removeHandler(_handleHardwareScan);
     _searchFocusNode.dispose();
     _searchCtrl.dispose();
@@ -845,36 +862,50 @@ class _PosViewState extends State<_PosView> {
                 const SizedBox(width: 8),
 
                 // Pre-Orders Button [F7]
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const PreOrdersScreen(),
+                StreamBuilder<bool>(
+                  stream: getIt.isRegistered<ActivitySettingsService>()
+                      ? getIt<ActivitySettingsService>().watchPreOrdersEnabled()
+                      : (getIt.isRegistered<FeatureGate>()
+                          ? getIt<FeatureGate>().watchFeatures().map((m) => m[FeatureKeys.preOrders] ?? false)
+                          : Stream.value(false)),
+                  builder: (context, snap) {
+                    if (snap.data != true) return const SizedBox.shrink();
+                    return Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: ElevatedButton.icon(
+                        key: const Key('pos_preorders_header_btn'),
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const PreOrdersScreen(),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.bookmark_added_rounded, size: 16),
+                        label: const Text(
+                          'حجز مسبق [F7]',
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.surfaceContainerLow,
+                          foregroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          minimumSize: const Size(0, 36),
+                          side: BorderSide(
+                            color: AppColors.primary.withValues(alpha: 0.3),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          elevation: 0,
+                        ),
                       ),
                     );
                   },
-                  icon: const Icon(Icons.bookmark_added_rounded, size: 16),
-                  label: const Text(
-                    'حجز مسبق [F7]',
-                    style: TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.surfaceContainerLow,
-                    foregroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    minimumSize: const Size(0, 36),
-                    side: BorderSide(
-                      color: AppColors.primary.withValues(alpha: 0.3),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    elevation: 0,
-                  ),
                 ),
 
                 const SizedBox(width: 8),
@@ -910,24 +941,27 @@ class _PosViewState extends State<_PosView> {
                   ),
                 ),
 
-                const SizedBox(width: 8),
-
                 // Delivery Button
-                IconButton(
-                  icon: const Icon(
-                    Icons.moped_rounded,
-                    color: AppColors.onSurfaceVariant,
-                    size: 20,
-                  ),
-                  tooltip: 'إدارة وتتبع الدليفري والطيارين',
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const DeliveryOrdersScreen(),
+                if (_deliveryEnabled)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: IconButton(
+                      key: const Key('pos_delivery_header_btn'),
+                      icon: const Icon(
+                        Icons.moped_rounded,
+                        color: AppColors.onSurfaceVariant,
+                        size: 20,
                       ),
-                    );
-                  },
-                ),
+                      tooltip: 'إدارة وتتبع الدليفري والطيارين',
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const DeliveryOrdersScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
               ],
             ),
           ),
@@ -2545,9 +2579,11 @@ class _CartPanelState extends State<_CartPanel> {
       'cash'; // 'cash', 'card', 'split', 'installment', 'credit'
   bool _installmentAvailable = false;
   bool _creditAvailable = true;
+  bool _deliveryAvailable = false;
   bool _isWholesaleMode = false;
   DeliveryOrderEntity? _deliveryOrder;
   String _hospitalityOrderType = 'dineIn';
+  StreamSubscription? _featuresSubscription;
 
   int _nextBillId = 2;
   int _activeBillIndex = 0;
@@ -2815,12 +2851,18 @@ class _CartPanelState extends State<_CartPanel> {
   void initState() {
     super.initState();
     _checkPaymentAvailability();
+    if (getIt.isRegistered<FeatureGate>()) {
+      _featuresSubscription = getIt<FeatureGate>().watchFeatures().listen((_) {
+        if (mounted) _checkPaymentAvailability();
+      });
+    }
   }
 
   Future<void> _checkPaymentAvailability() async {
     final gate = getIt<FeatureGate>();
     final featureOn = await gate.isEnabled(FeatureKeys.installments);
     final meta = await gate.getMeta('payment.installment');
+    final deliveryOn = await gate.isEnabled(FeatureKeys.delivery);
     if (!mounted) return;
 
     final authState = context.read<AuthCubit>().state;
@@ -2840,6 +2882,13 @@ class _CartPanelState extends State<_CartPanel> {
       setState(() {
         _installmentAvailable = installmentOn;
         _creditAvailable = creditOn;
+        _deliveryAvailable = deliveryOn;
+        if (!deliveryOn && _deliveryOrder != null) {
+          _deliveryOrder = null;
+        }
+        if (!deliveryOn && _hospitalityOrderType == 'delivery') {
+          _hospitalityOrderType = 'takeaway';
+        }
         if (!creditOn && _paymentMethod == 'credit') {
           _paymentMethod = 'cash';
         }
@@ -2852,6 +2901,7 @@ class _CartPanelState extends State<_CartPanel> {
 
   @override
   void dispose() {
+    _featuresSubscription?.cancel();
     _discountCtrl.dispose();
     _receivedCtrl.dispose();
     _creditDownPaymentCtrl.dispose();
@@ -3801,16 +3851,18 @@ class _CartPanelState extends State<_CartPanel> {
                                   onTap: () => setState(() => _hospitalityOrderType = 'takeaway'),
                                 ),
                               ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: _orderTypeButton(
-                                  key: const Key('hospitality_delivery'),
-                                  label: 'دليفري',
-                                  icon: Icons.delivery_dining_rounded,
-                                  isSelected: _hospitalityOrderType == 'delivery',
-                                  onTap: () => setState(() => _hospitalityOrderType = 'delivery'),
+                              if (_deliveryAvailable) ...[
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: _orderTypeButton(
+                                    key: const Key('hospitality_delivery'),
+                                    label: 'دليفري',
+                                    icon: Icons.delivery_dining_rounded,
+                                    isSelected: _hospitalityOrderType == 'delivery',
+                                    onTap: () => setState(() => _hospitalityOrderType = 'delivery'),
+                                  ),
                                 ),
-                              ),
+                              ],
                             ],
                           ),
                         );
@@ -4612,10 +4664,12 @@ class _CartPanelState extends State<_CartPanel> {
                                     ),
                                   ),
                                   const Spacer(),
-                                  Flexible(
-                                    child: InkWell(
-                                      onTap: () => _toggleDeliveryMode(state),
-                                      borderRadius: BorderRadius.circular(6),
+                                  if (_deliveryAvailable)
+                                    Flexible(
+                                      child: InkWell(
+                                        key: const Key('pos_cart_delivery_btn'),
+                                        onTap: () => _toggleDeliveryMode(state),
+                                        borderRadius: BorderRadius.circular(6),
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 6,

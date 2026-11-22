@@ -58,6 +58,7 @@ class FeatureKeys {
   static const blindShiftClosing = 'blindShiftClosing';
   static const drawerPettyCash = 'drawerPettyCash';
   static const managerPinProtection = 'managerPinProtection';
+  static const delivery = 'delivery';
 
   static const definitions = <FeatureDefinition>[
     FeatureDefinition(
@@ -164,7 +165,13 @@ class FeatureKeys {
       key: preOrders,
       label: 'الحجز المسبق والعربونات',
       coreAlwaysEnabled: false,
-      defaultEnabled: true,
+      defaultEnabled: false,
+    ),
+    FeatureDefinition(
+      key: delivery,
+      label: 'إدارة الدليفري والطيارين',
+      coreAlwaysEnabled: false,
+      defaultEnabled: false,
     ),
     FeatureDefinition(
       key: wholesalePricing,

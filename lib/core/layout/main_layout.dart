@@ -122,7 +122,9 @@ class _MainLayoutState extends State<MainLayout> {
     _activeInstallmentsSub?.cancel();
     _cloudSyncSub?.cancel();
     _syncSubscription?.cancel();
-    getIt<RestSyncService>().stopAutoSync();
+    if (getIt.isRegistered<RestSyncService>()) {
+      getIt<RestSyncService>().stopAutoSync();
+    }
     super.dispose();
   }
 
@@ -372,12 +374,16 @@ class _MainLayoutState extends State<MainLayout> {
                                                 const ReturnScreen(),
                                                 isSubItem: true,
                                               ),
-                                              _navItem(
-                                                Icons.moped_rounded,
-                                                'إدارة الدليفري والطيارين',
-                                                const DeliveryOrdersScreen(),
-                                                isSubItem: true,
-                                              ),
+                                              if (_featureEnabled(
+                                                features,
+                                                FeatureKeys.delivery,
+                                              ))
+                                                _navItem(
+                                                  Icons.moped_rounded,
+                                                  'إدارة الدليفري والطيارين',
+                                                  const DeliveryOrdersScreen(),
+                                                  isSubItem: true,
+                                                ),
                                               if (_featureEnabled(
                                                 features,
                                                 FeatureKeys.preOrders,

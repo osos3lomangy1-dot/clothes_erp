@@ -182,4 +182,28 @@ class ActivitySettingsService {
       userId: userId,
     );
   }
+
+  /// Checks if delivery module is enabled
+  Future<bool> isDeliveryEnabled() async {
+    return _featureGate.isEnabled(FeatureKeys.delivery);
+  }
+
+  /// Reactive stream of delivery module status
+  Stream<bool> watchDeliveryEnabled() {
+    return _featureGate.watchFeatures().map(
+      (m) => m[FeatureKeys.delivery] ?? false,
+    );
+  }
+
+  /// Enables or disables delivery
+  Future<void> setDeliveryEnabled(
+    bool enabled, {
+    required String userId,
+  }) async {
+    await _featureGate.setFeatureEnabled(
+      FeatureKeys.delivery,
+      enabled,
+      userId: userId,
+    );
+  }
 }
