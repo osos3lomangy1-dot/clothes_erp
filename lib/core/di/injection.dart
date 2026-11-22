@@ -27,6 +27,7 @@ import '../features/feature_gate.dart';
 import '../services/database_reset_service.dart';
 import '../services/excel_workbook_service.dart';
 import '../services/google_drive_backup_service.dart';
+import '../services/license_activation_service.dart';
 import '../services/local_backup_service.dart';
 
 final getIt = GetIt.instance;
@@ -158,6 +159,11 @@ Future<void> configureDependencies() async {
         getIt<AppDatabase>(),
         getIt<LocalBackupService>(),
       ),
+    );
+  }
+  if (!getIt.isRegistered<LicenseActivationService>()) {
+    getIt.registerLazySingleton<LicenseActivationService>(
+      () => LicenseActivationService(getIt<AppDatabase>()),
     );
   }
 }

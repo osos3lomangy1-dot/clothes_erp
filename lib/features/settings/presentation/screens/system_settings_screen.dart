@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
@@ -10,6 +12,7 @@ import '../../../../core/di/injection.dart';
 import '../../../../core/features/feature_gate.dart';
 import '../../../../core/services/crash_logger_service.dart';
 import '../../../../core/services/database_reset_service.dart';
+import '../../../../core/services/license_activation_service.dart';
 import '../../../../core/theme/app_branding.dart';
 import '../../../auth/domain/models/cashier_permissions_config.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
@@ -1082,6 +1085,9 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
                               ],
                             ),
                           ),
+                          const SizedBox(height: 20),
+                          _sectionTitle('ترخيص وتفعيل النظام (License & Activation)'),
+                          const _LicenseActivationCard(),
                           if (_isMasterAdmin(context)) ...[
                             const SizedBox(height: 24),
                             _sectionTitle('منطقة العمليات المتقدمة للآدمن (تهيئة النظام وتصفير البيانات)'),
@@ -4399,6 +4405,339 @@ class _AdminDangerZoneResetCardState extends State<_AdminDangerZoneResetCard> {
             label: const Text(
               'تصفير العمليات والبيانات التجريبية',
               style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LicenseActivationCard extends StatefulWidget {
+  const _LicenseActivationCard();
+
+  @override
+  State<_LicenseActivationCard> createState() => _LicenseActivationCardState();
+}
+
+class _LicenseActivationCardState extends State<_LicenseActivationCard> {
+  final _keyController = TextEditingController();
+  StreamSubscription<LicenseInfo>? _subscription;
+  LicenseInfo? _licenseInfo;
+  bool _isLoading = true;
+  bool _isActivating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStatus();
+    if (getIt.isRegistered<LicenseActivationService>()) {
+      _subscription = getIt<LicenseActivationService>().onStatusChanged.listen((info) {
+        if (mounted) {
+          setState(() => _licenseInfo = info);
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    _keyController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadStatus() async {
+    try {
+      if (getIt.isRegistered<LicenseActivationService>()) {
+        final info = await getIt<LicenseActivationService>().checkLicenseStatus();
+        if (mounted) {
+          setState(() {
+            _licenseInfo = info;
+            _isLoading = false;
+          });
+        }
+      } else {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _activateKey() async {
+    final key = _keyController.text.trim();
+    if (key.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('يرجى إدخال كود التفعيل أولاً.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isActivating = true);
+    try {
+      final updated = await getIt<LicenseActivationService>().activateLicense(key);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('تم تفعيل النظام بنجاح: ${updated.statusMessage}'),
+            backgroundColor: Colors.green.shade800,
+          ),
+        );
+        _keyController.clear();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isActivating = false);
+    }
+  }
+
+  void _copyMachineId() {
+    final mid = _licenseInfo?.machineId ?? '';
+    if (mid.isNotEmpty) {
+      Clipboard.setData(ClipboardData(text: mid));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('تم نسخ معرّف الجهاز إلى الحافظة بنجاح.'),
+          backgroundColor: AppColors.primary,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final info = _licenseInfo;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.verified_user_rounded, color: AppColors.primary, size: 22),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'حالة ترخيص وتفعيل النظام (License Status)',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'الترخيص المشفر أوفلاين لحماية النظام والبيانات دون الحاجة للاتصال بالإنترنت.',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (_isLoading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(12),
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else if (info != null)
+            _buildStatusBadge(info),
+          const SizedBox(height: 16),
+          // Machine ID Box
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.computer_rounded, size: 16, color: Color(0xFF64748B)),
+                    SizedBox(width: 6),
+                    Text(
+                      'معرّف الجهاز المعتمد (Machine ID):',
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SelectableText(
+                        info?.machineId ?? 'جاري جلب المعرّف...',
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      key: const Key('copy_machine_id_button'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      onPressed: _copyMachineId,
+                      icon: const Icon(Icons.copy_rounded, size: 16),
+                      label: const Text('نسخ المعرّف', style: TextStyle(fontSize: 12)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'أرسل معرّف الجهاز هذا للمطور لإصدار كود التفعيل المرخص والخاص بجهازك.',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Activation Input Row
+          const Text(
+            'تفعيل كود الترخيص (License Activation):',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  key: const Key('license_key_field'),
+                  controller: _keyController,
+                  decoration: InputDecoration(
+                    hintText: 'أدخل كود التفعيل المعتمد (مثال: B3H-...)',
+                    prefixIcon: const Icon(Icons.vpn_key_rounded, size: 18),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              ElevatedButton.icon(
+                key: const Key('activate_license_button'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: _isActivating ? null : _activateKey,
+                icon: _isActivating
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.check_circle_outline_rounded, size: 18),
+                label: Text(
+                  _isActivating ? 'جاري التفعيل...' : 'تفعيل كود الترخيص',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(LicenseInfo info) {
+    Color bg;
+    Color border;
+    Color fg;
+    IconData icon;
+
+    switch (info.state) {
+      case LicenseState.licensedLifetime:
+        bg = const Color(0xFFF0FDF4);
+        border = const Color(0xFFBBF7D0);
+        fg = const Color(0xFF166534);
+        icon = Icons.verified_rounded;
+        break;
+      case LicenseState.licensedExpiring:
+        bg = const Color(0xFFEFF6FF);
+        border = const Color(0xFFBFDBFE);
+        fg = const Color(0xFF1E40AF);
+        icon = Icons.timer_outlined;
+        break;
+      case LicenseState.trialActive:
+        bg = const Color(0xFFFFFBEB);
+        border = const Color(0xFFFDE68A);
+        fg = const Color(0xFF92400E);
+        icon = Icons.access_time_rounded;
+        break;
+      case LicenseState.trialExpired:
+      case LicenseState.clockTampered:
+        bg = const Color(0xFFFEF2F2);
+        border = const Color(0xFFFECACA);
+        fg = const Color(0xFF991B1B);
+        icon = Icons.lock_clock_rounded;
+        break;
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: fg, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              info.statusMessage,
+              style: TextStyle(color: fg, fontWeight: FontWeight.bold, fontSize: 13),
             ),
           ),
         ],
