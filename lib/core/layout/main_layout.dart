@@ -683,12 +683,20 @@ class _MainLayoutState extends State<MainLayout> {
                 child: ClipRect(
                   child: Container(
                     color: Colors.white,
-                    child: Navigator(
-                      key: _contentNavKey,
-                      onGenerateRoute: (settings) => MaterialPageRoute(
-                        settings: settings,
-                        builder: (_) => _currentScreen,
-                      ),
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: Navigator(
+                            key: _contentNavKey,
+                            onGenerateRoute: (settings) => MaterialPageRoute(
+                              settings: settings,
+                              builder: (_) => _currentScreen,
+                            ),
+                          ),
+                        ),
+                        if (_activeTitle != 'نقطة البيع (الكاشير)')
+                          _buildContextualHotkeyStrip(),
+                      ],
                     ),
                   ),
                 ),
@@ -1370,4 +1378,239 @@ class _MainLayoutState extends State<MainLayout> {
       ),
     );
   }
+
+  Widget _buildContextualHotkeyStrip() {
+    final title = _activeTitle.toLowerCase();
+    final bool isProducts = title.contains('منتجات') ||
+        title.contains('تصنيفات') ||
+        title.contains('مخزون') ||
+        title.contains('جرد') ||
+        title.contains('بضاعة');
+    final bool isDelivery = title.contains('دليفري') ||
+        title.contains('توصيل') ||
+        title.contains('طيار') ||
+        title.contains('شحن');
+    final bool isPurchases =
+        title.contains('مشتريات') || title.contains('مورد');
+
+    final String stripKey = isProducts
+        ? 'contextual_hotkey_strip_products'
+        : isDelivery
+            ? 'contextual_hotkey_strip_delivery'
+            : isPurchases
+                ? 'contextual_hotkey_strip_purchases'
+                : 'contextual_hotkey_strip_general';
+
+    final List<_ContextualHotkeyItem> items;
+    if (isProducts) {
+      items = [
+        const _ContextualHotkeyItem(
+          key: 'hotkey_products_new_size',
+          label: 'F3 سطر مقاس جديد',
+          icon: Icons.add_box_rounded,
+        ),
+        const _ContextualHotkeyItem(
+          key: 'hotkey_products_save',
+          label: 'Ctrl+S حفظ المنتجات',
+          icon: Icons.save_rounded,
+        ),
+        const _ContextualHotkeyItem(
+          key: 'hotkey_products_barcode',
+          label: 'F4 طباعة باركود',
+          icon: Icons.qr_code_rounded,
+        ),
+        const _ContextualHotkeyItem(
+          key: 'hotkey_products_grid_nav',
+          label: 'تنقل شبكي بالأسهم',
+          icon: Icons.grid_view_rounded,
+        ),
+        _ContextualHotkeyItem(
+          key: 'hotkey_products_shortcuts',
+          label: 'F1 اختصارات',
+          icon: Icons.keyboard_rounded,
+          onTap: _openShortcutsGuide,
+        ),
+      ];
+    } else if (isDelivery) {
+      items = [
+        const _ContextualHotkeyItem(
+          key: 'hotkey_delivery_new_order',
+          label: 'طلب دليفري جديد',
+          icon: Icons.add_circle_outline_rounded,
+        ),
+        const _ContextualHotkeyItem(
+          key: 'hotkey_delivery_settle_courier',
+          label: 'تصفية كاش طيار',
+          icon: Icons.account_balance_wallet_rounded,
+        ),
+        const _ContextualHotkeyItem(
+          key: 'hotkey_delivery_company_payout',
+          label: 'تسجيل دفعة شركة',
+          icon: Icons.payments_rounded,
+        ),
+        _ContextualHotkeyItem(
+          key: 'hotkey_delivery_palette',
+          label: 'Ctrl+K لوحة الأوامر',
+          icon: Icons.terminal_rounded,
+          onTap: _openCommandPalette,
+        ),
+      ];
+    } else if (isPurchases) {
+      items = [
+        const _ContextualHotkeyItem(
+          key: 'hotkey_purchases_new_bill',
+          label: 'فاتورة مشتريات جديدة',
+          icon: Icons.post_add_rounded,
+        ),
+        const _ContextualHotkeyItem(
+          key: 'hotkey_purchases_save',
+          label: 'Ctrl+S اعتماد وحفظ',
+          icon: Icons.save_rounded,
+        ),
+        const _ContextualHotkeyItem(
+          key: 'hotkey_purchases_supplier',
+          label: 'F2 اختيار مورد',
+          icon: Icons.person_search_rounded,
+        ),
+        _ContextualHotkeyItem(
+          key: 'hotkey_purchases_shortcuts',
+          label: 'F1 اختصارات',
+          icon: Icons.keyboard_rounded,
+          onTap: _openShortcutsGuide,
+        ),
+      ];
+    } else {
+      items = [
+        _ContextualHotkeyItem(
+          key: 'hotkey_general_palette',
+          label: 'Ctrl+K لوحة الأوامر العامة',
+          icon: Icons.terminal_rounded,
+          onTap: _openCommandPalette,
+        ),
+        _ContextualHotkeyItem(
+          key: 'hotkey_general_shortcuts',
+          label: 'F1 دليل ومفاتيح النظام',
+          icon: Icons.keyboard_rounded,
+          onTap: _openShortcutsGuide,
+        ),
+        _ContextualHotkeyItem(
+          key: 'hotkey_general_search',
+          label: 'Ctrl+F بحث فوري',
+          icon: Icons.search_rounded,
+          onTap: _openCommandPalette,
+        ),
+      ];
+    }
+
+    return Container(
+      key: Key(stripKey),
+      height: 38,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: const BoxDecoration(
+        color: Color(0xFF0F172A),
+        border: Border(top: BorderSide(color: Color(0xFF1E293B))),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: items.map((item) {
+                  return Padding(
+                    padding: const EdgeInsets.only(left: 8.0),
+                    child: InkWell(
+                      key: Key(item.key),
+                      onTap: item.onTap,
+                      borderRadius: BorderRadius.circular(6),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E293B),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: const Color(0xFF334155),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              item.icon,
+                              size: 13,
+                              color: Colors.grey.shade400,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              item.label,
+                              style: const TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+          InkWell(
+            key: const Key('contextual_hotkey_palette_shortcut'),
+            onTap: _openCommandPalette,
+            borderRadius: BorderRadius.circular(6),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.4),
+                  width: 1,
+                ),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.bolt_rounded, size: 14, color: Colors.white),
+                  SizedBox(width: 4),
+                  Text(
+                    'Ctrl+K',
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ContextualHotkeyItem {
+  final String key;
+  final String label;
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  const _ContextualHotkeyItem({
+    required this.key,
+    required this.label,
+    required this.icon,
+    this.onTap,
+  });
 }

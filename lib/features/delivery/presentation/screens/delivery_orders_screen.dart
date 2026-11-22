@@ -12,6 +12,7 @@ import '../../domain/entities/delivery_courier_entity.dart';
 import '../../domain/entities/delivery_order_entity.dart';
 import '../../domain/entities/shipping_company_statement.dart';
 import '../widgets/delivery_checkout_dialog.dart';
+import '../../../../core/widgets/app_floating_toast.dart';
 
 class DeliveryOrdersScreen extends StatelessWidget {
   const DeliveryOrdersScreen({super.key});
@@ -319,15 +320,12 @@ void showAddCourierDialog(BuildContext context) {
               if (ctx.mounted) {
                 Navigator.pop(ctx);
                 if (success) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        isShipping
-                            ? 'تمت إضافة شركة الشحن بنجاح'
-                            : 'تمت إضافة مندوب التوصيل بنجاح',
-                      ),
-                      backgroundColor: Colors.green,
-                    ),
+                  AppFloatingToast.show(
+                    context,
+                    message: isShipping
+                        ? 'تمت إضافة شركة الشحن بنجاح'
+                        : 'تمت إضافة مندوب التوصيل بنجاح',
+                    type: ToastType.success,
                   );
                 }
               }
@@ -579,15 +577,12 @@ class _DeliveryOrdersListTab extends StatelessWidget {
                       c.name,
                     );
                     Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          c.isShippingCompany
-                              ? 'تم إسناد الطلب إلى ${c.name} (شركة شحن)'
-                              : 'تم إسناد الطلب إلى ${c.name} وتغيير حالته إلى (خرج للتوصيل)',
-                        ),
-                        backgroundColor: Colors.green,
-                      ),
+                    AppFloatingToast.show(
+                      context,
+                      message: c.isShippingCompany
+                          ? 'تم إسناد الطلب إلى ${c.name} (شركة شحن)'
+                          : 'تم إسناد الطلب إلى ${c.name} وتغيير حالته إلى (خرج للتوصيل)',
+                      type: ToastType.success,
                     );
                   },
                 ),
@@ -779,13 +774,17 @@ class _DeliveryOrdersListTab extends StatelessWidget {
                   padding: EdgeInsets.all(32.0),
                   child: Column(
                     children: [
-                      Icon(Icons.moped_rounded, size: 54, color: Colors.grey),
+                      Icon(Icons.two_wheeler_rounded, size: 54, color: Colors.grey),
                       SizedBox(height: 12),
                       Text(
-                        'لا توجد طلبات توصيل مطابقة للبحث أو الفلتر',
+                        'لا توجد طلبات دليفري جارية حالياً.. جميع الطلبات تم تسليمها وتصفيتها بنجاح',
+                        key: Key('delivery_empty_state_text'),
+                        textAlign: TextAlign.center,
                         style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontWeight: FontWeight.bold,
-                          fontSize: 15,
+                          fontSize: 14.5,
+                          color: AppColors.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -1074,11 +1073,10 @@ class _DeliveryOrderCard extends StatelessWidget {
                               Clipboard.setData(
                                 ClipboardData(text: order.customerPhone),
                               );
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('تم نسخ رقم الهاتف'),
-                                  duration: Duration(seconds: 1),
-                                ),
+                              AppFloatingToast.show(
+                                context,
+                                message: 'تم نسخ رقم الهاتف',
+                                type: ToastType.info,
                               );
                             },
                             child: Row(
@@ -1276,11 +1274,10 @@ class _DeliveryOrderCard extends StatelessWidget {
                       msg = 'طلبك في الطريق مع الكابتن ${order.courierName ?? "المندوب"} - المبلغ المطلوب: ${Money(order.grandTotalPiasters).toDisplay()} ج.م';
                     }
                     Clipboard.setData(ClipboardData(text: msg));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('تم نسخ رسالة الواتساب للعميل بنجاح'),
-                        duration: Duration(seconds: 2),
-                      ),
+                    AppFloatingToast.show(
+                      context,
+                      message: 'تم نسخ رسالة الواتساب للعميل بنجاح',
+                      type: ToastType.success,
                     );
                   },
                   icon: const Icon(Icons.chat_bubble_outline_rounded, size: 15),
@@ -1307,11 +1304,10 @@ class _DeliveryOrderCard extends StatelessWidget {
                         'العنوان: ${order.deliveryAddress}\n'
                         'المطلوب: ${Money(order.grandTotalPiasters).toDisplay()} ج.م';
                     Clipboard.setData(ClipboardData(text: text));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('تم نسخ بيانات الطلب كاملة'),
-                        duration: Duration(seconds: 1),
-                      ),
+                    AppFloatingToast.show(
+                      context,
+                      message: 'تم نسخ بيانات الطلب كاملة',
+                      type: ToastType.info,
                     );
                   },
                   icon: const Icon(Icons.copy_rounded, size: 15),
@@ -1553,15 +1549,11 @@ class _CourierSettlementTabState extends State<_CourierSettlementTab> {
                                           orderIds,
                                         );
                                         if (context.mounted) {
-                                          ScaffoldMessenger.of(
+                                          AppFloatingToast.show(
                                             context,
-                                          ).showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
+                                            message:
                                                 'تمت تصفية وتوريد عهدة الطيار وإيداعها في درج الوردية بنجاح!',
-                                              ),
-                                              backgroundColor: Colors.green,
-                                            ),
+                                            type: ToastType.success,
                                           );
                                         }
                                       }
@@ -1838,11 +1830,10 @@ class _ShippingCompaniesTabState extends State<_ShippingCompaniesTab> {
                 if (ctx.mounted) {
                   Navigator.pop(ctx);
                   if (success) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('تم تسجيل الدفعة وتحديث رصيد شركة الشحن بنجاح'),
-                        backgroundColor: Colors.green,
-                      ),
+                    AppFloatingToast.show(
+                      context,
+                      message: 'تم تسجيل الدفعة وتحديث رصيد شركة الشحن بنجاح',
+                      type: ToastType.success,
                     );
                   }
                 }
@@ -1866,10 +1857,10 @@ class _ShippingCompaniesTabState extends State<_ShippingCompaniesTab> {
         .toList();
 
     if (unreconciled.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('لا توجد شحنات مسلمة معلقة بانتظار التسوية المجمعة'),
-        ),
+      AppFloatingToast.show(
+        context,
+        message: 'لا توجد شحنات مسلمة معلقة بانتظار التسوية المجمعة',
+        type: ToastType.warning,
       );
       return;
     }
@@ -1918,11 +1909,10 @@ class _ShippingCompaniesTabState extends State<_ShippingCompaniesTab> {
                 batchId: batchId,
               );
               if (context.mounted && success) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('تمت التسوية المجمعة بنجاح برقم: $batchId'),
-                    backgroundColor: Colors.green,
-                  ),
+                AppFloatingToast.show(
+                  context,
+                  message: 'تمت التسوية المجمعة بنجاح برقم: $batchId',
+                  type: ToastType.success,
                 );
               }
             },

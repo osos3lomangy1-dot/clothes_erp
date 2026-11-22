@@ -48,6 +48,7 @@ import '../../../pre_orders/presentation/screens/pre_orders_screen.dart';
 import '../../../auth/services/cashier_permissions_service.dart';
 import '../../../products/domain/entities/activity_type.dart';
 import '../../../settings/data/services/activity_settings_service.dart';
+import '../../../../core/widgets/app_floating_toast.dart';
 
 Color _getCategoryColor(String? categoryId) {
   if (categoryId == null || categoryId.isEmpty) return const Color(0xFF673AB7);
@@ -185,14 +186,10 @@ class _PosViewState extends State<_PosView> {
     final invoice = _lastCompletedInvoice;
     if (invoice == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'لا توجد فاتورة سابقة لإعادة طباعتها',
-              style: TextStyle(fontFamily: 'Cairo'),
-            ),
-            duration: Duration(seconds: 2),
-          ),
+        AppFloatingToast.show(
+          context,
+          message: 'لا توجد فاتورة سابقة لإعادة طباعتها',
+          type: ToastType.warning,
         );
       }
       return;
@@ -207,15 +204,12 @@ class _PosViewState extends State<_PosView> {
     } catch (e) {
       debugPrint('Re-print printer error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
+        AppFloatingToast.show(
+          context,
+          message:
               'تم حفظ الفاتورة بنجاح. تعذر الاتصال بالطابعة، يمكنك إعادة الطباعة بالضغط على [F9] بعد التحقق من الورق والكابل.',
-              style: TextStyle(fontFamily: 'Cairo'),
-            ),
-            backgroundColor: AppColors.error,
-            duration: Duration(seconds: 5),
-          ),
+          type: ToastType.error,
+          duration: const Duration(seconds: 4),
         );
       }
     }
@@ -362,11 +356,11 @@ class _PosViewState extends State<_PosView> {
                           if (success) {
                             Navigator.pop(dialogCtx);
                             if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('تم تبديل الكاشير بنجاح: ${selectedUser!.displayName}'),
-                                  backgroundColor: Colors.green,
-                                ),
+                              AppFloatingToast.show(
+                                context,
+                                message:
+                                    'تم تبديل الكاشير بنجاح: ${selectedUser!.displayName}',
+                                type: ToastType.success,
                               );
                               setState(() {});
                             }
@@ -1305,14 +1299,11 @@ class _PosViewState extends State<_PosView> {
                                     cashierName: cashierName,
                                   );
                                   if (!ok && context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          cubit.state.errorMessage ??
-                                              'تعذر بدء الوردية السريعة',
-                                        ),
-                                        backgroundColor: AppColors.error,
-                                      ),
+                                    AppFloatingToast.show(
+                                      context,
+                                      message: cubit.state.errorMessage ??
+                                          'تعذر بدء الوردية السريعة',
+                                      type: ToastType.error,
                                     );
                                   }
                                 },
@@ -2824,13 +2815,10 @@ class _CartPanelState extends State<_CartPanel> {
 
     posCubit.loadCart(cart: const [], customer: null);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('تم تعليق الفاتورة السابقة وفتح ${newBill.title} جديدة [F10]'),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: AppColors.primary,
-      ),
+    AppFloatingToast.show(
+      context,
+      message: 'تم تعليق الفاتورة السابقة وفتح ${newBill.title} جديدة [F10]',
+      type: ToastType.info,
     );
   }
 
@@ -3171,7 +3159,6 @@ class _CartPanelState extends State<_CartPanel> {
       }
     } catch (_) {}
 
-    final messenger = ScaffoldMessenger.of(context);
     final posCubit = context.read<PosCubit>();
     final ok = await posCubit.checkout(
       cashierId: cashierId,
@@ -3221,19 +3208,11 @@ class _CartPanelState extends State<_CartPanel> {
           barrierDismissible: false,
           builder: (_) => SaleSuccessDialog(invoice: latestInvoice!),
         );
-      } else {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(
-              'تم إتمام عملية البيع بنجاح!',
-              style: TextStyle(
-                fontFamily: 'Cairo',
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-          ),
+      } else if (mounted) {
+        AppFloatingToast.show(
+          context,
+          message: 'تم إتمام عملية البيع بنجاح!',
+          type: ToastType.success,
         );
       }
     }
@@ -3257,7 +3236,6 @@ class _CartPanelState extends State<_CartPanel> {
       }
     } catch (_) {}
 
-    final messenger = ScaffoldMessenger.of(context);
     final posCubit = context.read<PosCubit>();
     final ok = await posCubit.checkout(
       cashierId: cashierId,
@@ -3308,19 +3286,11 @@ class _CartPanelState extends State<_CartPanel> {
           barrierDismissible: false,
           builder: (_) => SaleSuccessDialog(invoice: latestInvoice!),
         );
-      } else {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(
-              'تم إتمام عملية البيع المجزأ بنجاح!',
-              style: TextStyle(
-                fontFamily: 'Cairo',
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-          ),
+      } else if (mounted) {
+        AppFloatingToast.show(
+          context,
+          message: 'تم إتمام عملية البيع المجزأ بنجاح!',
+          type: ToastType.success,
         );
       }
     }
@@ -3331,13 +3301,11 @@ class _CartPanelState extends State<_CartPanel> {
 
     final customer = state.customer;
     if (customer == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
+      AppFloatingToast.show(
+        context,
+        message:
             'البيع الآجل (على الحساب) يتطلب تحديد العميل أولاً لحساب الرصيد والحد الائتماني.',
-          ),
-          backgroundColor: AppColors.error,
-        ),
+        type: ToastType.error,
       );
       return;
     }
@@ -3346,20 +3314,18 @@ class _CartPanelState extends State<_CartPanel> {
         double.tryParse(Money.normalizeDigits(_creditDownPaymentCtrl.text.trim())) ?? 0.0;
     final downPaymentPiasters = (downPaymentNum * 100).round();
     if (downPaymentPiasters < 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('مبلغ الدفعة المقدمة لا يمكن أن يكون سالباً'),
-          backgroundColor: AppColors.error,
-        ),
+      AppFloatingToast.show(
+        context,
+        message: 'مبلغ الدفعة المقدمة لا يمكن أن يكون سالباً',
+        type: ToastType.error,
       );
       return;
     }
     if (downPaymentPiasters > state.total) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('الدفعة المقدمة لا يمكن أن تتجاوز إجمالي الفاتورة'),
-          backgroundColor: AppColors.error,
-        ),
+      AppFloatingToast.show(
+        context,
+        message: 'الدفعة المقدمة لا يمكن أن تتجاوز إجمالي الفاتورة',
+        type: ToastType.error,
       );
       return;
     }
@@ -3462,11 +3428,10 @@ class _CartPanelState extends State<_CartPanel> {
                 if (res.ok) {
                   Navigator.pop(ctx, true);
                 } else {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    SnackBar(
-                      content: Text(res.error ?? 'رمز المرور غير صحيح'),
-                      backgroundColor: AppColors.error,
-                    ),
+                  AppFloatingToast.show(
+                    ctx,
+                    message: res.error ?? 'رمز المرور غير صحيح',
+                    type: ToastType.error,
                   );
                 }
               },
@@ -3498,7 +3463,6 @@ class _CartPanelState extends State<_CartPanel> {
     } catch (_) {}
 
     if (!mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
     final posCubit = context.read<PosCubit>();
 
     final splits = <PaymentSplit>[];
@@ -3556,19 +3520,12 @@ class _CartPanelState extends State<_CartPanel> {
           barrierDismissible: false,
           builder: (_) => SaleSuccessDialog(invoice: latestInvoice!),
         );
-      } else {
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Text(
+      } else if (mounted) {
+        AppFloatingToast.show(
+          context,
+          message:
               'تم إتمام البيع الآجل وقيد المديونية على حساب العميل بنجاح!',
-              style: TextStyle(
-                fontFamily: 'Cairo',
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-          ),
+          type: ToastType.success,
         );
       }
     }
@@ -3581,30 +3538,28 @@ class _CartPanelState extends State<_CartPanel> {
     final totalPiasters = posState.total;
 
     if (totalPiasters <= 0 || posState.cart.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('السلة فارغة، أضف أصنافاً أولاً', style: TextStyle(fontFamily: 'Cairo')),
-        ),
+      AppFloatingToast.show(
+        context,
+        message: 'السلة فارغة، أضف أصنافاً أولاً',
+        type: ToastType.warning,
       );
       return;
     }
 
     // Step 1: Smart Customer Validation (Auto-prompt without clearing cart)
-    if (customer == null || customer.name.trim() == 'عميل نقدي' || customer.name.trim().isEmpty) {
+    if (customer == null ||
+        customer.name.trim() == 'عميل نقدي' ||
+        customer.name.trim().isEmpty) {
       final selected = await showDialog<CustomerEntity>(
         context: context,
         builder: (_) => const _AssignCustomerDialog(),
       );
       if (!mounted) return;
       if (selected == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'البيع بالتقسيط يتطلب تحديد أو تسجيل عميل لحفظ حقوق التاجر',
-              style: TextStyle(fontFamily: 'Cairo'),
-            ),
-            backgroundColor: AppColors.error,
-          ),
+        AppFloatingToast.show(
+          context,
+          message: 'البيع بالتقسيط يتطلب تحديد أو تسجيل عميل لحفظ حقوق التاجر',
+          type: ToastType.error,
         );
         return;
       }
@@ -3617,19 +3572,18 @@ class _CartPanelState extends State<_CartPanel> {
     for (final item in posState.cart) {
       final isEligible = posCubit.isProductInstallmentEligible(item.productId);
       if (!isEligible) {
-        ineligibleItems.add(item.productName.isNotEmpty ? item.productName : 'صنف غير معروف');
+        ineligibleItems.add(
+          item.productName.isNotEmpty ? item.productName : 'صنف غير معروف',
+        );
       }
     }
     if (ineligibleItems.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
+      AppFloatingToast.show(
+        context,
+        message:
             'السلة تحتوي على أصناف غير مؤهلة للتقسيط:\n• ${ineligibleItems.join("\n• ")}',
-            style: const TextStyle(fontFamily: 'Cairo'),
-          ),
-          backgroundColor: AppColors.error,
-          duration: const Duration(seconds: 6),
-        ),
+        type: ToastType.error,
+        duration: const Duration(seconds: 4),
       );
       return;
     }
@@ -3667,11 +3621,10 @@ class _CartPanelState extends State<_CartPanel> {
         );
         if (!mounted) return;
         if (!pinCheck.ok) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(pinCheck.error ?? 'الرقم السري للمدير غير صحيح', style: const TextStyle(fontFamily: 'Cairo')),
-              backgroundColor: AppColors.error,
-            ),
+          AppFloatingToast.show(
+            context,
+            message: pinCheck.error ?? 'الرقم السري للمدير غير صحيح',
+            type: ToastType.error,
           );
           return; // ABORT: DO NOT PROCEED TO CHECKOUT
         }
@@ -3688,9 +3641,11 @@ class _CartPanelState extends State<_CartPanel> {
     if (!mounted) return;
 
     if (!success || createdSale == null) {
-      ScaffoldMessenger.of(
+      AppFloatingToast.show(
         context,
-      ).showSnackBar(const SnackBar(content: Text('فشل إنشاء الفاتورة', style: TextStyle(fontFamily: 'Cairo'))));
+        message: 'فشل إنشاء الفاتورة',
+        type: ToastType.error,
+      );
       return;
     }
 
@@ -3735,16 +3690,13 @@ class _CartPanelState extends State<_CartPanel> {
           context: 'POS_INSTALLMENT_PARTIAL',
         );
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
+        AppFloatingToast.show(
+          context,
+          message:
               'فشل إنشاء عقد التقسيط: ${failure.message}\n'
               'تم إلغاء الفاتورة لعدم اكتمال التقسيط.',
-              style: const TextStyle(fontFamily: 'Cairo'),
-            ),
-            backgroundColor: AppColors.error,
-            duration: const Duration(seconds: 8),
-          ),
+          type: ToastType.error,
+          duration: const Duration(seconds: 4),
         );
       },
       (contract) async {
@@ -3778,11 +3730,10 @@ class _CartPanelState extends State<_CartPanel> {
             ),
           );
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('تم إنشاء عقد التقسيط بنجاح', style: TextStyle(fontFamily: 'Cairo')),
-              backgroundColor: AppColors.success,
-            ),
+          AppFloatingToast.show(
+            context,
+            message: 'تم إنشاء عقد التقسيط بنجاح',
+            type: ToastType.success,
           );
           Navigator.push(
             context,
@@ -3858,99 +3809,141 @@ class _CartPanelState extends State<_CartPanel> {
                                 final count = isActive
                                     ? state.cart.length
                                     : bill.cart.length;
-                                return InkWell(
-                                  onTap: () => _switchToBill(index),
-                                  borderRadius: BorderRadius.circular(6),
-                                  child: AnimatedContainer(
-                                    duration:
-                                        const Duration(milliseconds: 150),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: isActive
-                                          ? Colors.white
-                                          : Colors.transparent,
-                                      borderRadius:
-                                          BorderRadius.circular(6),
-                                      border: Border.all(
-                                        color: isActive
-                                            ? AppColors.primary
-                                            : Colors.transparent,
-                                        width: 1.2,
+                                final billTotalPiasters = isActive
+                                    ? state.total
+                                    : bill.cart.fold<int>(
+                                        0,
+                                        (sum, item) => sum + item.total,
+                                      );
+                                final tooltipMsg =
+                                    '${bill.title} ($count أصناف - إجمالي ${Money(billTotalPiasters).toDisplay()} ج.م) - اضغط F11 للتنقل';
+
+                                return Tooltip(
+                                  message: tooltipMsg,
+                                  child: InkWell(
+                                    onTap: () => _switchToBill(index),
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: AnimatedContainer(
+                                      duration:
+                                          const Duration(milliseconds: 150),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
                                       ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          isActive
-                                              ? Icons.receipt_long_rounded
-                                              : Icons
-                                                  .pause_circle_outline_rounded,
-                                          size: 13,
+                                      decoration: BoxDecoration(
+                                        color: isActive
+                                            ? Colors.white
+                                            : Colors.transparent,
+                                        borderRadius:
+                                            BorderRadius.circular(6),
+                                        border: Border.all(
                                           color: isActive
                                               ? AppColors.primary
-                                              : AppColors.onSurfaceVariant,
+                                              : Colors.transparent,
+                                          width: 1.2,
                                         ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          bill.title,
-                                          style: TextStyle(
-                                            fontFamily: 'Cairo',
-                                            fontSize: 11,
-                                            fontWeight: isActive
-                                                ? FontWeight.bold
-                                                : FontWeight.w600,
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            isActive
+                                                ? Icons.receipt_long_rounded
+                                                : Icons
+                                                    .pause_circle_outline_rounded,
+                                            size: 13,
                                             color: isActive
                                                 ? AppColors.primary
                                                 : AppColors.onSurfaceVariant,
                                           ),
-                                        ),
-                                        if (count > 0) ...[
                                           const SizedBox(width: 4),
-                                          Container(
-                                            padding:
-                                                const EdgeInsets.symmetric(
-                                                  horizontal: 4.5,
-                                                  vertical: 0.5,
-                                                ),
-                                            decoration: BoxDecoration(
+                                          Text(
+                                            bill.title,
+                                            style: TextStyle(
+                                              fontFamily: 'Cairo',
+                                              fontSize: 11,
+                                              fontWeight: isActive
+                                                  ? FontWeight.bold
+                                                  : FontWeight.w600,
                                               color: isActive
                                                   ? AppColors.primary
-                                                  : Colors.amber.shade700,
+                                                  : AppColors.onSurfaceVariant,
+                                            ),
+                                          ),
+                                          if (!isActive && count > 0) ...[
+                                            const SizedBox(width: 4),
+                                            Container(
+                                              key: Key('held_bill_badge_$index'),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 5,
+                                                    vertical: 1,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.primary,
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: AppColors.primary
+                                                        .withValues(alpha: 0.35),
+                                                    blurRadius: 4,
+                                                    spreadRadius: 0.5,
+                                                  ),
+                                                ],
+                                              ),
+                                              child: Text(
+                                                '$count',
+                                                style: const TextStyle(
+                                                  fontFamily: 'Cairo',
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                          ] else if (isActive && count > 0) ...[
+                                            const SizedBox(width: 4),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 4.5,
+                                                    vertical: 0.5,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.primary,
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
+                                              ),
+                                              child: Text(
+                                                '$count',
+                                                style: const TextStyle(
+                                                  fontFamily: 'Cairo',
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                          if (_bills.length > 1) ...[
+                                            const SizedBox(width: 4),
+                                            InkWell(
+                                              onTap: () => _closeBill(index),
                                               borderRadius:
                                                   BorderRadius.circular(4),
-                                            ),
-                                            child: Text(
-                                              '$count',
-                                              style: const TextStyle(
-                                                fontFamily: 'Cairo',
-                                                fontSize: 9,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.white,
+                                              child: const Padding(
+                                                padding: EdgeInsets.all(1),
+                                                child: Icon(
+                                                  Icons.close_rounded,
+                                                  size: 12,
+                                                  color: AppColors.error,
+                                                ),
                                               ),
                                             ),
-                                          ),
+                                          ],
                                         ],
-                                        if (_bills.length > 1) ...[
-                                          const SizedBox(width: 4),
-                                          InkWell(
-                                            onTap: () => _closeBill(index),
-                                            borderRadius:
-                                                BorderRadius.circular(4),
-                                            child: const Padding(
-                                              padding: EdgeInsets.all(1),
-                                              child: Icon(
-                                                Icons.close_rounded,
-                                                size: 12,
-                                                color: AppColors.error,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ],
+                                      ),
                                     ),
                                   ),
                                 );
@@ -4552,7 +4545,7 @@ class _CartPanelState extends State<_CartPanel> {
                                             Icon(
                                               Icons.shopping_cart_outlined,
                                               size: iconSize,
-                                              color: Colors.grey.shade300,
+                                              color: Colors.grey.shade400,
                                             ),
                                             if (safeHeight >= 60) ...[
                                               const SizedBox(height: 4),
@@ -4561,15 +4554,31 @@ class _CartPanelState extends State<_CartPanel> {
                                                 textAlign: TextAlign.center,
                                                 style: TextStyle(
                                                   fontFamily: 'Cairo',
-                                                  color: Colors.grey.shade500,
+                                                  color: Colors.grey.shade600,
                                                   fontSize: safeHeight < 90
                                                       ? 11.5
                                                       : 13.5,
-                                                  fontWeight: FontWeight.w600,
+                                                  fontWeight: FontWeight.bold,
                                                 ),
                                               ),
                                             ],
-                                            if (safeHeight >= 115) ...[
+                                            if (safeHeight >= 90) ...[
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                'السلة بانتظار مسح الأصناف.. امسح الباركود أو اضغط [F2] للبحث السريع',
+                                                key: const Key('cart_empty_state_text'),
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  fontFamily: 'Cairo',
+                                                  color: Colors.grey.shade500,
+                                                  fontSize: safeHeight < 120
+                                                      ? 10.5
+                                                      : 12,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                            if (safeHeight >= 135) ...[
                                               const SizedBox(height: 2),
                                               Text(
                                                 'انقر على أي منتج لإضافته فوراً إلى الفاتورة',
@@ -5028,67 +5037,11 @@ class _CartPanelState extends State<_CartPanel> {
                                 _buildCreditPaymentSection(state),
                               ],
 
-                              // Fast Cash Banknote Presets (hide presets when isCompact to save vertical space)
+                              // Smart Cash Tender Presets (hide presets when isCompact to save vertical space)
                               if (_paymentMethod == 'cash') ...[
                                 if (!isCompact) ...[
                                   const SizedBox(height: 5),
-                                  SingleChildScrollView(
-                                    scrollDirection: Axis.horizontal,
-                                    child: Row(
-                                      children: [
-                                        Text(
-                                          'الدفع السريع:',
-                                          style: TextStyle(
-                                            fontFamily: 'Cairo',
-                                            fontSize: 10.5,
-                                            color: Colors.grey.shade600,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        ...[50, 100, 200, 500].map((preset) {
-                                          return Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 2.0,
-                                            ),
-                                            child: InkWell(
-                                              onTap: () {
-                                                _receivedCtrl.text = '$preset.00';
-                                                setState(() {});
-                                              },
-                                              borderRadius:
-                                                  BorderRadius.circular(5),
-                                              child: Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 5,
-                                                      vertical: 2,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: AppColors
-                                                      .surfaceContainerLow,
-                                                  borderRadius:
-                                                      BorderRadius.circular(5),
-                                                  border: Border.all(
-                                                    color: AppColors
-                                                        .outlineVariant,
-                                                  ),
-                                                ),
-                                                child: Text(
-                                                  '$preset',
-                                                  style: const TextStyle(
-                                                    fontFamily: 'Cairo',
-                                                    fontSize: 10.5,
-                                                    fontWeight:
-                                                        FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          );
-                                        }),
-                                      ],
-                                    ),
-                                  ),
+                                  _buildSmartCashTenderPresets(state),
                                 ],
 
                                 // Unified Single Row for Received and Change
@@ -5446,6 +5399,173 @@ class _CartPanelState extends State<_CartPanel> {
       },
     );
   }
+
+  Widget _buildSmartCashTenderPresets(PosState state) {
+    final presets = _calculateSmartTenderPresets(state.total);
+    if (presets.isEmpty) {
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            Text(
+              'الدفع السريع:',
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontSize: 10.5,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(width: 4),
+            ...[50, 100, 200, 500].map((preset) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                child: InkWell(
+                  onTap: () {
+                    _receivedCtrl.text = '$preset.00';
+                    setState(() {});
+                  },
+                  borderRadius: BorderRadius.circular(5),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(5),
+                      border: Border.all(color: AppColors.outlineVariant),
+                    ),
+                    child: Text(
+                      '$preset',
+                      style: const TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          Text(
+            'فئات ذكية:',
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 10.5,
+              color: Colors.grey.shade600,
+            ),
+          ),
+          const SizedBox(width: 4),
+          ...presets.asMap().entries.map((entry) {
+            final index = entry.key;
+            final preset = entry.value;
+            final key = preset.isExact
+                ? const Key('smart_tender_exact')
+                : Key('smart_tender_preset_$index');
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2.5),
+              child: InkWell(
+                key: key,
+                onTap: () {
+                  _receivedCtrl.text = preset.amount % 1 == 0
+                      ? '${preset.amount.toInt()}.00'
+                      : preset.amount.toStringAsFixed(2);
+                  setState(() {});
+                },
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 2.5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: preset.isExact
+                        ? AppColors.primary.withValues(alpha: 0.12)
+                        : AppColors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: preset.isExact
+                          ? AppColors.primary.withValues(alpha: 0.4)
+                          : AppColors.outlineVariant,
+                    ),
+                  ),
+                  child: Text(
+                    preset.label,
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 10,
+                      fontWeight:
+                          preset.isExact ? FontWeight.bold : FontWeight.w600,
+                      color: preset.isExact
+                          ? AppColors.primary
+                          : AppColors.onSurface,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  List<_SmartTenderPreset> _calculateSmartTenderPresets(int totalPiasters) {
+    if (totalPiasters <= 0) return const [];
+    final totalEgp = totalPiasters / 100.0;
+    final List<_SmartTenderPreset> results = [];
+
+    final candidates = <double>{};
+    final next5 = ((totalEgp / 5.0).floor() + 1) * 5.0;
+    if (next5 > totalEgp) candidates.add(next5);
+
+    final next50 = ((totalEgp / 50.0).floor() + 1) * 50.0;
+    if (next50 > totalEgp) candidates.add(next50);
+
+    final next100 = ((totalEgp / 100.0).floor() + 1) * 100.0;
+    if (next100 > totalEgp) candidates.add(next100);
+
+    const standardNotes = [20.0, 50.0, 100.0, 200.0, 500.0];
+    for (final note in standardNotes) {
+      if (note > totalEgp) candidates.add(note);
+    }
+
+    final sorted = candidates.toList()..sort();
+    for (final amt in sorted) {
+      if (results.length >= 2) break;
+      final change = amt - totalEgp;
+      final amtStr =
+          amt % 1 == 0 ? amt.toInt().toString() : amt.toStringAsFixed(2);
+      final changeStr =
+          change % 1 == 0 ? change.toInt().toString() : change.toStringAsFixed(2);
+      results.add(_SmartTenderPreset(
+        amount: amt,
+        change: change,
+        label: '$amtStr ج.م ◄ باقي $changeStr ج.م',
+      ));
+    }
+
+    final exactStr =
+        totalEgp % 1 == 0 ? totalEgp.toInt().toString() : totalEgp.toStringAsFixed(2);
+    results.add(_SmartTenderPreset(
+      amount: totalEgp,
+      change: 0.0,
+      label: 'المبلغ بالضبط: $exactStr ج.م',
+      isExact: true,
+    ));
+
+    return results;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -5606,6 +5726,20 @@ class _CartGroupAccordionCardState extends State<_CartGroupAccordionCard> {
       ),
     );
   }
+}
+
+class _SmartTenderPreset {
+  final double amount;
+  final double change;
+  final String label;
+  final bool isExact;
+
+  const _SmartTenderPreset({
+    required this.amount,
+    required this.change,
+    required this.label,
+    this.isExact = false,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -6006,14 +6140,10 @@ class _CartItemTileState extends State<_CartItemTile> {
                   ),
                   onPressed: item.quantity >= widget.maxStock
                       ? () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'الرصيد المتاح هو ${widget.maxStock} فقط',
-                              ),
-                              backgroundColor: AppColors.warning,
-                              duration: const Duration(milliseconds: 700),
-                            ),
+                          AppFloatingToast.show(
+                            context,
+                            message: 'الرصيد المتاح هو ${widget.maxStock} فقط',
+                            type: ToastType.warning,
                           );
                         }
                       : () => context.read<PosCubit>().increaseQty(
@@ -6172,11 +6302,10 @@ class _AssignCustomerDialogState extends State<_AssignCustomerDialog> {
       (failure) {
         if (mounted) {
           setState(() => _isSavingNew = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('خطأ: ${failure.message}'),
-              backgroundColor: AppColors.error,
-            ),
+          AppFloatingToast.show(
+            context,
+            message: 'خطأ: ${failure.message}',
+            type: ToastType.error,
           );
         }
       },
@@ -6814,20 +6943,17 @@ class _PosInstallmentSuccessDialog extends StatelessWidget {
                           side: const BorderSide(color: AppColors.outlineVariant),
                         ),
                         onPressed: () async {
-                          final messenger = ScaffoldMessenger.of(context);
                           final path = await ReceiptPdfService.saveInstallmentContractReceiptAsPdf(
                             invoice: invoice,
                             contract: contract,
                             schedule: schedule,
                             customer: customer,
                           );
-                          if (path != null) {
-                            messenger.showSnackBar(
-                              SnackBar(
-                                content: Text('تم حفظ ملف PDF للعقد:\n$path', style: const TextStyle(fontFamily: 'Cairo')),
-                                backgroundColor: AppColors.success,
-                                behavior: SnackBarBehavior.floating,
-                              ),
+                          if (path != null && context.mounted) {
+                            AppFloatingToast.show(
+                              context,
+                              message: 'تم حفظ ملف PDF للعقد:\n$path',
+                              type: ToastType.success,
                             );
                           }
                         },
