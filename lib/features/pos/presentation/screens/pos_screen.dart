@@ -27,6 +27,8 @@ import '../../../installments/domain/entities/installment_schedule_entry.dart';
 import '../../../installments/domain/services/installment_calculator.dart';
 import '../../../employees/presentation/widgets/cashier_profile_dialog.dart';
 import '../../../../core/features/feature_gate.dart';
+import '../../../../core/services/shortcut_settings_service.dart';
+import '../../../settings/presentation/widgets/shortcuts_config_dialog.dart';
 import '../../../../core/services/crash_logger_service.dart';
 import '../../../../core/database/app_database.dart';
 import 'package:drift/drift.dart' show Value;
@@ -530,10 +532,164 @@ class _PosViewState extends State<_PosView> {
     }
   }
 
+  void _showShortcutsGuide() {
+    showDialog(
+      context: context,
+      builder: (_) => const ShortcutsConfigDialog(),
+    );
+  }
+
+  Map<ShortcutActivator, VoidCallback> _buildPosShortcuts() {
+    final Map<ShortcutActivator, VoidCallback> bindings = {
+      const SingleActivator(LogicalKeyboardKey.f2): () => _searchFocusNode.requestFocus(),
+      const SingleActivator(LogicalKeyboardKey.f5): () => _cartPanelKey.currentState?.setPaymentMethod('cash'),
+      const SingleActivator(LogicalKeyboardKey.f6): () => _cartPanelKey.currentState?.setPaymentMethod('card'),
+      const SingleActivator(LogicalKeyboardKey.digit1, alt: true): () => _cartPanelKey.currentState?.setPaymentMethod('cash'),
+      const SingleActivator(LogicalKeyboardKey.digit2, alt: true): () => _cartPanelKey.currentState?.setPaymentMethod('card'),
+      const SingleActivator(LogicalKeyboardKey.f10): () => _cartPanelKey.currentState?.addNewBillTab(),
+      const SingleActivator(LogicalKeyboardKey.f11): () => _cartPanelKey.currentState?.switchNextHeldBill(),
+      const SingleActivator(LogicalKeyboardKey.f12): () => _cartPanelKey.currentState?.triggerCheckout(),
+      const SingleActivator(LogicalKeyboardKey.keyD, control: true): () => _cartPanelKey.currentState?.focusDiscount(),
+      const SingleActivator(LogicalKeyboardKey.f1): _showShortcutsGuide,
+    };
+
+    if (getIt.isRegistered<ShortcutSettingsService>()) {
+      final s = getIt<ShortcutSettingsService>();
+      final act = s.getActivator;
+      bindings[act('completeSale')] = () => _cartPanelKey.currentState?.triggerCheckout();
+      bindings[act('holdBill')] = () => _cartPanelKey.currentState?.addNewBillTab();
+      bindings[act('recallBill')] = () => _cartPanelKey.currentState?.switchNextHeldBill();
+      bindings[act('quickPayCash')] = () => _cartPanelKey.currentState?.setPaymentMethod('cash');
+      bindings[act('quickPayCard')] = () => _cartPanelKey.currentState?.setPaymentMethod('card');
+      bindings[act('focusDiscount')] = () => _cartPanelKey.currentState?.focusDiscount();
+      bindings[act('quickSearch')] = () => _searchFocusNode.requestFocus();
+      bindings[act('openShortcuts')] = _showShortcutsGuide;
+    }
+    return bindings;
+  }
+
+  Widget _buildHotkeyFooterStrip() {
+    return Container(
+      height: 38,
+      key: const Key('pos_hotkey_footer_strip'),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: const BoxDecoration(
+        color: Color(0xFF0F172A),
+        border: Border(top: BorderSide(color: Color(0xFF1E293B))),
+      ),
+      child: Row(
+        children: [
+          _buildFooterHotkeyChip(
+            key: const Key('pos_footer_hotkey_search'),
+            label: 'F2 بحث',
+            icon: Icons.search_rounded,
+            onTap: () => _searchFocusNode.requestFocus(),
+          ),
+          const SizedBox(width: 8),
+          _buildFooterHotkeyChip(
+            key: const Key('pos_footer_hotkey_cash'),
+            label: 'F5 كاش',
+            icon: Icons.payments_outlined,
+            onTap: () => _cartPanelKey.currentState?.setPaymentMethod('cash'),
+          ),
+          const SizedBox(width: 8),
+          _buildFooterHotkeyChip(
+            key: const Key('pos_footer_hotkey_card'),
+            label: 'F6 فيزا',
+            icon: Icons.credit_card_rounded,
+            onTap: () => _cartPanelKey.currentState?.setPaymentMethod('card'),
+          ),
+          const SizedBox(width: 8),
+          _buildFooterHotkeyChip(
+            key: const Key('pos_footer_hotkey_hold'),
+            label: 'F10 تعليق',
+            icon: Icons.pause_circle_outline_rounded,
+            onTap: () => _cartPanelKey.currentState?.addNewBillTab(),
+          ),
+          const SizedBox(width: 8),
+          _buildFooterHotkeyChip(
+            key: const Key('pos_footer_hotkey_recall'),
+            label: 'F11 استرجاع',
+            icon: Icons.play_circle_outline_rounded,
+            onTap: () => _cartPanelKey.currentState?.switchNextHeldBill(),
+          ),
+          const SizedBox(width: 8),
+          _buildFooterHotkeyChip(
+            key: const Key('pos_footer_hotkey_discount'),
+            label: 'Ctrl+D خصم',
+            icon: Icons.percent_rounded,
+            onTap: () => _cartPanelKey.currentState?.focusDiscount(),
+          ),
+          const Spacer(),
+          _buildFooterHotkeyChip(
+            key: const Key('pos_footer_hotkey_checkout'),
+            label: 'F12 دفع',
+            icon: Icons.check_circle_rounded,
+            isPrimary: true,
+            onTap: () => _cartPanelKey.currentState?.triggerCheckout(),
+          ),
+          const SizedBox(width: 8),
+          _buildFooterHotkeyChip(
+            key: const Key('pos_footer_hotkey_shortcuts'),
+            label: 'F1 دليل ومفاتيح',
+            icon: Icons.keyboard_rounded,
+            onTap: _showShortcutsGuide,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFooterHotkeyChip({
+    required Key key,
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+    bool isPrimary = false,
+  }) {
+    return InkWell(
+      key: key,
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: isPrimary ? AppColors.primary : const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: isPrimary ? AppColors.primary : const Color(0xFF334155),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: isPrimary ? Colors.white : const Color(0xFF94A3B8)),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: isPrimary ? Colors.white : const Color(0xFFE2E8F0),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     try {
-      return _buildContent(context);
+      return CallbackShortcuts(
+        bindings: _buildPosShortcuts(),
+        child: Focus(
+          autofocus: true,
+          child: _buildContent(context),
+        ),
+      );
     } catch (e, st) {
       return Scaffold(
         appBar: AppBar(title: const Text('POS Error')),
@@ -1034,6 +1190,7 @@ class _PosViewState extends State<_PosView> {
               );
             },
           ),
+          bottomNavigationBar: _buildHotkeyFooterStrip(),
         );
       },
     );
@@ -2595,6 +2752,28 @@ class _CartPanel extends StatefulWidget {
 
 class _CartPanelState extends State<_CartPanel> {
   final _discountCtrl = TextEditingController();
+  final FocusNode _discountFocus = FocusNode();
+
+  void switchNextHeldBill() {
+    if (_bills.length <= 1) return;
+    final nextIndex = (_activeBillIndex + 1) % _bills.length;
+    _switchToBill(nextIndex);
+  }
+
+  void setPaymentMethod(String method) {
+    if (!mounted) return;
+    setState(() => _paymentMethod = method);
+  }
+
+  void focusDiscount() {
+    if (!mounted) return;
+    _discountFocus.requestFocus();
+    _discountCtrl.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: _discountCtrl.text.length,
+    );
+  }
+
   final _receivedCtrl = TextEditingController();
   final _creditDownPaymentCtrl = TextEditingController();
   bool _isPercentageDiscount = false;
@@ -2926,6 +3105,7 @@ class _CartPanelState extends State<_CartPanel> {
   void dispose() {
     _featuresSubscription?.cancel();
     _discountCtrl.dispose();
+    _discountFocus.dispose();
     _receivedCtrl.dispose();
     _creditDownPaymentCtrl.dispose();
     super.dispose();
@@ -4626,7 +4806,9 @@ class _CartPanelState extends State<_CartPanel> {
                                         width: 78,
                                         height: 30,
                                         child: TextField(
+                                          key: const Key('pos_cart_discount_input'),
                                           controller: _discountCtrl,
+                                          focusNode: _discountFocus,
                                           keyboardType: TextInputType.number,
                                           style: const TextStyle(
                                             fontFamily: 'Cairo',

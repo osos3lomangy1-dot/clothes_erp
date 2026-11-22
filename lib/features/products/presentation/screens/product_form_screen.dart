@@ -198,6 +198,78 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
     super.dispose();
   }
 
+  FocusNode _getVariantFocusNode(int rowIdx, int colIdx, bool isCashier) {
+    if (rowIdx < 0 || rowIdx >= _rows.length) return _rows[0].sizeFocus;
+    final r = _rows[rowIdx];
+    switch (colIdx) {
+      case 0:
+        return r.sizeFocus;
+      case 1:
+        return r.colorFocus;
+      case 2:
+        return r.skuFocus;
+      case 3:
+        return isCashier ? r.sellFocus : r.costFocus;
+      case 4:
+        return isCashier ? r.qtyFocus : r.sellFocus;
+      case 5:
+        return r.qtyFocus;
+      default:
+        return r.sizeFocus;
+    }
+  }
+
+  int _maxGridCols(bool isCashier) => isCashier ? 4 : 5;
+
+  KeyEventResult _handleGridKeyNavigation(
+    KeyEvent event,
+    int rowIdx,
+    int colIdx,
+    ActivityType? activityType,
+    bool isCashier,
+  ) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      if (rowIdx < _rows.length - 1) {
+        _getVariantFocusNode(rowIdx + 1, colIdx, isCashier).requestFocus();
+      } else {
+        _addRow(activityType);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _rows.length > rowIdx + 1) {
+            _getVariantFocusNode(rowIdx + 1, colIdx, isCashier).requestFocus();
+          }
+        });
+      }
+      return KeyEventResult.handled;
+    }
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      if (rowIdx > 0) {
+        _getVariantFocusNode(rowIdx - 1, colIdx, isCashier).requestFocus();
+      }
+      return KeyEventResult.handled;
+    }
+
+    final maxCol = _maxGridCols(isCashier);
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+      if (colIdx < maxCol) {
+        _getVariantFocusNode(rowIdx, colIdx + 1, isCashier).requestFocus();
+        return KeyEventResult.handled;
+      }
+    }
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+      if (colIdx > 0) {
+        _getVariantFocusNode(rowIdx, colIdx - 1, isCashier).requestFocus();
+        return KeyEventResult.handled;
+      }
+    }
+
+    return KeyEventResult.ignored;
+  }
+
   void _addRow([ActivityType? activityType]) {
     setState(() {
       final last = _rows.isNotEmpty ? _rows.last : null;
@@ -1510,6 +1582,25 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                       separatorBuilder: (_, index) => const SizedBox(height: 8),
                                       itemBuilder: (context, idx) {
                                         final r = _rows[idx];
+                                        r.sizeFocus.onKeyEvent = (node, event) =>
+                                            _handleGridKeyNavigation(event, idx, 0, state.activityTypeEnum, isCashier);
+                                        r.colorFocus.onKeyEvent = (node, event) =>
+                                            _handleGridKeyNavigation(event, idx, 1, state.activityTypeEnum, isCashier);
+                                        r.skuFocus.onKeyEvent = (node, event) =>
+                                            _handleGridKeyNavigation(event, idx, 2, state.activityTypeEnum, isCashier);
+                                        if (!isCashier) {
+                                          r.costFocus.onKeyEvent = (node, event) =>
+                                              _handleGridKeyNavigation(event, idx, 3, state.activityTypeEnum, isCashier);
+                                          r.sellFocus.onKeyEvent = (node, event) =>
+                                              _handleGridKeyNavigation(event, idx, 4, state.activityTypeEnum, isCashier);
+                                          r.qtyFocus.onKeyEvent = (node, event) =>
+                                              _handleGridKeyNavigation(event, idx, 5, state.activityTypeEnum, isCashier);
+                                        } else {
+                                          r.sellFocus.onKeyEvent = (node, event) =>
+                                              _handleGridKeyNavigation(event, idx, 3, state.activityTypeEnum, isCashier);
+                                          r.qtyFocus.onKeyEvent = (node, event) =>
+                                              _handleGridKeyNavigation(event, idx, 4, state.activityTypeEnum, isCashier);
+                                        }
                                         return Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                                           decoration: BoxDecoration(

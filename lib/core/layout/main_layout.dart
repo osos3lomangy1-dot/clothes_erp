@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../constants/app_colors.dart';
@@ -11,6 +12,8 @@ import '../features/feature_gate.dart';
 import '../services/crash_logger_service.dart';
 import '../services/rest_sync_service.dart';
 import '../theme/app_branding.dart';
+import 'command_palette_dialog.dart';
+import '../../features/settings/presentation/widgets/shortcuts_config_dialog.dart';
 import '../../features/auth/presentation/cubits/auth_cubit.dart';
 import '../../features/auth/presentation/cubits/auth_state.dart';
 import '../../features/crash_logs/presentation/screens/crash_logs_screen.dart';
@@ -213,10 +216,17 @@ class _MainLayoutState extends State<MainLayout> {
     return ValueListenableBuilder<AppBrandingConfig>(
       valueListenable: AppBranding.notifier,
       builder: (context, branding, _) {
-        return Scaffold(
-          body: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+        return CallbackShortcuts(
+          bindings: {
+            const SingleActivator(LogicalKeyboardKey.keyK, control: true): _openCommandPalette,
+            const SingleActivator(LogicalKeyboardKey.f1): _openShortcutsGuide,
+          },
+          child: Focus(
+            autofocus: true,
+            child: Scaffold(
+              body: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
               AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 curve: Curves.easeOut,
@@ -337,6 +347,46 @@ class _MainLayoutState extends State<MainLayout> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.stretch,
                                         children: [
+                                          // Command Palette Trigger
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            child: InkWell(
+                                              key: const Key('command_palette_trigger_btn'),
+                                              onTap: _openCommandPalette,
+                                              borderRadius: BorderRadius.circular(8),
+                                              child: Container(
+                                                padding: EdgeInsets.symmetric(
+                                                  horizontal: collapsed ? 6 : 10,
+                                                  vertical: 8,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white.withValues(alpha: 0.12),
+                                                  borderRadius: BorderRadius.circular(8),
+                                                  border: Border.all(color: Colors.white24),
+                                                ),
+                                                child: collapsed
+                                                    ? const Center(child: Icon(Icons.search_rounded, color: Colors.white, size: 20))
+                                                    : const Row(
+                                                        children: [
+                                                          Icon(Icons.search_rounded, color: Colors.white70, size: 18),
+                                                          SizedBox(width: 8),
+                                                          Expanded(
+                                                            child: Text(
+                                                              'بحث أو أمر...',
+                                                              style: TextStyle(color: Colors.white70, fontSize: 12),
+                                                            ),
+                                                          ),
+                                                          Text(
+                                                            'Ctrl+K',
+                                                            style: TextStyle(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.bold),
+                                                          ),
+                                                        ],
+                                                      ),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+
                                           // Direct Top Actions
                                           if (isAdmin)
                                             _navItem(
@@ -645,7 +695,9 @@ class _MainLayoutState extends State<MainLayout> {
               ),
             ],
           ),
-        );
+        ),
+      ),
+    );
       },
     );
   }
@@ -1063,6 +1115,164 @@ class _MainLayoutState extends State<MainLayout> {
         (route) => false,
       );
     }
+  }
+
+  void _openCommandPalette() {
+    final items = <CommandPaletteItem>[
+      // Screens
+      CommandPaletteItem(
+        id: 'nav_pos',
+        title: 'نقطة البيع (الكاشير)',
+        category: 'شاشات النظام',
+        icon: Icons.point_of_sale_rounded,
+        subtitle: 'المبيعات السريعة وتسجيل الفواتير [F1]',
+        onSelect: () => _handleItemTap('نقطة البيع (الكاشير)', const PosScreen(), true, null),
+      ),
+      CommandPaletteItem(
+        id: 'nav_products',
+        title: 'المنتجات والتصنيفات',
+        category: 'شاشات النظام',
+        icon: Icons.inventory_2_rounded,
+        subtitle: 'دليل الأصناف والمقاسات والأسعار',
+        onSelect: () => _handleItemTap('المنتجات والتصنيفات', const ProductListScreen(), false, null),
+      ),
+      CommandPaletteItem(
+        id: 'nav_purchases',
+        title: 'فواتير المشتريات والموردين',
+        category: 'شاشات النظام',
+        icon: Icons.shopping_cart_rounded,
+        subtitle: 'توريد البضائع وإدخال الشحنات',
+        onSelect: () => _handleItemTap('المشتريات والموردين', const PurchasesScreen(), false, null),
+      ),
+      CommandPaletteItem(
+        id: 'nav_invoices',
+        title: 'سجل فواتير المبيعات',
+        category: 'شاشات النظام',
+        icon: Icons.receipt_long_rounded,
+        subtitle: 'سجل الفواتير السابقة وطباعتها',
+        onSelect: () => _handleItemTap('سجل فواتير المبيعات', const InvoicesScreen(), false, null),
+      ),
+      CommandPaletteItem(
+        id: 'nav_treasury',
+        title: 'الخزينة وحركات الدرج والمصروفات',
+        category: 'شاشات النظام',
+        icon: Icons.account_balance_wallet_rounded,
+        subtitle: 'سندات الصرف والقبض والمصروفات النثرية',
+        onSelect: () => _handleItemTap('إدارة المصروفات', const ExpensesScreen(), false, null),
+      ),
+      CommandPaletteItem(
+        id: 'nav_shifts',
+        title: 'الورديات وتصفية الدرج',
+        category: 'شاشات النظام',
+        icon: Icons.timer_rounded,
+        subtitle: 'فتح وتقفيل الورديات والجرد الأعمى',
+        onSelect: () => _handleItemTap('الورديات وتصفية الدرج', const ShiftScreen(), false, null),
+      ),
+      CommandPaletteItem(
+        id: 'nav_customers',
+        title: 'سجل العملاء والحسابات',
+        category: 'شاشات النظام',
+        icon: Icons.people_alt_rounded,
+        subtitle: 'بيانات العملاء والديون والولاء',
+        onSelect: () => _handleItemTap('سجل العملاء', const CustomerScreen(), false, null),
+      ),
+      CommandPaletteItem(
+        id: 'nav_installments',
+        title: 'إدارة عقود الأقساط',
+        category: 'شاشات النظام',
+        icon: Icons.payments_rounded,
+        subtitle: 'متابعة الدفعات والأقساط المستحقة',
+        onSelect: () => _handleItemTap('التقسيط', const InstallmentsListScreen(), false, null),
+      ),
+      CommandPaletteItem(
+        id: 'nav_delivery',
+        title: 'إدارة الدليفري والطيارين',
+        category: 'شاشات النظام',
+        icon: Icons.delivery_dining_rounded,
+        subtitle: 'طلبات التوصيل ومتابعة الكباتن',
+        onSelect: () => _handleItemTap('إدارة الدليفري والطيارين', const DeliveryOrdersScreen(), false, null),
+      ),
+      CommandPaletteItem(
+        id: 'nav_settings',
+        title: 'مركز إعدادات النظام الموحد',
+        category: 'شاشات النظام',
+        icon: Icons.settings_rounded,
+        subtitle: 'تخصيص كامل للنظام والمزايا والطباعة',
+        onSelect: () => _handleItemTap('إعدادات النظام', const SystemSettingsScreen(), false, null),
+      ),
+      CommandPaletteItem(
+        id: 'nav_reports',
+        title: 'تقارير المبيعات والأرباح',
+        category: 'شاشات النظام',
+        icon: Icons.bar_chart_rounded,
+        subtitle: 'الرسوم البيانية والتحليلات المالية',
+        onSelect: () => _handleItemTap('تقارير المبيعات', const ReportsScreen(), false, null),
+      ),
+
+      // Quick Actions
+      CommandPaletteItem(
+        id: 'act_add_product',
+        title: 'إضافة منتج جديد وسريع',
+        category: 'إجراءات سريعة',
+        icon: Icons.add_business_rounded,
+        subtitle: 'تسجيل صنف ومقاساته مباشرة في النظام',
+        onSelect: () => _handleItemTap('المنتجات والتصنيفات', const ProductListScreen(), false, null),
+      ),
+      CommandPaletteItem(
+        id: 'act_quick_expense',
+        title: 'تسجيل حركة درج / مصروف نثري',
+        category: 'إجراءات سريعة',
+        icon: Icons.payments_outlined,
+        subtitle: 'إثبات مصروف أو سحب نقدي من الدرج',
+        onSelect: () => _handleItemTap('إدارة المصروفات', const ExpensesScreen(), false, null),
+      ),
+      CommandPaletteItem(
+        id: 'act_close_shift',
+        title: 'تقفيل الوردية الحالية',
+        category: 'إجراءات سريعة',
+        icon: Icons.lock_clock_rounded,
+        subtitle: 'جرد الدرج وتقفيل الحساب وطباعة التقرير Z',
+        onSelect: () => _handleItemTap('الورديات وتصفية الدرج', const ShiftScreen(), false, null),
+      ),
+
+      // Quick Settings
+      CommandPaletteItem(
+        id: 'set_shortcuts',
+        title: 'دليل وتخصيص اختصارات لوحة المفاتيح [F1]',
+        category: 'إعدادات سريعة',
+        icon: Icons.keyboard_rounded,
+        subtitle: 'تعديل وتعيين أزرار الكيبورد لكل العمليات',
+        onSelect: _openShortcutsGuide,
+      ),
+      CommandPaletteItem(
+        id: 'set_printers',
+        title: 'إعدادات الطابعات والورق الحراري',
+        category: 'إعدادات سريعة',
+        icon: Icons.print_rounded,
+        subtitle: 'تخصيص مقاس الورق وترويسة الفاتورة',
+        onSelect: () => _handleItemTap('إعدادات النظام', const SystemSettingsScreen(initialCategory: 'printing'), false, null),
+      ),
+      CommandPaletteItem(
+        id: 'set_store_name',
+        title: 'تعديل اسم وبيانات المتجر',
+        category: 'إعدادات سريعة',
+        icon: Icons.storefront_rounded,
+        subtitle: 'الهاتف، العنوان، والألوان الرسمية',
+        onSelect: () => _handleItemTap('إعدادات النظام', const SystemSettingsScreen(initialCategory: 'store'), false, null),
+      ),
+    ];
+
+    showDialog(
+      context: context,
+      builder: (_) => CommandPaletteDialog(items: items),
+    );
+  }
+
+  void _openShortcutsGuide() {
+    showDialog(
+      context: context,
+      builder: (_) => const ShortcutsConfigDialog(),
+    );
   }
 
   Widget _navItem(

@@ -30,6 +30,7 @@ import '../cubits/settings_cubit.dart';
 import '../widgets/excel_migration_card.dart';
 import '../widgets/google_drive_backup_card.dart';
 import '../widgets/local_backup_card.dart';
+import '../widgets/shortcuts_config_dialog.dart';
 import '../../../pre_orders/data/services/telegram_bot_service.dart';
 import '../../../pre_orders/presentation/widgets/telegram_inbox_dialog.dart';
 import '../../../products/domain/entities/activity_type.dart';
@@ -75,6 +76,16 @@ class _SystemSettingsView extends StatefulWidget {
 
 class _SystemSettingsViewState extends State<_SystemSettingsView> {
   String? _selectedCategory;
+  final TextEditingController _searchCtrl = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    _searchFocus.dispose();
+    super.dispose();
+  }
 
   static const _categories = <_SettingsCategoryItem>[
     _SettingsCategoryItem(
@@ -186,50 +197,95 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
       );
     }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'مركز الإعدادات الموحد',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: Color(0xFF0F172A),
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyF, control: true): () {
+          _searchFocus.requestFocus();
+        },
+      },
+      child: Focus(
+        autofocus: true,
+        child: Scaffold(
+          backgroundColor: const Color(0xFFF8FAFC),
+          appBar: AppBar(
+            title: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'مركز الإعدادات الموحد',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                Text(
+                  'تحكم شامل في ميزات النظام وصلاحيات العمل وهوية المتجر',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                ),
+              ],
+            ),
+            actions: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: SizedBox(
+                  width: 320,
+                  child: TextField(
+                    key: const Key('settings_search_field'),
+                    controller: _searchCtrl,
+                    focusNode: _searchFocus,
+                    onChanged: (val) => setState(() => _searchQuery = val.trim()),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      hintText: 'ابحث في الإعدادات... [Ctrl + F]',
+                      hintStyle: const TextStyle(fontSize: 12),
+                      prefixIcon: const Icon(Icons.search_rounded, size: 18),
+                      suffixIcon: _searchCtrl.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 16),
+                              onPressed: () {
+                                _searchCtrl.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                            )
+                          : null,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      filled: true,
+                      fillColor: const Color(0xFFF1F5F9),
+                    ),
+                  ),
+                ),
               ),
+            ],
+            backgroundColor: Colors.white,
+            foregroundColor: AppColors.onSurface,
+            elevation: 0,
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(1),
+              child: Divider(height: 1, color: AppColors.outlineVariant),
             ),
-            Text(
-              'تحكم شامل في ميزات النظام وصلاحيات العمل وهوية المتجر',
-              style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.onSurface,
-        elevation: 0,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Divider(height: 1, color: AppColors.outlineVariant),
-        ),
-      ),
-      body: BlocBuilder<SettingsCubit, SettingsState>(
-        builder: (context, state) {
-          if (state.isLoading && state.features.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
-          }
+          ),
+          body: BlocBuilder<SettingsCubit, SettingsState>(
+            builder: (context, state) {
+              if (state.isLoading && state.features.isEmpty) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-          final currentCat = _currentCategory(state);
-          final activeCategoryItem = _categories.firstWhere(
-            (c) => c.key == currentCat,
-            orElse: () => _categories.first,
-          );
-          final installmentsEnabled =
-              state.features[FeatureKeys.installments] ?? false;
-          final userId = _userId(context);
+              final currentCat = _currentCategory(state);
+              final activeCategoryItem = _categories.firstWhere(
+                (c) => c.key == currentCat,
+                orElse: () => _categories.first,
+              );
+              final installmentsEnabled =
+                  state.features[FeatureKeys.installments] ?? false;
+              final userId = _userId(context);
 
-          return Row(
+              if (_searchQuery.isNotEmpty) {
+                return _buildSearchResults(state, userId);
+              }
+
+              return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ── Settings Sidebar (Right rail in RTL) ──
@@ -1124,8 +1180,213 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
           );
         },
       ),
+    ),
+    ),
+  );
+  }
+
+  Widget _buildSearchResults(SettingsState state, String userId) {
+    final query = _searchQuery.toLowerCase();
+
+    final matchedFeatures = FeatureKeys.definitions.where((def) {
+      return def.label.toLowerCase().contains(query) ||
+          def.key.toLowerCase().contains(query);
+    }).toList();
+
+    final matchedCategories = _categories.where((cat) {
+      return cat.label.toLowerCase().contains(query) ||
+          cat.subtitle.toLowerCase().contains(query) ||
+          cat.key.toLowerCase().contains(query);
+    }).toList();
+
+    final matchedActivities = ActivityType.values.where((act) {
+      return act.label.toLowerCase().contains(query) ||
+          act.name.toLowerCase().contains(query);
+    }).toList();
+
+    final matchedPresets = StorePreset.values.where((p) {
+      return p.title.toLowerCase().contains(query) ||
+          p.description.toLowerCase().contains(query) ||
+          p.name.toLowerCase().contains(query);
+    }).toList();
+
+    final hasResults = matchedFeatures.isNotEmpty ||
+        matchedCategories.isNotEmpty ||
+        matchedActivities.isNotEmpty ||
+        matchedPresets.isNotEmpty;
+
+    return ListView(
+      key: const Key('settings_search_results_list'),
+      padding: const EdgeInsets.all(24),
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'نتائج البحث عن "$_searchQuery"',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+            TextButton.icon(
+              onPressed: () {
+                _searchCtrl.clear();
+                setState(() => _searchQuery = '');
+              },
+              icon: const Icon(Icons.close, size: 16),
+              label: const Text('مسح البحث والعودة للقائمة'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        if (!hasResults)
+          Container(
+            padding: const EdgeInsets.all(32),
+            alignment: Alignment.center,
+            child: Column(
+              children: [
+                Icon(Icons.search_off_rounded, size: 48, color: Colors.grey.shade400),
+                const SizedBox(height: 12),
+                Text(
+                  'لا توجد إعدادات أو ميزات مطابقة لـ "$_searchQuery"',
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+
+        if (matchedFeatures.isNotEmpty) ...[
+          _sectionTitle('الميزات والإعدادات المطابقة (${matchedFeatures.length})'),
+          _cardWrapper(
+            child: Column(
+              children: matchedFeatures.map((def) {
+                final isEnabled = state.features[def.key] ?? false;
+                return Column(
+                  children: [
+                    SwitchListTile(
+                      key: Key('feature_switch_${def.key}'),
+                      title: Text(
+                        def.label,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      subtitle: Text(
+                        'المفتاح: ${def.key}${def.coreAlwaysEnabled ? " (ميزة أساسية دائماً مفعلة)" : ""}',
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                      ),
+                      value: isEnabled,
+                      activeThumbColor: AppColors.primary,
+                      onChanged: def.coreAlwaysEnabled
+                          ? null
+                          : (val) => _toggleFeature(context, def.key, val, userId),
+                    ),
+                    Divider(height: 1, color: AppColors.outlineVariant),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        if (matchedCategories.isNotEmpty) ...[
+          _sectionTitle('أقسام الإعدادات (${matchedCategories.length})'),
+          _cardWrapper(
+            child: Column(
+              children: matchedCategories.map((cat) {
+                return ListTile(
+                  leading: Icon(cat.icon, color: AppColors.primary),
+                  title: Text(cat.label, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text(cat.subtitle, style: const TextStyle(fontSize: 12)),
+                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                  onTap: () {
+                    _searchCtrl.clear();
+                    setState(() {
+                      _searchQuery = '';
+                      _selectedCategory = cat.key;
+                    });
+                  },
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        if (matchedActivities.isNotEmpty) ...[
+          _sectionTitle('الأنشطة التجارية المطابقة (${matchedActivities.length})'),
+          _cardWrapper(
+            child: Column(
+              children: matchedActivities.map((act) {
+                return ListTile(
+                  leading: Icon(Icons.storefront_rounded, color: AppColors.primary),
+                  title: Text(act.label, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text('النشاط: ${act.name}', style: const TextStyle(fontSize: 12)),
+                  trailing: TextButton(
+                    onPressed: () {
+                      _searchCtrl.clear();
+                      setState(() {
+                        _searchQuery = '';
+                        _selectedCategory = 'activities';
+                      });
+                    },
+                    child: const Text('الذهاب لإعدادات الأنشطة'),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        if (matchedPresets.isNotEmpty) ...[
+          _sectionTitle('القوالب التجارية المطابقة (${matchedPresets.length})'),
+          _cardWrapper(
+            child: Column(
+              children: matchedPresets.map((p) {
+                return ListTile(
+                  leading: Icon(Icons.palette_rounded, color: AppColors.primary),
+                  title: Text(p.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text('نمط القالب: ${p.name} - ${p.description}', style: const TextStyle(fontSize: 12)),
+                  trailing: TextButton(
+                    onPressed: () {
+                      _searchCtrl.clear();
+                      setState(() {
+                        _searchQuery = '';
+                        _selectedCategory = 'store';
+                      });
+                    },
+                    child: const Text('الذهاب لإعدادات المتجر'),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        _cardWrapper(
+          child: ListTile(
+            leading: Icon(Icons.keyboard_rounded, color: AppColors.primary),
+            title: const Text('تخصيص اختصارات لوحة المفاتيح', style: TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: const Text('تعديل مفاتيح البيع السريع والتنقل بين الحقول [F1]'),
+            trailing: ElevatedButton.icon(
+              key: const Key('open_shortcuts_config_btn'),
+              onPressed: () => showDialog(
+                context: context,
+                builder: (_) => const ShortcutsConfigDialog(),
+              ),
+              icon: const Icon(Icons.tune_rounded, size: 16),
+              label: const Text('تعديل الاختصارات'),
+            ),
+          ),
+        ),
+      ],
     );
   }
+
 
   Future<void> _toggleFeature(
     BuildContext context,
