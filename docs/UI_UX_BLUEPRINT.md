@@ -69,9 +69,9 @@
 - [x] **المهمة 11.5:** قوالب الأنشطة المتجانسة والتجهيز السريع للمتاجر بنقرة واحدة (Pre-configured Commercial Store Profiles & Smart Presets). *(تم)*
 - [x] **المهمة 12.1:** النسخ الاحتياطي التلقائي عند إغلاق الوردية (Auto-Backup on Shift Close). *(تم)*
 - [x] **المهمة 12.2:** أمان طباعة الفواتير وزر إعادة طباعة الفاتورة الأخيرة الفوري بالـ POS (Safe Printing Fallback & Quick Re-Print `[F9]`). *(تم)*
-- [ ] **المهمة 12.3:** سجل التشخيص وتصدير تقرير الدعم الفني بنقرة واحدة (One-Click Diagnostic Support Export).
-- [ ] **المهمة 12.4:** تطبيع الأرقام العربية الهندية ومنع أخطاء الـ Parsing (Universal Arabic Digits Normalization in `Money` & POS).
-- [ ] **المهمة 12.5:** منع تشغيل نسختين في نفس الوقت عبر Win32 Mutex (Single-Instance Application Mutex).
+- [x] **المهمة 12.3:** سجل التشخيص وتصدير تقرير الدعم الفني بنقرة واحدة (One-Click Diagnostic Support Export). *(تم)*
+- [x] **المهمة 12.4:** تطبيع الأرقام العربية الهندية ومنع أخطاء الـ Parsing (Universal Arabic Digits Normalization in `Money` & POS). *(تم)*
+- [x] **المهمة 12.5:** منع تشغيل نسختين في نفس الوقت عبر Win32 Mutex (Single-Instance Application Mutex). *(تم)*
 
 ---
 
