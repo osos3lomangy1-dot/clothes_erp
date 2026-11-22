@@ -62,6 +62,65 @@ enum ActivityType {
       this == ActivityType.sportsFitness ||
       this == ActivityType.textilesDecor;
 
+  /// هل يدعم بيع الرولات والتياب المقصوصة بالمتر (سجاد ومفروشات وأقمشة)؟
+  bool get supportsCutToLength => this == ActivityType.textilesDecor;
+
+  /// المقاسات والأبعاد النموذجية الواقعية لكل نشاط تجاري
+  List<String> get standardSizes {
+    switch (this) {
+      case ActivityType.textilesDecor:
+        return const [
+          '1.5×2 م',
+          '2×3 م',
+          '2.5×3.5 م',
+          '3×4 م',
+          'مشاية 1×3 م',
+          'مشاية 0.8×2 م',
+        ];
+      case ActivityType.perfumesCosmetics:
+        return const [
+          '30 مل',
+          '50 مل',
+          '100 مل',
+          '150 مل',
+          '200 مل',
+        ];
+      case ActivityType.electronicsMobiles:
+        return const [
+          '64GB',
+          '128GB',
+          '256GB',
+          '512GB',
+          '1TB',
+        ];
+      case ActivityType.footwearBags:
+        return const [
+          '38',
+          '39',
+          '40',
+          '41',
+          '42',
+          '43',
+          '44',
+          '45',
+        ];
+      case ActivityType.clothing:
+        return const [
+          'S',
+          'M',
+          'L',
+          'XL',
+          'XXL',
+          '3XL',
+        ];
+      default:
+        return const [
+          'عادي',
+          'كبير',
+        ];
+    }
+  }
+
   /// هل النشاط يعتمد على صنف أحادي مباشر بالقطعة؟
   bool get isSingleItem => !isMatrixBased;
 

@@ -34,10 +34,10 @@ class PromotionEngine {
 
     for (int index = 0; index < cart.length; index++) {
       final line = cart[index];
-      final lineSubtotal = line.price * line.quantity;
+      final lineSubtotal = (line.price * line.effectiveQuantity).round();
 
       // Returns or invalid quantities get zero discount
-      if (line.isReturn || lineSubtotal <= 0 || line.quantity <= 0) {
+      if (line.isReturn || lineSubtotal <= 0 || line.effectiveQuantity <= 0) {
         lineResults.add(LineDiscountResult(
           cartLineIndex: index,
           originalSubtotal: max(0, lineSubtotal),
@@ -57,7 +57,7 @@ class PromotionEngine {
           continue;
         }
 
-        if (line.quantity < promo.minQuantity) {
+        if (line.effectiveQuantity < promo.minQuantity) {
           continue;
         }
 
@@ -204,7 +204,7 @@ class PromotionEngine {
     } else if (promo.type == 'fixed') {
       final perPiece = promo.valuePiasters ?? 0;
       if (perPiece > 0) {
-        discount = perPiece * item.quantity;
+        discount = (perPiece * item.effectiveQuantity).round();
       }
     }
 

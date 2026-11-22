@@ -9,6 +9,8 @@ class SaleItemEntity extends Equatable {
   final String color;
   final int price;
   final int quantity;
+  final double? decimalQuantity;
+  final String? unit;
   final int discount;
   final int promotionDiscount;
   final bool isReturn;
@@ -22,10 +24,21 @@ class SaleItemEntity extends Equatable {
     required this.color,
     required this.price,
     required this.quantity,
+    this.decimalQuantity,
+    this.unit,
     this.discount = 0,
     this.promotionDiscount = 0,
     this.isReturn = false,
   });
+
+  double get effectiveQuantity =>
+      (decimalQuantity != null && decimalQuantity! > 0)
+          ? decimalQuantity!
+          : quantity.toDouble();
+
+  String get formattedQuantity => (effectiveQuantity % 1 == 0)
+      ? effectiveQuantity.toInt().toString()
+      : effectiveQuantity.toString();
 
   SaleItemEntity copyWith({
     String? variantId,
@@ -36,6 +49,9 @@ class SaleItemEntity extends Equatable {
     String? color,
     int? price,
     int? quantity,
+    double? decimalQuantity,
+    bool clearDecimalQuantity = false,
+    String? unit,
     int? discount,
     int? promotionDiscount,
     bool? isReturn,
@@ -49,15 +65,21 @@ class SaleItemEntity extends Equatable {
       color: color ?? this.color,
       price: price ?? this.price,
       quantity: quantity ?? this.quantity,
+      decimalQuantity: clearDecimalQuantity
+          ? null
+          : (decimalQuantity ?? this.decimalQuantity),
+      unit: unit ?? this.unit,
       discount: discount ?? this.discount,
       promotionDiscount: promotionDiscount ?? this.promotionDiscount,
       isReturn: isReturn ?? this.isReturn,
     );
   }
 
-  int get total => isReturn
-      ? -((price * quantity) - discount - promotionDiscount)
-      : (price * quantity) - discount - promotionDiscount;
+  int get total {
+    final rawTotal =
+        (price * effectiveQuantity).round() - discount - promotionDiscount;
+    return isReturn ? -rawTotal : rawTotal;
+  }
 
   @override
   List<Object?> get props => [
@@ -69,6 +91,8 @@ class SaleItemEntity extends Equatable {
         color,
         price,
         quantity,
+        decimalQuantity,
+        unit,
         discount,
         promotionDiscount,
         isReturn,

@@ -456,6 +456,16 @@ class ReceiptPdfService {
     );
   }
 
+  static String _formatItemQty(InvoiceItemDetailsEntity it) {
+    if (it.decimalQty != null && it.decimalQty! > 0) {
+      final formatted = (it.decimalQty! % 1 == 0)
+          ? it.decimalQty!.toInt().toString()
+          : it.decimalQty!.toString();
+      return '$formatted ${it.unit ?? "م"}';
+    }
+    return '${it.qty}';
+  }
+
   static List<pw.Widget> _buildReceiptItemRows(
     List<InvoiceItemDetailsEntity> items,
     ReceiptConfig cfg,
@@ -489,7 +499,7 @@ class ReceiptPdfService {
                     pw.Expanded(
                       flex: 2,
                       child: pw.Text(
-                        '${it.qty}',
+                        _formatItemQty(it),
                         textAlign: pw.TextAlign.center,
                         style: const pw.TextStyle(fontSize: 8),
                       ),
@@ -524,7 +534,7 @@ class ReceiptPdfService {
               if (i.size.isNotEmpty && i.size != '-') i.size,
               if (i.color.isNotEmpty && i.color != '-') i.color,
             ].join(' ');
-            return '${i.qty}× ${desc.isNotEmpty ? desc : 'افتراضي'}';
+            return '${_formatItemQty(i)}× ${desc.isNotEmpty ? desc : 'افتراضي'}';
           }).join('، ');
 
           return pw.Padding(
@@ -599,7 +609,7 @@ class ReceiptPdfService {
                 pw.Expanded(
                   flex: 2,
                   child: pw.Text(
-                    '${it.qty}',
+                    _formatItemQty(it),
                     textAlign: pw.TextAlign.center,
                     style: const pw.TextStyle(fontSize: 8),
                   ),
@@ -655,7 +665,7 @@ class ReceiptPdfService {
                 ),
                 pw.Expanded(
                   flex: 2,
-                  child: pw.Text('${it.qty}', textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 8)),
+                  child: pw.Text(_formatItemQty(it), textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 8)),
                 ),
                 pw.Expanded(
                   flex: 3,
@@ -677,7 +687,7 @@ class ReceiptPdfService {
               if (i.size.isNotEmpty && i.size != '-') i.size,
               if (i.color.isNotEmpty && i.color != '-') i.color,
             ].join(' ');
-            return '${i.qty}× ${desc.isNotEmpty ? desc : 'افتراضي'}';
+            return '${_formatItemQty(i)}× ${desc.isNotEmpty ? desc : 'افتراضي'}';
           }).join('، ');
 
           return pw.Padding(
@@ -727,7 +737,7 @@ class ReceiptPdfService {
             ),
             pw.Expanded(
               flex: 2,
-              child: pw.Text('${it.qty}', textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 8)),
+              child: pw.Text(_formatItemQty(it), textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 8)),
             ),
             pw.Expanded(
               flex: 3,

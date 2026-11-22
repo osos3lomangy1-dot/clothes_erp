@@ -473,7 +473,29 @@ class PosCubit extends Cubit<PosState> {
     }
     final newCart = state.cart.map((item) {
       if (item.variantId == variantId) {
-        return item.copyWith(quantity: newQty);
+        return item.copyWith(
+          quantity: newQty,
+          clearDecimalQuantity: true,
+        );
+      }
+      return item;
+    }).toList();
+    _updateCart(state, newCart);
+  }
+
+  void updateDecimalQuantity(String variantId, double newQty, [String? unit]) {
+    final state = this.state;
+    if (newQty <= 0) {
+      removeFromCart(variantId);
+      return;
+    }
+    final newCart = state.cart.map((item) {
+      if (item.variantId == variantId) {
+        return item.copyWith(
+          quantity: newQty.ceil(),
+          decimalQuantity: newQty,
+          unit: unit ?? item.unit,
+        );
       }
       return item;
     }).toList();
@@ -488,7 +510,13 @@ class PosCubit extends Cubit<PosState> {
     } catch (_) {
       item = null;
     }
-    if (item != null) updateQuantity(variantId, item.quantity + 1);
+    if (item != null) {
+      if (item.decimalQuantity != null && item.decimalQuantity! > 0) {
+        updateDecimalQuantity(variantId, item.decimalQuantity! + 1.0, item.unit);
+      } else {
+        updateQuantity(variantId, item.quantity + 1);
+      }
+    }
   }
 
   void decreaseQty(String variantId) {
@@ -499,7 +527,18 @@ class PosCubit extends Cubit<PosState> {
     } catch (_) {
       item = null;
     }
-    if (item != null) updateQuantity(variantId, item.quantity - 1);
+    if (item != null) {
+      if (item.decimalQuantity != null && item.decimalQuantity! > 0) {
+        final newQty = item.decimalQuantity! - 1.0;
+        if (newQty <= 0) {
+          removeFromCart(variantId);
+        } else {
+          updateDecimalQuantity(variantId, newQty, item.unit);
+        }
+      } else {
+        updateQuantity(variantId, item.quantity - 1);
+      }
+    }
   }
 
   void updateUnitPrice(String variantId, int newPrice) {
@@ -672,7 +711,8 @@ class PosCubit extends Cubit<PosState> {
 
     final subtotal = updatedCart.fold<int>(
       0,
-      (sum, item) => sum + (item.isReturn ? 0 : item.price * item.quantity),
+      (sum, item) =>
+          sum + (item.isReturn ? 0 : (item.price * item.effectiveQuantity).round()),
     );
     final totalPromo = evalResult.totalPromotionDiscountPiasters;
     final totalCustomer = evalResult.totalCustomerDiscountPiasters;

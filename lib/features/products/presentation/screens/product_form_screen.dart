@@ -125,6 +125,8 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
   late TextEditingController _expiryCtrl;
   String _measurementUnit = 'piece'; // 'piece', 'weight'
   late bool _isInstallmentEligible;
+  String _sellMode = 'piece'; // 'piece', 'meter'
+  late TextEditingController _rollWidthCtrl;
 
   String? _validationError;
 
@@ -137,6 +139,8 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
     _imeiCtrl = TextEditingController();
     _expiryCtrl = TextEditingController();
     _isInstallmentEligible = widget.product?.isInstallmentEligible ?? true;
+    _sellMode = widget.product?.sellMode ?? 'piece';
+    _rollWidthCtrl = TextEditingController(text: widget.product?.rollWidth ?? '1.0 م');
 
     if (widget.product == null) {
       _initDefaultRows();
@@ -176,6 +180,7 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
     _brandOrModelCtrl.dispose();
     _imeiCtrl.dispose();
     _expiryCtrl.dispose();
+    _rollWidthCtrl.dispose();
     super.dispose();
   }
 
@@ -201,9 +206,7 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
       }
       _rows.clear();
 
-      final sizes = activityType == ActivityType.footwearBags
-          ? ['38', '39', '40', '41', '42', '43']
-          : ['S', 'M', 'L', 'XL', 'XXL'];
+      final sizes = activityType.standardSizes;
 
       final cost = _batchCostCtrl.text.isNotEmpty ? _batchCostCtrl.text : '100';
       final sell = _batchSellCtrl.text.isNotEmpty ? _batchSellCtrl.text : '150';
@@ -212,7 +215,7 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
       for (int i = 0; i < sizes.length; i++) {
         _rows.add(_VariantRowModel(
           size: sizes[i],
-          color: 'أسود',
+          color: 'افتراضي',
           sku: _makeSku(sizes[i], i + 1),
           cost: cost,
           sell: sell,
@@ -220,6 +223,75 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
         ));
       }
     });
+  }
+
+  void _openCustomDimensionDialog() {
+    final widthCtrl = TextEditingController(text: '2');
+    final lengthCtrl = TextEditingController(text: '3');
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('توليد مقاس مخصص هندسي', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              key: const Key('custom_dim_width_field'),
+              controller: widthCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: 'العرض بالمتر',
+                suffixText: 'م',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              key: const Key('custom_dim_length_field'),
+              controller: lengthCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: 'الطول بالمتر',
+                suffixText: 'م',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            key: const Key('confirm_custom_dimension_btn'),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () {
+              final w = widthCtrl.text.trim();
+              final l = lengthCtrl.text.trim();
+              if (w.isNotEmpty && l.isNotEmpty) {
+                final dim = '$w×$l م';
+                final cost = _batchCostCtrl.text.isNotEmpty ? _batchCostCtrl.text : '100';
+                final sell = _batchSellCtrl.text.isNotEmpty ? _batchSellCtrl.text : '150';
+                final qty = _batchQtyCtrl.text.isNotEmpty ? _batchQtyCtrl.text : '10';
+                setState(() {
+                  _rows.add(_VariantRowModel(
+                    size: dim,
+                    color: 'افتراضي',
+                    sku: _makeSku(dim, _rows.length + 1),
+                    cost: cost,
+                    sell: sell,
+                    qty: qty,
+                  ));
+                });
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('إضافة المقاس', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _applyBatchValues() {
@@ -873,7 +945,9 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                   state.activityTypeEnum.supportsIMEI ||
                                   state.activityTypeEnum.supportsWeight ||
                                   state.activityTypeEnum.supportsExpiry ||
-                                  state.activityTypeEnum.supportsInstallment) ...[
+                                  state.activityTypeEnum.supportsInstallment ||
+                                  state.activityTypeEnum.supportsCutToLength ||
+                                  state.activityTypeEnum == ActivityType.textilesDecor) ...[
                                 const SizedBox(height: 14),
                                 Container(
                                   padding: const EdgeInsets.all(12),
@@ -1004,6 +1078,63 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                           value: _isInstallmentEligible,
                                           activeThumbColor: AppColors.primary,
                                           onChanged: (val) => setState(() => _isInstallmentEligible = val),
+                                        ),
+                                      ],
+                                      if (state.activityTypeEnum.supportsCutToLength || state.activityTypeEnum == ActivityType.textilesDecor) ...[
+                                        const SizedBox(height: 10),
+                                        Container(
+                                          padding: const EdgeInsets.all(10),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(color: AppColors.outlineVariant),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                'نمط بيع السجاد والموكيت والأقمشة:',
+                                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                              ),
+                                              const SizedBox(height: 8),
+                                              SegmentedButton<String>(
+                                                key: const Key('carpet_sell_mode_selector'),
+                                                segments: const [
+                                                  ButtonSegment(
+                                                    value: 'piece',
+                                                    label: Text('قطعة جاهزة بمقاس ثابت'),
+                                                    icon: Icon(Icons.crop_square_rounded, size: 16),
+                                                  ),
+                                                  ButtonSegment(
+                                                    value: 'meter',
+                                                    label: Text('توب / رول مقصوص بالمتر'),
+                                                    icon: Icon(Icons.straighten_rounded, size: 16),
+                                                  ),
+                                                ],
+                                                selected: {_sellMode},
+                                                onSelectionChanged: (newVal) {
+                                                  setState(() {
+                                                    _sellMode = newVal.first;
+                                                  });
+                                                },
+                                              ),
+                                              if (_sellMode == 'meter') ...[
+                                                const SizedBox(height: 10),
+                                                TextFormField(
+                                                  key: const Key('roll_width_field'),
+                                                  controller: _rollWidthCtrl,
+                                                  decoration: InputDecoration(
+                                                    labelText: 'عرض الرول / التوب *',
+                                                    hintText: 'مثال: 1.0 م أو 4.0 م',
+                                                    prefixIcon: const Icon(Icons.format_size_rounded),
+                                                    filled: true,
+                                                    fillColor: Colors.white,
+                                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
                                         ),
                                       ],
                                     ],
@@ -1166,12 +1297,30 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                             icon: const Icon(Icons.flash_on, size: 16),
                                             label: Text(
                                               state.activityTypeEnum == ActivityType.footwearBags
-                                                  ? 'نمر قياسية (38-43)'
-                                                  : 'مقاسات قياسية (S-XXL)',
+                                                  ? 'نمر قياسية (38-45)'
+                                                  : state.activityTypeEnum == ActivityType.textilesDecor
+                                                      ? 'مقاسات سجاد قياسية'
+                                                      : state.activityTypeEnum == ActivityType.perfumesCosmetics
+                                                          ? 'أحجام عطور قياسية'
+                                                          : state.activityTypeEnum == ActivityType.electronicsMobiles
+                                                              ? 'سعات قياسية'
+                                                              : 'مقاسات قياسية (S-3XL)',
                                               style: const TextStyle(fontSize: 12),
                                             ),
                                             onPressed: () => _loadStandardSizes(state.activityTypeEnum),
                                           ),
+                                          if (state.activityTypeEnum.supportsCutToLength || state.activityTypeEnum == ActivityType.textilesDecor) ...[
+                                            const SizedBox(width: 8),
+                                            OutlinedButton.icon(
+                                              key: const Key('generate_custom_dimension_btn'),
+                                              style: OutlinedButton.styleFrom(
+                                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                              ),
+                                              icon: const Icon(Icons.straighten, size: 16),
+                                              label: const Text('توليد مقاس مخصص', style: TextStyle(fontSize: 12)),
+                                              onPressed: _openCustomDimensionDialog,
+                                            ),
+                                          ],
                                           const SizedBox(width: 8),
                                           ElevatedButton.icon(
                                             style: ElevatedButton.styleFrom(

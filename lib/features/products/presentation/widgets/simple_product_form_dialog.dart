@@ -85,6 +85,8 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
   late TextEditingController _expiryCtrl;
   String _measurementUnit = 'piece'; // 'piece', 'weight'
   late bool _isInstallmentEligible;
+  bool _isRollMode = false;
+  late TextEditingController _rollWidthCtrl;
 
   @override
   void initState() {
@@ -92,7 +94,11 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
     final p = widget.product;
     if (p != null) {
       _activityType = p.activityTypeEnum;
+      _isRollMode = p.sellMode == 'meter';
+      _rollWidthCtrl = TextEditingController(text: p.rollWidth ?? '1.0 م');
     } else {
+      _isRollMode = false;
+      _rollWidthCtrl = TextEditingController(text: '1.0 م');
       if (getIt.isRegistered<ActivitySettingsService>()) {
         final cached = getIt<ActivitySettingsService>().cachedEnabledActivities;
         _activityType = cached.isNotEmpty ? cached.first : ActivityType.clothing;
@@ -182,6 +188,7 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
     _brandOrModelCtrl.dispose();
     _imeiCtrl.dispose();
     _expiryCtrl.dispose();
+    _rollWidthCtrl.dispose();
     super.dispose();
   }
 
@@ -241,7 +248,7 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
         formCubit.onInstallmentEligibleChanged(_isInstallmentEligible);
 
         final variant = VariantInput(
-          size: '-',
+          size: _isRollMode ? 'رول ${_rollWidthCtrl.text.trim()}' : '-',
           color: '-',
           sku: cleanBarcode,
           costPrice: costPiasters,
@@ -635,7 +642,8 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
                           _activityType.supportsIMEI ||
                           _activityType.supportsWeight ||
                           _activityType.supportsExpiry ||
-                          _activityType.supportsInstallment) ...[
+                          _activityType.supportsInstallment ||
+                          _activityType.supportsCutToLength) ...[
                         const SizedBox(height: 16),
                         Container(
                           padding: const EdgeInsets.all(14),
@@ -772,6 +780,46 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
                                   value: _isInstallmentEligible,
                                   activeThumbColor: AppColors.primary,
                                   onChanged: (val) => setState(() => _isInstallmentEligible = val),
+                                ),
+                              ],
+                              if (_activityType.supportsCutToLength) ...[
+                                const SizedBox(height: 10),
+                                Container(
+                                  key: const Key('simple_carpet_roll_mode'),
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: AppColors.outlineVariant),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      SwitchListTile(
+                                        contentPadding: EdgeInsets.zero,
+                                        title: const Text('بيع بالمتر (توب / رول مقصوص)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                                        subtitle: const Text('تفعيل بيع الأمتار الطولية بالكسور العشرية في الكاشير', style: TextStyle(fontSize: 11)),
+                                        value: _isRollMode,
+                                        activeThumbColor: AppColors.primary,
+                                        onChanged: (val) => setState(() => _isRollMode = val),
+                                      ),
+                                      if (_isRollMode) ...[
+                                        const SizedBox(height: 8),
+                                        TextFormField(
+                                          key: const Key('simple_roll_width_field'),
+                                          controller: _rollWidthCtrl,
+                                          decoration: InputDecoration(
+                                            labelText: 'عرض الرول / المشاية *',
+                                            hintText: 'مثال: 1.0 م أو 4.0 م',
+                                            prefixIcon: const Icon(Icons.format_size_rounded),
+                                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                            filled: true,
+                                            fillColor: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
                                 ),
                               ],
                             ],

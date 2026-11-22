@@ -7,6 +7,8 @@ class InvoiceItemDetailsEntity extends Equatable {
   final String color;
   final String size;
   final int qty;
+  final double? decimalQty;
+  final String? unit;
   final int price; // in piasters
   final int costPrice; // in piasters (cost snapshot)
   final int lineDiscount; // in piasters
@@ -20,6 +22,8 @@ class InvoiceItemDetailsEntity extends Equatable {
     required this.color,
     required this.size,
     required this.qty,
+    this.decimalQty,
+    this.unit,
     required this.price,
     this.costPrice = 0,
     this.lineDiscount = 0,
@@ -27,8 +31,18 @@ class InvoiceItemDetailsEntity extends Equatable {
     required this.lineTotal,
   });
 
-  /// Net line profit in piasters: lineTotal - (costPrice * qty)
-  int get profitPiasters => lineTotal - (costPrice * qty);
+  /// Effective quantity: returns decimalQty if available and positive, else qty as double
+  double get effectiveQuantity =>
+      (decimalQty != null && decimalQty! > 0) ? decimalQty! : qty.toDouble();
+
+  /// Formatted quantity representation
+  String get formattedQuantity => (effectiveQuantity % 1 == 0)
+      ? effectiveQuantity.toInt().toString()
+      : effectiveQuantity.toString();
+
+  /// Net line profit in piasters: lineTotal - (costPrice * effectiveQuantity).round()
+  int get profitPiasters =>
+      lineTotal - (costPrice * effectiveQuantity).round();
 
   /// Profit margin percentage: profit / lineTotal
   double get profitMarginPercent =>
@@ -42,6 +56,8 @@ class InvoiceItemDetailsEntity extends Equatable {
         color,
         size,
         qty,
+        decimalQty,
+        unit,
         price,
         costPrice,
         lineDiscount,

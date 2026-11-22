@@ -5458,18 +5458,35 @@ class _CartItemTileState extends State<_CartItemTile> {
   late TextEditingController _qtyCtrl;
   final FocusNode _qtyFocus = FocusNode();
 
+  bool get _isDecimalItem =>
+      widget.item.decimalQuantity != null ||
+      widget.item.unit == 'meter' ||
+      widget.item.unit == 'م' ||
+      widget.item.size.contains('رول') ||
+      widget.item.size.contains('متر') ||
+      widget.item.size.endsWith(' م') ||
+      widget.item.size.contains('×');
+
+  String _formatQty(double qty) {
+    if (qty % 1 == 0) return qty.toInt().toString();
+    return qty.toString();
+  }
+
   @override
   void initState() {
     super.initState();
-    _qtyCtrl = TextEditingController(text: '${widget.item.quantity}');
+    _qtyCtrl = TextEditingController(
+      text: _formatQty(widget.item.effectiveQuantity),
+    );
   }
 
   @override
   void didUpdateWidget(covariant _CartItemTile oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.item.quantity != widget.item.quantity &&
+    if ((oldWidget.item.effectiveQuantity != widget.item.effectiveQuantity ||
+         oldWidget.item.quantity != widget.item.quantity) &&
         !_qtyFocus.hasFocus) {
-      _qtyCtrl.text = '${widget.item.quantity}';
+      _qtyCtrl.text = _formatQty(widget.item.effectiveQuantity);
     }
   }
 
@@ -5481,12 +5498,24 @@ class _CartItemTileState extends State<_CartItemTile> {
   }
 
   void _onQtyChanged(String val) {
-    final parsed = int.tryParse(val.trim());
-    if (parsed == null || parsed <= 0) return;
-    final valid = (widget.maxStock > 0 && parsed > widget.maxStock)
-        ? widget.maxStock
-        : parsed;
-    context.read<PosCubit>().updateQuantity(widget.item.variantId, valid);
+    val = val.trim();
+    if (val.isEmpty) return;
+    final parsedDouble = double.tryParse(val);
+    if (parsedDouble == null || parsedDouble <= 0) return;
+
+    if (_isDecimalItem || val.contains('.')) {
+      context.read<PosCubit>().updateDecimalQuantity(
+        widget.item.variantId,
+        parsedDouble,
+        widget.item.unit ?? (_isDecimalItem ? 'م' : null),
+      );
+    } else {
+      final parsedInt = parsedDouble.toInt();
+      final valid = (widget.maxStock > 0 && parsedInt > widget.maxStock)
+          ? widget.maxStock
+          : parsedInt;
+      context.read<PosCubit>().updateQuantity(widget.item.variantId, valid);
+    }
   }
 
   void _openPriceEditDialog(BuildContext context) {
@@ -5771,7 +5800,7 @@ class _CartItemTileState extends State<_CartItemTile> {
                 ),
                 // Inline Direct Text Input for Quantity
                 Container(
-                  width: 38,
+                  width: 50,
                   height: 26,
                   decoration: BoxDecoration(
                     color: AppColors.surfaceContainerLowest,
@@ -5783,7 +5812,7 @@ class _CartItemTileState extends State<_CartItemTile> {
                   child: TextField(
                     controller: _qtyCtrl,
                     focusNode: _qtyFocus,
-                    keyboardType: TextInputType.number,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontFamily: 'Cairo',
@@ -5831,14 +5860,29 @@ class _CartItemTileState extends State<_CartItemTile> {
           const SizedBox(width: 10),
 
           // Line Total
-          Text(
-            '${Money(item.total).toDisplay()} ج.م',
-            style: TextStyle(
-              fontFamily: 'Cairo',
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
-              color: AppColors.primary,
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '${Money(item.total).toDisplay()} ج.م',
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: AppColors.primary,
+                ),
+              ),
+              if (_isDecimalItem || item.decimalQuantity != null)
+                Text(
+                  '${_formatQty(item.effectiveQuantity)} ${item.unit ?? "م"}',
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 10,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+            ],
           ),
 
           IconButton(

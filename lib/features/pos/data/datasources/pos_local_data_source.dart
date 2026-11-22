@@ -118,8 +118,15 @@ class PosLocalDataSource {
           final lineDiscount = (item['discount'] as num?)?.toInt() ?? 0;
           final price = item['price'] as int;
           final qty = item['qty'] as int;
-          final calculatedLineTotal = (price * qty) - lineDiscount - promoDiscount;
+          final decimalQty = (item['decimalQty'] as num?)?.toDouble();
+          final effectiveQty = (item['effectiveQty'] as num?)?.toDouble() ??
+              ((decimalQty != null && decimalQty > 0) ? decimalQty : qty.toDouble());
+          final calculatedLineTotal = (price * effectiveQty).round() - lineDiscount - promoDiscount;
           final lineTotal = calculatedLineTotal < 0 ? 0 : calculatedLineTotal;
+
+          final effectiveSize = (decimalQty != null && decimalQty > 0)
+              ? '${item['size'] ?? ""} • $decimalQty ${item['unit'] ?? "م"}'.trim()
+              : (item['size'] as String? ?? '-');
 
           await _db.into(_db.saleItems).insert(SaleItemsCompanion.insert(
             id: sItemId,
@@ -128,7 +135,7 @@ class PosLocalDataSource {
             variantId: item['variantId'] as String,
             productName: item['name'] as String,
             color: item['color'] as String,
-            size: item['size'] as String,
+            size: effectiveSize,
             qty: qty,
             priceSnapshot: price,
             costSnapshot: item['cost'] as int,
@@ -137,6 +144,30 @@ class PosLocalDataSource {
             lineTotal: lineTotal,
             createdAt: now,
           ));
+          if (decimalQty != null && decimalQty > 0) {
+            final decimalStockKey = 'stock_decimal_${item['variantId']}';
+            final metaRow = await (_db.select(_db.appMeta)
+                  ..where((m) => m.key.equals(decimalStockKey)))
+                .getSingleOrNull();
+            double currentStock;
+            if (metaRow != null) {
+              currentStock = double.tryParse(metaRow.value) ?? 0.0;
+            } else {
+              final v = await (_db.select(_db.productVariants)
+                    ..where((pv) => pv.id.equals(item['variantId'] as String)))
+                  .getSingleOrNull();
+              currentStock = (v?.quantity ?? 0).toDouble();
+            }
+            final newStock = currentStock - decimalQty;
+            await _db.into(_db.appMeta).insertOnConflictUpdate(
+              AppMetaCompanion.insert(
+                key: decimalStockKey,
+                value: newStock.toString(),
+                updatedAt: now,
+              ),
+            );
+          }
+
           await _inventory.applyStockMovement(
             variantId: item['variantId'] as String,
             qtyDelta: -qty,

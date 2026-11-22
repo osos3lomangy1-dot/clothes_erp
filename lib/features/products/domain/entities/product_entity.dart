@@ -35,11 +35,14 @@ class ProductEntity extends Equatable {
   final bool isActive;
   final List<VariantSummary> variants;
 
-  // --- محرك تعدد الأنشطة والخصائص التكيفية (Task 8.6) ---
+  // --- محرك تعدد الأنشطة والخصائص التكيفية (Task 8.6 & Task 18) ---
   final String activityType; // clothing, footwearBags, accessoriesBeauty, homeLiving, general
   final String? warrantyPeriod;
   final String? brandOrModel;
   final bool isInstallmentEligible;
+  final String sellMode; // 'piece', 'meter'
+  final String unit; // 'piece', 'meter', 'cm', 'kg'
+  final String? rollWidth;
 
   const ProductEntity({
     required this.id,
@@ -57,6 +60,9 @@ class ProductEntity extends Equatable {
     this.warrantyPeriod,
     this.brandOrModel,
     this.isInstallmentEligible = true,
+    this.sellMode = 'piece',
+    this.unit = 'piece',
+    this.rollWidth,
   });
 
   ActivityType get activityTypeEnum => ActivityType.fromString(activityType);
@@ -77,6 +83,9 @@ class ProductEntity extends Equatable {
     String? warrantyPeriod,
     String? brandOrModel,
     bool? isInstallmentEligible,
+    String? sellMode,
+    String? unit,
+    String? rollWidth,
   }) {
     return ProductEntity(
       id: id ?? this.id,
@@ -95,6 +104,9 @@ class ProductEntity extends Equatable {
       brandOrModel: brandOrModel ?? this.brandOrModel,
       isInstallmentEligible:
           isInstallmentEligible ?? this.isInstallmentEligible,
+      sellMode: sellMode ?? this.sellMode,
+      unit: unit ?? this.unit,
+      rollWidth: rollWidth ?? this.rollWidth,
     );
   }
 
@@ -115,5 +127,8 @@ class ProductEntity extends Equatable {
         warrantyPeriod,
         brandOrModel,
         isInstallmentEligible,
+        sellMode,
+        unit,
+        rollWidth,
       ];
 }

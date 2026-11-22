@@ -77,19 +77,7 @@ class InvoicesLocalDataSourceImpl implements InvoicesLocalDataSource {
     final Map<String, List<InvoiceItemDetailsEntity>> itemsMap = {};
     for (final it in itemsRows) {
       final list = itemsMap.putIfAbsent(it.saleId, () => []);
-      list.add(InvoiceItemDetailsEntity(
-        id: it.id,
-        variantId: it.variantId,
-        productName: it.productName,
-        color: it.color,
-        size: it.size,
-        qty: it.qty,
-        price: it.priceSnapshot,
-        costPrice: it.costSnapshot,
-        lineDiscount: it.lineDiscount,
-        promotionDiscount: it.promotionDiscountPiasters,
-        lineTotal: it.lineTotal,
-      ));
+      list.add(_mapSaleItemToEntity(it));
     }
 
     return rows.map((r) {
@@ -137,21 +125,7 @@ class InvoicesLocalDataSourceImpl implements InvoicesLocalDataSource {
           ..orderBy([(i) => OrderingTerm.asc(i.createdAt)]))
         .get();
 
-    final items = itemsRows
-        .map((it) => InvoiceItemDetailsEntity(
-              id: it.id,
-              variantId: it.variantId,
-              productName: it.productName,
-              color: it.color,
-              size: it.size,
-              qty: it.qty,
-              price: it.priceSnapshot,
-              costPrice: it.costSnapshot,
-              lineDiscount: it.lineDiscount,
-              promotionDiscount: it.promotionDiscountPiasters,
-              lineTotal: it.lineTotal,
-            ))
-        .toList();
+    final items = itemsRows.map(_mapSaleItemToEntity).toList();
 
     return InvoiceDetailsEntity(
       id: s.id,
@@ -191,21 +165,7 @@ class InvoicesLocalDataSourceImpl implements InvoicesLocalDataSource {
           ..orderBy([(i) => OrderingTerm.asc(i.createdAt)]))
         .get();
 
-    final items = itemsRows
-        .map((it) => InvoiceItemDetailsEntity(
-              id: it.id,
-              variantId: it.variantId,
-              productName: it.productName,
-              color: it.color,
-              size: it.size,
-              qty: it.qty,
-              price: it.priceSnapshot,
-              costPrice: it.costSnapshot,
-              lineDiscount: it.lineDiscount,
-              promotionDiscount: it.promotionDiscountPiasters,
-              lineTotal: it.lineTotal,
-            ))
-        .toList();
+    final items = itemsRows.map(_mapSaleItemToEntity).toList();
 
     return InvoiceDetailsEntity(
       id: s.id,
@@ -223,6 +183,31 @@ class InvoicesLocalDataSourceImpl implements InvoicesLocalDataSource {
       shiftId: s.shiftId,
       status: s.status,
       items: items,
+    );
+  }
+
+  static InvoiceItemDetailsEntity _mapSaleItemToEntity(SaleItem it) {
+    double? decimalQty;
+    String? unit;
+    final meterMatch = RegExp(r'([\d.]+)\s*م').firstMatch(it.size);
+    if (meterMatch != null) {
+      decimalQty = double.tryParse(meterMatch.group(1)!);
+      unit = 'م';
+    }
+    return InvoiceItemDetailsEntity(
+      id: it.id,
+      variantId: it.variantId,
+      productName: it.productName,
+      color: it.color,
+      size: it.size,
+      qty: it.qty,
+      decimalQty: decimalQty,
+      unit: unit,
+      price: it.priceSnapshot,
+      costPrice: it.costSnapshot,
+      lineDiscount: it.lineDiscount,
+      promotionDiscount: it.promotionDiscountPiasters,
+      lineTotal: it.lineTotal,
     );
   }
 }
