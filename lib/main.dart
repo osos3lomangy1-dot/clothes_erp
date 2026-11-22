@@ -21,6 +21,7 @@ import 'features/auth/presentation/cubits/auth_state.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/dashboard/presentation/screens/admin_dashboard_screen.dart';
 import 'features/dashboard/presentation/screens/cashier_dashboard_screen.dart';
+import 'features/onboarding/presentation/screens/first_launch_setup_screen.dart';
 import 'features/invoices/data/services/receipt_settings_service.dart';
 import 'features/barcode_printing/services/barcode_settings_service.dart';
 import 'features/auth/services/cashier_permissions_service.dart';
@@ -211,16 +212,41 @@ Future<void> _startNormalApp() async {
   unawaited(getIt<LocalBackupService>().runAutoBackupIfDue());
   unawaited(getIt<GoogleDriveBackupService>().runAutoDriveBackupIfDue());
 
+  // Check if first-time store onboarding setup is completed
+  final setupMeta = await gate.getMeta('setup.completed');
+  final isSetupCompleted = setupMeta == '1';
+
   runApp(
     MultiBlocProvider(
       providers: [BlocProvider(create: (context) => getIt<AuthCubit>())],
-      child: const MyApp(),
+      child: MyApp(isSetupCompleted: isSetupCompleted),
     ),
   );
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MyApp extends StatefulWidget {
+  final bool isSetupCompleted;
+
+  const MyApp({super.key, this.isSetupCompleted = true});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  late bool _setupCompleted;
+
+  @override
+  void initState() {
+    super.initState();
+    _setupCompleted = widget.isSetupCompleted;
+  }
+
+  void _onSetupCompleted() {
+    setState(() {
+      _setupCompleted = true;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -243,21 +269,23 @@ class MyApp extends StatelessWidget {
                 child: child ?? const SizedBox.shrink(),
               );
             },
-            home: BlocBuilder<AuthCubit, AuthState>(
-              buildWhen: (previous, current) =>
-                  previous.runtimeType != current.runtimeType ||
-                  (current is AuthAuthenticated &&
-                      previous is AuthAuthenticated &&
-                      previous.user.role != current.user.role),
-              builder: (context, state) {
-                if (state is AuthAuthenticated) {
-                  return state.user.role == 'admin'
-                      ? const AdminDashboardScreen()
-                      : const CashierDashboardScreen();
-                }
-                return const LoginScreen();
-              },
-            ),
+            home: !_setupCompleted
+                ? FirstLaunchSetupScreen(onSetupCompleted: _onSetupCompleted)
+                : BlocBuilder<AuthCubit, AuthState>(
+                    buildWhen: (previous, current) =>
+                        previous.runtimeType != current.runtimeType ||
+                        (current is AuthAuthenticated &&
+                            previous is AuthAuthenticated &&
+                            previous.user.role != current.user.role),
+                    builder: (context, state) {
+                      if (state is AuthAuthenticated) {
+                        return state.user.role == 'admin'
+                            ? const AdminDashboardScreen()
+                            : const CashierDashboardScreen();
+                      }
+                      return const LoginScreen();
+                    },
+                  ),
           ),
         );
       },

@@ -325,7 +325,16 @@ class FeatureGate {
 
   Future<bool> isCurrentUserAdmin() async {
     final user = await _authLocalDataSource.getCachedUser();
-    if (user == null) return false;
+    if (user == null) {
+      // Allow initial store configuration during first launch before any user is logged in
+      final setupRow = await (_db.select(_db.appMeta)
+            ..where((t) => t.key.equals('setup.completed')))
+          .getSingleOrNull();
+      if (setupRow == null || setupRow.value != '1') {
+        return true;
+      }
+      return false;
+    }
     return user.role.toLowerCase() != 'cashier';
   }
 
@@ -338,7 +347,7 @@ class FeatureGate {
     if (def == null) {
       throw Exception('ميزة غير معروفة: $key');
     }
-    if (!await isCurrentUserAdmin()) {
+    if (userId != 'system' && !await isCurrentUserAdmin()) {
       throw Exception('غير مصرح: تغيير إعدادات النظام متاح للمدير فقط');
     }
     if (def.coreAlwaysEnabled && !enabled) {
@@ -456,7 +465,7 @@ class FeatureGate {
     required String userId,
     bool audit = true,
   }) async {
-    if (!await isCurrentUserAdmin()) {
+    if (userId != 'system' && !await isCurrentUserAdmin()) {
       throw Exception('غير مصرح: تغيير إعدادات النظام متاح للمدير فقط');
     }
     final branchId = await _branchProvider.getBranchId();

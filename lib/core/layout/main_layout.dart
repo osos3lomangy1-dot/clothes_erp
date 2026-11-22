@@ -78,8 +78,8 @@ class _MainLayoutState extends State<MainLayout> {
       _savedCollapsedOverrideBeforePos = null;
     }
 
-    final syncService = getIt<RestSyncService>();
-    final featureGate = getIt<FeatureGate>();
+    final syncService = getIt.isRegistered<RestSyncService>() ? getIt<RestSyncService>() : null;
+    final featureGate = getIt.isRegistered<FeatureGate>() ? getIt<FeatureGate>() : null;
 
     if (getIt.isRegistered<AppDatabase>()) {
       final db = getIt<AppDatabase>();
@@ -96,23 +96,25 @@ class _MainLayoutState extends State<MainLayout> {
       });
     }
 
-    _cloudSyncSub = featureGate.watchMeta('sync.cloud_enabled').listen((val) {
-      final enabled = val == '1' || val == 'true';
-      if (enabled) {
-        syncService.startAutoSync(interval: const Duration(minutes: 5));
-      } else {
-        syncService.stopAutoSync();
-      }
-      if (mounted && _cloudSyncEnabled != enabled) {
-        setState(() => _cloudSyncEnabled = enabled);
-      }
-    });
+    if (syncService != null && featureGate != null) {
+      _cloudSyncSub = featureGate.watchMeta('sync.cloud_enabled').listen((val) {
+        final enabled = val == '1' || val == 'true';
+        if (enabled) {
+          syncService.startAutoSync(interval: const Duration(minutes: 5));
+        } else {
+          syncService.stopAutoSync();
+        }
+        if (mounted && _cloudSyncEnabled != enabled) {
+          setState(() => _cloudSyncEnabled = enabled);
+        }
+      });
 
-    _syncSubscription = syncService.isSyncingStream.listen((syncing) {
-      if (mounted && _isSyncing != syncing) {
-        setState(() => _isSyncing = syncing);
-      }
-    });
+      _syncSubscription = syncService.isSyncingStream.listen((syncing) {
+        if (mounted && _isSyncing != syncing) {
+          setState(() => _isSyncing = syncing);
+        }
+      });
+    }
   }
 
   @override
