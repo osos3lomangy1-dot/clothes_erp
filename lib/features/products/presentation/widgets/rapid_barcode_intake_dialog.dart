@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:drift/drift.dart' hide Column, Table;
+import 'package:uuid/uuid.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/database/app_database.dart';
@@ -55,6 +57,15 @@ class _RapidBarcodeIntakeDialogState extends State<RapidBarcodeIntakeDialog> {
   final TextEditingController _qtyCtrl = TextEditingController(text: '1');
   final FocusNode _qtyFocus = FocusNode();
 
+  bool _isLinkToExistingMode = false;
+  List<Product> _existingProducts = [];
+  Product? _selectedProduct;
+  final TextEditingController _linkSizeCtrl = TextEditingController(text: 'L');
+  final TextEditingController _linkColorCtrl = TextEditingController(text: 'افتراضي');
+  final TextEditingController _linkCostCtrl = TextEditingController(text: '100.00');
+  final TextEditingController _linkSellCtrl = TextEditingController(text: '150.00');
+  final TextEditingController _linkQtyCtrl = TextEditingController(text: '10');
+
   String? _selectedCategoryId;
   bool _isChecking = false;
   bool _isSaving = false;
@@ -83,7 +94,105 @@ class _RapidBarcodeIntakeDialogState extends State<RapidBarcodeIntakeDialog> {
     _sellFocus.dispose();
     _qtyCtrl.dispose();
     _qtyFocus.dispose();
+    _linkSizeCtrl.dispose();
+    _linkColorCtrl.dispose();
+    _linkCostCtrl.dispose();
+    _linkSellCtrl.dispose();
+    _linkQtyCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadExistingProducts() async {
+    final db = getIt<AppDatabase>();
+    final products = await (db.select(db.products)
+          ..where((p) => p.deletedAt.isNull())
+          ..orderBy([(p) => OrderingTerm.asc(p.name)]))
+        .get();
+    if (!mounted) return;
+    setState(() {
+      _existingProducts = products;
+      if (products.isNotEmpty && (_selectedProduct == null || !products.any((p) => p.id == _selectedProduct?.id))) {
+        _selectedProduct = products.first;
+      }
+    });
+  }
+
+  Future<void> _saveLinkedVariant() async {
+    if (_selectedProduct == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('يرجى اختيار المنتج المسجل أولاً'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+    final size = _linkSizeCtrl.text.trim();
+    if (size.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('المقاس أو البعد مطلوب'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    final cost = _parsePiasters(_linkCostCtrl.text);
+    final sell = _parsePiasters(_linkSellCtrl.text);
+    final qty = int.tryParse(_linkQtyCtrl.text.trim()) ?? 1;
+
+    setState(() => _isSaving = true);
+    try {
+      final db = getIt<AppDatabase>();
+      final newId = const Uuid().v4();
+      final p = _selectedProduct!;
+      final color = _linkColorCtrl.text.trim().isEmpty ? 'افتراضي' : _linkColorCtrl.text.trim();
+
+      await db.into(db.productVariants).insert(
+        ProductVariantsCompanion.insert(
+          id: newId,
+          branchId: p.branchId,
+          productId: p.id,
+          sku: _currentBarcode,
+          size: size,
+          color: color,
+          costPrice: cost,
+          sellPrice: sell,
+          quantity: Value(qty),
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _sessionItems.insert(
+          0,
+          ScannedSessionItem(
+            name: '${p.name} ($size)',
+            barcode: _currentBarcode,
+            sellPrice: sell,
+            addedQty: qty,
+            isExisting: false,
+            timestamp: DateTime.now(),
+          ),
+        );
+        _showNewProductForm = false;
+        _isSaving = false;
+        _barcodeCtrl.clear();
+        _barcodeFocus.requestFocus();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('حدث خطأ أثناء حفظ المقاس: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
   int _parsePiasters(String text) {
@@ -416,6 +525,31 @@ class _RapidBarcodeIntakeDialogState extends State<RapidBarcodeIntakeDialog> {
                           const SizedBox(height: 12),
                           Row(
                             children: [
+                              ChoiceChip(
+                                label: const Text('منتج جديد تماماً'),
+                                selected: !_isLinkToExistingMode,
+                                onSelected: (val) {
+                                  if (val) setState(() => _isLinkToExistingMode = false);
+                                },
+                              ),
+                              const SizedBox(width: 8),
+                              ChoiceChip(
+                                key: const Key('link_to_existing_product_mode'),
+                                label: const Text('ربط بموديل موجود كـ مقاس جديد'),
+                                selected: _isLinkToExistingMode,
+                                onSelected: (val) {
+                                  if (val) {
+                                    setState(() => _isLinkToExistingMode = true);
+                                    _loadExistingProducts();
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          if (!_isLinkToExistingMode) ...[
+                          Row(
+                            children: [
                               Expanded(
                                 flex: 3,
                                 child: TextField(
@@ -565,6 +699,129 @@ class _RapidBarcodeIntakeDialogState extends State<RapidBarcodeIntakeDialog> {
                               ),
                             ],
                           ),
+                          ] else ...[
+                            Row(
+                              children: [
+                                Expanded(
+                                  flex: 3,
+                                  child: DropdownButtonFormField<Product>(
+                                    key: const Key('select_existing_product_dropdown'),
+                                    initialValue: _existingProducts.any((p) => p.id == _selectedProduct?.id)
+                                        ? _selectedProduct
+                                        : (_existingProducts.isNotEmpty ? _existingProducts.first : null),
+                                    decoration: InputDecoration(
+                                      labelText: 'الموديل / المنتج المسجل *',
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    ),
+                                    items: _existingProducts
+                                        .map((p) => DropdownMenuItem(value: p, child: Text(p.name)))
+                                        .toList(),
+                                    onChanged: (val) {
+                                      setState(() => _selectedProduct = val);
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  flex: 2,
+                                  child: TextField(
+                                    key: const Key('intake_variant_size_field'),
+                                    controller: _linkSizeCtrl,
+                                    decoration: InputDecoration(
+                                      labelText: 'المقاس / البعد *',
+                                      hintText: '2×3 م، 42، XL',
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  flex: 2,
+                                  child: TextField(
+                                    key: const Key('intake_variant_color_field'),
+                                    controller: _linkColorCtrl,
+                                    decoration: InputDecoration(
+                                      labelText: 'اللون',
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    key: const Key('intake_variant_sell_field'),
+                                    controller: _linkSellCtrl,
+                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    decoration: InputDecoration(
+                                      labelText: 'سعر البيع (ج.م) *',
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: TextField(
+                                    key: const Key('intake_variant_cost_field'),
+                                    controller: _linkCostCtrl,
+                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    decoration: InputDecoration(
+                                      labelText: 'سعر التكلفة (ج.م) *',
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: TextField(
+                                    key: const Key('intake_variant_qty_field'),
+                                    controller: _linkQtyCtrl,
+                                    keyboardType: TextInputType.number,
+                                    decoration: InputDecoration(
+                                      labelText: 'الكمية المستلمة *',
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                ElevatedButton.icon(
+                                  key: const Key('confirm_link_variant_btn'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF2E7D32),
+                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                  onPressed: _isSaving ? null : _saveLinkedVariant,
+                                  icon: _isSaving
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                        )
+                                      : const Icon(Icons.check_rounded, color: Colors.white),
+                                  label: const Text(
+                                    'حفظ وربط الباركود',
+                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/navigation/app_navigator.dart';
+import '../../../../core/utils/barcode_helper.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../data/datasources/product_local_data_source.dart';
@@ -82,6 +84,13 @@ class _VariantRowModel {
   final TextEditingController sellCtrl;
   final TextEditingController qtyCtrl;
 
+  final FocusNode sizeFocus = FocusNode();
+  final FocusNode colorFocus = FocusNode();
+  final FocusNode skuFocus = FocusNode();
+  final FocusNode costFocus = FocusNode();
+  final FocusNode sellFocus = FocusNode();
+  final FocusNode qtyFocus = FocusNode();
+
   _VariantRowModel({
     required String size,
     required String color,
@@ -103,6 +112,13 @@ class _VariantRowModel {
     costCtrl.dispose();
     sellCtrl.dispose();
     qtyCtrl.dispose();
+
+    sizeFocus.dispose();
+    colorFocus.dispose();
+    skuFocus.dispose();
+    costFocus.dispose();
+    sellFocus.dispose();
+    qtyFocus.dispose();
   }
 }
 
@@ -159,9 +175,7 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
   }
 
   String _makeSku(String size, int index) {
-    final millis = DateTime.now().millisecondsSinceEpoch.toString();
-    final suffix = millis.substring(millis.length - 3);
-    return 'SKU-$size-$index$suffix';
+    return BarcodeHelper.generateSku(size: size, index: index);
   }
 
   @override
@@ -184,18 +198,37 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
     super.dispose();
   }
 
-  void _addRow() {
+  void _addRow([ActivityType? activityType]) {
     setState(() {
       final last = _rows.isNotEmpty ? _rows.last : null;
       final nextIdx = _rows.length + 1;
-      _rows.add(_VariantRowModel(
-        size: 'L',
+
+      String nextSize = 'L';
+      if (activityType != null) {
+        final existingSizes = _rows.map((r) => r.sizeCtrl.text.trim()).toSet();
+        final unadded = activityType.standardSizes.where((s) => !existingSizes.contains(s)).toList();
+        if (unadded.isNotEmpty) {
+          nextSize = unadded.first;
+        } else if (activityType.standardSizes.isNotEmpty) {
+          nextSize = activityType.standardSizes.last;
+        }
+      }
+
+      final newRow = _VariantRowModel(
+        size: nextSize,
         color: last?.colorCtrl.text ?? 'أسود',
-        sku: _makeSku('L', nextIdx),
+        sku: _makeSku(nextSize, nextIdx),
         cost: last?.costCtrl.text ?? '100',
         sell: last?.sellCtrl.text ?? '150',
         qty: last?.qtyCtrl.text ?? '10',
-      ));
+      );
+      _rows.add(newRow);
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          newRow.sizeFocus.requestFocus();
+        }
+      });
     });
   }
 
@@ -514,11 +547,18 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        return Padding(
-          padding: EdgeInsets.all(widget.isDialog ? 20.0 : 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+        return CallbackShortcuts(
+          bindings: {
+            const SingleActivator(LogicalKeyboardKey.f3): () => _addRow(state.activityTypeEnum),
+            const SingleActivator(LogicalKeyboardKey.keyS, control: true): () => _handleSubmit(context, state),
+          },
+          child: Focus(
+            autofocus: true,
+            child: Padding(
+              padding: EdgeInsets.all(widget.isDialog ? 20.0 : 16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
               // Dialog Header if dialog
               if (widget.isDialog) ...[
                 Row(
@@ -1330,8 +1370,8 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                             ),
                                             icon: const Icon(Icons.add, size: 16),
-                                            label: const Text('إضافة سطر جديد', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                                            onPressed: _addRow,
+                                            label: const Text('إضافة سطر جديد (F3)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                            onPressed: () => _addRow(state.activityTypeEnum),
                                           ),
                                         ],
                                       ),
@@ -1455,6 +1495,13 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                   builder: (context) {
                                     final authState = context.watch<AuthCubit>().state;
                                     final isCashier = authState is AuthAuthenticated && authState.user.role.toLowerCase() == 'cashier';
+                                    final sizeHint = switch (state.activityTypeEnum) {
+                                      ActivityType.textilesDecor => '2×3 م',
+                                      ActivityType.footwearBags => '42',
+                                      ActivityType.perfumesCosmetics => '100 مل',
+                                      ActivityType.electronicsMobiles => '128GB',
+                                      _ => 'L',
+                                    };
 
                                     return ListView.separated(
                                       shrinkWrap: true,
@@ -1474,17 +1521,20 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                             children: [
                                               SizedBox(
                                                 width: 28,
-                                                child: Text('${idx + 1}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                                                child: Text('', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
                                               ),
                                               Expanded(
                                                 flex: 2,
                                                 child: TextFormField(
                                                   controller: r.sizeCtrl,
-                                                  decoration: const InputDecoration(
+                                                  focusNode: r.sizeFocus,
+                                                  textInputAction: TextInputAction.next,
+                                                  onFieldSubmitted: (_) => r.colorFocus.requestFocus(),
+                                                  decoration: InputDecoration(
                                                     isDense: true,
-                                                    hintText: 'M / 32',
-                                                    border: OutlineInputBorder(),
-                                                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                                    hintText: sizeHint,
+                                                    border: const OutlineInputBorder(),
+                                                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                                                   ),
                                                 ),
                                               ),
@@ -1493,6 +1543,15 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                                 flex: 2,
                                                 child: TextFormField(
                                                   controller: r.colorCtrl,
+                                                  focusNode: r.colorFocus,
+                                                  textInputAction: TextInputAction.next,
+                                                  onFieldSubmitted: (_) {
+                                                    if (isCashier) {
+                                                      r.sellFocus.requestFocus();
+                                                    } else {
+                                                      r.costFocus.requestFocus();
+                                                    }
+                                                  },
                                                   decoration: const InputDecoration(
                                                     isDense: true,
                                                     hintText: 'أسود',
@@ -1509,6 +1568,15 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                                     final skuErr = _skuErrorForRow(idx, state);
                                                     return TextFormField(
                                                       controller: r.skuCtrl,
+                                                      focusNode: r.skuFocus,
+                                                      textInputAction: TextInputAction.next,
+                                                      onFieldSubmitted: (_) {
+                                                        if (isCashier) {
+                                                          r.sellFocus.requestFocus();
+                                                        } else {
+                                                          r.costFocus.requestFocus();
+                                                        }
+                                                      },
                                                       onChanged: (_) => setState(() {}),
                                                       decoration: InputDecoration(
                                                         isDense: true,
@@ -1533,7 +1601,10 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                                   flex: 2,
                                                   child: TextFormField(
                                                     controller: r.costCtrl,
+                                                    focusNode: r.costFocus,
                                                     keyboardType: TextInputType.number,
+                                                    textInputAction: TextInputAction.next,
+                                                    onFieldSubmitted: (_) => r.sellFocus.requestFocus(),
                                                     decoration: const InputDecoration(
                                                       isDense: true,
                                                       hintText: 'التكلفة',
@@ -1548,7 +1619,10 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                                 flex: 2,
                                                 child: TextFormField(
                                                   controller: r.sellCtrl,
+                                                  focusNode: r.sellFocus,
                                                   keyboardType: TextInputType.number,
+                                                  textInputAction: TextInputAction.next,
+                                                  onFieldSubmitted: (_) => r.qtyFocus.requestFocus(),
                                                   decoration: const InputDecoration(
                                                     isDense: true,
                                                     hintText: 'البيع',
@@ -1562,7 +1636,10 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                                 flex: 2,
                                                 child: TextFormField(
                                                   controller: r.qtyCtrl,
+                                                  focusNode: r.qtyFocus,
                                                   keyboardType: TextInputType.number,
+                                                  textInputAction: TextInputAction.next,
+                                                  onFieldSubmitted: (_) => _addRow(state.activityTypeEnum),
                                                   decoration: const InputDecoration(
                                                     isDense: true,
                                                     hintText: 'الكمية',
@@ -1658,8 +1735,10 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
               ),
             ],
           ),
-        );
-      },
+        ),
+      ),
+    );
+  },
     );
   }
 }

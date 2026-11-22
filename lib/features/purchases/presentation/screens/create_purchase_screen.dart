@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uuid/uuid.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/utils/barcode_helper.dart';
 import 'package:drift/drift.dart' hide Column, Table;
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
@@ -208,9 +210,28 @@ class _CreatePurchaseScreenState extends State<CreatePurchaseScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
-              title: const Text(
-                'اختيار صنف للفاتورة',
-                style: TextStyle(fontWeight: FontWeight.bold),
+              title: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'اختيار صنف للفاتورة',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    key: const Key('add_new_variant_to_product_btn'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    ),
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text('إضافة مقاس جديد لصنف مسجل', style: TextStyle(fontSize: 12)),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _showAddNewVariantDialog();
+                    },
+                  ),
+                ],
               ),
               content: SizedBox(
                 width: 500,
@@ -282,6 +303,189 @@ class _CreatePurchaseScreenState extends State<CreatePurchaseScreen> {
           },
         );
       },
+    );
+  }
+
+  Future<void> _showAddNewVariantDialog() async {
+    final db = getIt<AppDatabase>();
+    final products = await (db.select(db.products)
+          ..where((p) => p.deletedAt.isNull())
+          ..orderBy([(p) => OrderingTerm.asc(p.name)]))
+        .get();
+
+    if (!mounted) return;
+    if (products.isEmpty) {
+      _showToast('لا توجد منتجات مسجلة لإضافة مقاس لها', isError: true);
+      return;
+    }
+
+    Product selectedProduct = products.first;
+    final sizeCtrl = TextEditingController(text: 'L');
+    final colorCtrl = TextEditingController(text: 'افتراضي');
+    final costCtrl = TextEditingController(text: '100.00');
+    final sellCtrl = TextEditingController(text: '150.00');
+    final qtyCtrl = TextEditingController(text: '10');
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Text('إضافة مقاس جديد لموديل مسجل', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            content: SizedBox(
+              width: 480,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<Product>(
+                      key: const Key('select_existing_product_dropdown'),
+                      initialValue: selectedProduct,
+                      decoration: const InputDecoration(
+                        labelText: 'اختر الموديل / المنتج المسجل *',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: products.map((p) => DropdownMenuItem(value: p, child: Text(p.name))).toList(),
+                      onChanged: (val) {
+                        if (val != null) setDialogState(() => selectedProduct = val);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            key: const Key('new_variant_size_field'),
+                            controller: sizeCtrl,
+                            decoration: const InputDecoration(
+                              labelText: 'المقاس / البعد *',
+                              hintText: 'مثال: 2×3 م أو 42 أو XL',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            key: const Key('new_variant_color_field'),
+                            controller: colorCtrl,
+                            decoration: const InputDecoration(
+                              labelText: 'اللون',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            key: const Key('new_variant_cost_field'),
+                            controller: costCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(
+                              labelText: 'سعر الشراء (ج.م) *',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            key: const Key('new_variant_sell_field'),
+                            controller: sellCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(
+                              labelText: 'سعر البيع (ج.م) *',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      key: const Key('new_variant_qty_field'),
+                      controller: qtyCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'الكمية المشتراة الموردة *',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton.icon(
+                key: const Key('confirm_add_new_variant_btn'),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                icon: const Icon(Icons.check, color: Colors.white, size: 18),
+                label: const Text('حفظ وإضافة للفاتورة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                onPressed: () async {
+                  final size = sizeCtrl.text.trim();
+                  if (size.isEmpty) {
+                    _showToast('يرجى تحديد المقاس أو البعد', isError: true);
+                    return;
+                  }
+                  final costPounds = double.tryParse(costCtrl.text.trim()) ?? 0.0;
+                  final sellPounds = double.tryParse(sellCtrl.text.trim()) ?? 0.0;
+                  final qty = int.tryParse(qtyCtrl.text.trim()) ?? 0;
+                  if (qty <= 0) {
+                    _showToast('يرجى إدخال كمية صحيحة أكبر من صفر', isError: true);
+                    return;
+                  }
+                  final newVariantId = const Uuid().v4();
+                  final cleanSku = BarcodeHelper.generateSku(size: size);
+                  final color = colorCtrl.text.trim().isEmpty ? 'افتراضي' : colorCtrl.text.trim();
+
+                  await db.into(db.productVariants).insert(
+                    ProductVariantsCompanion.insert(
+                      id: newVariantId,
+                      branchId: selectedProduct.branchId,
+                      productId: selectedProduct.id,
+                      sku: cleanSku,
+                      size: size,
+                      color: color,
+                      costPrice: (costPounds * 100).round(),
+                      sellPrice: (sellPounds * 100).round(),
+                      quantity: const Value(0),
+                      createdAt: DateTime.now(),
+                      updatedAt: DateTime.now(),
+                    ),
+                  );
+
+                  if (!mounted) return;
+                  setState(() {
+                    _items.add(_InvoiceItemRow(
+                      variantId: newVariantId,
+                      productName: selectedProduct.name,
+                      sku: cleanSku,
+                      color: color,
+                      size: size,
+                      qty: qty,
+                      costPricePounds: costPounds,
+                    ));
+                  });
+                  if (ctx.mounted) {
+                    Navigator.pop(ctx);
+                  }
+                  _showToast('تمت إضافة المقاس الجديد وإدراجه بالفاتورة بنجاح');
+                },
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
