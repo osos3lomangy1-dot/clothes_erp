@@ -12,6 +12,7 @@ import '../../../installments/domain/entities/customer_installment_entity.dart';
 import '../../../installments/domain/entities/installment_schedule_entry.dart';
 import '../../data/services/receipt_settings_service.dart';
 import '../../domain/entities/invoice_details_entity.dart';
+import '../../domain/entities/invoice_item_details_entity.dart';
 import '../../domain/entities/receipt_config.dart';
 
 class ReceiptPdfService {
@@ -294,54 +295,7 @@ class ReceiptPdfService {
                 pw.SizedBox(height: 4),
 
                 // Items Rows
-                ...invoice.items.map((it) {
-                  final itemLabel =
-                      cfg.showItemDetails &&
-                          (it.color.isNotEmpty || it.size.isNotEmpty)
-                      ? '${it.productName} (${it.color} - ${it.size})'
-                      : it.productName;
-                  return pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(vertical: 2),
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text(
-                          itemLabel,
-                          style: pw.TextStyle(fontSize: 8, font: boldFont),
-                        ),
-                        pw.Row(
-                          children: [
-                            pw.Expanded(flex: 5, child: pw.SizedBox()),
-                            pw.Expanded(
-                              flex: 2,
-                              child: pw.Text(
-                                '${it.qty}',
-                                textAlign: pw.TextAlign.center,
-                                style: const pw.TextStyle(fontSize: 8),
-                              ),
-                            ),
-                            pw.Expanded(
-                              flex: 3,
-                              child: pw.Text(
-                                Money(it.price).toDisplay(),
-                                textAlign: pw.TextAlign.center,
-                                style: const pw.TextStyle(fontSize: 8),
-                              ),
-                            ),
-                            pw.Expanded(
-                              flex: 3,
-                              child: pw.Text(
-                                Money(it.lineTotal).toDisplay(),
-                                textAlign: pw.TextAlign.left,
-                                style: const pw.TextStyle(fontSize: 8),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
-                }),
+                ..._buildReceiptItemRows(invoice.items, cfg, boldFont),
 
                 pw.SizedBox(height: 6),
                 _dashedLine(),
@@ -500,6 +454,293 @@ class ReceiptPdfService {
       style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey400),
       maxLines: 1,
     );
+  }
+
+  static List<pw.Widget> _buildReceiptItemRows(
+    List<InvoiceItemDetailsEntity> items,
+    ReceiptConfig cfg,
+    pw.Font boldFont,
+  ) {
+    if (cfg.groupVariantsOnReceipt) {
+      final Map<String, List<InvoiceItemDetailsEntity>> grouped = {};
+      for (final it in items) {
+        grouped.putIfAbsent(it.productName, () => []).add(it);
+      }
+
+      return grouped.values.map((group) {
+        if (group.length == 1) {
+          final it = group.first;
+          final itemLabel = cfg.showItemDetails &&
+                  (it.color.isNotEmpty || it.size.isNotEmpty)
+              ? '${it.productName} (${it.color} - ${it.size})'
+              : it.productName;
+          return pw.Padding(
+            padding: const pw.EdgeInsets.symmetric(vertical: 2),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  itemLabel,
+                  style: pw.TextStyle(fontSize: 8, font: boldFont),
+                ),
+                pw.Row(
+                  children: [
+                    pw.Expanded(flex: 5, child: pw.SizedBox()),
+                    pw.Expanded(
+                      flex: 2,
+                      child: pw.Text(
+                        '${it.qty}',
+                        textAlign: pw.TextAlign.center,
+                        style: const pw.TextStyle(fontSize: 8),
+                      ),
+                    ),
+                    pw.Expanded(
+                      flex: 3,
+                      child: pw.Text(
+                        Money(it.price).toDisplay(),
+                        textAlign: pw.TextAlign.center,
+                        style: const pw.TextStyle(fontSize: 8),
+                      ),
+                    ),
+                    pw.Expanded(
+                      flex: 3,
+                      child: pw.Text(
+                        Money(it.lineTotal).toDisplay(),
+                        textAlign: pw.TextAlign.left,
+                        style: const pw.TextStyle(fontSize: 8),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        } else {
+          final first = group.first;
+          final totalQty = group.fold<int>(0, (sum, i) => sum + i.qty);
+          final totalLine = group.fold<int>(0, (sum, i) => sum + i.lineTotal);
+          final variantsSummary = group.map((i) {
+            final desc = [
+              if (i.size.isNotEmpty && i.size != '-') i.size,
+              if (i.color.isNotEmpty && i.color != '-') i.color,
+            ].join(' ');
+            return '${i.qty}× ${desc.isNotEmpty ? desc : 'افتراضي'}';
+          }).join('، ');
+
+          return pw.Padding(
+            padding: const pw.EdgeInsets.symmetric(vertical: 2),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  first.productName,
+                  style: pw.TextStyle(fontSize: 8, font: boldFont),
+                ),
+                pw.Text(
+                  '($variantsSummary)',
+                  style: const pw.TextStyle(
+                    fontSize: 7,
+                    color: PdfColors.grey700,
+                  ),
+                ),
+                pw.Row(
+                  children: [
+                    pw.Expanded(flex: 5, child: pw.SizedBox()),
+                    pw.Expanded(
+                      flex: 2,
+                      child: pw.Text(
+                        '$totalQty',
+                        textAlign: pw.TextAlign.center,
+                        style: const pw.TextStyle(fontSize: 8),
+                      ),
+                    ),
+                    pw.Expanded(
+                      flex: 3,
+                      child: pw.Text(
+                        '-',
+                        textAlign: pw.TextAlign.center,
+                        style: const pw.TextStyle(fontSize: 8),
+                      ),
+                    ),
+                    pw.Expanded(
+                      flex: 3,
+                      child: pw.Text(
+                        Money(totalLine).toDisplay(),
+                        textAlign: pw.TextAlign.left,
+                        style: const pw.TextStyle(fontSize: 8),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }
+      }).toList();
+    }
+
+    return items.map((it) {
+      final itemLabel = cfg.showItemDetails &&
+              (it.color.isNotEmpty || it.size.isNotEmpty)
+          ? '${it.productName} (${it.color} - ${it.size})'
+          : it.productName;
+      return pw.Padding(
+        padding: const pw.EdgeInsets.symmetric(vertical: 2),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text(
+              itemLabel,
+              style: pw.TextStyle(fontSize: 8, font: boldFont),
+            ),
+            pw.Row(
+              children: [
+                pw.Expanded(flex: 5, child: pw.SizedBox()),
+                pw.Expanded(
+                  flex: 2,
+                  child: pw.Text(
+                    '${it.qty}',
+                    textAlign: pw.TextAlign.center,
+                    style: const pw.TextStyle(fontSize: 8),
+                  ),
+                ),
+                pw.Expanded(
+                  flex: 3,
+                  child: pw.Text(
+                    Money(it.price).toDisplay(),
+                    textAlign: pw.TextAlign.center,
+                    style: const pw.TextStyle(fontSize: 8),
+                  ),
+                ),
+                pw.Expanded(
+                  flex: 3,
+                  child: pw.Text(
+                    Money(it.lineTotal).toDisplay(),
+                    textAlign: pw.TextAlign.left,
+                    style: const pw.TextStyle(fontSize: 8),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }).toList();
+  }
+
+  static List<pw.Widget> _buildInstallmentItemRows(
+    List<InvoiceItemDetailsEntity> items,
+    ReceiptConfig cfg,
+    pw.Font boldFont,
+  ) {
+    if (cfg.groupVariantsOnReceipt) {
+      final Map<String, List<InvoiceItemDetailsEntity>> grouped = {};
+      for (final it in items) {
+        grouped.putIfAbsent(it.productName, () => []).add(it);
+      }
+
+      return grouped.values.map((group) {
+        if (group.length == 1) {
+          final it = group.first;
+          final itemLabel = (it.color.isNotEmpty || it.size.isNotEmpty)
+              ? '${it.productName} (${it.color} - ${it.size})'
+              : it.productName;
+          return pw.Padding(
+            padding: const pw.EdgeInsets.symmetric(vertical: 2),
+            child: pw.Row(
+              children: [
+                pw.Expanded(
+                  flex: 5,
+                  child: pw.Text(itemLabel, style: pw.TextStyle(fontSize: 8, font: boldFont)),
+                ),
+                pw.Expanded(
+                  flex: 2,
+                  child: pw.Text('${it.qty}', textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 8)),
+                ),
+                pw.Expanded(
+                  flex: 3,
+                  child: pw.Text(Money(it.price).toDisplay(), textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 8)),
+                ),
+                pw.Expanded(
+                  flex: 3,
+                  child: pw.Text(Money(it.lineTotal).toDisplay(), textAlign: pw.TextAlign.left, style: const pw.TextStyle(fontSize: 8)),
+                ),
+              ],
+            ),
+          );
+        } else {
+          final first = group.first;
+          final totalQty = group.fold<int>(0, (sum, i) => sum + i.qty);
+          final totalLine = group.fold<int>(0, (sum, i) => sum + i.lineTotal);
+          final variantsSummary = group.map((i) {
+            final desc = [
+              if (i.size.isNotEmpty && i.size != '-') i.size,
+              if (i.color.isNotEmpty && i.color != '-') i.color,
+            ].join(' ');
+            return '${i.qty}× ${desc.isNotEmpty ? desc : 'افتراضي'}';
+          }).join('، ');
+
+          return pw.Padding(
+            padding: const pw.EdgeInsets.symmetric(vertical: 2),
+            child: pw.Row(
+              children: [
+                pw.Expanded(
+                  flex: 5,
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(first.productName, style: pw.TextStyle(fontSize: 8, font: boldFont)),
+                      pw.Text('($variantsSummary)', style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey700)),
+                    ],
+                  ),
+                ),
+                pw.Expanded(
+                  flex: 2,
+                  child: pw.Text('$totalQty', textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 8)),
+                ),
+                pw.Expanded(
+                  flex: 3,
+                  child: pw.Text('-', textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 8)),
+                ),
+                pw.Expanded(
+                  flex: 3,
+                  child: pw.Text(Money(totalLine).toDisplay(), textAlign: pw.TextAlign.left, style: const pw.TextStyle(fontSize: 8)),
+                ),
+              ],
+            ),
+          );
+        }
+      }).toList();
+    }
+
+    return items.map((it) {
+      final itemLabel = (it.color.isNotEmpty || it.size.isNotEmpty)
+          ? '${it.productName} (${it.color} - ${it.size})'
+          : it.productName;
+      return pw.Padding(
+        padding: const pw.EdgeInsets.symmetric(vertical: 2),
+        child: pw.Row(
+          children: [
+            pw.Expanded(
+              flex: 5,
+              child: pw.Text(itemLabel, style: pw.TextStyle(fontSize: 8, font: boldFont)),
+            ),
+            pw.Expanded(
+              flex: 2,
+              child: pw.Text('${it.qty}', textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 8)),
+            ),
+            pw.Expanded(
+              flex: 3,
+              child: pw.Text(Money(it.price).toDisplay(), textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 8)),
+            ),
+            pw.Expanded(
+              flex: 3,
+              child: pw.Text(Money(it.lineTotal).toDisplay(), textAlign: pw.TextAlign.left, style: const pw.TextStyle(fontSize: 8)),
+            ),
+          ],
+        ),
+      );
+    }).toList();
   }
 
   /// Direct print to physical printer or Windows print dialog
@@ -733,34 +974,7 @@ class ReceiptPdfService {
                 pw.SizedBox(height: 3),
 
                 // Items List
-                ...invoice.items.map((it) {
-                  final itemLabel = (it.color.isNotEmpty || it.size.isNotEmpty)
-                      ? '${it.productName} (${it.color} - ${it.size})'
-                      : it.productName;
-                  return pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(vertical: 2),
-                    child: pw.Row(
-                      children: [
-                        pw.Expanded(
-                          flex: 5,
-                          child: pw.Text(itemLabel, style: pw.TextStyle(fontSize: 8, font: boldFont)),
-                        ),
-                        pw.Expanded(
-                          flex: 2,
-                          child: pw.Text('${it.qty}', textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 8)),
-                        ),
-                        pw.Expanded(
-                          flex: 3,
-                          child: pw.Text(Money(it.price).toDisplay(), textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 8)),
-                        ),
-                        pw.Expanded(
-                          flex: 3,
-                          child: pw.Text(Money(it.lineTotal).toDisplay(), textAlign: pw.TextAlign.left, style: const pw.TextStyle(fontSize: 8)),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
+                ..._buildInstallmentItemRows(invoice.items, cfg, boldFont),
 
                 pw.SizedBox(height: 6),
                 _dashedLine(),

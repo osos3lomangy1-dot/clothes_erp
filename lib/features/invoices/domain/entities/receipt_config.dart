@@ -13,6 +13,7 @@ class ReceiptConfig extends Equatable {
   final bool showPaymentMethod;
   final bool showBarcode;
   final bool showItemDetails; // size & color
+  final bool groupVariantsOnReceipt; // Task 17: Group multiple variants of same model in receipt
   final String returnPolicy;
   final String footerGreeting;
 
@@ -29,6 +30,7 @@ class ReceiptConfig extends Equatable {
     this.showPaymentMethod = true,
     this.showBarcode = true,
     this.showItemDetails = true,
+    this.groupVariantsOnReceipt = true,
     this.returnPolicy = 'الاستبدال والاسترجاع خلال 14 يوماً مع وجود الفاتورة وأصل التكت بحالته',
     this.footerGreeting = 'شكراً لزيارتكم ونتمنى لكم يوماً سعيداً',
   });
@@ -46,6 +48,7 @@ class ReceiptConfig extends Equatable {
     showPaymentMethod: true,
     showBarcode: true,
     showItemDetails: true,
+    groupVariantsOnReceipt: true,
     returnPolicy: 'الاستبدال والاسترجاع خلال 14 يوماً مع وجود الفاتورة وأصل التكت بحالته',
     footerGreeting: 'شكراً لزيارتكم ونتمنى لكم يوماً سعيداً',
   );
@@ -63,6 +66,7 @@ class ReceiptConfig extends Equatable {
     bool? showPaymentMethod,
     bool? showBarcode,
     bool? showItemDetails,
+    bool? groupVariantsOnReceipt,
     String? returnPolicy,
     String? footerGreeting,
   }) {
@@ -79,6 +83,7 @@ class ReceiptConfig extends Equatable {
       showPaymentMethod: showPaymentMethod ?? this.showPaymentMethod,
       showBarcode: showBarcode ?? this.showBarcode,
       showItemDetails: showItemDetails ?? this.showItemDetails,
+      groupVariantsOnReceipt: groupVariantsOnReceipt ?? this.groupVariantsOnReceipt,
       returnPolicy: returnPolicy ?? this.returnPolicy,
       footerGreeting: footerGreeting ?? this.footerGreeting,
     );
@@ -98,6 +103,7 @@ class ReceiptConfig extends Equatable {
         showPaymentMethod,
         showBarcode,
         showItemDetails,
+        groupVariantsOnReceipt,
         returnPolicy,
         footerGreeting,
       ];

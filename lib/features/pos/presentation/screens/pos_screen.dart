@@ -13,6 +13,7 @@ import '../../../customers/data/datasources/customers_local_data_source.dart';
 import '../../../product_variants/domain/entities/variant_entity.dart';
 import '../../domain/entities/sale_item_entity.dart';
 import '../cubits/pos_cubit.dart';
+import '../widgets/fast_matrix_variant_picker_dialog.dart';
 import '../../../shifts/presentation/cubits/shift_cubit.dart';
 import '../../../shifts/presentation/cubits/shift_state.dart';
 import '../../../shifts/presentation/widgets/open_shift_dialog.dart';
@@ -1743,7 +1744,14 @@ class _ProductCard extends StatelessWidget {
               onTap: isOut
                   ? null
                   : () {
-                      if (inCartQty < variant.quantity) {
+                      final productVariants =
+                          posCubit.getVariantsForProduct(variant.productId);
+                      if (productVariants.length > 1) {
+                        _showMatrixVariantPickerDialog(
+                          context,
+                          variant.productId,
+                        );
+                      } else if (inCartQty < variant.quantity) {
                         posCubit.addToCart(variant, 1);
                       }
                     },
@@ -1792,6 +1800,7 @@ class _ProductCard extends StatelessWidget {
                                 if (!isOut) ...[
                                   const SizedBox(width: 2),
                                   InkWell(
+                                    key: Key('product_variants_btn_${variant.productId}'),
                                     onTap: () =>
                                         _showVariantModal(context, variant),
                                     borderRadius: BorderRadius.circular(4),
@@ -2023,12 +2032,24 @@ class _ProductCard extends StatelessWidget {
   }
 
   void _showVariantModal(BuildContext context, VariantEntity variant) {
+    _showMatrixVariantPickerDialog(context, variant.productId);
+  }
+
+  void _showMatrixVariantPickerDialog(BuildContext context, String productId) {
     final posCubit = context.read<PosCubit>();
+    final variants = posCubit.getVariantsForProduct(productId);
+    final productName = posCubit.getProductName(productId);
     showDialog(
       context: context,
       builder: (_) => BlocProvider.value(
         value: posCubit,
-        child: _VariantModal(initialVariant: variant),
+        child: FastMatrixVariantPickerDialog(
+          productId: productId,
+          productName: productName.isNotEmpty
+              ? productName
+              : (variants.isNotEmpty ? variants.first.productName : ''),
+          variants: variants,
+        ),
       ),
     );
   }
@@ -4400,25 +4421,52 @@ class _CartPanelState extends State<_CartPanel> {
                                 );
                               },
                             )
-                          : ListView.separated(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 4,
-                              ),
-                              itemCount: state.cart.length,
-                              separatorBuilder: (context, index) =>
-                                  const SizedBox(height: 8),
-                              itemBuilder: (context, index) {
-                                final item = state.cart[index];
-                                final posCubit = context.read<PosCubit>();
-                                final v = posCubit.getVariantById(
-                                  item.variantId,
-                                );
-                                final maxStock = v?.quantity ?? 999;
-                                return _CartItemTile(
-                                  key: ValueKey(item.variantId),
-                                  item: item,
-                                  maxStock: maxStock,
+                          : Builder(
+                              builder: (context) {
+                                final Map<String, List<SaleItemEntity>> grouped = {};
+                                for (final item in state.cart) {
+                                  final key = (item.productId != null &&
+                                          item.productId!.isNotEmpty)
+                                      ? item.productId!
+                                      : item.variantId;
+                                  grouped.putIfAbsent(key, () => []).add(item);
+                                }
+                                final groupEntries = grouped.entries.toList();
+
+                                return ListView.separated(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 4,
+                                  ),
+                                  itemCount: groupEntries.length,
+                                  separatorBuilder: (context, index) =>
+                                      const SizedBox(height: 8),
+                                  itemBuilder: (context, index) {
+                                    final entry = groupEntries[index];
+                                    final groupItems = entry.value;
+                                    final posCubit = context.read<PosCubit>();
+
+                                    if (groupItems.length == 1) {
+                                      final item = groupItems.first;
+                                      final v = posCubit.getVariantById(
+                                        item.variantId,
+                                      );
+                                      final maxStock = v?.quantity ?? 999;
+                                      return _CartItemTile(
+                                        key: ValueKey(item.variantId),
+                                        item: item,
+                                        maxStock: maxStock,
+                                      );
+                                    } else {
+                                      return _CartGroupAccordionCard(
+                                        key: Key('cart_group_${entry.key}'),
+                                        groupKey: entry.key,
+                                        productName:
+                                            groupItems.first.productName,
+                                        items: groupItems,
+                                      );
+                                    }
+                                  },
                                 );
                               },
                             ),
@@ -5227,6 +5275,166 @@ class _CartPanelState extends State<_CartPanel> {
           ),
         );
       },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// CART GROUP ACCORDION CARD (Task 17: Fast Matrix & Grouped Cart Lines)
+// ---------------------------------------------------------------------------
+class _CartGroupAccordionCard extends StatefulWidget {
+  final String groupKey;
+  final String productName;
+  final List<SaleItemEntity> items;
+
+  const _CartGroupAccordionCard({
+    super.key,
+    required this.groupKey,
+    required this.productName,
+    required this.items,
+  });
+
+  @override
+  State<_CartGroupAccordionCard> createState() =>
+      _CartGroupAccordionCardState();
+}
+
+class _CartGroupAccordionCardState extends State<_CartGroupAccordionCard> {
+  bool _isExpanded = true;
+
+  int get _totalQty => widget.items.fold(0, (sum, it) => sum + it.quantity);
+  int get _totalPrice => widget.items.fold(0, (sum, it) => sum + it.total);
+
+  @override
+  Widget build(BuildContext context) {
+    final posCubit = context.read<PosCubit>();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: 0.35),
+          width: 1.2,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Accordion Header
+          InkWell(
+            key: Key('cart_group_header_${widget.groupKey}'),
+            onTap: () => setState(() => _isExpanded = !_isExpanded),
+            borderRadius: BorderRadius.vertical(
+              top: const Radius.circular(12),
+              bottom: Radius.circular(_isExpanded ? 0 : 12),
+            ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.primaryContainer.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.vertical(
+                  top: const Radius.circular(12),
+                  bottom: Radius.circular(_isExpanded ? 0 : 12),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Icon(
+                      Icons.layers_rounded,
+                      color: Colors.white,
+                      size: 14,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.productName,
+                          style: const TextStyle(
+                            fontFamily: 'Cairo',
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: AppColors.onSurface,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          '$_totalQty قطع • ${widget.items.length} مقاسات',
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 11,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    '${Money(_totalPrice).toDisplay()} ج.م',
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    key: Key('cart_group_toggle_${widget.groupKey}'),
+                    icon: Icon(
+                      _isExpanded
+                          ? Icons.keyboard_arrow_up_rounded
+                          : Icons.keyboard_arrow_down_rounded,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
+                    onPressed: () => setState(() => _isExpanded = !_isExpanded),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 28,
+                      minHeight: 28,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Accordion Body: Individual Variant Tiles
+          if (_isExpanded) ...[
+            const Divider(height: 1, thickness: 1),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Column(
+                children: widget.items.map((it) {
+                  final v = posCubit.getVariantById(it.variantId);
+                  final maxStock = v?.quantity ?? 999;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: _CartItemTile(
+                      key: ValueKey(it.variantId),
+                      item: it,
+                      maxStock: maxStock,
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

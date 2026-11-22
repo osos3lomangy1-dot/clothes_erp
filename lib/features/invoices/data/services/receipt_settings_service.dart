@@ -16,6 +16,7 @@ class ReceiptSettingsService {
   static const String keyShowPayment = 'receipt.show_payment';
   static const String keyShowBarcode = 'receipt.show_barcode';
   static const String keyShowItemDetails = 'receipt.show_item_details';
+  static const String keyGroupVariantsOnReceipt = 'receipt.group_variants_on_receipt';
   static const String keyReturnPolicy = 'receipt.return_policy';
   static const String keyFooterGreeting = 'receipt.footer_greeting';
 
@@ -38,6 +39,7 @@ class ReceiptSettingsService {
       final showPaymentStr = await gate.getMeta(keyShowPayment);
       final showBarcodeStr = await gate.getMeta(keyShowBarcode);
       final showItemDetailsStr = await gate.getMeta(keyShowItemDetails);
+      final groupVariantsStr = await gate.getMeta(keyGroupVariantsOnReceipt);
       final returnPolicy = await gate.getMeta(keyReturnPolicy);
       final footerGreeting = await gate.getMeta(keyFooterGreeting);
 
@@ -56,6 +58,7 @@ class ReceiptSettingsService {
         showPaymentMethod: showPaymentStr == null ? true : showPaymentStr == '1',
         showBarcode: showBarcodeStr == null ? true : showBarcodeStr == '1',
         showItemDetails: showItemDetailsStr == null ? true : showItemDetailsStr == '1',
+        groupVariantsOnReceipt: groupVariantsStr == null ? true : groupVariantsStr == '1',
         returnPolicy: returnPolicy ?? ReceiptConfig.defaults.returnPolicy,
         footerGreeting: footerGreeting ?? ReceiptConfig.defaults.footerGreeting,
       );
@@ -84,6 +87,7 @@ class ReceiptSettingsService {
     await gate.setMeta(keyShowPayment, config.showPaymentMethod ? '1' : '0', userId: userId);
     await gate.setMeta(keyShowBarcode, config.showBarcode ? '1' : '0', userId: userId);
     await gate.setMeta(keyShowItemDetails, config.showItemDetails ? '1' : '0', userId: userId);
+    await gate.setMeta(keyGroupVariantsOnReceipt, config.groupVariantsOnReceipt ? '1' : '0', userId: userId);
     await gate.setMeta(keyReturnPolicy, config.returnPolicy, userId: userId);
     await gate.setMeta(keyFooterGreeting, config.footerGreeting, userId: userId);
 

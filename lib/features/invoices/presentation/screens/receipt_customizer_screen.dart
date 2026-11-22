@@ -37,6 +37,7 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
   late bool _showPaymentMethod;
   late bool _showBarcode;
   late bool _showItemDetails;
+  late bool _groupVariantsOnReceipt;
 
   bool _isSaving = false;
 
@@ -59,6 +60,7 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
     _showPaymentMethod = cfg.showPaymentMethod;
     _showBarcode = cfg.showBarcode;
     _showItemDetails = cfg.showItemDetails;
+    _groupVariantsOnReceipt = cfg.groupVariantsOnReceipt;
   }
 
   @override
@@ -87,6 +89,7 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
         showPaymentMethod: _showPaymentMethod,
         showBarcode: _showBarcode,
         showItemDetails: _showItemDetails,
+        groupVariantsOnReceipt: _groupVariantsOnReceipt,
         returnPolicy: _returnPolicyCtrl.text.trim(),
         footerGreeting: _footerGreetingCtrl.text.trim(),
       );
@@ -163,6 +166,7 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
                 _showPaymentMethod = def.showPaymentMethod;
                 _showBarcode = def.showBarcode;
                 _showItemDetails = def.showItemDetails;
+                _groupVariantsOnReceipt = def.groupVariantsOnReceipt;
               });
             },
             child: const Text('استعادة'),
@@ -617,6 +621,15 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
               title: const Text('إظهار تفاصيل الصنف (المقاس واللون بجانب اسم الصنف)'),
               value: _showItemDetails,
               onChanged: (v) => setState(() => _showItemDetails = v),
+            ),
+            const Divider(height: 1),
+            SwitchListTile(
+              key: const Key('receipt_group_variants_switch'),
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              title: const Text('تجميع مقاسات نفس الموديل في سطر واحد (توفير الورق الحراري)'),
+              value: _groupVariantsOnReceipt,
+              onChanged: (v) => setState(() => _groupVariantsOnReceipt = v),
             ),
           ],
         ),

@@ -394,6 +394,42 @@ class PosCubit extends Cubit<PosState> {
     _updateCart(state, newCart);
   }
 
+  /// Adds multiple variants with specified quantities in a single atomic batch (Task 17)
+  void addMultipleToCart(Map<VariantEntity, int> items) {
+    if (items.isEmpty) return;
+    final state = this.state;
+    var newCart = List<SaleItemEntity>.from(state.cart);
+
+    for (final entry in items.entries) {
+      final variant = entry.key;
+      final quantity = entry.value;
+      if (quantity <= 0) continue;
+
+      final existingIndex =
+          newCart.indexWhere((item) => item.variantId == variant.id);
+      if (existingIndex >= 0) {
+        final existing = newCart[existingIndex];
+        newCart[existingIndex] = existing.copyWith(
+          quantity: existing.quantity + quantity,
+        );
+      } else {
+        final newItem = SaleItemEntity(
+          variantId: variant.id,
+          productId: variant.productId,
+          categoryId: _productCategoryMap[variant.productId],
+          productName: variant.productName,
+          size: variant.size,
+          color: variant.color,
+          price: variant.salePrice,
+          quantity: quantity,
+        );
+        newCart.add(newItem);
+      }
+    }
+
+    _updateCart(state, newCart);
+  }
+
   bool addByBarcode(String barcode) {
     final clean = _normalize(barcode);
     if (clean.isEmpty) return false;
