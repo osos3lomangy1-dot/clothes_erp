@@ -457,6 +457,7 @@ class _PosViewState extends State<_PosView> {
                           ),
                         ),
                         child: TextField(
+                          key: const Key('pos_search_field'),
                           controller: _searchCtrl,
                           focusNode: _searchFocusNode,
                           autofocus: true,

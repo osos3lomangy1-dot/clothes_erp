@@ -165,7 +165,7 @@ void main() {
     // 1. Press F2 -> search TextField gains focus!
     await tester.sendKeyEvent(LogicalKeyboardKey.f2);
     await tester.pump();
-    final searchField = tester.widget<TextField>(find.byType(TextField).first);
+    final searchField = tester.widget<TextField>(find.byKey(const Key('pos_search_field')));
     expect(searchField.focusNode?.hasFocus, isTrue);
 
     // 2. Press F12 -> triggers checkout!

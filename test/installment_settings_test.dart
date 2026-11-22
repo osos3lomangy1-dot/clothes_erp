@@ -74,7 +74,7 @@ void main() {
   }
 
   testWidgets('Installment Settings section hidden when feature.installments disabled', (tester) async {
-    await tester.pumpWidget(wrap(const SystemSettingsScreen()));
+    await tester.pumpWidget(wrap(const SystemSettingsScreen(initialCategory: 'pos')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('installment_settings_section')), findsNothing);
     expect(find.byKey(const Key('payment_installment_toggle')), findsNothing);
@@ -89,7 +89,7 @@ void main() {
     addTearDown(() => tester.view.resetDevicePixelRatio());
 
     await gate.setFeatureEnabled(FeatureKeys.installments, true, userId: admin.id);
-    await tester.pumpWidget(wrap(const SystemSettingsScreen()));
+    await tester.pumpWidget(wrap(const SystemSettingsScreen(initialCategory: 'pos')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('installment_settings_section')), findsOneWidget);
     expect(find.byKey(const Key('payment_installment_toggle')), findsOneWidget);

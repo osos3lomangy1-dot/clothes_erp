@@ -62,8 +62,8 @@ void main() {
     expect(find.text('مطابق تماماً 100% (لا يوجد عجز أو زيادة)'), findsOneWidget);
 
     // Verify 3 Action Buttons
-    expect(find.text('بون حراري 🖨️'), findsOneWidget);
-    expect(find.text('تقرير A4 📄'), findsOneWidget);
-    expect(find.text('واتساب 💬'), findsOneWidget);
+    expect(find.text('طباعة حرارية (80mm)'), findsOneWidget);
+    expect(find.text('تقرير A4'), findsOneWidget);
+    expect(find.text('واتساب'), findsOneWidget);
   });
 }

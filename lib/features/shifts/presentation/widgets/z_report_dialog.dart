@@ -101,6 +101,37 @@ class ZReportDialog extends StatelessWidget {
                 ),
                 const Divider(height: 24),
 
+                // Auto-Backup Security Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0FDF4),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFBBF7D0)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(
+                        Icons.shield_outlined,
+                        size: 16,
+                        color: Color(0xFF16A34A),
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'تم إنشاء نسخة احتياطية آمنة لقاعدة البيانات تلقائياً',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF166534),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
                 // Timing Info
                 Container(
                   padding: const EdgeInsets.all(12),

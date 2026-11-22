@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/features/feature_gate.dart';
+import '../../../../core/services/local_backup_service.dart';
 import '../../../../core/utils/money.dart';
 import '../../domain/entities/shift_summary_entity.dart';
 
@@ -103,6 +104,15 @@ class _CloseShiftDialogState extends State<CloseShiftDialog> {
           _errorMessage = 'تعذر إغلاق الوردية. يرجى إعادة المحاولة.';
         });
       } else {
+        final currentUserId = widget.summary.shift.cashierId.isNotEmpty
+            ? widget.summary.shift.cashierId
+            : 'system';
+        if (getIt.isRegistered<LocalBackupService>()) {
+          getIt<LocalBackupService>().createBackup(userId: currentUserId).catchError((e) {
+            debugPrint('Auto-backup error: $e');
+            return BackupResult(filePath: '', sizeBytes: 0, createdAt: DateTime.now());
+          });
+        }
         setState(() => _isLoading = false);
         Navigator.of(context).pop(true);
       }
