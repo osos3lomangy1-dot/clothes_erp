@@ -39,11 +39,14 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 ; 1. Flutter Release application bundle
 Source: "{#MyAppSourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
-; 2. App-local VC++ 2015-2022 runtimes (guarantees zero missing DLL errors even offline)
+; 2. App-local VC++ 2015-2022 runtimes & DirectX compiler (guarantees zero missing DLL errors even offline)
 #if FileExists("C:\Windows\System32\vcruntime140_1.dll")
 Source: "C:\Windows\System32\vcruntime140_1.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "C:\Windows\System32\vcruntime140.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "C:\Windows\System32\msvcp140.dll"; DestDir: "{app}"; Flags: ignoreversion
+#endif
+#if FileExists("C:\Windows\System32\d3dcompiler_47.dll")
+Source: "C:\Windows\System32\d3dcompiler_47.dll"; DestDir: "{app}"; Flags: ignoreversion
 #endif
 
 ; 3. Optional bundled VC++ Redistributable (if placed in windows\installer\vc_redist.x64.exe at compile time)

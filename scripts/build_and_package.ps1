@@ -30,6 +30,16 @@ if (-not $version) { $version = "1.0.0" }
 Write-Host "`n[4/5] Packaging version: $version" -ForegroundColor Yellow
 
 $releaseDir = "build\windows\x64\runner\Release"
+
+# Copy essential runtime DLLs into release folder for 100% offline portable compatibility
+$runtimeDlls = @("vcruntime140_1.dll", "vcruntime140.dll", "msvcp140.dll", "d3dcompiler_47.dll")
+foreach ($dll in $runtimeDlls) {
+    $src = "C:\Windows\System32\$dll"
+    if (Test-Path $src) {
+        Copy-Item -Path $src -Destination $releaseDir -Force
+    }
+}
+
 $zipName = "bay3ah_erp_windows_v${version}.zip"
 
 if (Test-Path $zipName) { Remove-Item $zipName -Force }
