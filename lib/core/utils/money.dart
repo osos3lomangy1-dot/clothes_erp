@@ -5,18 +5,30 @@ class Money {
 
   int get minorUnits => piasters;
 
+  /// Normalizes Arabic-Indic digits (٠١٢٣٤٥٦٧٨٩) to standard ASCII digits (0-9).
+  static String normalizeDigits(String input) {
+    const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    const english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+    var res = input;
+    for (int i = 0; i < 10; i++) {
+      res = res.replaceAll(arabic[i], english[i]);
+    }
+    return res;
+  }
+
   static Money fromString(String value) {
-    final negative = value.trim().startsWith('-');
-    final cleaned = value.replaceAll(RegExp(r'[^\d.]'), '');
+    final normalized = normalizeDigits(value);
+    final negative = normalized.trim().startsWith('-');
+    final cleaned = normalized.replaceAll(RegExp(r'[^\d.]'), '');
     if (cleaned.isEmpty) return const Money(0);
     final parts = cleaned.split('.');
     int result;
     if (parts.length == 1) {
-      result = int.parse(parts[0]) * 100;
+      result = (int.tryParse(parts[0]) ?? 0) * 100;
     } else {
-      final whole = int.parse(parts[0]);
+      final whole = int.tryParse(parts[0]) ?? 0;
       final frac = parts[1].padRight(2, '0').substring(0, 2);
-      result = whole * 100 + int.parse(frac);
+      result = whole * 100 + (int.tryParse(frac) ?? 0);
     }
     return Money(negative ? -result : result);
   }

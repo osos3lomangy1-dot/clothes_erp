@@ -149,7 +149,22 @@ class SaleSuccessDialog extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       onPressed: () async {
-                        await ReceiptPdfService.printReceipt(invoice);
+                        try {
+                          await ReceiptPdfService.printReceipt(invoice);
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'تم حفظ الفاتورة بنجاح. تعذر الاتصال بالطابعة، يمكنك إعادة الطباعة بالضغط على [F9] بعد التحقق من الورق والكابل.',
+                                  style: TextStyle(fontFamily: 'Cairo'),
+                                ),
+                                backgroundColor: AppColors.error,
+                                duration: Duration(seconds: 5),
+                              ),
+                            );
+                          }
+                        }
                       },
                       icon: const Icon(Icons.print_rounded, color: Colors.white, size: 20),
                       label: const Text(

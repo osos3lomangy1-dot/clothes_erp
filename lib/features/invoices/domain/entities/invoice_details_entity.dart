@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'invoice_item_details_entity.dart';
 
+typedef InvoiceEntity = InvoiceDetailsEntity;
+
 class InvoiceDetailsEntity extends Equatable {
   final String id;
   final String shortRef;

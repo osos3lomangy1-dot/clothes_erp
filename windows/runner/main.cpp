@@ -7,6 +7,19 @@
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
+  HANDLE hMutex = ::CreateMutexW(nullptr, TRUE, L"Bay3ah_ERP_Single_Instance_Mutex");
+  if (::GetLastError() == ERROR_ALREADY_EXISTS) {
+    HWND existingWnd = ::FindWindowW(nullptr, L"\u0628\u064A\u0639\u0629 - Bay3ah");
+    if (existingWnd != nullptr) {
+      ::ShowWindow(existingWnd, SW_RESTORE);
+      ::SetForegroundWindow(existingWnd);
+    }
+    if (hMutex != nullptr) {
+      ::CloseHandle(hMutex);
+    }
+    return EXIT_SUCCESS;
+  }
+
   // Attach to console when present (e.g., 'flutter run') or create a
   // new console when running with a debugger.
   if (!::AttachConsole(ATTACH_PARENT_PROCESS) && ::IsDebuggerPresent()) {
@@ -40,5 +53,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   }
 
   ::CoUninitialize();
+
+  if (hMutex != nullptr) {
+    ::ReleaseMutex(hMutex);
+    ::CloseHandle(hMutex);
+  }
+
   return EXIT_SUCCESS;
 }

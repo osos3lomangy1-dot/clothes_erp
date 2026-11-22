@@ -273,6 +273,37 @@ class CrashLoggerService {
   static String getLogFilePath() {
     return _masterFile?.path ?? (_logsDir != null ? '${_logsDir!.path}/crash_logs.txt' : '');
   }
+
+  /// Generate a consolidated diagnostic support report as a single string
+  static Future<String> generateDiagnosticReport() async {
+    final now = DateTime.now();
+    final dateStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
+    final platformInfo = '${Platform.operatingSystem} (${Platform.operatingSystemVersion})';
+
+    final buffer = StringBuffer()
+      ..writeln(_delimiter)
+      ..writeln('تقرير الدعم الفني والتشخيص الشامل (BAY3AH ERP DIAGNOSTIC SUPPORT REPORT)')
+      ..writeln('تاريخ التصدير: $dateStr')
+      ..writeln('بيئة التشغيل: $platformInfo')
+      ..writeln('Dart/Flutter Runtime: ${Platform.version}')
+      ..writeln('مسار البرنامج: ${Platform.resolvedExecutable}')
+      ..writeln(_delimiter)
+      ..writeln();
+
+    if (_masterFile != null && _masterFile!.existsSync()) {
+      final logs = await _masterFile!.readAsString();
+      if (logs.trim().isNotEmpty) {
+        buffer.writeln('=== سجلات الأعطال والتحذيرات المسجلة ===');
+        buffer.writeln(logs.trim());
+      } else {
+        buffer.writeln('سجل الأعطال: لا توجد أخطاء مسجلة، النظام مستقر.');
+      }
+    } else {
+      buffer.writeln('سجل الأعطال: لا توجد أخطاء مسجلة، النظام مستقر.');
+    }
+
+    return buffer.toString();
+  }
 }
 
 /// NavigatorObserver to automatically track screen transitions as breadcrumbs

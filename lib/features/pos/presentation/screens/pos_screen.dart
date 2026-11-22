@@ -87,7 +87,8 @@ Color _mapColorNameToColor(String name) {
 }
 
 class PosScreen extends StatelessWidget {
-  const PosScreen({super.key});
+  final Future<void> Function(InvoiceDetailsEntity invoice)? printReceiptOverride;
+  const PosScreen({super.key, this.printReceiptOverride});
 
   @override
   Widget build(BuildContext context) {
@@ -96,13 +97,14 @@ class PosScreen extends StatelessWidget {
         BlocProvider(create: (context) => getIt<PosCubit>()..init()),
         BlocProvider(create: (context) => getIt<ShiftCubit>()..loadShiftData()),
       ],
-      child: const _PosView(),
+      child: _PosView(printReceiptOverride: printReceiptOverride),
     );
   }
 }
 
 class _PosView extends StatefulWidget {
-  const _PosView();
+  final Future<void> Function(InvoiceDetailsEntity invoice)? printReceiptOverride;
+  const _PosView({this.printReceiptOverride});
 
   @override
   State<_PosView> createState() => _PosViewState();
@@ -114,16 +116,79 @@ class _PosViewState extends State<_PosView> {
   final GlobalKey<_CartPanelState> _cartPanelKey = GlobalKey<_CartPanelState>();
   final StringBuffer _scannerBuffer = StringBuffer();
   DateTime _lastScanKeyTime = DateTime.now();
+  InvoiceDetailsEntity? _lastCompletedInvoice;
 
   @override
   void initState() {
     super.initState();
     HardwareKeyboard.instance.addHandler(_handleHardwareScan);
+    _loadLatestInvoice();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _searchFocusNode.requestFocus();
       }
     });
+  }
+
+  void _loadLatestInvoice() {
+    if (getIt.isRegistered<InvoicesRepository>()) {
+      getIt<InvoicesRepository>().getInvoices(limit: 1).then((res) {
+        res.fold((_) {}, (list) {
+          if (mounted && list.isNotEmpty && _lastCompletedInvoice == null) {
+            setState(() {
+              _lastCompletedInvoice = list.first;
+            });
+          }
+        });
+      }).catchError((_) {});
+    }
+  }
+
+  void _handleCheckoutSuccess(InvoiceDetailsEntity invoice) {
+    if (!mounted) return;
+    setState(() {
+      _lastCompletedInvoice = invoice;
+    });
+  }
+
+  Future<void> _reprintLastInvoice() async {
+    final invoice = _lastCompletedInvoice;
+    if (invoice == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'لا توجد فاتورة سابقة لإعادة طباعتها',
+              style: TextStyle(fontFamily: 'Cairo'),
+            ),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      if (widget.printReceiptOverride != null) {
+        await widget.printReceiptOverride!(invoice);
+      } else {
+        await ReceiptPdfService.printReceipt(invoice);
+      }
+    } catch (e) {
+      debugPrint('Re-print printer error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'تم حفظ الفاتورة بنجاح. تعذر الاتصال بالطابعة، يمكنك إعادة الطباعة بالضغط على [F9] بعد التحقق من الورق والكابل.',
+              style: TextStyle(fontFamily: 'Cairo'),
+            ),
+            backgroundColor: AppColors.error,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
+    }
   }
 
   bool _handleHardwareScan(KeyEvent event) {
@@ -163,6 +228,13 @@ class _PosViewState extends State<_PosView> {
     if (key == LogicalKeyboardKey.f8) {
       _scannerBuffer.clear();
       _cartPanelKey.currentState?.addNewBillTab();
+      return true;
+    }
+
+    // Shortcut [F9]: Quick Re-Print Last Invoice
+    if (key == LogicalKeyboardKey.f9) {
+      _scannerBuffer.clear();
+      _reprintLastInvoice();
       return true;
     }
 
@@ -601,6 +673,39 @@ class _PosViewState extends State<_PosView> {
 
                 const SizedBox(width: 8),
 
+                // Re-Print Last Invoice [F9]
+                OutlinedButton.icon(
+                  key: const Key('pos_reprint_last_invoice_button'),
+                  onPressed: _lastCompletedInvoice != null
+                      ? () => _reprintLastInvoice()
+                      : null,
+                  icon: const Icon(Icons.print_outlined, size: 16),
+                  label: const Text(
+                    'إعادة طباعة [F9]',
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    disabledForegroundColor: const Color(0xFF94A3B8),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    minimumSize: const Size(0, 36),
+                    side: BorderSide(
+                      color: _lastCompletedInvoice != null
+                          ? AppColors.primary.withValues(alpha: 0.4)
+                          : const Color(0xFFCBD5E1),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 8),
+
                 // Delivery Button
                 IconButton(
                   icon: const Icon(
@@ -663,7 +768,10 @@ class _PosViewState extends State<_PosView> {
                     child: Builder(
                       builder: (ctx) {
                         try {
-                          return _CartPanel(key: _cartPanelKey);
+                          return _CartPanel(
+                            key: _cartPanelKey,
+                            onInvoiceCompleted: _handleCheckoutSuccess,
+                          );
                         } catch (e, st) {
                           return SingleChildScrollView(
                             padding: const EdgeInsets.all(16),
@@ -2215,7 +2323,8 @@ class PosHeldBill {
 // LEFT PANEL: CART (440px)
 // ---------------------------------------------------------------------------
 class _CartPanel extends StatefulWidget {
-  const _CartPanel({super.key});
+  final void Function(InvoiceDetailsEntity invoice)? onInvoiceCompleted;
+  const _CartPanel({super.key, this.onInvoiceCompleted});
 
   @override
   State<_CartPanel> createState() => _CartPanelState();
@@ -2540,7 +2649,7 @@ class _CartPanelState extends State<_CartPanel> {
   }
 
   void _recalculateDiscount(int subtotal) {
-    final text = _discountCtrl.text.trim();
+    final text = Money.normalizeDigits(_discountCtrl.text.trim());
     if (text.isEmpty) {
       context.read<PosCubit>().applyDiscount(0);
       return;
@@ -2648,6 +2757,10 @@ class _CartPanelState extends State<_CartPanel> {
         setState(() => _deliveryOrder = null);
       }
 
+      if (latestInvoice != null) {
+        widget.onInvoiceCompleted?.call(latestInvoice!);
+      }
+
       if (latestInvoice != null && mounted) {
         showDialog(
           context: context,
@@ -2731,6 +2844,10 @@ class _CartPanelState extends State<_CartPanel> {
         setState(() => _deliveryOrder = null);
       }
 
+      if (latestInvoice != null) {
+        widget.onInvoiceCompleted?.call(latestInvoice!);
+      }
+
       if (latestInvoice != null && mounted) {
         showDialog(
           context: context,
@@ -2772,7 +2889,7 @@ class _CartPanelState extends State<_CartPanel> {
     }
 
     final downPaymentNum =
-        double.tryParse(_creditDownPaymentCtrl.text.trim()) ?? 0.0;
+        double.tryParse(Money.normalizeDigits(_creditDownPaymentCtrl.text.trim())) ?? 0.0;
     final downPaymentPiasters = (downPaymentNum * 100).round();
     if (downPaymentPiasters < 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -2973,6 +3090,10 @@ class _CartPanelState extends State<_CartPanel> {
           ),
         );
         setState(() => _deliveryOrder = null);
+      }
+
+      if (latestInvoice != null) {
+        widget.onInvoiceCompleted?.call(latestInvoice!);
       }
 
       if (latestInvoice != null && mounted) {
@@ -3191,6 +3312,7 @@ class _CartPanelState extends State<_CartPanel> {
         if (!mounted) return;
 
         if (invoice != null) {
+          widget.onInvoiceCompleted?.call(invoice);
           showDialog(
             context: context,
             barrierDismissible: false,
@@ -4716,7 +4838,7 @@ class _CartPanelState extends State<_CartPanel> {
       builder: (context, snapshot) {
         final currentDebt = snapshot.data ?? 0;
         final downPaymentNum =
-            double.tryParse(_creditDownPaymentCtrl.text.trim()) ?? 0.0;
+            double.tryParse(Money.normalizeDigits(_creditDownPaymentCtrl.text.trim())) ?? 0.0;
         final downPaymentPiasters = (downPaymentNum * 100).round().clamp(
           0,
           state.total,
@@ -4951,7 +5073,7 @@ class _CartItemTileState extends State<_CartItemTile> {
                   if (val == null || val.trim().isEmpty) {
                     return 'يرجى إدخال السعر';
                   }
-                  final num = double.tryParse(val.trim());
+                  final num = double.tryParse(Money.normalizeDigits(val.trim()));
                   if (num == null || num < 0) return 'السعر غير صالح';
                   return null;
                 },
@@ -4973,7 +5095,7 @@ class _CartItemTileState extends State<_CartItemTile> {
             ),
             onPressed: () {
               if (formKey.currentState?.validate() != true) return;
-              final pounds = double.parse(priceCtrl.text.trim());
+              final pounds = double.tryParse(Money.normalizeDigits(priceCtrl.text.trim())) ?? 0.0;
               final piasters = (pounds * 100).toInt();
               context.read<PosCubit>().updateUnitPrice(
                 item.variantId,

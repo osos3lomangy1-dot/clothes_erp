@@ -1,6 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/crash_logger_service.dart';
 import '../../../../features/auth/presentation/cubits/auth_cubit.dart';
@@ -114,6 +117,43 @@ class _CrashLogsScreenState extends State<CrashLogsScreen> {
     );
   }
 
+  Future<void> _exportDiagnosticReport() async {
+    try {
+      final reportContent = await CrashLoggerService.generateDiagnosticReport();
+      final nowStr = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final path = await FilePicker.platform.saveFile(
+        dialogTitle: 'تصدير تقرير الدعم الفني',
+        fileName: 'bay3ah_diagnostic_report_$nowStr.log',
+        type: FileType.custom,
+        allowedExtensions: ['log', 'txt'],
+      );
+      if (path != null) {
+        final finalPath = (path.toLowerCase().endsWith('.log') || path.toLowerCase().endsWith('.txt'))
+            ? path
+            : '$path.log';
+        final file = File(finalPath);
+        await file.writeAsString(reportContent, flush: true);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('تم تصدير تقرير الدعم الفني بنجاح:\n$finalPath'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('تعذر تصدير تقرير الدعم الفني: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // 1. Verify Admin Access
@@ -171,11 +211,12 @@ class _CrashLogsScreenState extends State<CrashLogsScreen> {
       backgroundColor: AppColors.surface,
       appBar: AppBar(
         title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.bug_report_rounded, color: AppColors.primary),
             const SizedBox(width: 10),
             const Text(
-              'سجلات الأعطال (Crash Logs)',
+              'سجلات الأعطال',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
@@ -193,6 +234,22 @@ class _CrashLogsScreenState extends State<CrashLogsScreen> {
             icon: const Icon(Icons.refresh_rounded),
             onPressed: _loadLogs,
           ),
+          ElevatedButton.icon(
+            key: const Key('export_diagnostic_report_button'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: _exportDiagnosticReport,
+            icon: const Icon(Icons.file_download_outlined, size: 16),
+            label: const Text(
+              'تصدير تقرير الدعم الفني',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            ),
+          ),
+          const SizedBox(width: 8),
           if (_logs.isNotEmpty) ...[
             IconButton(
               tooltip: 'نسخ جميع السجلات',

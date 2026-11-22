@@ -1,10 +1,14 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/retail_sector.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/features/feature_gate.dart';
+import '../../../../core/services/crash_logger_service.dart';
 import '../../../../core/theme/app_branding.dart';
 import '../../../auth/domain/models/cashier_permissions_config.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
@@ -13,6 +17,7 @@ import '../../../auth/services/cashier_permissions_service.dart';
 import '../../../barcode_printing/domain/models/barcode_config.dart';
 import '../../../barcode_printing/presentation/screens/barcode_customizer_screen.dart';
 import '../../../barcode_printing/services/barcode_settings_service.dart';
+import '../../../crash_logs/presentation/screens/crash_logs_screen.dart';
 import '../../../installments/data/services/manager_pin_service.dart';
 import '../../../invoices/data/services/receipt_settings_service.dart';
 import '../../../invoices/domain/entities/receipt_config.dart';
@@ -1023,6 +1028,53 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
                               },
                             ),
                           ),
+                          const SizedBox(height: 20),
+                          _sectionTitle('الدعم الفني والتشخيص'),
+                          _cardWrapper(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'تصدير تقرير التشخيص وملفات النظام لإرسالها لفريق الدعم الفني والمطور عند وجود استفسار أو مشكلة تقنية.',
+                                  style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
+                                ),
+                                const SizedBox(height: 14),
+                                Wrap(
+                                  spacing: 10,
+                                  runSpacing: 10,
+                                  children: [
+                                    ElevatedButton.icon(
+                                      key: const Key('export_diagnostic_report_settings_button'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.primary,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                      onPressed: () => _exportDiagnosticSupportReport(context),
+                                      icon: const Icon(Icons.file_download_outlined, size: 18),
+                                      label: const Text('تصدير تقرير الدعم الفني', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    ),
+                                    OutlinedButton.icon(
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppColors.primary,
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                                        side: const BorderSide(color: Color(0xFFCBD5E1)),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                      onPressed: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(builder: (_) => const CrashLogsScreen()),
+                                        );
+                                      },
+                                      icon: const Icon(Icons.bug_report_outlined, size: 18),
+                                      label: const Text('فتح سجلات الأعطال', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
 
                         // ─── 7. المظهر وهوية المتجر (Store / Branding) ───
@@ -1089,6 +1141,43 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(err), backgroundColor: AppColors.error),
       );
+    }
+  }
+
+  Future<void> _exportDiagnosticSupportReport(BuildContext context) async {
+    try {
+      final reportContent = await CrashLoggerService.generateDiagnosticReport();
+      final nowStr = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final path = await FilePicker.platform.saveFile(
+        dialogTitle: 'تصدير تقرير الدعم الفني',
+        fileName: 'bay3ah_diagnostic_report_$nowStr.log',
+        type: FileType.custom,
+        allowedExtensions: ['log', 'txt'],
+      );
+      if (path != null) {
+        final finalPath = (path.toLowerCase().endsWith('.log') || path.toLowerCase().endsWith('.txt'))
+            ? path
+            : '$path.log';
+        final file = File(finalPath);
+        await file.writeAsString(reportContent, flush: true);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('تم تصدير تقرير الدعم الفني بنجاح:\n$finalPath'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('تعذر تصدير تقرير الدعم الفني: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     }
   }
 
