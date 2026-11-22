@@ -4366,21 +4366,24 @@ class _AdminDangerZoneResetCardState extends State<_AdminDangerZoneResetCard> {
             ),
           ),
           const SizedBox(height: 14),
-          CheckboxListTile(
-            key: const Key('reset_stock_checkbox'),
-            contentPadding: EdgeInsets.zero,
-            controlAffinity: ListTileControlAffinity.leading,
-            title: const Text(
-              'تصفير كميات المخزون في جميع الأصناف إلى (0) لبدء جرد فعلي جديد',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          Material(
+            color: Colors.transparent,
+            child: CheckboxListTile(
+              key: const Key('reset_stock_checkbox'),
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              title: const Text(
+                'تصفير كميات المخزون في جميع الأصناف إلى (0) لبدء جرد فعلي جديد',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+              subtitle: const Text(
+                'عند عدم التحديد، تبقى كميات المخزون للأصناف كما هي ويتم فقط تصفير فواتير المبيعات وحركات الخزينة.',
+                style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+              ),
+              value: _resetStock,
+              activeColor: AppColors.error,
+              onChanged: (val) => setState(() => _resetStock = val ?? false),
             ),
-            subtitle: const Text(
-              'عند عدم التحديد، تبقى كميات المخزون للأصناف كما هي ويتم فقط تصفير فواتير المبيعات وحركات الخزينة.',
-              style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
-            ),
-            value: _resetStock,
-            activeColor: AppColors.error,
-            onChanged: (val) => setState(() => _resetStock = val ?? false),
           ),
           const SizedBox(height: 14),
           ElevatedButton.icon(
