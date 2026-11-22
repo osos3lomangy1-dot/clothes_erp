@@ -9,6 +9,7 @@ import '../../domain/entities/product_entity.dart';
 import '../../domain/repositories/product_repository.dart';
 import '../../domain/usecases/add_product_usecase.dart';
 import '../../domain/usecases/update_product_usecase.dart';
+import '../../../settings/data/services/activity_settings_service.dart';
 import 'product_form_state.dart';
 
 @injectable
@@ -51,6 +52,16 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
     final existingProducts = productsResult.getOrElse(() => []);
 
+    String defaultActivity = 'clothing';
+    if (getIt.isRegistered<ActivitySettingsService>()) {
+      try {
+        final enabled = await getIt<ActivitySettingsService>().getEnabledActivities();
+        if (enabled.isNotEmpty) {
+          defaultActivity = enabled.first.code;
+        }
+      } catch (_) {}
+    }
+
     categoriesResult.fold(
       (failure) => emit(state.copyWith(
         status: ProductFormStatus.error,
@@ -79,7 +90,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           ));
         } else {
           emit(state.copyWith(
-            activityType: 'clothing',
+            activityType: defaultActivity,
             warrantyPeriod: null,
             brandOrModel: null,
             isInstallmentEligible: true,

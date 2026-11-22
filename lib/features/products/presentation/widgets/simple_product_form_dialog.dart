@@ -90,7 +90,16 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
   void initState() {
     super.initState();
     final p = widget.product;
-    _activityType = p?.activityTypeEnum ?? ActivityType.clothing;
+    if (p != null) {
+      _activityType = p.activityTypeEnum;
+    } else {
+      if (getIt.isRegistered<ActivitySettingsService>()) {
+        final cached = getIt<ActivitySettingsService>().cachedEnabledActivities;
+        _activityType = cached.isNotEmpty ? cached.first : ActivityType.clothing;
+      } else {
+        _activityType = ActivityType.clothing;
+      }
+    }
     _nameCtrl = TextEditingController(text: p?.name ?? '');
     _barcodeCtrl = TextEditingController();
     _costCtrl = TextEditingController(text: '0.00');
@@ -109,6 +118,15 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
     if (p != null) {
       _loadExistingVariant(p.id);
     } else {
+      if (getIt.isRegistered<ActivitySettingsService>()) {
+        getIt<ActivitySettingsService>().getEnabledActivities().then((acts) {
+          if (mounted && acts.isNotEmpty && acts.first != _activityType) {
+            setState(() {
+              _activityType = acts.first;
+            });
+          }
+        });
+      }
       final query = widget.initialQuery?.trim();
       if (query != null && query.isNotEmpty) {
         if (RegExp(r'^[0-9]+$').hasMatch(query)) {
@@ -714,22 +732,28 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
                               ],
                               if (_activityType.supportsWeight) ...[
                                 const SizedBox(height: 10),
-                                Row(
+                                Wrap(
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: 8,
+                                  runSpacing: 6,
                                   children: [
-                                    const Icon(Icons.scale_rounded, size: 18, color: Color(0xFF64748B)),
-                                    const SizedBox(width: 8),
-                                    const Text(
-                                      'نوع القياس والبيع:',
-                                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
+                                    const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.scale_rounded, size: 18, color: Color(0xFF64748B)),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'نوع القياس والبيع:',
+                                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(width: 12),
                                     ChoiceChip(
                                       label: const Text('بالقطعة'),
                                       selected: _measurementUnit == 'piece',
                                       onSelected: (val) => setState(() => _measurementUnit = 'piece'),
                                       selectedColor: AppColors.primary.withValues(alpha: 0.15),
                                     ),
-                                    const SizedBox(width: 8),
                                     ChoiceChip(
                                       label: const Text('بالوزن (كيلو / جرام / ميزان)'),
                                       selected: _measurementUnit == 'weight',

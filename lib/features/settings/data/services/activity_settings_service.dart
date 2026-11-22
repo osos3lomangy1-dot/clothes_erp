@@ -19,6 +19,12 @@ class ActivitySettingsService {
     return metaVal == '1';
   }
 
+  List<ActivityType>? _cachedEnabledActivities;
+
+  /// Returns the cached list of enabled activities (or fallback to clothing).
+  List<ActivityType> get cachedEnabledActivities =>
+      _cachedEnabledActivities ?? [ActivityType.clothing];
+
   /// Returns the list of currently enabled activities.
   /// Guarantees at least one activity (clothing) is returned to prevent breaking the UI.
   Future<List<ActivityType>> getEnabledActivities() async {
@@ -37,8 +43,10 @@ class ActivitySettingsService {
     }).toList();
 
     if (enabled.isEmpty) {
+      _cachedEnabledActivities = [ActivityType.clothing];
       return [ActivityType.clothing];
     }
+    _cachedEnabledActivities = enabled;
     return enabled;
   }
 
@@ -58,8 +66,10 @@ class ActivitySettingsService {
       }).toList();
 
       if (enabled.isEmpty) {
+        _cachedEnabledActivities = [ActivityType.clothing];
         return [ActivityType.clothing];
       }
+      _cachedEnabledActivities = enabled;
       return enabled;
     });
   }

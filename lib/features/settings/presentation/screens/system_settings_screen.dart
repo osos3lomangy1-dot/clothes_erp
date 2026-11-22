@@ -34,6 +34,7 @@ import '../../../pre_orders/data/services/telegram_bot_service.dart';
 import '../../../pre_orders/presentation/widgets/telegram_inbox_dialog.dart';
 import '../../../products/domain/entities/activity_type.dart';
 import '../../data/services/activity_settings_service.dart';
+import '../../../../core/services/store_presets_engine.dart';
 
 class SystemSettingsScreen extends StatelessWidget {
   final String? initialCategory;
@@ -3418,6 +3419,78 @@ class _ActivitiesMasterSettingsCardState extends State<_ActivitiesMasterSettings
                     ],
                   ),
                 ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    key: const Key('save_store_activity_settings_btn'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.success,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      elevation: 1,
+                    ),
+                    onPressed: () async {
+                      try {
+                        final activePreset = StorePreset.detect(enabledActivities.toSet());
+                        await StorePresetsEngine.applyPreset(
+                          preset: activePreset,
+                          featureGate: getIt<FeatureGate>(),
+                          activityService: _activityService,
+                          userId: widget.userId,
+                        );
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Row(
+                                children: [
+                                  Icon(Icons.check_circle_rounded, color: Colors.white),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'تم حفظ وتطبيق نشاط المتجر بنجاح وتحديث الكاشير والمنتجات فورياً',
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              backgroundColor: AppColors.success,
+                              behavior: SnackBarBehavior.floating,
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(e.toString().replaceAll('Exception: ', '')),
+                              backgroundColor: AppColors.error,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.save_rounded, size: 18),
+                    label: const Text(
+                      'حفظ وتطبيق إعدادات نشاط المتجر',
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -3526,11 +3599,17 @@ class _ActivitiesMasterSettingsCardState extends State<_ActivitiesMasterSettings
       key: Key('store_preset_${preset.code}'),
       onTap: () async {
         try {
-          await _activityService.applyStorePreset(preset, userId: widget.userId);
+          await StorePresetsEngine.applyPreset(
+            preset: preset,
+            featureGate: getIt<FeatureGate>(),
+            activityService: _activityService,
+            userId: widget.userId,
+          );
           if (mounted) {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('تم تطبيق قالب ${preset.title} بنجاح!'),
+                content: Text('تم تطبيق ومزامنة قالب ${preset.title} بنجاح!'),
                 backgroundColor: AppColors.primary,
                 behavior: SnackBarBehavior.floating,
                 duration: const Duration(seconds: 2),
@@ -3539,6 +3618,7 @@ class _ActivitiesMasterSettingsCardState extends State<_ActivitiesMasterSettings
           }
         } catch (e) {
           if (mounted) {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(e.toString().replaceAll('Exception: ', '')),

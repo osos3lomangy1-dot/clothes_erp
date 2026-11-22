@@ -15,6 +15,9 @@ import '../../../customers/domain/entities/customer_entity.dart';
 import '../../../promotions/domain/entities/promotion.dart';
 import '../../../promotions/domain/repositories/promotions_repository.dart';
 import '../../../promotions/domain/services/promotion_engine.dart';
+import '../../../../core/di/injection.dart';
+import '../../../products/domain/entities/activity_type.dart';
+import '../../../settings/data/services/activity_settings_service.dart';
 
 class PosState {
   final List<VariantEntity> filteredVariants;
@@ -120,6 +123,10 @@ class PosCubit extends Cubit<PosState> {
   String _currentSelectedCategoryId = 'All';
   String _currentSelectedActivity = 'all';
   StreamSubscription? _variantsSubscription;
+  StreamSubscription<List<ActivityType>>? _enabledActivitiesSubscription;
+  Set<String> _currentEnabledActivities = {};
+
+  Set<String> get currentEnabledActivities => _currentEnabledActivities;
 
   PosCubit(
     this._createSaleUseCase,
@@ -160,6 +167,24 @@ class PosCubit extends Cubit<PosState> {
         _activePromotions = promoRes.getOrElse(() => []);
       }
 
+      if (getIt.isRegistered<ActivitySettingsService>()) {
+        final activityService = getIt<ActivitySettingsService>();
+        try {
+          final initial = await activityService.getEnabledActivities();
+          _currentEnabledActivities = initial.map((a) => a.code).toSet();
+        } catch (_) {}
+
+        _enabledActivitiesSubscription?.cancel();
+        _enabledActivitiesSubscription = activityService.watchEnabledActivities().listen((acts) {
+          if (isClosed) return;
+          _currentEnabledActivities = acts.map((a) => a.code).toSet();
+          if (_currentSelectedActivity != 'all' && !_currentEnabledActivities.contains(_currentSelectedActivity)) {
+            _currentSelectedActivity = 'all';
+          }
+          _applyFilters();
+        });
+      }
+
       _variantsSubscription?.cancel();
       _variantsSubscription = _variantRepository.watchAllVariants().listen(
         (result) {
@@ -186,10 +211,19 @@ class PosCubit extends Cubit<PosState> {
               if (isClosed) return;
               final prev = state;
               List<VariantEntity> filtered = _allVariants;
-              if (_currentSelectedActivity != 'all') {
+              if (_currentEnabledActivities.isNotEmpty) {
                 filtered = filtered
-                    .where((v) => (_productActivityTypeMap[v.productId] ?? 'clothing') == _currentSelectedActivity)
+                    .where((v) => _currentEnabledActivities.contains(_productActivityTypeMap[v.productId] ?? 'clothing'))
                     .toList();
+              }
+              if (_currentSelectedActivity != 'all') {
+                if (_currentEnabledActivities.isNotEmpty && !_currentEnabledActivities.contains(_currentSelectedActivity)) {
+                  _currentSelectedActivity = 'all';
+                } else {
+                  filtered = filtered
+                      .where((v) => (_productActivityTypeMap[v.productId] ?? 'clothing') == _currentSelectedActivity)
+                      .toList();
+                }
               }
               if (_currentSelectedCategoryId != 'All') {
                 filtered = filtered
@@ -280,10 +314,22 @@ class PosCubit extends Cubit<PosState> {
     final state = this.state;
     List<VariantEntity> result = _allVariants;
 
-    if (_currentSelectedActivity != 'all') {
+    // 1. Exclude variants belonging to disabled activities (even in 'all' mode)
+    if (_currentEnabledActivities.isNotEmpty) {
       result = result
-          .where((v) => (_productActivityTypeMap[v.productId] ?? 'clothing') == _currentSelectedActivity)
+          .where((v) => _currentEnabledActivities.contains(_productActivityTypeMap[v.productId] ?? 'clothing'))
           .toList();
+    }
+
+    // 2. Filter by selected activity tab
+    if (_currentSelectedActivity != 'all') {
+      if (_currentEnabledActivities.isNotEmpty && !_currentEnabledActivities.contains(_currentSelectedActivity)) {
+        _currentSelectedActivity = 'all';
+      } else {
+        result = result
+            .where((v) => (_productActivityTypeMap[v.productId] ?? 'clothing') == _currentSelectedActivity)
+            .toList();
+      }
     }
 
     if (_currentSelectedCategoryId != 'All') {
@@ -614,6 +660,7 @@ class PosCubit extends Cubit<PosState> {
   @override
   Future<void> close() {
     _variantsSubscription?.cancel();
+    _enabledActivitiesSubscription?.cancel();
     return super.close();
   }
 }
