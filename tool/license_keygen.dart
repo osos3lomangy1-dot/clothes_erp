@@ -10,6 +10,7 @@ void main(List<String> args) {
   String type = 'lifetime';
   String tier = 'enterprise';
   int days = 365;
+  String rescueChallenge = '';
 
   // 1. Check CLI arguments
   for (final arg in args) {
@@ -21,10 +22,38 @@ void main(List<String> args) {
       tier = arg.substring(7).trim();
     } else if (arg.startsWith('--days=')) {
       days = int.tryParse(arg.substring(7).trim()) ?? 365;
+    } else if (arg.startsWith('--rescue=')) {
+      rescueChallenge = arg.substring(9).trim();
     }
   }
 
-  // 2. Interactive Input if missing
+  // Handle Rescue Challenge directly if provided
+  if (rescueChallenge.isNotEmpty) {
+    _printRescuePin(rescueChallenge);
+    return;
+  }
+
+  // Interactive Mode
+  if (args.isEmpty) {
+    stdout.writeln('اختر العملية المطلوبة:');
+    stdout.writeln('  1: توليد مفتاح ترخيص وتفعيل للنظام (License Key) [افتراضي]');
+    stdout.writeln('  2: حساب رمز الإنقاذ والطوارئ للآدمن (Master Rescue PIN)');
+    stdout.write('  اختيارك [1-2]: ');
+    final opChoice = stdin.readLineSync()?.trim();
+
+    if (opChoice == '2') {
+      stdout.write('\nأدخل كود الطوارئ (Challenge) المأخوذ من العميل (مثال: RESCUE-XXXX-YYYY): ');
+      final input = stdin.readLineSync()?.trim();
+      if (input == null || input.isEmpty) {
+        stderr.writeln('خطأ: كود الطوارئ مطلوب.');
+        exit(1);
+      }
+      _printRescuePin(input);
+      return;
+    }
+  }
+
+  // 2. Interactive Input for License Key if missing
   if (machineId.isEmpty) {
     stdout.write('1. أدخل معرّف الجهاز (Machine ID) المأخوذ من العميل: ');
     final input = stdin.readLineSync()?.trim();
@@ -101,6 +130,20 @@ void main(List<String> args) {
   stdout.writeln('================================================================');
   stdout.writeln('تعليمات: انسخ كود التفعيل أعلاه وأرسله للعميل لتفعيله داخل');
   stdout.writeln('إعدادات النظام -> ترخيص وتفعيل النظام.');
+  stdout.writeln('================================================================\n');
+}
+
+void _printRescuePin(String challenge) {
+  final pin = LicenseCryptoCodec.computeMasterRescuePin(challenge);
+  stdout.writeln('================================================================');
+  stdout.writeln(' رمز الإنقاذ والطوارئ للآدمن (MASTER RESCUE PIN) ');
+  stdout.writeln('================================================================');
+  stdout.writeln(' - كود التحدي:  $challenge');
+  stdout.writeln(' - رمز الإنقاذ: $pin');
+  stdout.writeln(' - الصلاحية:    صالح لنفس تاريخ اليوم فقط');
+  stdout.writeln('----------------------------------------------------------------');
+  stdout.writeln('تعليمات: زوّد العميل بالرمز أعلاه ($pin) لإدخاله في نافذة');
+  stdout.writeln('طوارئ الحساب لإعادة تعيين كلمة مرور الآدمن فوراً.');
   stdout.writeln('================================================================\n');
 }
 

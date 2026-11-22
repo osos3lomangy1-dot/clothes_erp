@@ -235,28 +235,6 @@ enum StorePreset {
     'صالة وتيك أواي ودليفري وبون',
     false,
   ),
-  footwear(
-    'footwear',
-    'أحذية وحقائب ومصنوعات جلدية',
-    Icons.shopping_bag_outlined,
-    {
-      ActivityType.footwearBags,
-      ActivityType.accessoriesBeauty,
-    },
-    'نمرة الحذاء ومقاسات الأحذية وخامات الجلود والشنط',
-    false,
-  ),
-  homeLiving(
-    'homeLiving',
-    'أدوات منزلية وديكور',
-    Icons.home_work_outlined,
-    {
-      ActivityType.homeLiving,
-      ActivityType.textilesDecor,
-    },
-    'أدوات منزلية ومفروشات وشهادات الضمان والتقسيط',
-    true,
-  ),
   pharmacy(
     'pharmacy',
     'صيدليات وعناية شخصية',
@@ -297,11 +275,11 @@ enum StorePreset {
   /// القوالب الستة الأساسية لمعالج الإعداد والتهيئة الأول
   static const List<StorePreset> onboardingPresets = [
     StorePreset.fashion,
+    StorePreset.electronics,
     StorePreset.grocery,
     StorePreset.hospitality,
-    StorePreset.electronics,
-    StorePreset.footwear,
-    StorePreset.homeLiving,
+    StorePreset.pharmacy,
+    StorePreset.custom,
   ];
 
   /// يكتشف تلقائياً القالب المتطابق مع قائمة الأنشطة المفعلة حالياً

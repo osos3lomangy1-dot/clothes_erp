@@ -106,4 +106,36 @@ class LicenseCryptoCodec {
       return null;
     }
   }
+
+  /// Generates a daily Master Rescue Challenge for a Machine ID.
+  /// Format: RESCUE-XXXX-YYYY
+  static String generateRescueChallenge(String machineId, [DateTime? date]) {
+    final d = date ?? DateTime.now();
+    final dateStr = '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+    final raw = '${machineId.trim().toUpperCase()}_${dateStr}_RESCUE_SALT';
+    final hashBytes = sha256.convert(utf8.encode(raw)).bytes;
+    final hexStr = hashBytes
+        .map((b) => b.toRadixString(16).padLeft(2, '0'))
+        .join()
+        .toUpperCase();
+    return 'RESCUE-${hexStr.substring(0, 4)}-${hexStr.substring(4, 8)}';
+  }
+
+  /// Computes the 6-digit Master Rescue PIN for a challenge.
+  /// Used by Developer KeyGen tool.
+  static String computeMasterRescuePin(String challenge) {
+    final clean = challenge.trim().toUpperCase();
+    final hmac = Hmac(sha256, utf8.encode(secretKey));
+    final digest = hmac.convert(utf8.encode(clean)).bytes;
+
+    final numVal = (digest[0] << 24) | (digest[1] << 16) | (digest[2] << 8) | digest[3];
+    final pin = 100000 + (numVal.abs() % 900000);
+    return pin.toString().padLeft(6, '0');
+  }
+
+  /// Verifies a 6-digit Master Rescue PIN against a challenge.
+  static bool verifyMasterRescuePin(String challenge, String enteredPin) {
+    final expectedPin = computeMasterRescuePin(challenge);
+    return expectedPin == enteredPin.trim();
+  }
 }

@@ -348,4 +348,63 @@ class LicenseActivationService {
       expiryDate: expiryDate,
     );
   }
+
+  /// Generates the daily rescue challenge for this machine.
+  Future<String> getRescueChallenge([DateTime? date]) async {
+    final mid = await getMachineId();
+    return LicenseCryptoCodec.generateRescueChallenge(mid, date);
+  }
+
+  /// Verifies the entered Master Rescue PIN against this machine's daily challenge.
+  Future<bool> verifyRescuePin(String enteredPin, [DateTime? date]) async {
+    final challenge = await getRescueChallenge(date);
+    return LicenseCryptoCodec.verifyMasterRescuePin(challenge, enteredPin);
+  }
+
+  /// Resets the master admin's password after verifying the rescue PIN.
+  Future<void> resetAdminPassword({
+    required String newPassword,
+    required String rescuePin,
+    DateTime? date,
+  }) async {
+    final isValid = await verifyRescuePin(rescuePin, date);
+    if (!isValid) {
+      throw Exception('رمز الإنقاذ غير صحيح أو منتهي الصلاحية.');
+    }
+
+    final cleanPass = newPassword.trim();
+    if (cleanPass.length < 4) {
+      throw Exception('كلمة المرور الجديدة يجب ألا تقل عن 4 محارف.');
+    }
+
+    final now = DateTime.now();
+    final adminRow = await (_db.select(_db.users)
+          ..where((u) => u.role.equals('admin') & u.deletedAt.isNull()))
+        .getSingleOrNull();
+
+    if (adminRow != null) {
+      await (_db.update(_db.users)..where((u) => u.id.equals(adminRow.id))).write(
+        UsersCompanion(
+          passwordHash: Value('hash_$cleanPass'),
+          updatedAt: Value(now),
+        ),
+      );
+    } else {
+      await _db.into(_db.users).insert(
+        UsersCompanion.insert(
+          id: 'admin_master',
+          branchId: 'branch-1',
+          username: 'admin',
+          displayName: 'المدير العام',
+          role: 'admin',
+          passwordHash: 'hash_$cleanPass',
+          passwordSalt: 'salt',
+          isActive: const Value(true),
+          createdAt: now,
+          updatedAt: now,
+        ),
+        mode: InsertMode.insertOrReplace,
+      );
+    }
+  }
 }

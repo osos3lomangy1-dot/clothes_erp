@@ -21,15 +21,16 @@ class StorePresetsEngine {
         sectorMode = RetailSector.supermarket;
         break;
       case StorePreset.electronics:
-      case StorePreset.homeLiving:
         sectorMode = RetailSector.houseware;
         break;
       case StorePreset.hospitality:
         sectorMode = RetailSector.supermarket;
         break;
+      case StorePreset.pharmacy:
+        sectorMode = RetailSector.houseware;
+        break;
       case StorePreset.fashion:
-      case StorePreset.footwear:
-      default:
+      case StorePreset.custom:
         sectorMode = RetailSector.apparel;
         break;
     }

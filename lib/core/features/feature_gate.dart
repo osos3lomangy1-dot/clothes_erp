@@ -325,16 +325,7 @@ class FeatureGate {
 
   Future<bool> isCurrentUserAdmin() async {
     final user = await _authLocalDataSource.getCachedUser();
-    if (user == null) {
-      // Allow initial store configuration during first launch before any user is logged in
-      final setupRow = await (_db.select(_db.appMeta)
-            ..where((t) => t.key.equals('setup.completed')))
-          .getSingleOrNull();
-      if (setupRow == null || setupRow.value != '1') {
-        return true;
-      }
-      return false;
-    }
+    if (user == null) return false;
     return user.role.toLowerCase() != 'cashier';
   }
 

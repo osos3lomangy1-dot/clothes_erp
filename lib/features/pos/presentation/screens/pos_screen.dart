@@ -191,6 +191,178 @@ class _PosViewState extends State<_PosView> {
     }
   }
 
+  Future<void> _showSwitchCashierDialog() async {
+    List<User> activeUsers = [];
+    try {
+      if (getIt.isRegistered<AppDatabase>()) {
+        final db = getIt<AppDatabase>();
+        activeUsers = await (db.select(db.users)
+              ..where((u) => u.isActive.equals(true))
+              ..where((u) => u.deletedAt.isNull()))
+            .get();
+      }
+    } catch (e) {
+      debugPrint('Error loading cashiers: $e');
+    }
+
+    if (!mounted) return;
+
+    User? selectedUser = activeUsers.isNotEmpty ? activeUsers.first : null;
+    final pinCtrl = TextEditingController();
+    String? errorMsg;
+    bool isSubmitting = false;
+
+    await showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Row(
+                children: [
+                  Icon(Icons.swap_horiz_rounded, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'تبديل الكاشير السريع (Quick Switch)',
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              content: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 380),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'اختر الكاشير وأدخل رمز PIN للتحويل الفوري دون إفراغ السلة أو تسجيل الخروج:',
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: 12.5, color: AppColors.onSurface),
+                    ),
+                    const SizedBox(height: 14),
+                    if (activeUsers.isNotEmpty) ...[
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: activeUsers.map((u) {
+                          final isSelected = selectedUser?.id == u.id;
+                          return ChoiceChip(
+                            key: Key('pos_cashier_chip_${u.username}'),
+                            label: Text(
+                              u.displayName.isNotEmpty ? u.displayName : u.username,
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                fontSize: 12,
+                              ),
+                            ),
+                            selected: isSelected,
+                            onSelected: (val) {
+                              if (val) {
+                                setDialogState(() {
+                                  selectedUser = u;
+                                  errorMsg = null;
+                                });
+                              }
+                            },
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 14),
+                    ],
+                    TextField(
+                      key: const Key('pos_cashier_pin_field'),
+                      controller: pinCtrl,
+                      obscureText: true,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'رمز PIN الخاص بالكاشير',
+                        prefixIcon: Icon(Icons.lock_outline_rounded),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    if (errorMsg != null) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        errorMsg!,
+                        style: const TextStyle(
+                          fontFamily: 'Cairo',
+                          color: AppColors.error,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting ? null : () => Navigator.pop(dialogCtx),
+                  child: const Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
+                ),
+                ElevatedButton(
+                  key: const Key('pos_confirm_switch_cashier_button'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: isSubmitting || selectedUser == null
+                      ? null
+                      : () async {
+                          final pin = pinCtrl.text.trim();
+                          if (pin.isEmpty) {
+                            setDialogState(() => errorMsg = 'يرجى إدخال رمز PIN.');
+                            return;
+                          }
+
+                          setDialogState(() {
+                            isSubmitting = true;
+                            errorMsg = null;
+                          });
+
+                          final authCubit = context.read<AuthCubit>();
+                          final success = await authCubit.switchCashierWithPin(
+                            usernameOrId: selectedUser!.id,
+                            pin: pin,
+                          );
+
+                          if (!dialogCtx.mounted) return;
+
+                          if (success) {
+                            Navigator.pop(dialogCtx);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('تم تبديل الكاشير بنجاح: ${selectedUser!.displayName}'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                              setState(() {});
+                            }
+                          } else {
+                            setDialogState(() {
+                              isSubmitting = false;
+                              errorMsg = 'رمز PIN غير صحيح للكاشير المحدد.';
+                            });
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text('تبديل الكاشير', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   bool _handleHardwareScan(KeyEvent event) {
     if (!mounted) return false;
     if (event is! KeyDownEvent) return false;
@@ -507,6 +679,40 @@ class _PosViewState extends State<_PosView> {
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 6),
+
+                // Switch Cashier Button [Task 14.3]
+                Tooltip(
+                  message: 'تبديل الكاشير السريع بالـ PIN دون تفريغ السلة',
+                  child: OutlinedButton.icon(
+                    key: const Key('pos_switch_cashier_button'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      side: const BorderSide(color: AppColors.outlineVariant),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    onPressed: _showSwitchCashierDialog,
+                    icon: Icon(
+                      Icons.swap_horiz_rounded,
+                      size: 15,
+                      color: AppColors.primary,
+                    ),
+                    label: const Text(
+                      'تبديل الكاشير',
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        color: AppColors.onSurface,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -2534,13 +2740,17 @@ class _CartPanelState extends State<_CartPanel> {
               color: isSelected ? AppColors.primary : const Color(0xFF64748B),
             ),
             const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 11.5,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                color: isSelected ? AppColors.primary : const Color(0xFF475569),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: 11.5,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                  color: isSelected ? AppColors.primary : const Color(0xFF475569),
+                ),
               ),
             ),
           ],
@@ -4611,103 +4821,106 @@ class _CartPanelState extends State<_CartPanel> {
 
                                 // Unified Single Row for Received and Change
                                 SizedBox(height: isCompact ? 4 : 6),
-                                Row(
-                                  children: [
-                                    Text(
-                                      'المستلم:',
-                                      style: TextStyle(
-                                        fontFamily: 'Cairo',
-                                        fontSize: isCompact ? 11 : 12,
-                                        color: Colors.grey.shade600,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    InkWell(
-                                      onTap: () {
-                                        _receivedCtrl.text = Money(
-                                          state.total,
-                                        ).toDisplay();
-                                        setState(() {});
-                                      },
-                                      borderRadius: BorderRadius.circular(5),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 5,
-                                          vertical: 1.5,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primary.withValues(
-                                            alpha: 0.1,
-                                          ),
-                                          borderRadius:
-                                              BorderRadius.circular(5),
-                                        ),
-                                        child: Text(
-                                          'بالضبط',
-                                          style: TextStyle(
-                                            fontFamily: 'Cairo',
-                                            fontSize: 9.5,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.primary,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    SizedBox(
-                                      width: 75,
-                                      height: 28,
-                                      child: TextField(
-                                        controller: _receivedCtrl,
-                                        keyboardType: TextInputType.number,
-                                        style: const TextStyle(
+                                SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    children: [
+                                      Text(
+                                        'المستلم:',
+                                        style: TextStyle(
                                           fontFamily: 'Cairo',
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
+                                          fontSize: isCompact ? 11 : 12,
+                                          color: Colors.grey.shade600,
                                         ),
-                                        decoration: InputDecoration(
-                                          hintText: '0.00',
-                                          isDense: true,
-                                          filled: true,
-                                          fillColor:
-                                              AppColors.surfaceContainerLowest,
-                                          contentPadding:
-                                              const EdgeInsets.symmetric(
-                                                horizontal: 6,
-                                                vertical: 4,
-                                              ),
-                                          border: OutlineInputBorder(
+                                      ),
+                                      const SizedBox(width: 4),
+                                      InkWell(
+                                        onTap: () {
+                                          _receivedCtrl.text = Money(
+                                            state.total,
+                                          ).toDisplay();
+                                          setState(() {});
+                                        },
+                                        borderRadius: BorderRadius.circular(5),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 5,
+                                            vertical: 1.5,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primary.withValues(
+                                              alpha: 0.1,
+                                            ),
                                             borderRadius:
-                                                BorderRadius.circular(6),
-                                            borderSide: const BorderSide(
-                                              color: AppColors.outlineVariant,
+                                                BorderRadius.circular(5),
+                                          ),
+                                          child: Text(
+                                            'بالضبط',
+                                            style: TextStyle(
+                                              fontFamily: 'Cairo',
+                                              fontSize: 9.5,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.primary,
                                             ),
                                           ),
                                         ),
-                                        onChanged: (_) => setState(() {}),
                                       ),
-                                    ),
-                                    const Spacer(),
-                                    Text(
-                                      'الباقي: ',
-                                      style: TextStyle(
-                                        fontFamily: 'Cairo',
-                                        fontSize: isCompact ? 11 : 12,
-                                        color: Colors.grey.shade600,
+                                      const SizedBox(width: 6),
+                                      SizedBox(
+                                        width: 75,
+                                        height: 28,
+                                        child: TextField(
+                                          controller: _receivedCtrl,
+                                          keyboardType: TextInputType.number,
+                                          style: const TextStyle(
+                                            fontFamily: 'Cairo',
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          decoration: InputDecoration(
+                                            hintText: '0.00',
+                                            isDense: true,
+                                            filled: true,
+                                            fillColor:
+                                                AppColors.surfaceContainerLowest,
+                                            contentPadding:
+                                                const EdgeInsets.symmetric(
+                                                  horizontal: 6,
+                                                  vertical: 4,
+                                                ),
+                                            border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                              borderSide: const BorderSide(
+                                                color: AppColors.outlineVariant,
+                                              ),
+                                            ),
+                                          ),
+                                          onChanged: (_) => setState(() {}),
+                                        ),
                                       ),
-                                    ),
-                                    Text(
-                                      '${Money(changePiasters).toDisplay()} ج.م',
-                                      style: TextStyle(
-                                        fontFamily: 'Cairo',
-                                        fontSize: isCompact ? 12 : 13.5,
-                                        fontWeight: FontWeight.bold,
-                                        color: changePiasters > 0
-                                            ? AppColors.success
-                                            : AppColors.onSurface,
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        'الباقي: ',
+                                        style: TextStyle(
+                                          fontFamily: 'Cairo',
+                                          fontSize: isCompact ? 11 : 12,
+                                          color: Colors.grey.shade600,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                      Text(
+                                        '${Money(changePiasters).toDisplay()} ج.م',
+                                        style: TextStyle(
+                                          fontFamily: 'Cairo',
+                                          fontSize: isCompact ? 12 : 13.5,
+                                          fontWeight: FontWeight.bold,
+                                          color: changePiasters > 0
+                                              ? AppColors.success
+                                              : AppColors.onSurface,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
 
@@ -5164,7 +5377,10 @@ class _CartItemTileState extends State<_CartItemTile> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
-                Row(
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 2,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     if (!(item.color == '-' && item.size == '-') &&
                         item.color.isNotEmpty &&
@@ -5206,13 +5422,17 @@ class _CartItemTileState extends State<_CartItemTile> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              '${Money(item.price).toDisplay()} ج.م',
-                              style: TextStyle(
-                                fontFamily: 'Cairo',
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
+                            Flexible(
+                              child: Text(
+                                '${Money(item.price).toDisplay()} ج.م',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primary,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 2),
