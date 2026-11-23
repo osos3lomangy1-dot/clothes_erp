@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 
@@ -10,6 +12,8 @@ class CulinaryProfileCard extends StatelessWidget {
   final ValueChanged<String?> onKitchenStationChanged;
   final void Function(String allergen, bool selected) onAllergenToggled;
   final ValueChanged<int>? onPrepTimeSelected;
+  final String? imagePath;
+  final ValueChanged<String?>? onImagePathChanged;
 
   static const List<String> defaultAllergens = [
     'جلوتين / قمح',
@@ -40,6 +44,8 @@ class CulinaryProfileCard extends StatelessWidget {
     required this.onKitchenStationChanged,
     required this.onAllergenToggled,
     this.onPrepTimeSelected,
+    this.imagePath,
+    this.onImagePathChanged,
   });
 
   @override
@@ -66,6 +72,113 @@ class CulinaryProfileCard extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+
+          // 0. Food Image Selector
+          const Text(
+            'صورة الوجبة / المشروب:',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.onSurface),
+          ),
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.outlineVariant),
+            ),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    width: 64,
+                    height: 64,
+                    color: Colors.grey.shade100,
+                    child: (imagePath != null &&
+                            imagePath!.trim().isNotEmpty &&
+                            File(imagePath!).existsSync())
+                        ? Image.file(
+                            File(imagePath!),
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => const Icon(
+                              Icons.restaurant_menu_rounded,
+                              color: AppColors.onSurfaceVariant,
+                            ),
+                          )
+                        : const Icon(
+                            Icons.restaurant_menu_rounded,
+                            color: AppColors.onSurfaceVariant,
+                            size: 28,
+                          ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        (imagePath != null && imagePath!.trim().isNotEmpty)
+                            ? 'تم تحديد صورة الوجبة'
+                            : 'لم يتم تحديد صورة بعد',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: (imagePath != null && imagePath!.trim().isNotEmpty)
+                              ? AppColors.primary
+                              : Colors.grey.shade600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'تظهر في شبكة كاشير المبيعات للتمييز السريع (JPG, PNG, WebP)',
+                        style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                if (imagePath != null && imagePath!.trim().isNotEmpty) ...[
+                  IconButton(
+                    key: const Key('remove_culinary_image_btn'),
+                    tooltip: 'حذف الصورة',
+                    icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
+                    onPressed: () => onImagePathChanged?.call(null),
+                  ),
+                ],
+                ElevatedButton.icon(
+                  key: const Key('pick_culinary_image_btn'),
+                  onPressed: () async {
+                    try {
+                      final result = await FilePicker.platform.pickFiles(
+                        type: FileType.custom,
+                        allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+                      );
+                      if (result != null && result.files.isNotEmpty) {
+                        final picked = result.files.single.path;
+                        if (picked != null && picked.isNotEmpty) {
+                          onImagePathChanged?.call(picked);
+                        }
+                      }
+                    } catch (_) {}
+                  },
+                  icon: const Icon(Icons.photo_library_outlined, size: 16),
+                  label: Text(
+                    (imagePath != null && imagePath!.trim().isNotEmpty)
+                        ? 'تغيير'
+                        : 'اختيار صورة',
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
 

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -2116,14 +2117,20 @@ class _ProductPanelState extends State<_ProductPanel> {
                   );
                 }
                 final posCubit = context.read<PosCubit>();
+                final isHospitalityMode = (getIt.isRegistered<ActivitySettingsService>() &&
+                    getIt<ActivitySettingsService>().cachedEnabledActivities.contains(ActivityType.restaurantsCafes)) ||
+                    state.filteredVariants.any((v) {
+                      final p = posCubit.getProduct(v.productId);
+                      return p?.activityTypeEnum == ActivityType.restaurantsCafes;
+                    });
                 return GridView.builder(
                   controller: widget.gridScrollController,
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 175,
+                  gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: isHospitalityMode ? 185 : 175,
                     mainAxisSpacing: 8,
                     crossAxisSpacing: 8,
-                    mainAxisExtent: 118,
+                    mainAxisExtent: isHospitalityMode ? 172 : 118,
                   ),
                   itemCount: state.filteredVariants.length,
                   itemBuilder: (context, index) {
@@ -2291,6 +2298,9 @@ class _ProductCard extends StatelessWidget {
         : variant.productCode;
     final product = posCubit.getProduct(variant.productId);
     final culinary = product?.culinaryData;
+    final isHospitality = (product?.activityTypeEnum == ActivityType.restaurantsCafes) ||
+        (getIt.isRegistered<ActivitySettingsService>() &&
+            getIt<ActivitySettingsService>().cachedEnabledActivities.contains(ActivityType.restaurantsCafes));
 
     return BlocBuilder<PosCubit, PosState>(
       buildWhen: (prev, curr) => prev.cart != curr.cart,
@@ -2317,6 +2327,15 @@ class _ProductCard extends StatelessWidget {
               onTap: isOut
                   ? null
                   : () {
+                      if (isHospitality) {
+                        _showMealCustomizerModal(
+                          context,
+                          variant,
+                          product,
+                          displayName,
+                        );
+                        return;
+                      }
                       final productVariants =
                           posCubit.getVariantsForProduct(variant.productId);
                       if (productVariants.length > 1) {
@@ -2351,7 +2370,18 @@ class _ProductCard extends StatelessWidget {
                         ]
                       : null,
                 ),
-                child: Column(
+                child: isHospitality
+                    ? _buildHospitalityContent(
+                        context,
+                        displayName,
+                        variant,
+                        product,
+                        culinary,
+                        inCartQty,
+                        isOut,
+                        isLow,
+                      )
+                    : Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Expanded(
@@ -2670,6 +2700,533 @@ class _ProductCard extends StatelessWidget {
           fontWeight: FontWeight.bold,
           color: text,
         ),
+      ),
+    );
+  }
+
+  Widget _buildHospitalityContent(
+    BuildContext context,
+    String displayName,
+    VariantEntity variant,
+    ProductEntity? product,
+    RestaurantCulinaryData? culinary,
+    int inCartQty,
+    bool isOut,
+    bool isLow,
+  ) {
+    final imagePath = culinary?.imagePath;
+    final hasImage = imagePath != null &&
+        imagePath.trim().isNotEmpty &&
+        File(imagePath).existsSync();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // 1. Food Photo Container
+        Expanded(
+          flex: 5,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Container(
+                color: const Color(0xFFF1F5F9),
+                child: hasImage
+                    ? Image.file(
+                        File(imagePath),
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const Center(
+                          child: Icon(
+                            Icons.restaurant_menu_rounded,
+                            color: AppColors.onSurfaceVariant,
+                            size: 28,
+                          ),
+                        ),
+                      )
+                    : const Center(
+                        child: Icon(
+                          Icons.restaurant_menu_rounded,
+                          color: AppColors.onSurfaceVariant,
+                          size: 28,
+                        ),
+                      ),
+              ),
+              Positioned(
+                top: 5,
+                right: 5,
+                child: _buildStockPill(isOut, isLow, variant.quantity),
+              ),
+              if (culinary != null && culinary.hasCulinaryInfo) ...[
+                Positioned(
+                  top: 5,
+                  left: 5,
+                  child: InkWell(
+                    key: Key('product_culinary_info_btn_${variant.productId}'),
+                    onTap: () => _showCulinaryInfoDialog(
+                      context,
+                      displayName,
+                      culinary,
+                    ),
+                    borderRadius: BorderRadius.circular(4),
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.90),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Icon(
+                        Icons.info_outline_rounded,
+                        size: 13,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+              if (culinary != null && culinary.calories != null) ...[
+                Positioned(
+                  bottom: 4,
+                  right: 5,
+                  child: Container(
+                    key: Key('product_calorie_badge_${variant.productId}'),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.65),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.local_fire_department_rounded,
+                          size: 10,
+                          color: Colors.amberAccent,
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          '${culinary.calories} kcal',
+                          style: const TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        // 2. Info Footer
+        Expanded(
+          flex: 4,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  displayName,
+                  style: const TextStyle(
+                    fontFamily: 'Cairo',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: AppColors.onSurface,
+                    height: 1.15,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          '${Money(variant.salePrice).toDisplay()} ج.م',
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            color: AppColors.primary,
+                          ),
+                          maxLines: 1,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    if (inCartQty == 0)
+                      Container(
+                        height: 22,
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        decoration: BoxDecoration(
+                          color: isOut ? const Color(0xFFE2E8F0) : AppColors.primary,
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.add_rounded,
+                              size: 12,
+                              color: isOut ? const Color(0xFF475569) : Colors.white,
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              'طلب',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.bold,
+                                color: isOut ? const Color(0xFF475569) : Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      Container(
+                        height: 22,
+                        padding: const EdgeInsets.symmetric(horizontal: 5),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.check_rounded, size: 11, color: Colors.white),
+                            const SizedBox(width: 2),
+                            Text(
+                              '$inCartQty',
+                              style: const TextStyle(
+                                fontFamily: 'Cairo',
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showMealCustomizerModal(
+    BuildContext context,
+    VariantEntity variant,
+    ProductEntity? product,
+    String displayName,
+  ) {
+    final culinary = product?.culinaryData;
+    final textCtrl = TextEditingController();
+    final selectedModifiers = <String>{};
+    int quantity = 1;
+
+    const exclusionPills = [
+      'بدون بصل',
+      'بدون مايونيز',
+      'بدون طماطم',
+      'بدون مخلل',
+    ];
+
+    const cookingAndAddonPills = [
+      'سبايسي',
+      'بدون شطة',
+      'زيادة جبنة',
+      'زيادة صوص',
+    ];
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          void togglePill(String pill) {
+            setDialogState(() {
+              if (selectedModifiers.contains(pill)) {
+                selectedModifiers.remove(pill);
+              } else {
+                selectedModifiers.add(pill);
+              }
+              final customText = textCtrl.text
+                  .split(' - ')
+                  .where((s) =>
+                      !exclusionPills.contains(s) &&
+                      !cookingAndAddonPills.contains(s))
+                  .join(' - ')
+                  .trim();
+              final allParts = [...selectedModifiers];
+              if (customText.isNotEmpty) {
+                allParts.add(customText);
+              }
+              textCtrl.text = allParts.join(' - ');
+            });
+          }
+
+          Widget buildPillSection(String title, List<String> pills) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: pills.map((p) {
+                    final isSel = selectedModifiers.contains(p);
+                    return InkWell(
+                      key: Key('modifier_pill_$p'),
+                      onTap: () => togglePill(p),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSel
+                              ? AppColors.secondary.withValues(alpha: 0.15)
+                              : AppColors.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isSel
+                                ? AppColors.secondary
+                                : AppColors.outlineVariant,
+                            width: isSel ? 1.4 : 1.0,
+                          ),
+                        ),
+                        child: Text(
+                          p,
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 12,
+                            fontWeight:
+                                isSel ? FontWeight.bold : FontWeight.w500,
+                            color: isSel
+                                ? AppColors.secondary
+                                : AppColors.onSurface,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+              ],
+            );
+          }
+
+          final imagePath = culinary?.imagePath;
+          final hasImage = imagePath != null &&
+              imagePath.trim().isNotEmpty &&
+              File(imagePath).existsSync();
+
+          return AlertDialog(
+            key: const Key('meal_customizer_modal'),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            titlePadding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+            actionsPadding: const EdgeInsets.all(16),
+            title: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    width: 52,
+                    height: 52,
+                    color: const Color(0xFFF1F5F9),
+                    child: hasImage
+                        ? Image.file(
+                            File(imagePath),
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => const Icon(
+                              Icons.restaurant_menu_rounded,
+                              color: AppColors.onSurfaceVariant,
+                            ),
+                          )
+                        : const Icon(
+                            Icons.restaurant_menu_rounded,
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayName,
+                        style: const TextStyle(
+                          fontFamily: 'Cairo',
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${Money(variant.salePrice).toDisplay()} ج.م',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded),
+                  onPressed: () => Navigator.of(ctx).pop(),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 440,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Divider(),
+                    const SizedBox(height: 4),
+                    buildPillSection('استثناءات المطبخ (بدون):', exclusionPills),
+                    buildPillSection('خيارات الطهي والإضافات:', cookingAndAddonPills),
+                    TextFormField(
+                      key: const Key('customizer_notes_field'),
+                      controller: textCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'ملاحظة خاصة للمطبخ',
+                        hintText: 'اكتب أي تفاصيل إضافية للتحضير...',
+                        prefixIcon: const Icon(Icons.edit_note_rounded),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        filled: true,
+                        fillColor: AppColors.surfaceContainerLow,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'الكمية المطلوبة:',
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                        Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: AppColors.outlineVariant),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              IconButton(
+                                key: const Key('customizer_qty_minus'),
+                                icon: const Icon(Icons.remove_rounded, size: 18),
+                                onPressed: () {
+                                  if (quantity > 1) {
+                                    setDialogState(() => quantity--);
+                                  }
+                                },
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                child: Text(
+                                  '$quantity',
+                                  key: const Key('customizer_qty_text'),
+                                  style: const TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                key: const Key('customizer_qty_plus'),
+                                icon: const Icon(Icons.add_rounded, size: 18),
+                                onPressed: () {
+                                  setDialogState(() => quantity++);
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton.icon(
+                key: const Key('customizer_add_to_order_btn'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                icon: const Icon(Icons.add_shopping_cart_rounded, size: 18),
+                label: Text(
+                  'إضافة للطلب (${Money(variant.salePrice * quantity).toDisplay()} ج.م)',
+                  style: const TextStyle(
+                    fontFamily: 'Cairo',
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                onPressed: () {
+                  final finalNote = textCtrl.text.trim();
+                  context.read<PosCubit>().addToCart(
+                        variant,
+                        quantity,
+                        finalNote.isNotEmpty ? finalNote : null,
+                        selectedModifiers.toList(),
+                      );
+                  Navigator.of(ctx).pop();
+                },
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -7351,59 +7908,125 @@ class _CartItemTileState extends State<_CartItemTile> {
               : AppColors.outlineVariant.withValues(alpha: 0.7),
         ),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        item.productName,
-                        style: TextStyle(
-                          fontFamily: 'Cairo',
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                          color: item.isReturn
-                              ? AppColors.error
-                              : AppColors.onSurface,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+          // Row 1: Product Name + Return badge + Delete button
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  item.productName,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: item.isReturn
+                        ? AppColors.error
+                        : AppColors.onSurface,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (item.isReturn) ...[
+                const SizedBox(width: 6),
+                Container(
+                  key: Key('exchange_item_badge_${item.variantId}'),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 1.5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: AppColors.error.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: const Text(
+                    'مرتجع استبدال',
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.error,
+                    ),
+                  ),
+                ),
+              ],
+              if (_isHospitality) ...[
+                const SizedBox(width: 4),
+                InkWell(
+                  key: Key('kitchen_notes_btn_${item.variantId}'),
+                  onTap: () => _openKitchenNotesDialog(context),
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 1.5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: (item.kitchenNotes != null && item.kitchenNotes!.isNotEmpty)
+                          ? AppColors.secondary.withValues(alpha: 0.12)
+                          : AppColors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: (item.kitchenNotes != null && item.kitchenNotes!.isNotEmpty)
+                            ? AppColors.secondary
+                            : AppColors.outlineVariant,
                       ),
                     ),
-                    if (item.isReturn) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        key: Key('exchange_item_badge_${item.variantId}'),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 1.5,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.soup_kitchen_rounded,
+                          size: 11,
+                          color: (item.kitchenNotes != null && item.kitchenNotes!.isNotEmpty)
+                              ? AppColors.secondary
+                              : const Color(0xFF64748B),
                         ),
-                        decoration: BoxDecoration(
-                          color: AppColors.error.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: AppColors.error.withValues(alpha: 0.4),
-                          ),
-                        ),
-                        child: const Text(
-                          'مرتجع استبدال',
+                        const SizedBox(width: 3),
+                        Text(
+                          'ملاحظة تحضير',
                           style: TextStyle(
                             fontFamily: 'Cairo',
-                            fontSize: 9.5,
+                            fontSize: 10,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.error,
+                            color: (item.kitchenNotes != null && item.kitchenNotes!.isNotEmpty)
+                                ? AppColors.secondary
+                                : const Color(0xFF64748B),
                           ),
                         ),
-                      ),
-                    ],
-                  ],
+                      ],
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 2),
-                Wrap(
+              ],
+              IconButton(
+                icon: const Icon(
+                  Icons.delete_outline_rounded,
+                  size: 18,
+                  color: AppColors.error,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+                onPressed: () => context.read<PosCubit>().removeFromCart(
+                      item.variantId,
+                      isReturn: item.isReturn,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+
+          // Row 2: Variations/Price/Notes button + Stepper + Line Total
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Wrap(
                   spacing: 6,
                   runSpacing: 2,
                   crossAxisAlignment: WrapCrossAlignment.center,
@@ -7477,54 +8100,6 @@ class _CartItemTileState extends State<_CartItemTile> {
                         ),
                       ),
                     ),
-                    if (_isHospitality) ...[
-                      InkWell(
-                        key: Key('kitchen_notes_btn_${item.variantId}'),
-                        onTap: () => _openKitchenNotesDialog(context),
-                        borderRadius: BorderRadius.circular(6),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 1.5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: (item.kitchenNotes != null && item.kitchenNotes!.isNotEmpty)
-                                ? AppColors.secondary.withValues(alpha: 0.12)
-                                : AppColors.surfaceContainerLow,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: (item.kitchenNotes != null && item.kitchenNotes!.isNotEmpty)
-                                  ? AppColors.secondary
-                                  : AppColors.outlineVariant,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.soup_kitchen_rounded,
-                                size: 11,
-                                color: (item.kitchenNotes != null && item.kitchenNotes!.isNotEmpty)
-                                    ? AppColors.secondary
-                                    : const Color(0xFF64748B),
-                              ),
-                              const SizedBox(width: 3),
-                              Text(
-                                'ملاحظة تحضير',
-                                style: TextStyle(
-                                  fontFamily: 'Cairo',
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: (item.kitchenNotes != null && item.kitchenNotes!.isNotEmpty)
-                                      ? AppColors.secondary
-                                      : const Color(0xFF64748B),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
                     if (item.promotionDiscount > 0) ...[
                       const SizedBox(width: 6),
                       Container(
@@ -7561,185 +8136,175 @@ class _CartItemTileState extends State<_CartItemTile> {
                     ],
                   ],
                 ),
-                if (item.kitchenNotes != null && item.kitchenNotes!.trim().isNotEmpty) ...[
-                  const SizedBox(height: 3),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.secondary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: AppColors.secondary.withValues(alpha: 0.3)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.notes_rounded, size: 12, color: AppColors.secondary),
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            'ملاحظة: ${item.kitchenNotes!}',
-                            key: Key('kitchen_notes_text_${item.variantId}'),
-                            style: TextStyle(
-                              fontFamily: 'Cairo',
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.secondary,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        InkWell(
-                          key: Key('clear_kitchen_notes_${item.variantId}'),
-                          onTap: () {
-                            context.read<PosCubit>().updateKitchenNotes(
-                              item.variantId,
-                              null,
-                              modifiers: const [],
-                              isReturn: item.isReturn,
-                            );
-                          },
-                          child: Icon(Icons.close_rounded, size: 12, color: AppColors.secondary),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
+              ),
 
-          // Stepper + Direct Editable Quantity Input Box
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.outlineVariant),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.remove_rounded, size: 16),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 28,
-                    minHeight: 28,
-                  ),
-                  onPressed: () => context.read<PosCubit>().decreaseQty(
-                        item.variantId,
-                        isReturn: item.isReturn,
+              // Stepper
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.outlineVariant),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.remove_rounded, size: 16),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 28,
+                        minHeight: 28,
                       ),
-                ),
-                // Inline Direct Text Input for Quantity
-                Container(
-                  width: 50,
-                  height: 26,
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceContainerLowest,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: AppColors.outlineVariant.withValues(alpha: 0.6),
-                    ),
-                  ),
-                  child: TextField(
-                    key: Key('cart_qty_input_${item.variantId}'),
-                    controller: _qtyCtrl,
-                    focusNode: _qtyFocus,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: item.isReturn ? AppColors.error : AppColors.primary,
-                    ),
-                    decoration: const InputDecoration(
-                      contentPadding: EdgeInsets.zero,
-                      isDense: true,
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                    ),
-                    onTap: () {
-                      _qtyCtrl.selection = TextSelection(
-                        baseOffset: 0,
-                        extentOffset: _qtyCtrl.text.length,
-                      );
-                    },
-                    onSubmitted: _commitQtyChange,
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add_rounded, size: 16),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 28,
-                    minHeight: 28,
-                  ),
-                  onPressed: (!item.isReturn && item.quantity >= widget.maxStock)
-                      ? () {
-                          AppFloatingToast.show(
-                            context,
-                            message: 'الرصيد المتاح هو ${widget.maxStock} فقط',
-                            type: ToastType.warning,
-                          );
-                        }
-                      : () => context.read<PosCubit>().increaseQty(
+                      onPressed: () => context.read<PosCubit>().decreaseQty(
                             item.variantId,
                             isReturn: item.isReturn,
                           ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(width: 10),
-
-          // Line Total
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                item.isReturn
-                    ? '-${Money(item.total.abs()).toDisplay()} ج.م'
-                    : '${Money(item.total).toDisplay()} ج.م',
-                style: TextStyle(
-                  fontFamily: 'Cairo',
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                  color: item.isReturn ? AppColors.error : AppColors.primary,
+                    ),
+                    Container(
+                      width: 44,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceContainerLowest,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: AppColors.outlineVariant.withValues(alpha: 0.6),
+                        ),
+                      ),
+                      child: TextField(
+                        key: Key('cart_qty_input_${item.variantId}'),
+                        controller: _qtyCtrl,
+                        focusNode: _qtyFocus,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: item.isReturn ? AppColors.error : AppColors.primary,
+                        ),
+                        decoration: const InputDecoration(
+                          contentPadding: EdgeInsets.zero,
+                          isDense: true,
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                        ),
+                        onTap: () {
+                          _qtyCtrl.selection = TextSelection(
+                            baseOffset: 0,
+                            extentOffset: _qtyCtrl.text.length,
+                          );
+                        },
+                        onSubmitted: _commitQtyChange,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add_rounded, size: 16),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 28,
+                        minHeight: 28,
+                      ),
+                      onPressed: (!item.isReturn && item.quantity >= widget.maxStock)
+                          ? () {
+                              AppFloatingToast.show(
+                                context,
+                                message: 'الرصيد المتاح هو ${widget.maxStock} فقط',
+                                type: ToastType.warning,
+                              );
+                            }
+                          : () => context.read<PosCubit>().increaseQty(
+                                item.variantId,
+                                isReturn: item.isReturn,
+                              ),
+                    ),
+                  ],
                 ),
               ),
-              if (_isDecimalItem || item.decimalQuantity != null)
-                Text(
-                  '${item.isReturn ? "-" : ""}${_formatQty(item.effectiveQuantity)} ${item.unit ?? "م"}',
-                  style: TextStyle(
-                    fontFamily: 'Cairo',
-                    fontSize: 10,
-                    color: Colors.grey.shade600,
+
+              const SizedBox(width: 8),
+
+              // Line Total
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    item.isReturn
+                        ? '-${Money(item.total.abs()).toDisplay()} ج.م'
+                        : '${Money(item.total).toDisplay()} ج.م',
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: item.isReturn ? AppColors.error : AppColors.primary,
+                    ),
                   ),
-                ),
+                  if (_isDecimalItem || item.decimalQuantity != null)
+                    Text(
+                      '${item.isReturn ? "-" : ""}${_formatQty(item.effectiveQuantity)} ${item.unit ?? "م"}',
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 10,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
 
-          IconButton(
-            icon: const Icon(
-              Icons.delete_outline_rounded,
-              size: 18,
-              color: AppColors.error,
+          // Row 3: Kitchen Notes (Full width across tile)
+          if (item.kitchenNotes != null && item.kitchenNotes!.trim().isNotEmpty) ...[
+            const SizedBox(height: 5),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.secondary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: AppColors.secondary.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.notes_rounded, size: 13, color: AppColors.secondary),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: Text(
+                      'ملاحظة: ${item.kitchenNotes!}',
+                      key: Key('kitchen_notes_text_${item.variantId}'),
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.secondary,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  InkWell(
+                    key: Key('clear_kitchen_notes_${item.variantId}'),
+                    onTap: () {
+                      context.read<PosCubit>().updateKitchenNotes(
+                        item.variantId,
+                        null,
+                        modifiers: const [],
+                        isReturn: item.isReturn,
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(2),
+                      child: Icon(Icons.close_rounded, size: 13, color: AppColors.secondary),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-            onPressed: () => context.read<PosCubit>().removeFromCart(
-                  item.variantId,
-                  isReturn: item.isReturn,
-                ),
-          ),
+          ],
         ],
       ),
     );

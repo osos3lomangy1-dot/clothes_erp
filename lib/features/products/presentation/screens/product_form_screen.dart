@@ -152,6 +152,7 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
   late TextEditingController _prepTimeCtrl;
   String? _kitchenStation;
   final Set<String> _selectedAllergens = {};
+  String? _foodImagePath;
 
   String? _validationError;
 
@@ -180,6 +181,7 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
     _prepTimeCtrl = TextEditingController(
         text: cul?.prepTimeMinutes != null ? '${cul!.prepTimeMinutes}' : '');
     _kitchenStation = cul?.kitchenStation;
+    _foodImagePath = widget.product?.foodImagePath;
     if (cul != null && cul.allergens.isNotEmpty) {
       _selectedAllergens.addAll(cul.allergens);
     }
@@ -561,6 +563,7 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
         prepTimeMinutes: int.tryParse(_prepTimeCtrl.text.trim()),
         kitchenStation: _kitchenStation,
         userDescription: state.description.isEmpty ? null : state.description,
+        imagePath: _foodImagePath,
       );
       cubit.onDescriptionChanged(cul.toEncodedString());
     }
@@ -1160,6 +1163,9 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                   prepTimeController: _prepTimeCtrl,
                                   selectedAllergens: _selectedAllergens,
                                   selectedKitchenStation: _kitchenStation,
+                                  imagePath: _foodImagePath,
+                                  onImagePathChanged: (val) =>
+                                      setState(() => _foodImagePath = val),
                                   onKitchenStationChanged: (val) =>
                                       setState(() => _kitchenStation = val),
                                   onAllergenToggled: (allergen, selected) {

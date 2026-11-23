@@ -99,6 +99,7 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
   late TextEditingController _prepTimeCtrl;
   String? _kitchenStation;
   final Set<String> _selectedAllergens = {};
+  String? _foodImagePath;
 
   @override
   void initState() {
@@ -142,6 +143,7 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
     _prepTimeCtrl = TextEditingController(
         text: cul?.prepTimeMinutes != null ? '${cul!.prepTimeMinutes}' : '');
     _kitchenStation = cul?.kitchenStation;
+    _foodImagePath = p?.foodImagePath;
     if (cul != null && cul.allergens.isNotEmpty) {
       _selectedAllergens.addAll(cul.allergens);
     }
@@ -291,6 +293,7 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
         prepTimeMinutes: int.tryParse(_prepTimeCtrl.text.trim()),
         kitchenStation: _kitchenStation,
         userDescription: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+        imagePath: _foodImagePath,
       );
       finalDesc = cul.toEncodedString();
     } else {
@@ -749,6 +752,9 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
                           prepTimeController: _prepTimeCtrl,
                           selectedAllergens: _selectedAllergens,
                           selectedKitchenStation: _kitchenStation,
+                          imagePath: _foodImagePath,
+                          onImagePathChanged: (val) =>
+                              setState(() => _foodImagePath = val),
                           onKitchenStationChanged: (val) =>
                               setState(() => _kitchenStation = val),
                           onAllergenToggled: (allergen, selected) {

@@ -11,6 +11,7 @@ class RestaurantCulinaryData extends Equatable {
   final int? prepTimeMinutes;
   final String? kitchenStation;
   final String? userDescription;
+  final String? imagePath;
 
   const RestaurantCulinaryData({
     this.ingredients,
@@ -19,6 +20,7 @@ class RestaurantCulinaryData extends Equatable {
     this.prepTimeMinutes,
     this.kitchenStation,
     this.userDescription,
+    this.imagePath,
   });
 
   bool get isEmpty =>
@@ -27,14 +29,16 @@ class RestaurantCulinaryData extends Equatable {
       allergens.isEmpty &&
       prepTimeMinutes == null &&
       (kitchenStation == null || kitchenStation!.trim().isEmpty) &&
-      (userDescription == null || userDescription!.trim().isEmpty);
+      (userDescription == null || userDescription!.trim().isEmpty) &&
+      (imagePath == null || imagePath!.trim().isEmpty);
 
   bool get hasCulinaryInfo =>
       (ingredients != null && ingredients!.trim().isNotEmpty) ||
       calories != null ||
       allergens.isNotEmpty ||
       prepTimeMinutes != null ||
-      (kitchenStation != null && kitchenStation!.trim().isNotEmpty);
+      (kitchenStation != null && kitchenStation!.trim().isNotEmpty) ||
+      (imagePath != null && imagePath!.trim().isNotEmpty);
 
   Map<String, dynamic> toJson() => {
         if (ingredients != null && ingredients!.trim().isNotEmpty)
@@ -46,6 +50,8 @@ class RestaurantCulinaryData extends Equatable {
           'kitchenStation': kitchenStation!.trim(),
         if (userDescription != null && userDescription!.trim().isNotEmpty)
           'userDescription': userDescription!.trim(),
+        if (imagePath != null && imagePath!.trim().isNotEmpty)
+          'imagePath': imagePath!.trim(),
       };
 
   factory RestaurantCulinaryData.fromJson(Map<String, dynamic> json) {
@@ -64,6 +70,7 @@ class RestaurantCulinaryData extends Equatable {
           : int.tryParse(json['prepTimeMinutes']?.toString() ?? ''),
       kitchenStation: json['kitchenStation'] as String?,
       userDescription: json['userDescription'] as String?,
+      imagePath: json['imagePath'] as String?,
     );
   }
 
@@ -74,6 +81,7 @@ class RestaurantCulinaryData extends Equatable {
     int? prepTimeMinutes,
     String? kitchenStation,
     String? userDescription,
+    String? imagePath,
   }) {
     return RestaurantCulinaryData(
       ingredients: ingredients ?? this.ingredients,
@@ -82,6 +90,7 @@ class RestaurantCulinaryData extends Equatable {
       prepTimeMinutes: prepTimeMinutes ?? this.prepTimeMinutes,
       kitchenStation: kitchenStation ?? this.kitchenStation,
       userDescription: userDescription ?? this.userDescription,
+      imagePath: imagePath ?? this.imagePath,
     );
   }
 
@@ -132,6 +141,7 @@ class RestaurantCulinaryData extends Equatable {
         prepTimeMinutes,
         kitchenStation,
         userDescription,
+        imagePath,
       ];
 }
 
@@ -207,6 +217,7 @@ class ProductEntity extends Equatable {
   List<String> get allergens => culinaryData.allergens;
   int? get prepTimeMinutes => culinaryData.prepTimeMinutes;
   String? get kitchenStation => culinaryData.kitchenStation;
+  String? get foodImagePath => culinaryData.imagePath;
   String get cleanDescription {
     final parsed = culinaryData;
     if (parsed.hasCulinaryInfo) {

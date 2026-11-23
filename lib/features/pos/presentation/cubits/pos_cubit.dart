@@ -421,10 +421,22 @@ class PosCubit extends Cubit<PosState> {
     ));
   }
 
-  void addToCart(VariantEntity variant, [int quantity = 1]) {
+  void addToCart(
+    VariantEntity variant, [
+    int quantity = 1,
+    String? kitchenNotes,
+    List<String> modifiers = const [],
+  ]) {
     if (quantity <= 0) return;
     final state = this.state;
-    final existingIndex = state.cart.indexWhere((item) => item.variantId == variant.id && !item.isReturn);
+    final cleanNotes = (kitchenNotes != null && kitchenNotes.trim().isNotEmpty)
+        ? kitchenNotes.trim()
+        : null;
+    final existingIndex = state.cart.indexWhere((item) =>
+        item.variantId == variant.id &&
+        !item.isReturn &&
+        (item.kitchenNotes ?? '') == (cleanNotes ?? '') &&
+        _modifiersEqual(item.modifiers, modifiers));
     List<SaleItemEntity> newCart;
     if (existingIndex >= 0) {
       final existing = state.cart[existingIndex];
@@ -441,10 +453,21 @@ class PosCubit extends Cubit<PosState> {
         color: variant.color,
         price: variant.salePrice,
         quantity: quantity,
+        kitchenNotes: cleanNotes,
+        modifiers: modifiers,
       );
       newCart = [...state.cart, newItem];
     }
     _updateCart(state, newCart);
+  }
+
+  static bool _modifiersEqual(List<String> a, List<String> b) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   void addExchangeItem(VariantEntity variant, [int quantity = 1]) {
