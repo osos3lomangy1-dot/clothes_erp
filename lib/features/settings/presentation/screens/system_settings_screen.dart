@@ -302,91 +302,94 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
   }
 
   Widget _buildSpotlightSearchField(double width) {
-    return Container(
-      width: width,
-      height: 38,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: _isSearchFocused ? AppColors.primary : const Color(0xFFE2E8F0),
-          width: _isSearchFocused ? 1.4 : 1.0,
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: width),
+      child: Container(
+        height: 38,
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _isSearchFocused
+                ? AppColors.primary
+                : AppColors.outlineVariant.withValues(alpha: 0.8),
+            width: _isSearchFocused ? 1.4 : 1.0,
+          ),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: _isSearchFocused 
-                ? AppColors.primary.withValues(alpha: 0.08)
-                : const Color(0x06000000),
-            blurRadius: _isSearchFocused ? 8 : 4,
-            offset: const Offset(0, 1),
+        child: TextField(
+          key: const Key('settings_search_field'),
+          controller: _searchCtrl,
+          focusNode: _searchFocus,
+          onChanged: (val) {
+            setState(() {
+              _searchQuery = val.trim();
+            });
+          },
+          style: const TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 13,
+            color: AppColors.onSurface,
           ),
-        ],
-      ),
-      child: TextField(
-        key: const Key('settings_search_field'),
-        controller: _searchCtrl,
-        focusNode: _searchFocus,
-        onChanged: (val) {
-          setState(() {
-            _searchQuery = val.trim();
-          });
-        },
-        style: const TextStyle(fontSize: 12.5, color: Color(0xFF0F172A)),
-        decoration: InputDecoration(
-          isDense: true,
-          hintText: 'ابحث عن ميزة، قسم، أو صلاحية...',
-          hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
-          prefixIcon: const Icon(
-            Icons.search_rounded,
-            size: 18,
-            color: Color(0xFF64748B),
-          ),
-          prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-          suffixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(
-                  key: const Key('settings_search_clear_btn'),
-                  icon: const Icon(Icons.close_rounded, size: 16, color: Color(0xFF64748B)),
-                  splashRadius: 16,
-                  padding: EdgeInsets.zero,
-                  onPressed: () {
-                    _searchCtrl.clear();
-                    setState(() {
-                      _searchQuery = '';
-                    });
-                  },
-                )
-              : Padding(
-                  padding: const EdgeInsetsDirectional.only(end: 8),
-                  child: Container(
-                    key: const Key('settings_search_kbd_badge'),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(5),
-                      border: Border.all(color: const Color(0xFFCBD5E1), width: 0.8),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x0A000000),
-                          offset: Offset(0, 1),
-                          blurRadius: 1,
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: 'ابحث عن ميزة، قسم، أو صلاحية...',
+            hintStyle: TextStyle(
+              fontFamily: 'Cairo',
+              color: Colors.grey.shade500,
+              fontSize: 12,
+            ),
+            prefixIcon: Icon(
+              Icons.search_rounded,
+              color: AppColors.primary,
+              size: 18,
+            ),
+            prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            suffixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            suffixIcon: _searchQuery.isNotEmpty
+                ? IconButton(
+                    key: const Key('settings_search_clear_btn'),
+                    icon: const Icon(Icons.clear, size: 16),
+                    splashRadius: 16,
+                    padding: EdgeInsets.zero,
+                    onPressed: () {
+                      _searchCtrl.clear();
+                      setState(() {
+                        _searchQuery = '';
+                      });
+                    },
+                  )
+                : Padding(
+                    padding: const EdgeInsetsDirectional.only(end: 8),
+                    child: Container(
+                      key: const Key('settings_search_kbd_badge'),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceContainer,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: AppColors.outlineVariant,
                         ),
-                      ],
-                    ),
-                    child: const Text(
-                      'Ctrl + F',
-                      style: TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF64748B),
-                        letterSpacing: 0.3,
+                      ),
+                      child: const Text(
+                        'Ctrl + F',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.onSurface,
+                        ),
                       ),
                     ),
                   ),
-                ),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 9),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 9,
+            ),
+          ),
         ),
       ),
     );
