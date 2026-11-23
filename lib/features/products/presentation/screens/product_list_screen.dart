@@ -26,6 +26,7 @@ import '../cubits/product_state.dart';
 import '../widgets/rapid_barcode_intake_dialog.dart';
 import '../widgets/simple_product_form_dialog.dart';
 import 'product_form_screen.dart';
+import '../../../settings/data/services/activity_settings_service.dart';
 
 class ProductListScreen extends StatelessWidget {
   const ProductListScreen({super.key});
@@ -58,7 +59,19 @@ class _ProductsAndCategoriesViewState
   String? _selectedCategoryName;
 
   StreamSubscription<String?>? _sectorSub;
+  StreamSubscription<List<ActivityType>>? _activitySub;
   String _sectorMode = RetailSector.apparel;
+
+  bool get _isHospitality {
+    if (RetailSector.isHospitalityMode(_sectorMode)) return true;
+    final enabled = getIt.isRegistered<ActivitySettingsService>()
+        ? getIt<ActivitySettingsService>().cachedEnabledActivities
+        : <ActivityType>[];
+    if (enabled.length == 1 && enabled.contains(ActivityType.restaurantsCafes)) {
+      return true;
+    }
+    return false;
+  }
 
   @override
   void initState() {
@@ -74,10 +87,16 @@ class _ProductsAndCategoriesViewState
         }
       });
     }
+    if (getIt.isRegistered<ActivitySettingsService>()) {
+      _activitySub = getIt<ActivitySettingsService>().watchEnabledActivities().listen((_) {
+        if (mounted) setState(() {});
+      });
+    }
   }
 
   @override
   void dispose() {
+    _activitySub?.cancel();
     _sectorSub?.cancel();
     _searchCtrl.dispose();
     super.dispose();
@@ -163,7 +182,7 @@ class _ProductsAndCategoriesViewState
       builder: (_) => isSingle
           ? SimpleProductFormDialog(
               product: product,
-              initialActivityType: RetailSector.isHospitalityMode(_sectorMode)
+              initialActivityType: _isHospitality
                   ? ActivityType.restaurantsCafes
                   : null,
             )
@@ -537,7 +556,7 @@ class _ProductsAndCategoriesViewState
           const SizedBox(width: 8),
           if ((_sectorMode == RetailSector.supermarket ||
                   RetailSector.isSingleProductMode(_sectorMode)) &&
-              !RetailSector.isHospitalityMode(_sectorMode)) ...[
+              !_isHospitality) ...[
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: ElevatedButton.icon(
@@ -577,7 +596,7 @@ class _ProductsAndCategoriesViewState
                 size: 18,
               ),
               label: Text(
-                RetailSector.isHospitalityMode(_sectorMode)
+                _isHospitality
                     ? 'إضافة وجبة / مشروب'
                     : (RetailSector.isSingleProductMode(_sectorMode)
                         ? 'إضافة صنف جديد'
@@ -1348,10 +1367,10 @@ class _ProductsAndCategoriesViewState
               ),
             ],
           ),
-          if (product.description.isNotEmpty) ...[
+          if (product.cleanDescription.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(
-              product.description,
+              product.cleanDescription,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(fontSize: 11, color: Colors.grey.shade600),

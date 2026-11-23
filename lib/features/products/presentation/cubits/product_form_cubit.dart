@@ -79,7 +79,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         if (product != null) {
           emit(state.copyWith(
             name: product.name,
-            description: product.description,
+            description: product.cleanDescription,
             categoryId: product.categoryId,
             categoryName: product.categoryName,
             minStock: product.minStock,

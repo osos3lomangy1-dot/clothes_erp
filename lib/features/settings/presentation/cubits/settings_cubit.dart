@@ -129,6 +129,7 @@ class SettingsCubit extends Cubit<SettingsState> {
         mode,
         userId: userId,
       );
+      emit(state.copyWith(sectorMode: mode));
       return null;
     } catch (e) {
       final msg = e.toString().replaceAll('Exception: ', '');

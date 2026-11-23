@@ -45,10 +45,15 @@ class SystemSettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => getIt<SettingsCubit>()..start(),
-      child: _SystemSettingsView(initialCategory: initialCategory),
-    );
+    try {
+      context.read<SettingsCubit>();
+      return _SystemSettingsView(initialCategory: initialCategory);
+    } catch (_) {
+      return BlocProvider(
+        create: (_) => getIt<SettingsCubit>()..start(),
+        child: _SystemSettingsView(initialCategory: initialCategory),
+      );
+    }
   }
 }
 
@@ -581,6 +586,9 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
 
                         // ─── 0. الأنشطة وخطوط العمل (Activities & Telegram) ───
                         if (currentCat == 'activities') ...[
+                          _sectionTitle('العزل التشغيلي ونمط الأنشطة'),
+                          _PureHospitalityIsolationCard(userId: userId),
+                          const SizedBox(height: 16),
                           _sectionTitle('أقسام المنتجات والأنشطة التجارية'),
                           _ActivitiesMasterSettingsCard(userId: userId),
                           const SizedBox(height: 24),
@@ -4467,6 +4475,130 @@ class _SectorModeSettingsCard extends StatelessWidget {
                     ),
                   ),
                 ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ─── Pure Hospitality Isolation Switch Card ───
+class _PureHospitalityIsolationCard extends StatelessWidget {
+  final String userId;
+
+  const _PureHospitalityIsolationCard({required this.userId});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<SettingsCubit, SettingsState>(
+      builder: (context, state) {
+        final isIsolated = RetailSector.isHospitalityMode(state.sectorMode);
+
+        return Card(
+          elevation: 0,
+          margin: EdgeInsets.zero,
+          color: isIsolated
+              ? const Color(0xFFC2185B).withValues(alpha: 0.05)
+              : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: isIsolated
+                  ? const Color(0xFFC2185B).withValues(alpha: 0.5)
+                  : AppColors.outlineVariant,
+              width: isIsolated ? 1.5 : 1,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: isIsolated
+                        ? const Color(0xFFC2185B)
+                        : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.restaurant_rounded,
+                    color: isIsolated ? Colors.white : const Color(0xFF64748B),
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Flexible(
+                            child: Text(
+                              'تفعيل نمط المطاعم والكافيهات الحصري (العزل التشغيلي التام)',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14.5,
+                                color: Color(0xFF0F172A),
+                              ),
+                            ),
+                          ),
+                          if (isIsolated) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFC2185B).withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'مفعّل',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFFC2185B),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'عند التفعيل، يتم إخفاء كل ما يخص الملابس والأحذية (مقاسات S/M/L، ملصقات الباركود، والتقسيط)، وتخصيص الكاشير للصالة والتيك أواي وبون المطبخ.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF64748B),
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Switch(
+                  key: const Key('setting_pure_hospitality_isolation'),
+                  value: isIsolated,
+                  activeThumbColor: const Color(0xFFC2185B),
+                  activeTrackColor: const Color(0xFFC2185B).withValues(alpha: 0.4),
+                  onChanged: (val) async {
+                    final targetMode = val ? RetailSector.hospitality : RetailSector.apparel;
+                    await context.read<SettingsCubit>().setSectorMode(targetMode, userId);
+                    if (val && getIt.isRegistered<ActivitySettingsService>()) {
+                      await getIt<ActivitySettingsService>().setActivityEnabled(
+                        ActivityType.restaurantsCafes,
+                        true,
+                        userId: userId,
+                      );
+                    }
+                  },
+                ),
               ],
             ),
           ),

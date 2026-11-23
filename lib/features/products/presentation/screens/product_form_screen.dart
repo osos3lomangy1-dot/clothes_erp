@@ -14,6 +14,7 @@ import '../../domain/entities/product_entity.dart';
 import '../cubits/product_form_cubit.dart';
 import '../cubits/product_form_state.dart';
 import '../../../settings/data/services/activity_settings_service.dart';
+import '../widgets/culinary_profile_card.dart';
 
 class ProductFormScreen extends StatelessWidget {
   final ProductEntity? product;
@@ -146,6 +147,12 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
   String _sellMode = 'piece'; // 'piece', 'meter'
   late TextEditingController _rollWidthCtrl;
 
+  late TextEditingController _ingredientsCtrl;
+  late TextEditingController _caloriesCtrl;
+  late TextEditingController _prepTimeCtrl;
+  String? _kitchenStation;
+  final Set<String> _selectedAllergens = {};
+
   String? _validationError;
 
   @override
@@ -165,6 +172,17 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
     _isInstallmentEligible = widget.product?.isInstallmentEligible ?? true;
     _sellMode = widget.product?.sellMode ?? 'piece';
     _rollWidthCtrl = TextEditingController(text: widget.product?.rollWidth ?? '1.0 م');
+
+    final cul = widget.product?.culinaryData;
+    _ingredientsCtrl = TextEditingController(text: cul?.ingredients ?? '');
+    _caloriesCtrl = TextEditingController(
+        text: cul?.calories != null ? '${cul!.calories}' : '');
+    _prepTimeCtrl = TextEditingController(
+        text: cul?.prepTimeMinutes != null ? '${cul!.prepTimeMinutes}' : '');
+    _kitchenStation = cul?.kitchenStation;
+    if (cul != null && cul.allergens.isNotEmpty) {
+      _selectedAllergens.addAll(cul.allergens);
+    }
 
     if (widget.product == null) {
       _initDefaultRows();
@@ -204,6 +222,9 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
     _singleCostCtrl.dispose();
     _singleSellCtrl.dispose();
     _singleQtyCtrl.dispose();
+    _ingredientsCtrl.dispose();
+    _caloriesCtrl.dispose();
+    _prepTimeCtrl.dispose();
     _warrantyCtrl.dispose();
     _brandOrModelCtrl.dispose();
     _imeiCtrl.dispose();
@@ -531,6 +552,18 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
     cubit.onWarrantyPeriodChanged(_warrantyCtrl.text.trim().isEmpty ? null : _warrantyCtrl.text.trim());
     cubit.onBrandOrModelChanged(_brandOrModelCtrl.text.trim().isEmpty ? null : _brandOrModelCtrl.text.trim());
     cubit.onInstallmentEligibleChanged(_isInstallmentEligible);
+
+    if (state.activityTypeEnum == ActivityType.restaurantsCafes) {
+      final cul = RestaurantCulinaryData(
+        ingredients: _ingredientsCtrl.text.trim().isEmpty ? null : _ingredientsCtrl.text.trim(),
+        calories: int.tryParse(_caloriesCtrl.text.trim()),
+        allergens: _selectedAllergens.toList(),
+        prepTimeMinutes: int.tryParse(_prepTimeCtrl.text.trim()),
+        kitchenStation: _kitchenStation,
+        userDescription: state.description.isEmpty ? null : state.description,
+      );
+      cubit.onDescriptionChanged(cul.toEncodedString());
+    }
 
     if (state.isEdit) {
       cubit.submit(widget.product?.id);
@@ -1118,6 +1151,28 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                   ),
                                 ],
                               ),
+
+                              if (state.activityTypeEnum == ActivityType.restaurantsCafes) ...[
+                                const SizedBox(height: 16),
+                                CulinaryProfileCard(
+                                  ingredientsController: _ingredientsCtrl,
+                                  caloriesController: _caloriesCtrl,
+                                  prepTimeController: _prepTimeCtrl,
+                                  selectedAllergens: _selectedAllergens,
+                                  selectedKitchenStation: _kitchenStation,
+                                  onKitchenStationChanged: (val) =>
+                                      setState(() => _kitchenStation = val),
+                                  onAllergenToggled: (allergen, selected) {
+                                    setState(() {
+                                      if (selected) {
+                                        _selectedAllergens.add(allergen);
+                                      } else {
+                                        _selectedAllergens.remove(allergen);
+                                      }
+                                    });
+                                  },
+                                ),
+                              ],
 
                               if (state.activityTypeEnum.supportsBrandOrModel ||
                                   state.activityTypeEnum.supportsWarranty ||

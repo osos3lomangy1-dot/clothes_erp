@@ -94,6 +94,7 @@ class ActivitySettingsService {
       enabled ? '1' : '0',
       userId: userId,
     );
+    await getEnabledActivities();
   }
 
   /// Enables or disables all activities at once.
@@ -110,6 +111,7 @@ class ActivitySettingsService {
         userId: userId,
       );
     }
+    await getEnabledActivities();
   }
 
   /// Applies a commercial store preset atomically.
@@ -141,6 +143,7 @@ class ActivitySettingsService {
     if (preset.enableInstallments) {
       await setInstallmentsEnabled(true, userId: userId);
     }
+    await getEnabledActivities();
   }
 
   /// Checks if pre-orders module is enabled

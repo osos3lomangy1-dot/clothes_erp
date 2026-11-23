@@ -14,6 +14,7 @@ import '../../../customers/data/datasources/customers_local_data_source.dart';
 import '../../../product_variants/domain/entities/variant_entity.dart';
 import '../../domain/entities/sale_item_entity.dart';
 import '../../domain/services/kitchen_order_ticket_service.dart';
+import '../../../products/domain/entities/product_entity.dart';
 import '../cubits/pos_cubit.dart';
 import '../widgets/fast_matrix_variant_picker_dialog.dart';
 import '../../../shifts/presentation/cubits/shift_cubit.dart';
@@ -49,7 +50,6 @@ import '../../../delivery/presentation/screens/delivery_orders_screen.dart';
 import '../../../delivery/presentation/widgets/delivery_checkout_dialog.dart';
 import '../../../pre_orders/presentation/screens/pre_orders_screen.dart';
 import '../../../auth/services/cashier_permissions_service.dart';
-import '../../../products/domain/entities/activity_type.dart';
 import '../../../settings/data/services/activity_settings_service.dart';
 import '../../../../core/widgets/app_floating_toast.dart';
 
@@ -2289,6 +2289,8 @@ class _ProductCard extends StatelessWidget {
     final displayName = productName.isNotEmpty
         ? productName
         : variant.productCode;
+    final product = posCubit.getProduct(variant.productId);
+    final culinary = product?.culinaryData;
 
     return BlocBuilder<PosCubit, PosState>(
       buildWhen: (prev, curr) => prev.cart != curr.cart,
@@ -2444,6 +2446,61 @@ class _ProductCard extends StatelessWidget {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
+                                if (culinary != null && culinary.calories != null) ...[
+                                  const SizedBox(width: 4),
+                                  Container(
+                                    key: Key('product_calorie_badge_${variant.productId}'),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 1,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.shade50,
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(color: Colors.orange.shade200),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.local_fire_department_rounded,
+                                          size: 11,
+                                          color: Colors.orange.shade800,
+                                        ),
+                                        const SizedBox(width: 1),
+                                        Text(
+                                          '${culinary.calories} kcal',
+                                          style: TextStyle(
+                                            fontFamily: 'Cairo',
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.orange.shade900,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                                if (culinary != null && culinary.hasCulinaryInfo) ...[
+                                  const SizedBox(width: 2),
+                                  InkWell(
+                                    key: Key('product_culinary_info_btn_${variant.productId}'),
+                                    onTap: () => _showCulinaryInfoDialog(
+                                      context,
+                                      displayName,
+                                      culinary,
+                                    ),
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(2),
+                                      child: Icon(
+                                        Icons.info_outline_rounded,
+                                        size: 14,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
 
@@ -2619,6 +2676,189 @@ class _ProductCard extends StatelessWidget {
 
   void _showVariantModal(BuildContext context, VariantEntity variant) {
     _showMatrixVariantPickerDialog(context, variant.productId);
+  }
+
+  void _showCulinaryInfoDialog(
+    BuildContext context,
+    String title,
+    RestaurantCulinaryData culinary,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        key: const Key('culinary_info_dialog'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        title: Row(
+          children: [
+            Icon(Icons.restaurant_menu_rounded, color: AppColors.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'بيانات الوجبة: $title',
+                style: const TextStyle(
+                  fontFamily: 'Cairo',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (culinary.calories != null) ...[
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.local_fire_department_rounded,
+                        size: 16,
+                        color: Colors.orange.shade800,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'السعرات الحرارية: ${culinary.calories} kcal',
+                          style: const TextStyle(
+                            fontFamily: 'Cairo',
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                if (culinary.prepTimeMinutes != null) ...[
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.timer_outlined,
+                        size: 16,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'وقت التحضير: ${culinary.prepTimeMinutes} دقيقة',
+                          style: const TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                if (culinary.kitchenStation != null &&
+                    culinary.kitchenStation!.isNotEmpty) ...[
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.soup_kitchen_outlined,
+                        size: 16,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'محطة المطبخ: ${culinary.kitchenStation}',
+                          style: const TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                if (culinary.ingredients != null &&
+                    culinary.ingredients!.trim().isNotEmpty) ...[
+                  const Text(
+                    'المكونات الأساسية:',
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Text(
+                      culinary.ingredients!,
+                      style: const TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                if (culinary.allergens.isNotEmpty) ...[
+                  const Text(
+                    'مسببات الحساسية:',
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: Colors.red,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: culinary.allergens.map((a) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.red.shade200),
+                        ),
+                        child: Text(
+                          a,
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 11,
+                            color: Colors.red.shade800,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إغلاق', style: TextStyle(fontFamily: 'Cairo')),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -3553,6 +3793,7 @@ class _CartPanelState extends State<_CartPanel> {
       date: DateTime.now(),
       items: cart,
       cashierName: cashierName,
+      productMap: context.read<PosCubit>().productMap,
     );
 
     showDialog(

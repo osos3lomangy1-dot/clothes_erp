@@ -16,7 +16,7 @@ import '../../../promotions/domain/entities/promotion.dart';
 import '../../../promotions/domain/repositories/promotions_repository.dart';
 import '../../../promotions/domain/services/promotion_engine.dart';
 import '../../../../core/di/injection.dart';
-import '../../../products/domain/entities/activity_type.dart';
+import '../../../products/domain/entities/product_entity.dart';
 import '../../../settings/data/services/activity_settings_service.dart';
 
 class PosState {
@@ -123,6 +123,7 @@ class PosCubit extends Cubit<PosState> {
   List<VariantEntity> _allVariants = [];
   Map<String, String> _productCategoryMap = {};
   Map<String, String> _productNameMap = {};
+  Map<String, ProductEntity> _productMap = {};
   Map<String, String> _categoryNameMap = {};
   Map<String, String> _productActivityTypeMap = {};
   Map<String, bool> _productInstallmentEligibleMap = {};
@@ -167,6 +168,7 @@ class PosCubit extends Cubit<PosState> {
 
       final categories = categoriesResult.getOrElse(() => []);
       final products = productsResult.getOrElse(() => []);
+      _productMap = {for (final p in products) p.id: p};
       _productCategoryMap = {for (final p in products) p.id: p.categoryId};
       _productNameMap = {for (final p in products) p.id: p.name};
       _categoryNameMap = {for (final c in categories) c.id: c.name};
@@ -341,6 +343,8 @@ class PosCubit extends Cubit<PosState> {
   String? getProductCategoryId(String productId) => _productCategoryMap[productId];
   String? getProductActivityType(String productId) => _productActivityTypeMap[productId];
   String getProductName(String productId) => _productNameMap[productId] ?? '';
+  ProductEntity? getProduct(String productId) => _productMap[productId];
+  Map<String, ProductEntity> get productMap => Map.unmodifiable(_productMap);
   bool isProductInstallmentEligible(String? productId) {
     if (productId == null) return true;
     return _productInstallmentEligibleMap[productId] ?? true;

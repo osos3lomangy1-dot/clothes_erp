@@ -18,6 +18,8 @@ import '../theme/app_branding.dart';
 import 'command_palette_dialog.dart';
 import '../../features/settings/presentation/widgets/shortcuts_config_dialog.dart';
 import '../../features/barcode_printing/presentation/screens/barcode_customizer_screen.dart';
+import '../../features/products/domain/entities/activity_type.dart';
+import '../../features/settings/data/services/activity_settings_service.dart';
 import '../../features/auth/presentation/cubits/auth_cubit.dart';
 import '../../features/auth/presentation/cubits/auth_state.dart';
 import '../../features/crash_logs/presentation/screens/crash_logs_screen.dart';
@@ -75,8 +77,20 @@ class _MainLayoutState extends State<MainLayout> {
   bool _hasActiveInstallments = false;
   String _sectorMode = RetailSector.apparel;
   StreamSubscription<String?>? _sectorModeSub;
+  StreamSubscription<List<ActivityType>>? _activitySub;
 
-  String get _posTitle => RetailSector.isHospitalityMode(_sectorMode)
+  bool get _isHospitality {
+    if (RetailSector.isHospitalityMode(_sectorMode)) return true;
+    final enabled = getIt.isRegistered<ActivitySettingsService>()
+        ? getIt<ActivitySettingsService>().cachedEnabledActivities
+        : <ActivityType>[];
+    if (enabled.length == 1 && enabled.contains(ActivityType.restaurantsCafes)) {
+      return true;
+    }
+    return false;
+  }
+
+  String get _posTitle => _isHospitality
       ? 'كاشير المطعم والصالة'
       : 'نقطة البيع (الكاشير)';
 
@@ -124,6 +138,18 @@ class _MainLayoutState extends State<MainLayout> {
       });
     }
 
+    if (getIt.isRegistered<ActivitySettingsService>()) {
+      _activitySub = getIt<ActivitySettingsService>().watchEnabledActivities().listen((_) {
+        if (mounted) {
+          setState(() {
+            if (_activeTitle == 'نقطة البيع (الكاشير)' || _activeTitle == 'كاشير المطعم والصالة') {
+              _activeTitle = _posTitle;
+            }
+          });
+        }
+      });
+    }
+
     if (getIt.isRegistered<AppDatabase>()) {
       final db = getIt<AppDatabase>();
       final query = (db.select(db.customerInstallments)
@@ -163,6 +189,7 @@ class _MainLayoutState extends State<MainLayout> {
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_handleGlobalHardwareKeys);
+    _activitySub?.cancel();
     _sectorModeSub?.cancel();
     _activeInstallmentsSub?.cancel();
     _cloudSyncSub?.cancel();
@@ -435,7 +462,7 @@ class _MainLayoutState extends State<MainLayout> {
                                   valueListenable:
                                       CashierPermissionsService.notifier,
                                   builder: (context, cashierPerms, _) {
-                                    final isHospitality = RetailSector.isHospitalityMode(_sectorMode);
+                                    final isHospitality = _isHospitality;
                                     return SingleChildScrollView(
                                       padding: const EdgeInsets.symmetric(
                                         vertical: 4,
@@ -1248,7 +1275,7 @@ class _MainLayoutState extends State<MainLayout> {
       final authState = context.read<AuthCubit>().state;
       final isAdmin = _isAdmin(authState);
       final cashierPerms = CashierPermissionsService.current;
-      final isHospitality = RetailSector.isHospitalityMode(_sectorMode);
+      final isHospitality = _isHospitality;
 
       final items = <CommandPaletteItem>[
       // Screens
@@ -1604,34 +1631,55 @@ class _MainLayoutState extends State<MainLayout> {
         ),
       ];
     } else if (isProducts) {
-      items = [
-        const _ContextualHotkeyItem(
-          key: 'hotkey_products_new_size',
-          label: 'F3 سطر مقاس جديد',
-          icon: Icons.add_box_rounded,
-        ),
-        const _ContextualHotkeyItem(
-          key: 'hotkey_products_save',
-          label: 'Ctrl+S حفظ المنتجات',
-          icon: Icons.save_rounded,
-        ),
-        const _ContextualHotkeyItem(
-          key: 'hotkey_products_barcode',
-          label: 'F4 طباعة باركود',
-          icon: Icons.qr_code_rounded,
-        ),
-        const _ContextualHotkeyItem(
-          key: 'hotkey_products_grid_nav',
-          label: 'تنقل شبكي بالأسهم',
-          icon: Icons.grid_view_rounded,
-        ),
-        _ContextualHotkeyItem(
-          key: 'hotkey_products_shortcuts',
-          label: 'F1 اختصارات',
-          icon: Icons.keyboard_rounded,
-          onTap: _openShortcutsGuide,
-        ),
-      ];
+      if (_isHospitality) {
+        items = [
+          const _ContextualHotkeyItem(
+            key: 'hotkey_products_new_meal',
+            label: 'إضافة وجبة / مشروب',
+            icon: Icons.restaurant_menu_rounded,
+          ),
+          const _ContextualHotkeyItem(
+            key: 'hotkey_products_grid_nav',
+            label: 'تنقل شبكي بالأسهم',
+            icon: Icons.grid_view_rounded,
+          ),
+          _ContextualHotkeyItem(
+            key: 'hotkey_products_shortcuts',
+            label: 'F1 دليل ومفاتيح',
+            icon: Icons.keyboard_rounded,
+            onTap: _openShortcutsGuide,
+          ),
+        ];
+      } else {
+        items = [
+          const _ContextualHotkeyItem(
+            key: 'hotkey_products_new_size',
+            label: 'F3 سطر مقاس جديد',
+            icon: Icons.add_box_rounded,
+          ),
+          const _ContextualHotkeyItem(
+            key: 'hotkey_products_save',
+            label: 'Ctrl+S حفظ المنتجات',
+            icon: Icons.save_rounded,
+          ),
+          const _ContextualHotkeyItem(
+            key: 'hotkey_products_barcode',
+            label: 'F4 طباعة باركود',
+            icon: Icons.qr_code_rounded,
+          ),
+          const _ContextualHotkeyItem(
+            key: 'hotkey_products_grid_nav',
+            label: 'تنقل شبكي بالأسهم',
+            icon: Icons.grid_view_rounded,
+          ),
+          _ContextualHotkeyItem(
+            key: 'hotkey_products_shortcuts',
+            label: 'F1 اختصارات',
+            icon: Icons.keyboard_rounded,
+            onTap: _openShortcutsGuide,
+          ),
+        ];
+      }
     } else if (isDelivery) {
       items = [
         const _ContextualHotkeyItem(

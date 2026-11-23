@@ -36,6 +36,7 @@ import 'package:clothes_erp/features/products/presentation/cubits/product_state.
 import 'package:clothes_erp/features/products/presentation/screens/product_list_screen.dart';
 import 'package:clothes_erp/features/settings/data/services/activity_settings_service.dart';
 import 'package:clothes_erp/features/settings/presentation/cubits/settings_cubit.dart';
+import 'package:clothes_erp/features/settings/presentation/screens/system_settings_screen.dart';
 import 'package:clothes_erp/features/shifts/presentation/cubits/shift_cubit.dart';
 import 'package:clothes_erp/features/shifts/presentation/cubits/shift_state.dart';
 import 'package:dartz/dartz.dart';
@@ -125,9 +126,22 @@ class _FakeDashboardCubit extends Cubit<DashboardState> implements DashboardCubi
 }
 
 class _FakeSettingsCubit extends Cubit<SettingsState> implements SettingsCubit {
-  _FakeSettingsCubit() : super(const SettingsState(features: {}));
+  final FeatureGate _featureGate;
+  _FakeSettingsCubit(this._featureGate) : super(const SettingsState(features: {}));
+
   @override
-  Future<void> start() async {}
+  Future<void> start() async {
+    final mode = await _featureGate.getMeta(RetailSector.metaKey);
+    emit(state.copyWith(sectorMode: mode ?? RetailSector.apparel));
+  }
+
+  @override
+  Future<String?> setSectorMode(String mode, String userId) async {
+    await _featureGate.setMeta(RetailSector.metaKey, mode, userId: userId);
+    emit(state.copyWith(sectorMode: mode));
+    return null;
+  }
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -157,6 +171,7 @@ void main() {
   late ShortcutSettingsService shortcutService;
   late _FakeAuthLocalDataSource authLocalDs;
   late _FakeAuthCubit authCubit;
+  late _FakeSettingsCubit settingsCubit;
   late UserModel adminUser;
 
   setUp(() async {
@@ -171,6 +186,7 @@ void main() {
     featureGate = FeatureGate(db, authLocalDs, txWriter, branchProvider);
     activityService = ActivitySettingsService(db, featureGate);
     shortcutService = ShortcutSettingsService(db);
+    settingsCubit = _FakeSettingsCubit(featureGate);
 
     adminUser = UserModel(
       id: 'admin_1',
@@ -200,7 +216,7 @@ void main() {
         ));
     sl.registerFactory<ShiftCubit>(() => _FakeShiftCubit());
     sl.registerFactory<DashboardCubit>(() => _FakeDashboardCubit());
-    sl.registerFactory<SettingsCubit>(() => _FakeSettingsCubit());
+    sl.registerFactory<SettingsCubit>(() => settingsCubit);
     sl.registerFactory<ProductCubit>(() => _FakeProductCubit());
     sl.registerFactory<CategoryCubit>(() => _FakeCategoryCubit());
 
@@ -211,6 +227,7 @@ void main() {
 
   tearDown(() async {
     await authCubit.close();
+    await settingsCubit.close();
     await db.close();
     await GetIt.instance.reset();
   });
@@ -396,6 +413,198 @@ void main() {
       // Close dialog cleanly
       Navigator.of(tester.element(find.byType(CommandPaletteDialog))).pop();
       await tester.pumpAndSettle();
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(milliseconds: 100));
+    });
+  });
+
+  group('Addendum 30.2: Contextual Hotkey Footer Strip Purge', () {
+    testWidgets('Products Screen in Hospitality Mode: purges F3 new size and F4 barcode, shows restaurant hotkeys', (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await featureGate.setFeatureEnabled(FeatureKeys.pos, true, userId: 'system');
+      await featureGate.setFeatureEnabled(FeatureKeys.inventory, true, userId: 'system');
+      await featureGate.setMeta(RetailSector.metaKey, RetailSector.hospitality, userId: 'system');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BlocProvider<AuthCubit>.value(
+            value: authCubit,
+            child: const MainLayout(
+              currentRoute: '/products',
+              child: Scaffold(body: Text('قائمة المنتجات والتصنيفات')),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Navigate to products via sidebar to ensure active title matches
+      final productsNav = find.text('المنتجات والتصنيفات');
+      await tester.tap(productsNav);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Apparel hotkeys must be purged
+      expect(find.text('F3 سطر مقاس جديد'), findsNothing);
+      expect(find.text('F4 طباعة باركود'), findsNothing);
+
+      // Restaurant pure hotkeys must be visible
+      expect(find.byKey(const Key('hotkey_products_new_meal')), findsOneWidget);
+      expect(find.byKey(const Key('hotkey_products_grid_nav')), findsOneWidget);
+      expect(find.byKey(const Key('hotkey_products_shortcuts')), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('contextual_hotkey_strip_products')),
+          matching: find.text('إضافة وجبة / مشروب'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('contextual_hotkey_strip_products')),
+          matching: find.text('F1 دليل ومفاتيح'),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(milliseconds: 100));
+    });
+
+    testWidgets('Products Screen in Apparel Mode: shows standard apparel hotkeys', (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await featureGate.setFeatureEnabled(FeatureKeys.pos, true, userId: 'system');
+      await featureGate.setFeatureEnabled(FeatureKeys.inventory, true, userId: 'system');
+      await featureGate.setMeta(RetailSector.metaKey, RetailSector.apparel, userId: 'system');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BlocProvider<AuthCubit>.value(
+            value: authCubit,
+            child: const MainLayout(
+              currentRoute: '/products',
+              child: Scaffold(body: Text('قائمة المنتجات والتصنيفات')),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Navigate to products via sidebar
+      final productsNav = find.text('المنتجات والتصنيفات');
+      await tester.tap(productsNav);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Standard apparel hotkeys must be present
+      expect(find.text('F3 سطر مقاس جديد'), findsOneWidget);
+      expect(find.text('F4 طباعة باركود'), findsOneWidget);
+      expect(find.text('تنقل شبكي بالأسهم'), findsOneWidget);
+      expect(find.text('F1 اختصارات'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(milliseconds: 100));
+    });
+  });
+
+  group('Addendum 30.2: Auto-Detection Fallback & Explicit Settings Switch', () {
+    testWidgets('Auto-Detection Fallback: When only restaurantsCafes activity is active, system auto-isolates hospitality', (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      // Enable features
+      await featureGate.setFeatureEnabled(FeatureKeys.pos, true, userId: 'system');
+      await featureGate.setFeatureEnabled(FeatureKeys.installments, true, userId: 'system');
+      await featureGate.setFeatureEnabled(FeatureKeys.preOrders, true, userId: 'system');
+      await featureGate.setFeatureEnabled(FeatureKeys.inventory, true, userId: 'system');
+
+      // Set sector mode to apparel initially
+      await featureGate.setMeta(RetailSector.metaKey, RetailSector.apparel, userId: 'system');
+
+      // Enable ONLY restaurantsCafes activity
+      await activityService.setActivityEnabled(ActivityType.restaurantsCafes, true, userId: 'system');
+      for (final act in ActivityType.values) {
+        if (act != ActivityType.restaurantsCafes) {
+          await featureGate.setMeta('activity.${act.code}', '0', userId: 'system');
+        }
+      }
+      await activityService.getEnabledActivities();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BlocProvider<AuthCubit>.value(
+            value: authCubit,
+            child: const MainLayout(
+              currentRoute: '/dashboard',
+              child: Scaffold(body: Text('لوحة التحكم')),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Should auto-detect hospitality mode
+      expect(find.text('كاشير المطعم والصالة'), findsOneWidget);
+      expect(find.text('التقسيط'), findsNothing);
+      expect(find.text('الحجز المسبق والعربونات'), findsNothing);
+      expect(find.text('طباعة الباركود والملصقات'), findsNothing);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(milliseconds: 100));
+    });
+
+    testWidgets('SystemSettingsScreen allows toggling setting_pure_hospitality_isolation switch', (tester) async {
+      tester.view.physicalSize = const Size(1280, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await featureGate.setMeta(RetailSector.metaKey, RetailSector.apparel, userId: 'system');
+      await settingsCubit.start();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MultiBlocProvider(
+            providers: [
+              BlocProvider<AuthCubit>.value(value: authCubit),
+              BlocProvider<SettingsCubit>.value(value: settingsCubit),
+            ],
+            child: const SystemSettingsScreen(initialCategory: 'activities'),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Verify switch exists
+      final switchFinder = find.byKey(const Key('setting_pure_hospitality_isolation'));
+      expect(switchFinder, findsOneWidget);
+
+      final switchWidget = tester.widget<Switch>(switchFinder);
+      expect(switchWidget.value, isFalse);
+
+      // Toggle switch ON
+      await tester.tap(switchFinder);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      // Meta must be updated to hospitality
+      final updatedSector = await featureGate.getMeta(RetailSector.metaKey);
+      expect(updatedSector, equals(RetailSector.hospitality));
+
+      // Switch should now be true
+      final toggledSwitch = tester.widget<Switch>(switchFinder);
+      expect(toggledSwitch.value, isTrue);
 
       await tester.pumpWidget(const SizedBox());
       await tester.pump(const Duration(milliseconds: 100));

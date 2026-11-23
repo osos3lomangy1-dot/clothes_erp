@@ -1,3 +1,4 @@
+import '../../../products/domain/entities/product_entity.dart';
 import '../entities/sale_item_entity.dart';
 
 class KitchenOrderTicketService {
@@ -8,6 +9,8 @@ class KitchenOrderTicketService {
     required DateTime date,
     required List<SaleItemEntity> items,
     String? cashierName,
+    Map<String, ProductEntity>? productMap,
+    Map<String, RestaurantCulinaryData>? culinaryMap,
   }) {
     final buffer = StringBuffer();
     final typeLabel = switch (orderType) {
@@ -15,6 +18,30 @@ class KitchenOrderTicketService {
       'delivery' => 'توصيل / دليفري',
       _ => 'تيك أواي / سفري',
     };
+
+    // Aggregate culinary metadata across order
+    int? maxPrepTime;
+    final Set<String> stations = {};
+    final Set<String> orderAllergens = {};
+
+    for (final it in items) {
+      final cul = culinaryMap?[it.productId] ??
+          culinaryMap?[it.variantId] ??
+          (it.productId != null && productMap != null
+              ? productMap[it.productId]?.culinaryData
+              : null);
+      if (cul != null) {
+        if (cul.prepTimeMinutes != null && cul.prepTimeMinutes! > 0) {
+          if (maxPrepTime == null || cul.prepTimeMinutes! > maxPrepTime) {
+            maxPrepTime = cul.prepTimeMinutes;
+          }
+        }
+        if (cul.kitchenStation != null && cul.kitchenStation!.trim().isNotEmpty) {
+          stations.add(cul.kitchenStation!.trim());
+        }
+        orderAllergens.addAll(cul.allergens);
+      }
+    }
 
     buffer.writeln('================================');
     buffer.writeln('      بون تحضير المطبخ (KOT)     ');
@@ -25,6 +52,15 @@ class KitchenOrderTicketService {
     if (cashierName != null && cashierName.isNotEmpty) {
       buffer.writeln('الكاشير   : $cashierName');
     }
+    if (stations.isNotEmpty) {
+      buffer.writeln('محطة التحضير : ${stations.join(' - ')}');
+    }
+    if (maxPrepTime != null) {
+      buffer.writeln('وقت التحضير   : $maxPrepTime دقيقة (تقديري)');
+    }
+    if (orderAllergens.isNotEmpty) {
+      buffer.writeln('تنبيه حساسية  : ${orderAllergens.join('، ')}');
+    }
     buffer.writeln('--------------------------------');
     buffer.writeln('الأصناف والكميات المطلوبة:');
     buffer.writeln('--------------------------------');
@@ -33,6 +69,22 @@ class KitchenOrderTicketService {
       final it = items[i];
       final qty = it.formattedQuantity;
       buffer.writeln('${i + 1}. [ $qty x ] ${it.productName}');
+      final cul = culinaryMap?[it.productId] ??
+          culinaryMap?[it.variantId] ??
+          (it.productId != null && productMap != null
+              ? productMap[it.productId]?.culinaryData
+              : null);
+      if (cul != null) {
+        if (cul.kitchenStation != null && cul.kitchenStation!.trim().isNotEmpty) {
+          buffer.writeln('   محطة التحضير: ${cul.kitchenStation!.trim()}');
+        }
+        if (cul.prepTimeMinutes != null && cul.prepTimeMinutes! > 0) {
+          buffer.writeln('   وقت التجهيز: ${cul.prepTimeMinutes} دقيقة');
+        }
+        if (cul.allergens.isNotEmpty) {
+          buffer.writeln('   تحذير حساسية: ${cul.allergens.join('، ')}');
+        }
+      }
       if (it.kitchenNotes != null && it.kitchenNotes!.trim().isNotEmpty) {
         buffer.writeln('   استثناءات: ${it.kitchenNotes!.trim()}');
       }
@@ -44,4 +96,3 @@ class KitchenOrderTicketService {
     return buffer.toString();
   }
 }
-

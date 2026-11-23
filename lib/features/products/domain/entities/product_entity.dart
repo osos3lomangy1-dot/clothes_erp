@@ -1,7 +1,139 @@
+import 'dart:convert';
 import 'package:equatable/equatable.dart';
 import 'activity_type.dart';
 
 export 'activity_type.dart';
+
+class RestaurantCulinaryData extends Equatable {
+  final String? ingredients;
+  final int? calories;
+  final List<String> allergens;
+  final int? prepTimeMinutes;
+  final String? kitchenStation;
+  final String? userDescription;
+
+  const RestaurantCulinaryData({
+    this.ingredients,
+    this.calories,
+    this.allergens = const [],
+    this.prepTimeMinutes,
+    this.kitchenStation,
+    this.userDescription,
+  });
+
+  bool get isEmpty =>
+      (ingredients == null || ingredients!.trim().isEmpty) &&
+      calories == null &&
+      allergens.isEmpty &&
+      prepTimeMinutes == null &&
+      (kitchenStation == null || kitchenStation!.trim().isEmpty) &&
+      (userDescription == null || userDescription!.trim().isEmpty);
+
+  bool get hasCulinaryInfo =>
+      (ingredients != null && ingredients!.trim().isNotEmpty) ||
+      calories != null ||
+      allergens.isNotEmpty ||
+      prepTimeMinutes != null ||
+      (kitchenStation != null && kitchenStation!.trim().isNotEmpty);
+
+  Map<String, dynamic> toJson() => {
+        if (ingredients != null && ingredients!.trim().isNotEmpty)
+          'ingredients': ingredients!.trim(),
+        if (calories != null) 'calories': calories,
+        if (allergens.isNotEmpty) 'allergens': allergens,
+        if (prepTimeMinutes != null) 'prepTimeMinutes': prepTimeMinutes,
+        if (kitchenStation != null && kitchenStation!.trim().isNotEmpty)
+          'kitchenStation': kitchenStation!.trim(),
+        if (userDescription != null && userDescription!.trim().isNotEmpty)
+          'userDescription': userDescription!.trim(),
+      };
+
+  factory RestaurantCulinaryData.fromJson(Map<String, dynamic> json) {
+    return RestaurantCulinaryData(
+      ingredients: json['ingredients'] as String?,
+      calories: json['calories'] is num
+          ? (json['calories'] as num).toInt()
+          : int.tryParse(json['calories']?.toString() ?? ''),
+      allergens: (json['allergens'] as List<dynamic>?)
+              ?.map((e) => e.toString().trim())
+              .where((e) => e.isNotEmpty)
+              .toList() ??
+          const [],
+      prepTimeMinutes: json['prepTimeMinutes'] is num
+          ? (json['prepTimeMinutes'] as num).toInt()
+          : int.tryParse(json['prepTimeMinutes']?.toString() ?? ''),
+      kitchenStation: json['kitchenStation'] as String?,
+      userDescription: json['userDescription'] as String?,
+    );
+  }
+
+  RestaurantCulinaryData copyWith({
+    String? ingredients,
+    int? calories,
+    List<String>? allergens,
+    int? prepTimeMinutes,
+    String? kitchenStation,
+    String? userDescription,
+  }) {
+    return RestaurantCulinaryData(
+      ingredients: ingredients ?? this.ingredients,
+      calories: calories ?? this.calories,
+      allergens: allergens ?? this.allergens,
+      prepTimeMinutes: prepTimeMinutes ?? this.prepTimeMinutes,
+      kitchenStation: kitchenStation ?? this.kitchenStation,
+      userDescription: userDescription ?? this.userDescription,
+    );
+  }
+
+  static RestaurantCulinaryData parse(String? raw) {
+    if (raw == null || raw.trim().isEmpty) {
+      return const RestaurantCulinaryData();
+    }
+    final trimmed = raw.trim();
+    try {
+      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        final decoded = jsonDecode(trimmed);
+        if (decoded is Map<String, dynamic>) {
+          return RestaurantCulinaryData.fromJson(decoded);
+        }
+      }
+      final markerStart = trimmed.indexOf('<!--culinary:');
+      if (markerStart != -1) {
+        final markerEnd = trimmed.indexOf('-->', markerStart);
+        if (markerEnd != -1) {
+          final jsonStr = trimmed.substring(markerStart + 13, markerEnd).trim();
+          final decoded = jsonDecode(jsonStr);
+          if (decoded is Map<String, dynamic>) {
+            final userDesc = (trimmed.substring(0, markerStart) +
+                    trimmed.substring(markerEnd + 3))
+                .trim();
+            return RestaurantCulinaryData.fromJson(decoded).copyWith(
+              userDescription: userDesc.isNotEmpty ? userDesc : null,
+            );
+          }
+        }
+      }
+    } catch (_) {}
+    return RestaurantCulinaryData(userDescription: raw);
+  }
+
+  String toEncodedString() {
+    if (!hasCulinaryInfo) {
+      return userDescription ?? '';
+    }
+    return jsonEncode(toJson());
+  }
+
+  @override
+  List<Object?> get props => [
+        ingredients,
+        calories,
+        allergens,
+        prepTimeMinutes,
+        kitchenStation,
+        userDescription,
+      ];
+}
 
 class VariantSummary extends Equatable {
   final String id;
@@ -66,6 +198,22 @@ class ProductEntity extends Equatable {
   });
 
   ActivityType get activityTypeEnum => ActivityType.fromString(activityType);
+
+  RestaurantCulinaryData get culinaryData =>
+      RestaurantCulinaryData.parse(description);
+
+  String? get ingredients => culinaryData.ingredients;
+  int? get calories => culinaryData.calories;
+  List<String> get allergens => culinaryData.allergens;
+  int? get prepTimeMinutes => culinaryData.prepTimeMinutes;
+  String? get kitchenStation => culinaryData.kitchenStation;
+  String get cleanDescription {
+    final parsed = culinaryData;
+    if (parsed.hasCulinaryInfo) {
+      return parsed.userDescription ?? '';
+    }
+    return description;
+  }
 
   ProductEntity copyWith({
     String? id,

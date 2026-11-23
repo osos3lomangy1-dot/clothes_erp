@@ -17,6 +17,7 @@ import '../../domain/repositories/product_repository.dart';
 import '../cubits/product_form_cubit.dart';
 import '../cubits/product_form_state.dart';
 import '../../../settings/data/services/activity_settings_service.dart';
+import 'culinary_profile_card.dart';
 
 class SimpleProductFormDialog extends StatelessWidget {
   final ProductEntity? product;
@@ -93,6 +94,12 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
   bool _isRollMode = false;
   late TextEditingController _rollWidthCtrl;
 
+  late TextEditingController _ingredientsCtrl;
+  late TextEditingController _caloriesCtrl;
+  late TextEditingController _prepTimeCtrl;
+  String? _kitchenStation;
+  final Set<String> _selectedAllergens = {};
+
   @override
   void initState() {
     super.initState();
@@ -128,7 +135,17 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
     _wholesaleCtrl = TextEditingController(text: '0.00');
     _qtyCtrl = TextEditingController(text: _activityType == ActivityType.restaurantsCafes ? '999' : '0');
     _minStockCtrl = TextEditingController(text: '${p?.minStock ?? 5}');
-    _descCtrl = TextEditingController(text: p?.description ?? '');
+    final cul = p?.culinaryData;
+    _ingredientsCtrl = TextEditingController(text: cul?.ingredients ?? '');
+    _caloriesCtrl = TextEditingController(
+        text: cul?.calories != null ? '${cul!.calories}' : '');
+    _prepTimeCtrl = TextEditingController(
+        text: cul?.prepTimeMinutes != null ? '${cul!.prepTimeMinutes}' : '');
+    _kitchenStation = cul?.kitchenStation;
+    if (cul != null && cul.allergens.isNotEmpty) {
+      _selectedAllergens.addAll(cul.allergens);
+    }
+    _descCtrl = TextEditingController(text: p?.cleanDescription ?? '');
     _warrantyCtrl = TextEditingController(text: p?.warrantyPeriod ?? '');
     _brandOrModelCtrl = TextEditingController(text: p?.brandOrModel ?? '');
     _imeiCtrl = TextEditingController();
@@ -216,6 +233,9 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
     _qtyCtrl.dispose();
     _minStockCtrl.dispose();
     _descCtrl.dispose();
+    _ingredientsCtrl.dispose();
+    _caloriesCtrl.dispose();
+    _prepTimeCtrl.dispose();
     _warrantyCtrl.dispose();
     _brandOrModelCtrl.dispose();
     _imeiCtrl.dispose();
@@ -262,7 +282,20 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
     final defaultQty = _activityType == ActivityType.restaurantsCafes ? 999 : 0;
     final qty = int.tryParse(_qtyCtrl.text.trim()) ?? defaultQty;
     final minStock = int.tryParse(_minStockCtrl.text.trim()) ?? 5;
-    final desc = _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim();
+    final String? finalDesc;
+    if (_activityType == ActivityType.restaurantsCafes) {
+      final cul = RestaurantCulinaryData(
+        ingredients: _ingredientsCtrl.text.trim().isEmpty ? null : _ingredientsCtrl.text.trim(),
+        calories: int.tryParse(_caloriesCtrl.text.trim()),
+        allergens: _selectedAllergens.toList(),
+        prepTimeMinutes: int.tryParse(_prepTimeCtrl.text.trim()),
+        kitchenStation: _kitchenStation,
+        userDescription: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+      );
+      finalDesc = cul.toEncodedString();
+    } else {
+      finalDesc = _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim();
+    }
 
     final formCubit = context.read<ProductFormCubit>();
     final authState = context.read<AuthCubit>().state;
@@ -283,7 +316,7 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
 
         formCubit.onNameChanged(cleanName);
         formCubit.onCategoryChanged(_selectedCategoryId!, catMatch.name);
-        formCubit.onDescriptionChanged(desc ?? '');
+        formCubit.onDescriptionChanged(finalDesc ?? '');
         formCubit.onMinStockChanged(minStock);
         formCubit.onActivityTypeChanged(_activityType.code);
         formCubit.onWarrantyPeriodChanged(_warrantyCtrl.text.trim().isEmpty ? null : _warrantyCtrl.text.trim());
@@ -329,7 +362,7 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
           name: cleanName,
           categoryId: _selectedCategoryId!,
           categoryName: prod.categoryName,
-          description: desc ?? '',
+          description: finalDesc ?? '',
           minStock: minStock,
           createdAt: prod.createdAt,
           updatedAt: DateTime.now(),
@@ -707,6 +740,28 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
                           ),
                         ],
                       ),
+
+                      if (_activityType == ActivityType.restaurantsCafes) ...[
+                        const SizedBox(height: 16),
+                        CulinaryProfileCard(
+                          ingredientsController: _ingredientsCtrl,
+                          caloriesController: _caloriesCtrl,
+                          prepTimeController: _prepTimeCtrl,
+                          selectedAllergens: _selectedAllergens,
+                          selectedKitchenStation: _kitchenStation,
+                          onKitchenStationChanged: (val) =>
+                              setState(() => _kitchenStation = val),
+                          onAllergenToggled: (allergen, selected) {
+                            setState(() {
+                              if (selected) {
+                                _selectedAllergens.add(allergen);
+                              } else {
+                                _selectedAllergens.remove(allergen);
+                              }
+                            });
+                          },
+                        ),
+                      ],
 
                       if (_activityType.supportsBrandOrModel ||
                           _activityType.supportsWarranty ||
