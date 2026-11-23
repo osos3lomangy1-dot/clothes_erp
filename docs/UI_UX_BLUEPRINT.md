@@ -2872,9 +2872,39 @@ enum ActivityType {
 ---
 
 #### 🧪 2. معايير القبول واختبارات الملحق 26.5:
-- [ ] ظهور حقل البحث بخلفية بيضاء نقية وظل ميكرو ناعم يعكس الفخامة المؤسسية.
-- [ ] ظهور بادج `[ Ctrl + F ]` كمفتاح كيبورد فيزيائي أنيق ونظيف (Keycap) بدون كتل رمادية رديئة.
-- [ ] الحفاظ على كافة الـ Keys البرمجية واجتياز كافة الاختبارات بنسبة 100%.
+- [x] ظهور حقل البحث بخلفية بيضاء نقية وظل ميكرو ناعم يعكس الفخامة المؤسسية.
+- [x] ظهور بادج `[ Ctrl + F ]` كمفتاح كيبورد فيزيائي أنيق ونظيف (Keycap) بدون كتل رمادية رديئة.
+- [x] الحفاظ على كافة الـ Keys البرمجية واجتياز كافة الاختبارات بنسبة 100%.
+
+---
+
+### 🏛️ ملحق 26.6: توحيد شريط البحث مع شاشة الكاشير (POS-Harmonized Unified Search Bar)
+(Addendum 26.6: Porting the Proven POS Cashier Search Architecture into Unified Settings)
+
+#### 📌 1. المبدأ المعماري:
+- تحقيق التناغم والتطابق البصري التام (Design System Parity) بين شاشة الكاشير (`pos_screen.dart:L1022-1095`) وشاشة الإعدادات الموحدة (`system_settings_screen.dart`).
+- بدلاً من محاولات التجريب المعزولة، يتم نقل نفس المكون المجرب والناجح في الكاشير بدقة، بما يشمل:
+  1. **الحاوية الخارجية (Container):**
+     * الارتفاع: `38px` بحواف مستديرة `BorderRadius.circular(12)`.
+     * لون السطح: `AppColors.surfaceContainerLow`.
+     * الإطار: `Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.8))`، وعند التركيز (`_isSearchFocused`) يتحول إلى `AppColors.primary` (1.4px).
+  2. **أيقونة البحث:** `Icons.search_rounded` بلون الكحلي الأساسي `AppColors.primary` وحجم `18px`.
+  3. **النص التوجيهي (Hint):** بخط التطبيق المعتمد `fontFamily: 'Cairo'` وبحجم `12px` مع لون `Colors.grey.shade500`.
+  4. **بادج الاختصار (`settings_search_kbd_badge`):**
+     * نفس بادج `[ F2 ]` في الكاشير تماماً:
+       - الخلفية: `AppColors.surfaceContainer`.
+       - الحواف: `BorderRadius.circular(6)`.
+       - الإطار: `Border.all(color: AppColors.outlineVariant)`.
+       - الخط: خط `'Cairo'` عريض `FontWeight.bold` بلون `AppColors.onSurface` وحجم `10px` (التخلص النهائي من خط المونوسبيس الأجنبي الرديء).
+  5. **زر المسح السريع (`settings_search_clear_btn`):**
+     * `IconButton(icon: Icon(Icons.clear, size: 16))` لمسح حقل البحث بلمسة واحدة فور البدء في الكتابة.
+
+---
+
+#### 🧪 2. معايير القبول واختبارات الملحق 26.6:
+- [ ] تطابق شريط البحث في الإعدادات شكلاً وأبعاداً وهوية بنسبة 100% مع شريط البحث في شاشة الكاشير.
+- [ ] استمرار استجابة اختصار `Ctrl + F` لنقل التركيز مباشرة للحقل.
+- [ ] استمرار اجتياز كافة اختبارات المهام 25 و 26 بنسبة 100% بدون أي تراجع.
 
 ---
 
