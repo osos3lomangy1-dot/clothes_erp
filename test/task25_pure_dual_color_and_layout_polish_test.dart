@@ -13,6 +13,7 @@ import 'package:clothes_erp/features/auth/data/models/user_model.dart';
 import 'package:clothes_erp/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:clothes_erp/features/auth/presentation/cubits/auth_state.dart';
 import 'package:clothes_erp/features/categories/domain/entities/category_entity.dart';
+import 'package:clothes_erp/features/installments/data/services/manager_pin_service.dart';
 import 'package:clothes_erp/features/inventory/data/datasources/inventory_local_data_source.dart';
 import 'package:clothes_erp/features/inventory/presentation/cubits/goods_receipt_cubit.dart';
 import 'package:clothes_erp/features/inventory/presentation/screens/blind_receive_screen.dart';
@@ -250,6 +251,7 @@ void main() {
     getIt.registerSingleton<ActivitySettingsService>(activityService);
     getIt.registerSingleton<SettingsCubit>(settingsCubit);
     getIt.registerSingleton<AuthCubit>(authCubit);
+    getIt.registerSingleton<ManagerPinService>(ManagerPinService(db, tx, bp, _FakeAuthDs(), fg));
     getIt.registerSingleton<InvoicesRepository>(_FakeInvoicesRepo());
     getIt.registerFactory<GoodsReceiptCubit>(() => goodsReceiptCubit);
     getIt.registerFactory<PosCubit>(() => posCubit);
@@ -376,6 +378,107 @@ void main() {
       final switchWidget = tester.widget<Switch>(switchFinder);
       expect(switchWidget.activeThumbColor, equals(AppColors.secondary),
           reason: 'Active switch thumb must use AppColors.secondary (#1FB5A8)');
+    });
+
+    testWidgets('Addendum 25.1: Executive Desktop Header displays breadcrumbs, active category chip, and subtitle', (tester) async {
+      tester.view.physicalSize = const Size(1400, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: MultiBlocProvider(
+              providers: [
+                BlocProvider<AuthCubit>.value(value: authCubit),
+                BlocProvider<SettingsCubit>.value(value: settingsCubit),
+              ],
+              child: const SystemSettingsScreen(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify breadcrumbs and subtitle
+      expect(find.text('مركز الإعدادات الموحد'), findsOneWidget);
+      expect(find.text('تحكم شامل في ميزات النظام وصلاحيات العمل وهوية المتجر'), findsOneWidget);
+      expect(find.byKey(const Key('settings_active_breadcrumb_chip')), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('settings_active_breadcrumb_chip')),
+          matching: find.text('لوحة التحكم في المزايا'),
+        ),
+        findsOneWidget,
+      );
+
+      // Tap on another category in sidebar
+      await tester.tap(find.text('نقطة البيع').first);
+      await tester.pumpAndSettle();
+
+      // Breadcrumb chip updates to 'نقطة البيع'
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('settings_active_breadcrumb_chip')),
+          matching: find.text('نقطة البيع'),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('Addendum 25.1: Spotlight search bar has clean hint, Kbd badge, and instant clear button', (tester) async {
+      tester.view.physicalSize = const Size(1400, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: MultiBlocProvider(
+              providers: [
+                BlocProvider<AuthCubit>.value(value: authCubit),
+                BlocProvider<SettingsCubit>.value(value: settingsCubit),
+              ],
+              child: const SystemSettingsScreen(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final searchFinder = find.byKey(const Key('settings_search_field'));
+      expect(searchFinder, findsOneWidget);
+
+      // Verify clean hint text without manual Ctrl+F string
+      final textField = tester.widget<TextField>(searchFinder);
+      expect(textField.decoration?.hintText, equals('ابحث عن ميزة، قسم، أو صلاحية...'));
+
+      // Verify real Kbd badge is present initially
+      expect(find.byKey(const Key('settings_search_kbd_badge')), findsOneWidget);
+      expect(find.text('Ctrl + F'), findsOneWidget);
+      expect(find.byKey(const Key('settings_search_clear_btn')), findsNothing);
+
+      // Enter text: badge disappears and clear button appears
+      await tester.enterText(searchFinder, 'دليفري');
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('settings_search_kbd_badge')), findsNothing);
+      expect(find.byKey(const Key('settings_search_clear_btn')), findsOneWidget);
+
+      // Tap clear button: text clears and Kbd badge returns
+      await tester.tap(find.byKey(const Key('settings_search_clear_btn')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('settings_search_kbd_badge')), findsOneWidget);
+      expect(find.byKey(const Key('settings_search_clear_btn')), findsNothing);
     });
   });
 

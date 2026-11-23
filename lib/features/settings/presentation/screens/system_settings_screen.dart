@@ -79,9 +79,23 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
   final TextEditingController _searchCtrl = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
   String _searchQuery = '';
+  bool _isSearchFocused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchFocus.addListener(_onSearchFocusChanged);
+  }
+
+  void _onSearchFocusChanged() {
+    if (mounted && _isSearchFocused != _searchFocus.hasFocus) {
+      setState(() => _isSearchFocused = _searchFocus.hasFocus);
+    }
+  }
 
   @override
   void dispose() {
+    _searchFocus.removeListener(_onSearchFocusChanged);
     _searchCtrl.dispose();
     _searchFocus.dispose();
     super.dispose();
@@ -154,7 +168,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
     return cat;
   }
 
-  String _currentCategory(SettingsState state) {
+  String _currentCategory([SettingsState? state]) {
     if (_selectedCategory != null) {
       return _normalizeCategory(_selectedCategory!);
     }
@@ -162,6 +176,14 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
       return _normalizeCategory(widget.initialCategory!);
     }
     return 'features';
+  }
+
+  _SettingsCategoryItem get _activeCategoryItem {
+    final catKey = _currentCategory();
+    return _categories.firstWhere(
+      (c) => c.key == catKey,
+      orElse: () => _categories.first,
+    );
   }
 
   bool _isAdmin(BuildContext context) {
@@ -208,51 +230,213 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
         child: Scaffold(
           backgroundColor: const Color(0xFFF8FAFC),
           appBar: AppBar(
-            title: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            toolbarHeight: 68,
+            titleSpacing: 20,
+            title: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'مركز الإعدادات الموحد',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: Color(0xFF0F172A),
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.tune_rounded,
+                    color: AppColors.primary,
+                    size: 22,
                   ),
                 ),
-                Text(
-                  'تحكم شامل في ميزات النظام وصلاحيات العمل وهوية المتجر',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'مركز الإعدادات الموحد',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8),
+                          child: Icon(
+                            Icons.chevron_left_rounded,
+                            size: 18,
+                            color: Color(0xFF94A3B8),
+                          ),
+                        ),
+                        Container(
+                          key: const Key('settings_active_breadcrumb_chip'),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 3.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: Text(
+                            _activeCategoryItem.label,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF334155),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    const Text(
+                      'تحكم شامل في ميزات النظام وصلاحيات العمل وهوية المتجر',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
             actions: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: SizedBox(
-                  width: 320,
-                  child: TextField(
-                    key: const Key('settings_search_field'),
-                    controller: _searchCtrl,
-                    focusNode: _searchFocus,
-                    onChanged: (val) => setState(() => _searchQuery = val.trim()),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      hintText: 'ابحث في الإعدادات... [Ctrl + F]',
-                      hintStyle: const TextStyle(fontSize: 12),
-                      prefixIcon: const Icon(Icons.search_rounded, size: 18),
-                      suffixIcon: _searchCtrl.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, size: 16),
-                              onPressed: () {
-                                _searchCtrl.clear();
-                                setState(() => _searchQuery = '');
-                              },
-                            )
+                padding: const EdgeInsetsDirectional.only(end: 20),
+                child: Center(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    width: 360,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: _isSearchFocused
+                            ? AppColors.secondary
+                            : const Color(0xFFE2E8F0),
+                        width: _isSearchFocused ? 1.5 : 1.0,
+                      ),
+                      boxShadow: _isSearchFocused
+                          ? [
+                              BoxShadow(
+                                color: AppColors.secondary.withValues(
+                                  alpha: 0.15,
+                                ),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
                           : null,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      filled: true,
-                      fillColor: const Color(0xFFF1F5F9),
+                    ),
+                    child: TextField(
+                      key: const Key('settings_search_field'),
+                      controller: _searchCtrl,
+                      focusNode: _searchFocus,
+                      textAlignVertical: TextAlignVertical.center,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF0F172A),
+                      ),
+                      onChanged: (val) =>
+                          setState(() => _searchQuery = val.trim()),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        hintText: 'ابحث عن ميزة، قسم، أو صلاحية...',
+                        hintStyle: const TextStyle(
+                          fontSize: 12.5,
+                          color: Color(0xFF94A3B8),
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search_rounded,
+                          size: 19,
+                          color: _isSearchFocused
+                              ? AppColors.secondary
+                              : const Color(0xFF94A3B8),
+                        ),
+                        prefixIconConstraints: const BoxConstraints(
+                          minWidth: 36,
+                          minHeight: 36,
+                        ),
+                        suffixIcon: _searchCtrl.text.isNotEmpty
+                            ? IconButton(
+                                key: const Key('settings_search_clear_btn'),
+                                icon: const Icon(
+                                  Icons.close_rounded,
+                                  size: 16,
+                                  color: Color(0xFF64748B),
+                                ),
+                                tooltip: 'مسح البحث',
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(
+                                  minWidth: 36,
+                                  minHeight: 36,
+                                ),
+                                splashRadius: 16,
+                                onPressed: () {
+                                  _searchCtrl.clear();
+                                  setState(() => _searchQuery = '');
+                                },
+                              )
+                            : GestureDetector(
+                                onTap: () => _searchFocus.requestFocus(),
+                                child: Padding(
+                                  padding: const EdgeInsetsDirectional.only(
+                                    end: 8,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.center,
+                                    children: [
+                                      Container(
+                                        key: const Key(
+                                          'settings_search_kbd_badge',
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 7,
+                                          vertical: 3,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFE2E8F0),
+                                          borderRadius:
+                                              BorderRadius.circular(5),
+                                          border: Border.all(
+                                            color: const Color(0xFFCBD5E1),
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'Ctrl + F',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF475569),
+                                            fontFamily: 'monospace',
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                        suffixIconConstraints: const BoxConstraints(
+                          minWidth: 44,
+                          minHeight: 36,
+                        ),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                      ),
                     ),
                   ),
                 ),

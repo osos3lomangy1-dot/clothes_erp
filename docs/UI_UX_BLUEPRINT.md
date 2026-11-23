@@ -2342,6 +2342,13 @@ enum ActivityType {
      `Container(padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2.5), decoration: BoxDecoration(color: Color(0xFFE2E8F0), borderRadius: BorderRadius.circular(4)), child: Text('Ctrl + F', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF475569), fontFamily: 'monospace')))`
    - زر تفريغ فوري `(X)` أنيق يظهر عند وجود نص لحذف البحث بنقرة واحدة.
 
+#### 🧪 3. معايير القبول واختبارات الملحق 25.1:
+- [x] ترقية شريط العنوان (AppBar) إلى هيدر ديسكتوب تنفيذي بارتفاع 68 بكسل مع مسار التنقل الذكي (Breadcrumbs).
+- [x] إضافة كبسولة اسم القسم النشط وتحديثها فورياً عند التنقل بين أقسام الإعدادات.
+- [x] ترقية مربع البحث بعرض 360 بكسل وتفاعل التركيز مع إطار وظل باللون الفيروزي (`AppColors.secondary`).
+- [x] توفير كبسولة Kbd برمجية حقيقية لـ `[Ctrl + F]` وزر تفريغ فوري `(X)`.
+- [x] اجتياز كافة الاختبارات في `test/task25_pure_dual_color_and_layout_polish_test.dart` و `test/task20_universal_search_and_shortcuts_test.dart` بنسبة 100%.
+
 ---
 
 ---
