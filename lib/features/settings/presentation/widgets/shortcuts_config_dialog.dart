@@ -7,6 +7,22 @@ import '../../../../core/services/shortcut_settings_service.dart';
 class ShortcutsConfigDialog extends StatefulWidget {
   const ShortcutsConfigDialog({super.key});
 
+  static bool _isOpen = false;
+  static bool get isOpen => _isOpen;
+
+  static Future<T?> show<T>(BuildContext context) async {
+    if (_isOpen) return null;
+    _isOpen = true;
+    try {
+      return await showDialog<T>(
+        context: context,
+        builder: (_) => const ShortcutsConfigDialog(),
+      );
+    } finally {
+      _isOpen = false;
+    }
+  }
+
   @override
   State<ShortcutsConfigDialog> createState() => _ShortcutsConfigDialogState();
 }

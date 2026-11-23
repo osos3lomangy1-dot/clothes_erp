@@ -1374,18 +1374,8 @@ class _MainLayoutState extends State<MainLayout> {
     }
   }
 
-  bool _isShortcutsGuideOpen = false;
   Future<void> _openShortcutsGuide() async {
-    if (_isShortcutsGuideOpen) return;
-    _isShortcutsGuideOpen = true;
-    try {
-      await showDialog(
-        context: context,
-        builder: (_) => const ShortcutsConfigDialog(),
-      );
-    } finally {
-      _isShortcutsGuideOpen = false;
-    }
+    await ShortcutsConfigDialog.show(context);
   }
 
   Widget _navItem(

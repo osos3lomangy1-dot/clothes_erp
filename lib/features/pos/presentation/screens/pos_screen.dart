@@ -764,10 +764,7 @@ class _PosViewState extends State<_PosView> {
   }
 
   void _showShortcutsGuide() {
-    showDialog(
-      context: context,
-      builder: (_) => const ShortcutsConfigDialog(),
-    );
+    ShortcutsConfigDialog.show(context);
   }
 
   void _openShortcutsGuide() => _showShortcutsGuide();
@@ -6390,9 +6387,21 @@ class _CartItemTileState extends State<_CartItemTile> {
   @override
   void initState() {
     super.initState();
+    _qtyFocus.addListener(_handleFocusChange);
     _qtyCtrl = TextEditingController(
       text: '${widget.item.isReturn ? "-" : ""}${_formatQty(widget.item.effectiveQuantity)}',
     );
+  }
+
+  void _handleFocusChange() {
+    if (!_qtyFocus.hasFocus) {
+      _commitQtyChange(_qtyCtrl.text);
+    } else {
+      _qtyCtrl.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: _qtyCtrl.text.length,
+      );
+    }
   }
 
   @override
@@ -6408,16 +6417,23 @@ class _CartItemTileState extends State<_CartItemTile> {
 
   @override
   void dispose() {
+    _qtyFocus.removeListener(_handleFocusChange);
     _qtyCtrl.dispose();
     _qtyFocus.dispose();
     super.dispose();
   }
 
-  void _onQtyChanged(String val) {
-    val = val.replaceAll('-', '').trim();
-    if (val.isEmpty) return;
+  void _commitQtyChange(String rawVal) {
+    final val = Money.normalizeDigits(rawVal).replaceAll('-', '').trim();
+    if (val.isEmpty) {
+      _qtyCtrl.text = '${widget.item.isReturn ? "-" : ""}${_formatQty(widget.item.effectiveQuantity)}';
+      return;
+    }
     final parsedDouble = double.tryParse(val);
-    if (parsedDouble == null || parsedDouble <= 0) return;
+    if (parsedDouble == null || parsedDouble <= 0) {
+      _qtyCtrl.text = '${widget.item.isReturn ? "-" : ""}${_formatQty(widget.item.effectiveQuantity)}';
+      return;
+    }
 
     if (_isDecimalItem || val.contains('.')) {
       context.read<PosCubit>().updateDecimalQuantity(
@@ -6428,9 +6444,16 @@ class _CartItemTileState extends State<_CartItemTile> {
       );
     } else {
       final parsedInt = parsedDouble.toInt();
-      final valid = (!widget.item.isReturn && widget.maxStock > 0 && parsedInt > widget.maxStock)
-          ? widget.maxStock
-          : parsedInt;
+      int valid = parsedInt;
+      if (!widget.item.isReturn && widget.maxStock > 0 && parsedInt > widget.maxStock) {
+        valid = widget.maxStock;
+        AppFloatingToast.show(
+          context,
+          message: 'الرصيد المتاح في المخزن هو ${widget.maxStock} فقط',
+          type: ToastType.warning,
+        );
+      }
+      _qtyCtrl.text = '${widget.item.isReturn ? "-" : ""}$valid';
       context.read<PosCubit>().updateQuantity(
         widget.item.variantId,
         valid,
@@ -6778,6 +6801,7 @@ class _CartItemTileState extends State<_CartItemTile> {
                     ),
                   ),
                   child: TextField(
+                    key: Key('cart_qty_input_${item.variantId}'),
                     controller: _qtyCtrl,
                     focusNode: _qtyFocus,
                     keyboardType: const TextInputType.numberWithOptions(
@@ -6797,7 +6821,13 @@ class _CartItemTileState extends State<_CartItemTile> {
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
                     ),
-                    onSubmitted: _onQtyChanged,
+                    onTap: () {
+                      _qtyCtrl.selection = TextSelection(
+                        baseOffset: 0,
+                        extentOffset: _qtyCtrl.text.length,
+                      );
+                    },
+                    onSubmitted: _commitQtyChange,
                   ),
                 ),
                 IconButton(

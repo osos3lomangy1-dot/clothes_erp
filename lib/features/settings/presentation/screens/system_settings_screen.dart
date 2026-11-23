@@ -401,10 +401,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
           _searchFocus.requestFocus();
         },
         const SingleActivator(LogicalKeyboardKey.f1): () {
-          showDialog(
-            context: context,
-            builder: (_) => const ShortcutsConfigDialog(),
-          );
+          ShortcutsConfigDialog.show(context);
         },
       },
       child: Focus(
@@ -1610,10 +1607,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
             subtitle: const Text('تعديل مفاتيح البيع السريع والتنقل بين الحقول [F1]'),
             trailing: ElevatedButton.icon(
               key: const Key('open_shortcuts_config_btn'),
-              onPressed: () => showDialog(
-                context: context,
-                builder: (_) => const ShortcutsConfigDialog(),
-              ),
+              onPressed: () => ShortcutsConfigDialog.show(context),
               icon: const Icon(Icons.tune_rounded, size: 16),
               label: const Text('تعديل الاختصارات'),
             ),

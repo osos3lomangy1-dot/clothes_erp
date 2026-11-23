@@ -25,6 +25,7 @@ import 'package:clothes_erp/features/products/domain/entities/product_entity.dar
 import 'package:clothes_erp/features/products/domain/repositories/product_repository.dart';
 import 'package:clothes_erp/features/settings/presentation/cubits/settings_cubit.dart';
 import 'package:clothes_erp/features/settings/presentation/screens/system_settings_screen.dart';
+import 'package:clothes_erp/features/settings/presentation/widgets/shortcuts_config_dialog.dart';
 import 'package:clothes_erp/features/shifts/presentation/cubits/shift_cubit.dart';
 import 'package:clothes_erp/features/shifts/presentation/cubits/shift_state.dart';
 import 'package:dartz/dartz.dart';
@@ -469,6 +470,186 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(CashierPermissionsService.current.allowViewPurchases, isTrue);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(milliseconds: 100));
+    });
+  });
+
+  group('Addendum 29.1: F1 Dialog Debounce/Singleton & Real-Time Cart Quantity Sync', () {
+    testWidgets('ShortcutsConfigDialog.show opens only one dialog when invoked multiple times concurrently', (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () {
+                // Call show multiple times in immediate succession
+                ShortcutsConfigDialog.show(context);
+                ShortcutsConfigDialog.show(context);
+                ShortcutsConfigDialog.show(context);
+              },
+              child: const Text('Open Dialog'),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.text('Open Dialog'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.byType(ShortcutsConfigDialog), findsOneWidget);
+      expect(ShortcutsConfigDialog.isOpen, isTrue);
+
+      // Close the open dialog
+      Navigator.of(tester.element(find.byType(ShortcutsConfigDialog))).pop();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ShortcutsConfigDialog), findsNothing);
+      expect(ShortcutsConfigDialog.isOpen, isFalse);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(milliseconds: 100));
+    });
+
+    testWidgets('Editing cart quantity field and blurring (unfocus) applies new quantity immediately without Enter', (tester) async {
+      final originalOnError = FlutterError.onError;
+      FlutterError.onError = (details) {
+        if (details.toString().contains('overflowed')) return;
+        originalOnError?.call(details);
+      };
+      addTearDown(() => FlutterError.onError = originalOnError);
+
+      tester.view.physicalSize = const Size(1600, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: MultiBlocProvider(
+              providers: [
+                BlocProvider<AuthCubit>.value(value: authCubit),
+                BlocProvider<ShiftCubit>.value(value: _FakeShiftCubit()),
+              ],
+              child: const PosScreen(),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      final posCubit = tester.element(find.byType(Scaffold)).read<PosCubit>();
+      final testVariant = VariantEntity(
+        id: 'var_test_1',
+        productId: 'prod_test_1',
+        productCode: 'SHIRT-WHT-L',
+        productName: 'قميص تجريبي',
+        size: 'L',
+        color: 'أبيض',
+        salePrice: 10000,
+        costPrice: 5000,
+        quantity: 20,
+        minStock: 5,
+        createdAt: DateTime.now(),
+      );
+      posCubit.addToCart(testVariant, 1);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      final qtyFieldFinder = find.byKey(const Key('cart_qty_input_var_test_1'));
+      expect(qtyFieldFinder, findsOneWidget);
+      expect(posCubit.state.cart.first.quantity, equals(1));
+
+      // Enter 4 in the quantity field
+      await tester.tap(qtyFieldFinder);
+      await tester.pump();
+      await tester.enterText(qtyFieldFinder, '4');
+      await tester.pump();
+
+      // Blur / unfocus (simulating tapping outside or losing focus)
+      final focusNode = tester.widget<TextField>(qtyFieldFinder).focusNode!;
+      focusNode.unfocus();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      // Quantity must be committed to cubit state without Enter key
+      expect(posCubit.state.cart.first.quantity, equals(4));
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(milliseconds: 100));
+    });
+
+    testWidgets('Entering Eastern Arabic digits (e.g. ٥) normalizes and updates quantity to 5 upon blur', (tester) async {
+      final originalOnError = FlutterError.onError;
+      FlutterError.onError = (details) {
+        if (details.toString().contains('overflowed')) return;
+        originalOnError?.call(details);
+      };
+      addTearDown(() => FlutterError.onError = originalOnError);
+
+      tester.view.physicalSize = const Size(1600, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: MultiBlocProvider(
+              providers: [
+                BlocProvider<AuthCubit>.value(value: authCubit),
+                BlocProvider<ShiftCubit>.value(value: _FakeShiftCubit()),
+              ],
+              child: const PosScreen(),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      final posCubit = tester.element(find.byType(Scaffold)).read<PosCubit>();
+      final testVariant = VariantEntity(
+        id: 'var_test_2',
+        productId: 'prod_test_2',
+        productCode: 'PANTS-BLK-32',
+        productName: 'بنطلون تجريبي',
+        size: '32',
+        color: 'أسود',
+        salePrice: 20000,
+        costPrice: 10000,
+        quantity: 15,
+        minStock: 5,
+        createdAt: DateTime.now(),
+      );
+      posCubit.addToCart(testVariant, 1);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      final qtyFieldFinder = find.byKey(const Key('cart_qty_input_var_test_2'));
+      expect(qtyFieldFinder, findsOneWidget);
+
+      // Enter Eastern Arabic numeral '٥'
+      await tester.tap(qtyFieldFinder);
+      await tester.pump();
+      await tester.enterText(qtyFieldFinder, '٥');
+      await tester.pump();
+
+      // Blur / unfocus
+      final focusNode = tester.widget<TextField>(qtyFieldFinder).focusNode!;
+      focusNode.unfocus();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      // Eastern Arabic '٥' is normalized and committed as 5
+      expect(posCubit.state.cart.firstWhere((i) => i.variantId == 'var_test_2').quantity, equals(5));
 
       await tester.pumpWidget(const SizedBox());
       await tester.pump(const Duration(milliseconds: 100));
