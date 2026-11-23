@@ -4125,9 +4125,9 @@ class _CartPanelState extends State<_CartPanel> {
                     // Cart Header: Title + Items/Pieces count + Wholesale toggle + Clear [Esc]
                     Padding(
                       padding: EdgeInsets.fromLTRB(
-                        12,
+                        8,
                         isCompact ? 4 : 8,
-                        12,
+                        8,
                         isCompact ? 2 : 4,
                       ),
                       child: Column(
@@ -4137,25 +4137,25 @@ class _CartPanelState extends State<_CartPanel> {
                             children: [
                               Icon(
                                 Icons.shopping_bag_outlined,
-                                size: 17,
+                                size: 16,
                                 color: AppColors.primary,
                               ),
-                              const SizedBox(width: 5),
+                              const SizedBox(width: 4),
                               const Text(
                                 'سلة المشتريات',
                                 style: TextStyle(
                                   fontFamily: 'Cairo',
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 13.5,
+                                  fontSize: 13,
                                   color: AppColors.onSurface,
                                 ),
                               ),
-                              const SizedBox(width: 5),
+                              const SizedBox(width: 4),
                               // Badge showing items & pieces (overflow-safe)
                               Flexible(
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 5,
+                                    horizontal: 4,
                                     vertical: 1.5,
                                   ),
                                   decoration: BoxDecoration(
@@ -4177,7 +4177,7 @@ class _CartPanelState extends State<_CartPanel> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 3),
                               Tooltip(
                                 message: 'إضافة صنف مرتجع للاستبدال',
                                 child: InkWell(
@@ -4186,7 +4186,7 @@ class _CartPanelState extends State<_CartPanel> {
                                   borderRadius: BorderRadius.circular(6),
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
+                                      horizontal: 5,
                                       vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
@@ -4205,15 +4205,15 @@ class _CartPanelState extends State<_CartPanel> {
                                       children: [
                                         Icon(
                                           Icons.swap_horiz_rounded,
-                                          size: 14,
+                                          size: 13,
                                           color: AppColors.secondary,
                                         ),
-                                        SizedBox(width: 3),
+                                        const SizedBox(width: 2),
                                         Text(
                                           'استبدال صنف',
                                           style: TextStyle(
                                             fontFamily: 'Cairo',
-                                            fontSize: 10.5,
+                                            fontSize: 10,
                                             color: AppColors.secondary,
                                             fontWeight: FontWeight.bold,
                                           ),
@@ -4224,7 +4224,7 @@ class _CartPanelState extends State<_CartPanel> {
                                 ),
                               ),
                               if (state.cart.isNotEmpty) ...[
-                                const SizedBox(width: 4),
+                                const SizedBox(width: 3),
                                 Tooltip(
                                   message: 'إفراغ السلة [Esc]',
                                   child: InkWell(
@@ -4748,7 +4748,9 @@ class _CartPanelState extends State<_CartPanel> {
                                       );
                                       final maxStock = v?.quantity ?? 999;
                                       return _CartItemTile(
-                                        key: ValueKey('${item.variantId}_${item.isReturn}'),
+                                        key: item.isReturn
+                                            ? ValueKey('${item.variantId}_return')
+                                            : ValueKey(item.variantId),
                                         item: item,
                                         maxStock: maxStock,
                                       );
@@ -5941,7 +5943,9 @@ class _CartGroupAccordionCardState extends State<_CartGroupAccordionCard> {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 6),
                     child: _CartItemTile(
-                      key: ValueKey('${it.variantId}_${it.isReturn}'),
+                      key: it.isReturn
+                          ? ValueKey('${it.variantId}_return')
+                          : ValueKey(it.variantId),
                       item: it,
                       maxStock: maxStock,
                     ),

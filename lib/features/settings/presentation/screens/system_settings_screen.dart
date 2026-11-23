@@ -219,6 +219,11 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
       );
     }
 
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final searchWidth = screenWidth < 900
+        ? (screenWidth * 0.32).clamp(180.0, 360.0)
+        : 360.0;
+
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.keyF, control: true): () {
@@ -249,60 +254,71 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          'مركز الإعدادات الموحد',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Color(0xFF0F172A),
-                          ),
-                        ),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 8),
-                          child: Icon(
-                            Icons.chevron_left_rounded,
-                            size: 18,
-                            color: Color(0xFF94A3B8),
-                          ),
-                        ),
-                        Container(
-                          key: const Key('settings_active_breadcrumb_chip'),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 3.5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                          ),
-                          child: Text(
-                            _activeCategoryItem.label,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF334155),
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Flexible(
+                            child: Text(
+                              'مركز الإعدادات الموحد',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Color(0xFF0F172A),
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    const Text(
-                      'تحكم شامل في ميزات النظام وصلاحيات العمل وهوية المتجر',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        color: Color(0xFF64748B),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 8),
+                            child: Icon(
+                              Icons.chevron_left_rounded,
+                              size: 18,
+                              color: Color(0xFF94A3B8),
+                            ),
+                          ),
+                          Flexible(
+                            child: Container(
+                              key: const Key('settings_active_breadcrumb_chip'),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 3.5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: const Color(0xFFE2E8F0)),
+                              ),
+                              child: Text(
+                                _activeCategoryItem.label,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF334155),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 3),
+                      const Text(
+                        'تحكم شامل في ميزات النظام وصلاحيات العمل وهوية المتجر',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: Color(0xFF64748B),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -312,7 +328,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
                 child: Center(
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
-                    width: 360,
+                    width: searchWidth,
                     height: 40,
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8FAFC),
