@@ -160,6 +160,33 @@ class _FakePosCubit extends Cubit<PosState> implements PosCubit {
   @override
   List<VariantEntity> getVariantsForProduct(String productId) => [];
   @override
+  List<VariantEntity> get allVariants => [
+        VariantEntity(
+          id: 'var-1',
+          productId: 'prod-1',
+          productCode: 'SHIRT-L',
+          size: 'L',
+          color: 'White',
+          salePrice: 150,
+          costPrice: 100,
+          minStock: 2,
+          quantity: 10,
+          createdAt: DateTime(2026, 1, 1),
+        ),
+        VariantEntity(
+          id: 'var-2',
+          productId: 'prod-1',
+          productCode: 'SHIRT-XL',
+          size: 'XL',
+          color: 'Blue',
+          salePrice: 150,
+          costPrice: 100,
+          minStock: 2,
+          quantity: 5,
+          createdAt: DateTime(2026, 1, 1),
+        ),
+      ];
+  @override
   void filterByCategory(String catId) {
     emit(state.copyWith(selectedCategory: catId));
   }
@@ -679,16 +706,77 @@ void main() {
       // Verify that 'الكل' appears exactly once in the filter bar
       expect(find.text('الكل'), findsOneWidget, reason: 'Duplicate "الكل" chip must be eliminated');
 
-      // Tap 'ملابس وأزياء' activity tab
-      await tester.tap(find.text('ملابس وأزياء').first);
+      // Tap 'قمصان' category chip
+      await tester.tap(find.text('قمصان').first);
       await tester.pumpAndSettle();
-      expect(posCubit.state.selectedActivity, equals('clothing'));
+      expect(posCubit.state.selectedCategory, equals('cat-1'));
 
       // Tap master 'الكل' button
       await tester.tap(find.text('الكل').first);
       await tester.pumpAndSettle();
       expect(posCubit.state.selectedCategory, equals('All'));
       expect(posCubit.state.selectedActivity, equals('all'));
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 100));
+    });
+
+    testWidgets('Addendum 25.3: Pure merchant dynamic category bar displays custom categories, item counts, and no activity tabs', (tester) async {
+      tester.view.physicalSize = const Size(1400, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: MultiBlocProvider(
+              providers: [
+                BlocProvider<AuthCubit>.value(value: authCubit),
+                BlocProvider<ShiftCubit>.value(value: shiftCubit),
+                BlocProvider<PosCubit>.value(value: posCubit),
+              ],
+              child: const PosScreen(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify no activity tabs or duplicate dividers
+      expect(find.text('ملابس وأزياء'), findsNothing);
+      expect(find.text('شنط وأحذية'), findsNothing);
+
+      // Verify master 'الكل' and custom categories with their dynamic count badges
+      expect(find.text('الكل'), findsOneWidget);
+      expect(find.text('قمصان'), findsOneWidget);
+      expect(find.text('بناطيل'), findsOneWidget);
+
+      // Total variants = 2 ('الكل' has 2, 'قمصان' has 2, 'بناطيل' has 0)
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('pos_all_filter_chip')),
+          matching: find.text('2'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('pos_category_chip_cat-1')),
+          matching: find.text('2'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('pos_category_chip_cat-2')),
+          matching: find.text('0'),
+        ),
+        findsOneWidget,
+      );
 
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump(const Duration(milliseconds: 100));

@@ -1552,83 +1552,74 @@ class _ProductPanel extends StatelessWidget {
     return Column(
       children: [
         const SizedBox(height: 10),
-        // Unified Category & Activity Filter Bar (Task 25: Streamlined single-row filter)
+        // Pure Merchant Dynamic Category Bar (Addendum 25.3)
         BlocBuilder<PosCubit, PosState>(
           builder: (context, state) {
             final selectedActivity = state.selectedActivity;
             final allSelectedCategory = state.selectedCategory == 'All';
+            final posCubit = context.read<PosCubit>();
+            List<VariantEntity> allVariants = [];
+            try {
+              allVariants = posCubit.allVariants;
+            } catch (_) {
+              allVariants = [];
+            }
 
-            return StreamBuilder<List<ActivityType>>(
+            return StreamBuilder<bool>(
               stream: getIt.isRegistered<ActivitySettingsService>()
-                  ? getIt<ActivitySettingsService>().watchEnabledActivities()
-                  : Stream.value(ActivityType.values),
-              builder: (context, actSnap) {
-                final enabledActs = actSnap.data ?? ActivityType.values;
-                final bool showMultiActivities = enabledActs.length > 1;
+                  ? getIt<ActivitySettingsService>().watchPreOrdersEnabled()
+                  : Stream.value(true),
+              builder: (context, preOrderSnap) {
+                final preOrdersOn = preOrderSnap.data ?? true;
 
-                return StreamBuilder<bool>(
-                  stream: getIt.isRegistered<ActivitySettingsService>()
-                      ? getIt<ActivitySettingsService>().watchPreOrdersEnabled()
-                      : Stream.value(true),
-                  builder: (context, preOrderSnap) {
-                    final preOrdersOn = preOrderSnap.data ?? true;
-
-                    return Container(
-                      height: 38,
-                      margin: const EdgeInsets.symmetric(horizontal: 12),
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        children: [
-                          // Single Master 'All' Button (Addendum 25.2: Unified Single "الكل")
-                          _activityTab(
-                            label: 'الكل',
-                            icon: Icons.apps_rounded,
-                            isSelected: selectedActivity == 'all' && allSelectedCategory,
-                            onTap: () => context.read<PosCubit>().resetAllFilters(),
-                          ),
-                          if (showMultiActivities) ...[
-                            for (final act in enabledActs) ...[
-                              const SizedBox(width: 6),
-                              _activityTab(
-                                label: act.labelArabic,
-                                icon: act.icon,
-                                isSelected: selectedActivity == act.code,
-                                onTap: () => context.read<PosCubit>().filterByActivity(act.code),
-                              ),
-                            ],
-                            Container(
-                              height: 24,
-                              width: 1,
-                              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                              color: AppColors.outlineVariant,
-                            ),
-                          ],
-                          for (final cat in state.categories) ...[
-                            const SizedBox(width: 6),
-                            _categoryChip(
-                              label: cat.name,
-                              isSelected: state.selectedCategory == cat.id,
-                              onTap: () => context.read<PosCubit>().filterByCategory(cat.id),
-                            ),
-                          ],
-                          if (preOrdersOn) ...[
-                            const SizedBox(width: 6),
-                            _activityTab(
-                              label: 'حجز مسبق',
-                              icon: Icons.event_note_rounded,
-                              isSelected: false,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => const PreOrdersScreen()),
-                                );
-                              },
-                            ),
-                          ],
-                        ],
+                return Container(
+                  height: 38,
+                  margin: const EdgeInsets.symmetric(horizontal: 12),
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      // Single Master 'All' Button (Addendum 25.3: Unified Single "الكل")
+                      _categoryChip(
+                        key: const Key('pos_all_filter_chip'),
+                        label: 'الكل',
+                        icon: Icons.apps_rounded,
+                        count: allVariants.length,
+                        isSelected: selectedActivity == 'all' && allSelectedCategory,
+                        onTap: () => posCubit.resetAllFilters(),
                       ),
-                    );
-                  },
+                      for (final cat in state.categories) ...[
+                        () {
+                          final count = allVariants.where((v) {
+                            try {
+                              return posCubit.getProductCategoryId(v.productId) == cat.id;
+                            } catch (_) {
+                              return false;
+                            }
+                          }).length;
+                          return _categoryChip(
+                            key: Key('pos_category_chip_${cat.id}'),
+                            label: cat.name,
+                            count: count,
+                            isSelected: state.selectedCategory == cat.id,
+                            onTap: () => posCubit.filterByCategory(cat.id),
+                          );
+                        }(),
+                      ],
+                      if (preOrdersOn)
+                        _categoryChip(
+                          key: const Key('pos_pre_orders_chip'),
+                          label: 'حجز مسبق',
+                          icon: Icons.event_note_rounded,
+                          isSelected: false,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const PreOrdersScreen()),
+                            );
+                          },
+                        ),
+                    ],
+                  ),
                 );
               },
             );
@@ -1778,97 +1769,92 @@ class _ProductPanel extends StatelessWidget {
     );
   }
 
-  Widget _activityTab({
-    required String label,
-    required IconData icon,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.outlineVariant,
-            width: 1,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.25),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 16,
-              color: isSelected ? Colors.white : AppColors.onSurfaceVariant,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? Colors.white : AppColors.onSurface,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _categoryChip({
     required String label,
     required bool isSelected,
     required VoidCallback onTap,
+    int? count,
+    IconData? icon,
+    Key? key,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.primary
-              : AppColors.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.outlineVariant,
-            width: 1,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.25),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
+    return Container(
+      height: 38,
+      margin: const EdgeInsetsDirectional.only(end: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: key,
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          hoverColor: const Color(0xFFF8FAFC),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: isSelected ? AppColors.primary : Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: isSelected ? AppColors.primary : const Color(0xFFE2E8F0),
+                width: 1,
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.22),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (icon != null) ...[
+                  Icon(
+                    icon,
+                    size: 16,
+                    color: isSelected ? Colors.white : const Color(0xFF334155),
                   ),
-                ]
-              : null,
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'Cairo',
-              color: isSelected ? AppColors.onPrimary : AppColors.onSurface,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-              fontSize: 13,
+                  const SizedBox(width: 6),
+                ],
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: isSelected ? Colors.white : const Color(0xFF334155),
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                    fontSize: 12.5,
+                  ),
+                ),
+                if (count != null) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 1.5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? Colors.white.withValues(alpha: 0.20)
+                          : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '$count',
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        color: isSelected
+                            ? Colors.white
+                            : const Color(0xFF64748B),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ),
