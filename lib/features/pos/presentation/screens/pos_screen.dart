@@ -397,9 +397,13 @@ class _PosViewState extends State<_PosView> {
     if (route != null && !route.isCurrent) return false;
 
     final key = event.logicalKey;
+    final s = getIt.isRegistered<ShortcutSettingsService>() ? getIt<ShortcutSettingsService>() : null;
+    final isCtrl = HardwareKeyboard.instance.isControlPressed;
+    final isAlt = HardwareKeyboard.instance.isAltPressed;
 
-    // Shortcut [F2]: Focus & select search bar
-    if (key == LogicalKeyboardKey.f2) {
+    // Shortcut [F1]: Focus search bar (when in POS)
+    final posActivator = s?.getActivator('openPos') ?? const SingleActivator(LogicalKeyboardKey.f1);
+    if (posActivator.accepts(event, HardwareKeyboard.instance) || (!isCtrl && !isAlt && key == LogicalKeyboardKey.f1)) {
       _scannerBuffer.clear();
       _searchFocusNode.requestFocus();
       if (_searchCtrl.text.isNotEmpty) {
@@ -408,6 +412,60 @@ class _PosViewState extends State<_PosView> {
           extentOffset: _searchCtrl.text.length,
         );
       }
+      return true;
+    }
+
+    // Shortcut [F2]: Focus & select search bar
+    final searchActivator = s?.getActivator('quickSearch') ?? const SingleActivator(LogicalKeyboardKey.f2);
+    if (searchActivator.accepts(event, HardwareKeyboard.instance) || (!isCtrl && !isAlt && key == LogicalKeyboardKey.f2)) {
+      _scannerBuffer.clear();
+      _searchFocusNode.requestFocus();
+      if (_searchCtrl.text.isNotEmpty) {
+        _searchCtrl.selection = TextSelection(
+          baseOffset: 0,
+          extentOffset: _searchCtrl.text.length,
+        );
+      }
+      return true;
+    }
+
+    // Shortcut [Ctrl+D]: Focus Discount
+    final discountActivator = s?.getActivator('focusDiscount') ?? const SingleActivator(LogicalKeyboardKey.keyD, control: true);
+    if (discountActivator.accepts(event, HardwareKeyboard.instance) || (isCtrl && !isAlt && key == LogicalKeyboardKey.keyD)) {
+      _scannerBuffer.clear();
+      _cartPanelKey.currentState?.focusDiscount();
+      return true;
+    }
+
+    // Shortcut [F5]: Quick Pay Cash
+    final cashActivator = s?.getActivator('quickPayCash') ?? const SingleActivator(LogicalKeyboardKey.f5);
+    if (cashActivator.accepts(event, HardwareKeyboard.instance) || (!isCtrl && !isAlt && key == LogicalKeyboardKey.f5)) {
+      _scannerBuffer.clear();
+      _cartPanelKey.currentState?.setPaymentMethod('cash');
+      return true;
+    }
+
+    // Shortcut [F6]: Quick Pay Card
+    final cardActivator = s?.getActivator('quickPayCard') ?? const SingleActivator(LogicalKeyboardKey.f6);
+    if (cardActivator.accepts(event, HardwareKeyboard.instance) || (!isCtrl && !isAlt && key == LogicalKeyboardKey.f6)) {
+      _scannerBuffer.clear();
+      _cartPanelKey.currentState?.setPaymentMethod('card');
+      return true;
+    }
+
+    // Shortcut [F10]: Hold Bill
+    final holdActivator = s?.getActivator('holdBill') ?? const SingleActivator(LogicalKeyboardKey.f10);
+    if (holdActivator.accepts(event, HardwareKeyboard.instance) || (!isCtrl && !isAlt && key == LogicalKeyboardKey.f10)) {
+      _scannerBuffer.clear();
+      _cartPanelKey.currentState?.addNewBillTab();
+      return true;
+    }
+
+    // Shortcut [F11]: Recall Bill
+    final recallActivator = s?.getActivator('recallBill') ?? const SingleActivator(LogicalKeyboardKey.f11);
+    if (recallActivator.accepts(event, HardwareKeyboard.instance) || (!isCtrl && !isAlt && key == LogicalKeyboardKey.f11)) {
+      _scannerBuffer.clear();
+      _cartPanelKey.currentState?.switchNextHeldBill();
       return true;
     }
 

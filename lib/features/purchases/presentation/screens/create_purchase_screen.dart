@@ -38,23 +38,101 @@ class _InvoiceItemRow {
   double get totalPounds => qty * costPricePounds;
 }
 
-class CreatePurchaseScreen extends StatefulWidget {
+class PurchaseInitialItem {
+  final String variantId;
+  final String productName;
+  final String sku;
+  final String color;
+  final String size;
+  final int qty;
+  final double costPricePounds;
+
+  const PurchaseInitialItem({
+    required this.variantId,
+    required this.productName,
+    required this.sku,
+    required this.color,
+    required this.size,
+    required this.qty,
+    required this.costPricePounds,
+  });
+}
+
+class CreatePurchaseScreen extends StatelessWidget {
   final VoidCallback? onBack;
   final VoidCallback? onSaved;
   final GoodsReceiptEntity? initialGoodsReceipt;
+  final List<PurchaseInitialItem>? initialItems;
 
   const CreatePurchaseScreen({
     super.key,
     this.onBack,
     this.onSaved,
     this.initialGoodsReceipt,
+    this.initialItems,
   });
 
   @override
-  State<CreatePurchaseScreen> createState() => _CreatePurchaseScreenState();
+  Widget build(BuildContext context) {
+    bool hasSuppliersCubit = false;
+    try {
+      context.read<SuppliersCubit>();
+      hasSuppliersCubit = true;
+    } catch (_) {
+      hasSuppliersCubit = false;
+    }
+
+    bool hasPurchasesCubit = false;
+    try {
+      context.read<PurchasesCubit>();
+      hasPurchasesCubit = true;
+    } catch (_) {
+      hasPurchasesCubit = false;
+    }
+
+    Widget content = _CreatePurchaseScreenContent(
+      onBack: onBack,
+      onSaved: onSaved,
+      initialGoodsReceipt: initialGoodsReceipt,
+      initialItems: initialItems,
+    );
+
+    if (!hasPurchasesCubit) {
+      content = BlocProvider<PurchasesCubit>(
+        create: (_) => getIt<PurchasesCubit>(),
+        child: content,
+      );
+    }
+
+    if (!hasSuppliersCubit) {
+      content = BlocProvider<SuppliersCubit>(
+        create: (_) => getIt<SuppliersCubit>(),
+        child: content,
+      );
+    }
+
+    return content;
+  }
 }
 
-class _CreatePurchaseScreenState extends State<CreatePurchaseScreen> {
+class _CreatePurchaseScreenContent extends StatefulWidget {
+  final VoidCallback? onBack;
+  final VoidCallback? onSaved;
+  final GoodsReceiptEntity? initialGoodsReceipt;
+  final List<PurchaseInitialItem>? initialItems;
+
+  const _CreatePurchaseScreenContent({
+    this.onBack,
+    this.onSaved,
+    this.initialGoodsReceipt,
+    this.initialItems,
+  });
+
+  @override
+  State<_CreatePurchaseScreenContent> createState() => _CreatePurchaseScreenContentState();
+}
+
+class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenContent> {
   final _formKey = GlobalKey<FormState>();
   final _invoiceNumController = TextEditingController();
   final _paidController = TextEditingController(text: '0');
@@ -81,7 +159,27 @@ class _CreatePurchaseScreenState extends State<CreatePurchaseScreen> {
     super.initState();
     context.read<SuppliersCubit>().loadSuppliers();
 
-    if (widget.initialGoodsReceipt != null) {
+    if (widget.initialItems != null && widget.initialItems!.isNotEmpty) {
+      if (widget.initialGoodsReceipt != null) {
+        final gr = widget.initialGoodsReceipt!;
+        if (gr.notes != null && gr.notes!.isNotEmpty) {
+          _notesController.text = 'مبنية على استلام بضاعة #${gr.id}: ${gr.notes}';
+        } else {
+          _notesController.text = 'مبنية على استلام بضاعة معلق #${gr.id}';
+        }
+      }
+      for (final it in widget.initialItems!) {
+        _items.add(_InvoiceItemRow(
+          variantId: it.variantId,
+          productName: it.productName,
+          sku: it.sku,
+          color: it.color,
+          size: it.size,
+          qty: it.qty,
+          costPricePounds: it.costPricePounds,
+        ));
+      }
+    } else if (widget.initialGoodsReceipt != null) {
       final gr = widget.initialGoodsReceipt!;
       if (gr.notes != null && gr.notes!.isNotEmpty) {
         _notesController.text = 'مبنية على استلام بضاعة #${gr.id}: ${gr.notes}';
@@ -100,7 +198,29 @@ class _CreatePurchaseScreenState extends State<CreatePurchaseScreen> {
           costPricePounds: 0.0,
         ));
       }
+      _fetchVariantCostPricesForReceipt();
     }
+  }
+
+  Future<void> _fetchVariantCostPricesForReceipt() async {
+    try {
+      final db = getIt<AppDatabase>();
+      bool changed = false;
+      for (final it in _items) {
+        if (it.costPricePounds == 0.0) {
+          final row = await (db.select(db.productVariants)
+                ..where((tbl) => tbl.id.equals(it.variantId)))
+              .getSingleOrNull();
+          if (row != null && row.costPrice > 0) {
+            it.costPricePounds = row.costPrice / 100.0;
+            changed = true;
+          }
+        }
+      }
+      if (changed && mounted) {
+        setState(() {});
+      }
+    } catch (_) {}
   }
 
   @override
@@ -595,6 +715,98 @@ class _CreatePurchaseScreenState extends State<CreatePurchaseScreen> {
     );
   }
 
+  Future<void> _showEditItemPriceDialog(int index, _InvoiceItemRow item) async {
+    final priceCtrl = TextEditingController(
+      text: item.costPricePounds > 0 ? item.costPricePounds.toStringAsFixed(2) : '',
+    );
+    final qtyCtrl = TextEditingController(text: item.qty.toString());
+
+    await showDialog(
+      context: context,
+      builder: (dlgCtx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.edit_note_rounded, color: AppColors.primary),
+            const SizedBox(width: 8),
+            const Text('تعديل سعر وتفاصيل الصنف بالفاتورة'),
+          ],
+        ),
+        content: SizedBox(
+          width: 360,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                item.productName,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'كود: ${item.sku} | مقاس: ${item.size} | لون: ${item.color}',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                key: Key('edit_item_cost_field_$index'),
+                controller: priceCtrl,
+                autofocus: true,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  labelText: 'سعر الشراء للقطعة (ج.م)',
+                  prefixIcon: const Icon(Icons.attach_money_rounded),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: Key('edit_item_qty_field_$index'),
+                controller: qtyCtrl,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'الكمية (قطع)',
+                  prefixIcon: const Icon(Icons.numbers_rounded),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dlgCtx),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            key: const Key('save_item_edit_btn'),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () {
+              final newPrice = double.tryParse(priceCtrl.text.trim());
+              final newQty = int.tryParse(qtyCtrl.text.trim());
+              if (newPrice == null || newPrice < 0) {
+                _showToast('يرجى إدخال سعر شراء صحيح', isError: true);
+                return;
+              }
+              if (newQty == null || newQty <= 0) {
+                _showToast('يرجى إدخال كمية صحيحة أكبر من صفر', isError: true);
+                return;
+              }
+
+              setState(() {
+                item.costPricePounds = newPrice;
+                item.qty = newQty;
+              });
+
+              Navigator.pop(dlgCtx);
+              _showToast('تم تعديل بيانات الصنف بالفاتورة بنجاح');
+            },
+            child: const Text('حفظ التعديل', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _submitInvoice() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -1029,9 +1241,40 @@ class _CreatePurchaseScreenState extends State<CreatePurchaseScreen> {
                                     ),
                                   ),
                                   Padding(
-                                    padding: const EdgeInsets.all(12),
-                                    child: Text(
-                                      '${it.costPricePounds.toStringAsFixed(2)} ج.م',
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                                    child: InkWell(
+                                      key: Key('edit_purchase_cost_btn_$idx'),
+                                      borderRadius: BorderRadius.circular(6),
+                                      onTap: () => _showEditItemPriceDialog(idx, it),
+                                      child: Tooltip(
+                                        message: 'اضغط لتعديل سعر الشراء أو الكمية',
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                          decoration: BoxDecoration(
+                                            color: Colors.blue.shade50,
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(color: Colors.blue.shade200),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                '${it.costPricePounds.toStringAsFixed(2)} ج.م',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.blue.shade900,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Icon(
+                                                Icons.edit_outlined,
+                                                size: 14,
+                                                color: Colors.blue.shade700,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                   Padding(

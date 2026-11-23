@@ -80,6 +80,56 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
     });
   }
 
+  Future<void> _confirmDeletePendingReceipt(GoodsReceiptEntity r) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: AppColors.error),
+            SizedBox(width: 8),
+            Text('حذف الشحنة المعلقة'),
+          ],
+        ),
+        content: Text(
+          'هل أنت متأكد من حذف هذه الشحنة المعلقة رقم #${r.id.length > 8 ? r.id.substring(0, 8) : r.id}؟\n'
+          'سيتم إلغاء الاستلام وتصحيح رصيد المخزن تلقائياً.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('تراجع'),
+          ),
+          ElevatedButton(
+            key: const Key('confirm_delete_pending_receipt_btn'),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('تأكيد الحذف', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final auth = context.read<AuthCubit>().state;
+      String userId = 'system';
+      if (auth is AuthAuthenticated) {
+        userId = auth.user.id;
+      }
+      final success = await context.read<GoodsReceiptCubit>().cancelGoodsReceipt(
+        receiptId: r.id,
+        userId: userId,
+      );
+      if (mounted) {
+        if (success) {
+          _showToast('تم حذف وإلغاء الشحنة المعلقة وتصحيح المخزون بنجاح');
+        } else {
+          _showToast('تعذر حذف الشحنة المعلقة', isError: true);
+        }
+      }
+    }
+  }
+
   void _openAddSupplierDialog() {
     showDialog(
       context: context,
@@ -606,6 +656,22 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
+                      OutlinedButton.icon(
+                        key: Key('delete_pending_receipt_${r.id}'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.error,
+                          side: const BorderSide(color: AppColors.error),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                        label: const Text(
+                          'حذف الشحنة المعلقة',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                        onPressed: () => _confirmDeletePendingReceipt(r),
+                      ),
+                      const SizedBox(width: 8),
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,

@@ -475,6 +475,32 @@ class InventoryLocalDataSource {
     );
   }
 
+  Future<void> cancelGoodsReceipt({
+    required String receiptId,
+    required String userId,
+  }) async {
+    final receipt = await getGoodsReceiptById(receiptId);
+    if (receipt == null || receipt.status == 'cancelled') return;
+
+    for (final it in receipt.items) {
+      await applyStockMovement(
+        variantId: it.variantId,
+        qtyDelta: -it.quantity,
+        type: StockMovementType.adjustment,
+        reason: 'إلغاء استلام شحنة معلقة #${receipt.id}',
+        userId: userId,
+        refType: 'goods_receipt',
+        refId: receipt.id,
+      );
+    }
+
+    await updateGoodsReceiptStatus(
+      receiptId: receiptId,
+      newStatus: 'cancelled',
+      userId: userId,
+    );
+  }
+
   Future<List<GoodsReceiptItemEntity>> _getItemsForReceipt(String receiptId) async {
     final query = _db.select(_db.goodsReceiptItems).join([
       innerJoin(

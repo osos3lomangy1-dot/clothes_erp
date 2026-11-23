@@ -23,8 +23,9 @@ class ShortcutSettingsService {
   ShortcutSettingsService(this._db);
 
   static const Map<String, String> defaultShortcuts = {
+    'openPos': 'F1',
     'openCommandPalette': 'Ctrl+K',
-    'openShortcuts': 'F1',
+    'openShortcuts': 'Alt+F1',
     'quickSearch': 'F2',
     'newRow': 'F3',
     'save': 'Ctrl+S',
@@ -98,6 +99,12 @@ class ShortcutSettingsService {
 
     // 3. Navigation & General
     ShortcutDefinition(
+      action: 'openPos',
+      label: 'الانتقال الفوري لشاشة الكاشير من أي مكان',
+      category: 'navigation',
+      defaultCombo: 'F1',
+    ),
+    ShortcutDefinition(
       action: 'openCommandPalette',
       label: 'لوحة الأوامر الشاملة (Spotlight)',
       category: 'navigation',
@@ -107,7 +114,7 @@ class ShortcutSettingsService {
       action: 'openShortcuts',
       label: 'دليل وتخصيص اختصارات النظام',
       category: 'navigation',
-      defaultCombo: 'F1',
+      defaultCombo: 'Alt+F1',
     ),
     ShortcutDefinition(
       action: 'openSettingsSearch',

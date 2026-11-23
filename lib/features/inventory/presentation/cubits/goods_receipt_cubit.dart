@@ -75,5 +75,25 @@ class GoodsReceiptCubit extends Cubit<GoodsReceiptState> {
       return false;
     }
   }
+
+  Future<bool> cancelGoodsReceipt({
+    required String receiptId,
+    required String userId,
+  }) async {
+    try {
+      await _dataSource.cancelGoodsReceipt(
+        receiptId: receiptId,
+        userId: userId,
+      );
+      await loadGoodsReceipts(status: 'pending');
+      return true;
+    } catch (e) {
+      emit(state.copyWith(
+        status: GoodsReceiptStatus.error,
+        errorMessage: 'فشل إلغاء الشحنة: $e',
+      ));
+      return false;
+    }
+  }
 }
 

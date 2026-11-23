@@ -12,6 +12,7 @@ import '../../../barcode_printing/domain/models/barcode_label_item.dart';
 import '../../../barcode_printing/presentation/dialogs/barcode_print_dialog.dart';
 import '../../../products/domain/entities/activity_type.dart';
 import '../../../products/presentation/screens/product_form_screen.dart';
+import '../../../purchases/presentation/screens/create_purchase_screen.dart';
 import '../../data/datasources/inventory_local_data_source.dart';
 import '../cubits/goods_receipt_cubit.dart';
 
@@ -22,6 +23,7 @@ class _ReceiptLineItem {
   final String color;
   final String size;
   int quantity;
+  double? costPricePounds;
 
   _ReceiptLineItem({
     required this.variantId,
@@ -30,6 +32,7 @@ class _ReceiptLineItem {
     required this.color,
     required this.size,
     required this.quantity,
+    this.costPricePounds,
   });
 }
 
@@ -84,11 +87,13 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
 
   void _showToast(String message, {bool isError = false}) {
     if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
         backgroundColor: isError ? AppColors.error : AppColors.primary,
         behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 1),
       ),
     );
   }
@@ -119,6 +124,7 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
         sku: v.sku,
         color: v.color,
         size: v.size,
+        costPricePounds: v.costPrice > 0 ? (v.costPrice / 100.0) : null,
       );
     } else {
       _showToast('لم يتم العثور على صنف بالباركود: $query', isError: true);
@@ -133,11 +139,19 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
     required String color,
     required String size,
     int addQty = 1,
+    double? costPricePounds,
+    bool showToast = true,
   }) {
     setState(() {
       final existingIndex = _lines.indexWhere((l) => l.variantId == variantId);
       if (existingIndex >= 0) {
         _lines[existingIndex].quantity += addQty;
+        if (costPricePounds != null &&
+            costPricePounds > 0 &&
+            (_lines[existingIndex].costPricePounds == null ||
+                _lines[existingIndex].costPricePounds == 0)) {
+          _lines[existingIndex].costPricePounds = costPricePounds;
+        }
       } else {
         _lines.add(_ReceiptLineItem(
           variantId: variantId,
@@ -146,10 +160,13 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
           color: color,
           size: size,
           quantity: addQty,
+          costPricePounds: costPricePounds,
         ));
       }
     });
-    _showToast('تمت إضافة: $productName ($size - $color)');
+    if (showToast) {
+      _showToast('تمت إضافة: $productName ($size - $color)');
+    }
   }
 
   Future<void> _openSearchVariantDialog() async {
@@ -196,9 +213,9 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
               ],
             ),
             content: SizedBox(
-              width: 520,
-              height: 480,
+              width: 580,
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   TextField(
                     decoration: InputDecoration(
@@ -226,10 +243,15 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Expanded(
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 300),
                     child: filtered.isEmpty
-                        ? const Center(child: Text('لا توجد نتائج مطابقة للبحث'))
+                        ? const Padding(
+                            padding: EdgeInsets.all(24.0),
+                            child: Center(child: Text('لا توجد نتائج مطابقة للبحث')),
+                          )
                         : ListView.separated(
+                            shrinkWrap: true,
                             itemCount: filtered.length,
                             separatorBuilder: (c, i) => const Divider(height: 1),
                             itemBuilder: (_, idx) {
@@ -237,30 +259,80 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
                               final v = r.readTable(db.productVariants);
                               final p = r.readTable(db.products);
 
-                              return ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                                  child: Icon(Icons.checkroom_rounded, color: AppColors.primary),
-                                ),
-                                title: Text(p.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                subtitle: Text('المقاس: ${v.size} | اللون: ${v.color} | SKU: ${v.sku}'),
-                                trailing: ElevatedButton.icon(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.primary,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                  ),
-                                  icon: const Icon(Icons.add, size: 16, color: Colors.white),
-                                  label: const Text('إضافة', style: TextStyle(color: Colors.white)),
-                                  onPressed: () {
-                                    Navigator.pop(dialogCtx);
-                                    _addOrIncrementVariant(
-                                      variantId: v.id,
-                                      productName: p.name,
-                                      sku: v.sku,
-                                      color: v.color,
-                                      size: v.size,
-                                    );
-                                  },
+                              final existingIndex = _lines.indexWhere((l) => l.variantId == v.id);
+                              final currentQtyInShipment = existingIndex >= 0 ? _lines[existingIndex].quantity : 0;
+
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                                      child: Icon(Icons.checkroom_rounded, color: AppColors.primary),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Wrap(
+                                            crossAxisAlignment: WrapCrossAlignment.center,
+                                            spacing: 8,
+                                            runSpacing: 4,
+                                            children: [
+                                              Text(p.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                              if (currentQtyInShipment > 0)
+                                                Container(
+                                                  key: Key('search_item_added_badge_${v.id}'),
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.green.shade50,
+                                                    borderRadius: BorderRadius.circular(6),
+                                                    border: Border.all(color: Colors.green.shade300),
+                                                  ),
+                                                  child: Text(
+                                                    'تمت إضافة +1 | الإجمالي: $currentQtyInShipment',
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Colors.green.shade800,
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'المقاس: ${v.size} | اللون: ${v.color} | SKU: ${v.sku}',
+                                            style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    ElevatedButton.icon(
+                                      key: Key('search_add_item_btn_${v.id}'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.primary,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                      ),
+                                      icon: const Icon(Icons.add, size: 16, color: Colors.white),
+                                      label: const Text('إضافة', style: TextStyle(color: Colors.white)),
+                                      onPressed: () {
+                                        _addOrIncrementVariant(
+                                          variantId: v.id,
+                                          productName: p.name,
+                                          sku: v.sku,
+                                          color: v.color,
+                                          size: v.size,
+                                          costPricePounds: v.costPrice > 0 ? (v.costPrice / 100.0) : null,
+                                          showToast: false,
+                                        );
+                                        setDialogState(() {});
+                                      },
+                                    ),
+                                  ],
                                 ),
                               );
                             },
@@ -273,6 +345,20 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
               TextButton(
                 onPressed: () => Navigator.pop(dialogCtx),
                 child: const Text('إلغاء'),
+              ),
+              ElevatedButton.icon(
+                key: const Key('search_dialog_done_btn'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                icon: const Icon(Icons.done_all_rounded, size: 18, color: Colors.white),
+                label: Text(
+                  'تم والعودة للشحنة ($_totalItemsCount قطعة)',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                onPressed: () => Navigator.pop(dialogCtx),
               ),
             ],
           );
@@ -454,11 +540,14 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
                 onPressed: () => Navigator.pop(ctx),
                 child: const Text('إلغاء'),
               ),
-              ElevatedButton.icon(
-                key: const Key('confirm_add_new_variant_btn'),
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-                icon: const Icon(Icons.check, color: Colors.white, size: 18),
-                label: const Text('حفظ وإدراج في الشحنة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              OutlinedButton.icon(
+                key: const Key('save_and_add_another_variant_btn'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: BorderSide(color: AppColors.primary),
+                ),
+                icon: const Icon(Icons.add_circle_outline, size: 18),
+                label: const Text('حفظ وإضافة مقاس آخر لنفس الموديل', style: TextStyle(fontWeight: FontWeight.bold)),
                 onPressed: () async {
                   final size = sizeCtrl.text.trim();
                   if (size.isEmpty) {
@@ -502,6 +591,68 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
                       color: color,
                       size: size,
                       quantity: qty,
+                      costPricePounds: costPounds > 0 ? costPounds : null,
+                    ));
+                  });
+
+                  setDialogState(() {
+                    final newSizes = getSizesForProduct(selectedProduct);
+                    final existingSizes = _lines.where((l) => l.productName == selectedProduct.name).map((l) => l.size).toSet();
+                    final remaining = newSizes.where((s) => !existingSizes.contains(s)).toList();
+                    sizeCtrl.text = remaining.isNotEmpty ? remaining.first : '';
+                  });
+                  _showToast('تم حفظ المقاس وإدراجه بالشحنة - يمكنك إدخال المقاس التالي لنفس الموديل');
+                },
+              ),
+              ElevatedButton.icon(
+                key: const Key('confirm_add_new_variant_btn'),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                icon: const Icon(Icons.check, color: Colors.white, size: 18),
+                label: const Text('حفظ وإنهاء', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                onPressed: () async {
+                  final size = sizeCtrl.text.trim();
+                  if (size.isEmpty) {
+                    _showToast('يرجى تحديد المقاس أو البعد', isError: true);
+                    return;
+                  }
+                  final costPounds = double.tryParse(costCtrl.text.trim()) ?? 0.0;
+                  final sellPounds = double.tryParse(sellCtrl.text.trim()) ?? 0.0;
+                  final qty = int.tryParse(qtyCtrl.text.trim()) ?? 0;
+                  if (qty <= 0) {
+                    _showToast('يرجى إدخال كمية صحيحة أكبر من صفر', isError: true);
+                    return;
+                  }
+
+                  final newVariantId = const Uuid().v4();
+                  final cleanSku = BarcodeHelper.generateSku(size: size);
+                  final color = colorCtrl.text.trim().isEmpty ? 'افتراضي' : colorCtrl.text.trim();
+
+                  await db.into(db.productVariants).insert(
+                    ProductVariantsCompanion.insert(
+                      id: newVariantId,
+                      branchId: selectedProduct.branchId,
+                      productId: selectedProduct.id,
+                      sku: cleanSku,
+                      size: size,
+                      color: color,
+                      costPrice: (costPounds * 100).round(),
+                      sellPrice: (sellPounds * 100).round(),
+                      quantity: const Value(0),
+                      createdAt: DateTime.now(),
+                      updatedAt: DateTime.now(),
+                    ),
+                  );
+
+                  if (!mounted) return;
+                  setState(() {
+                    _lines.add(_ReceiptLineItem(
+                      variantId: newVariantId,
+                      productName: selectedProduct.name,
+                      sku: cleanSku,
+                      color: color,
+                      size: size,
+                      quantity: qty,
+                      costPricePounds: costPounds > 0 ? costPounds : null,
                     ));
                   });
                   if (ctx.mounted) {
@@ -553,12 +704,264 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
     );
   }
 
+  Future<void> _showEditCostDialog(_ReceiptLineItem line) async {
+    final costCtrl = TextEditingController(
+      text: line.costPricePounds != null && line.costPricePounds! > 0
+          ? line.costPricePounds!.toStringAsFixed(2)
+          : '',
+    );
+
+    await showDialog(
+      context: context,
+      builder: (dlgCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.monetization_on_outlined, color: AppColors.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'تحديد سعر الشراء / التكلفة (${line.productName} - ${line.size})',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 380,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'أدخل سعر الشراء للقطعة الواحدة (ج.م):',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const Key('cost_price_input_field'),
+                controller: costCtrl,
+                autofocus: true,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'سعر الشراء (ج.م)',
+                  hintText: 'مثال: 120.00',
+                  suffixText: 'ج.م',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dlgCtx),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            key: const Key('confirm_edit_cost_btn'),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () async {
+              final parsed = double.tryParse(costCtrl.text.trim());
+              setState(() {
+                line.costPricePounds = (parsed != null && parsed > 0) ? parsed : null;
+              });
+
+              if (parsed != null && parsed > 0) {
+                final db = getIt<AppDatabase>();
+                await (db.update(db.productVariants)
+                      ..where((v) => v.id.equals(line.variantId)))
+                    .write(ProductVariantsCompanion(
+                  costPrice: Value((parsed * 100).round()),
+                  updatedAt: Value(DateTime.now()),
+                ));
+              }
+
+              if (dlgCtx.mounted) {
+                Navigator.pop(dlgCtx);
+              }
+              _showToast('تم تحديث سعر الشراء للصنف');
+            },
+            child: const Text('حفظ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _saveReceipt() async {
     if (_lines.isEmpty) {
       _showToast('يرجى إضافة صنف واحد على الأقل للشحنة', isError: true);
       return;
     }
+    await _showShipmentSummaryModal();
+  }
 
+  Future<void> _showShipmentSummaryModal() async {
+    final authState = context.read<AuthCubit>().state;
+    String cashierName = 'كاشير المحل';
+    if (authState is AuthAuthenticated) {
+      cashierName = authState.user.name.isNotEmpty ? authState.user.name : authState.user.id;
+    }
+
+    final distinctProducts = _lines.map((l) => l.productName).toSet().length;
+    final totalPieces = _totalItemsCount;
+    final totalCostPounds = _lines.fold(0.0, (sum, l) => sum + (l.quantity * (l.costPricePounds ?? 0.0)));
+    final notes = _notesController.text.trim();
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dlgCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.inventory_rounded, color: AppColors.primary),
+            const SizedBox(width: 8),
+            const Text('ملخص شحنة البضاعة المستلمة', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          ],
+        ),
+        content: SizedBox(
+          width: 520,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.blue.shade200),
+                      ),
+                      child: Column(
+                        children: [
+                          Text('عدد الأصناف', style: TextStyle(fontSize: 12, color: Colors.blue.shade800)),
+                          const SizedBox(height: 4),
+                          Text('$distinctProducts', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue.shade900)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.purple.shade200),
+                      ),
+                      child: Column(
+                        children: [
+                          Text('إجمالي القطع', style: TextStyle(fontSize: 12, color: Colors.purple.shade800)),
+                          const SizedBox(height: 4),
+                          Text('$totalPieces', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.purple.shade900)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.teal.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.teal.shade200),
+                      ),
+                      child: Column(
+                        children: [
+                          Text('إجمالي التكلفة', style: TextStyle(fontSize: 12, color: Colors.teal.shade800)),
+                          const SizedBox(height: 4),
+                          Text('${totalCostPounds.toStringAsFixed(2)} ج.م', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.teal.shade900)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.person_outline, size: 18, color: Colors.grey),
+                        const SizedBox(width: 6),
+                        const Text('المستلم: ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        Text(cashierName, style: const TextStyle(fontSize: 13)),
+                      ],
+                    ),
+                    if (notes.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.notes_outlined, size: 18, color: Colors.grey),
+                          const SizedBox(width: 6),
+                          const Text('ملاحظات: ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          Expanded(child: Text(notes, style: const TextStyle(fontSize: 13))),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'يمكنك حفظ الشحنة مباشرة لزيادة المخزون فقط، أو حفظها والتحويل المباشر لإنشاء فاتورة مشتريات للمورد.',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dlgCtx),
+            child: const Text('متابعة التعديل'),
+          ),
+          OutlinedButton.icon(
+            key: const Key('save_shipment_only_btn'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.green.shade700,
+              side: BorderSide(color: Colors.green.shade700),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            ),
+            icon: const Icon(Icons.save_outlined, size: 18),
+            label: const Text('حفظ كشحنة مخزنية فقط', style: TextStyle(fontWeight: FontWeight.bold)),
+            onPressed: () => _executeSaveGoodsReceipt(convertToPurchase: false, dialogCtx: dlgCtx),
+          ),
+          ElevatedButton.icon(
+            key: const Key('save_and_convert_to_purchase_btn'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            ),
+            icon: const Icon(Icons.receipt_long_rounded, color: Colors.white, size: 18),
+            label: const Text('حفظ والتحويل لفاتورة مشتريات', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            onPressed: () => _executeSaveGoodsReceipt(convertToPurchase: true, dialogCtx: dlgCtx),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _executeSaveGoodsReceipt({
+    required bool convertToPurchase,
+    required BuildContext dialogCtx,
+  }) async {
+    final cubit = context.read<GoodsReceiptCubit>();
     final authState = context.read<AuthCubit>().state;
     String cashierId = 'cashier';
     if (authState is AuthAuthenticated) {
@@ -566,14 +969,28 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
     }
 
     setState(() => _isSaving = true);
+    if (dialogCtx.mounted) {
+      Navigator.pop(dialogCtx);
+    }
 
     try {
+      final db = getIt<AppDatabase>();
+      for (final line in _lines) {
+        if (line.costPricePounds != null && line.costPricePounds! > 0) {
+          await (db.update(db.productVariants)
+                ..where((v) => v.id.equals(line.variantId)))
+              .write(ProductVariantsCompanion(
+            costPrice: Value((line.costPricePounds! * 100).round()),
+            updatedAt: Value(DateTime.now()),
+          ));
+        }
+      }
+
       final items = _lines.map((l) => GoodsReceiptDraftItem(
         variantId: l.variantId,
         quantity: l.quantity,
       )).toList();
 
-      final cubit = context.read<GoodsReceiptCubit>();
       final receipt = await cubit.createGoodsReceipt(
         items: items,
         cashierId: cashierId,
@@ -584,14 +1001,47 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
 
       if (receipt != null) {
         _showToast('تم حفظ استلام الشحنة بنجاح وزيادة المخزون مباشرة!');
-        setState(() {
-          _lines.clear();
-          _notesController.clear();
-        });
-        if (widget.onBack != null) {
-          widget.onBack!();
-        } else if (Navigator.canPop(context)) {
-          Navigator.pop(context);
+
+        if (convertToPurchase) {
+          final initialItems = _lines.map((l) => PurchaseInitialItem(
+            variantId: l.variantId,
+            productName: l.productName,
+            sku: l.sku,
+            color: l.color,
+            size: l.size,
+            qty: l.quantity,
+            costPricePounds: l.costPricePounds ?? 0.0,
+          )).toList();
+
+          setState(() {
+            _lines.clear();
+            _notesController.clear();
+          });
+
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => CreatePurchaseScreen(
+                initialItems: initialItems,
+                initialGoodsReceipt: receipt,
+                onSaved: () {
+                  if (mounted && Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  }
+                },
+              ),
+            ),
+          );
+        } else {
+          setState(() {
+            _lines.clear();
+            _notesController.clear();
+          });
+          if (widget.onBack != null) {
+            widget.onBack!();
+          } else if (Navigator.canPop(context)) {
+            Navigator.pop(context);
+          }
         }
       } else {
         _showToast(cubit.state.errorMessage ?? 'فشل حفظ الشحنة', isError: true);
@@ -804,6 +1254,7 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
                                 Expanded(flex: 2, child: Text('كود الصنف / SKU', style: TextStyle(fontWeight: FontWeight.bold))),
                                 Expanded(flex: 1, child: Text('المقاس', style: TextStyle(fontWeight: FontWeight.bold))),
                                 Expanded(flex: 1, child: Text('اللون', style: TextStyle(fontWeight: FontWeight.bold))),
+                                Expanded(flex: 2, child: Center(child: Text('سعر الشراء', style: TextStyle(fontWeight: FontWeight.bold)))),
                                 Expanded(flex: 2, child: Center(child: Text('الكمية المستلمة', style: TextStyle(fontWeight: FontWeight.bold)))),
                                 SizedBox(width: 50, child: Center(child: Text('حذف', style: TextStyle(fontWeight: FontWeight.bold)))),
                               ],
@@ -838,6 +1289,55 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
                                       Expanded(
                                         flex: 1,
                                         child: Text(line.color),
+                                      ),
+                                      Expanded(
+                                        flex: 2,
+                                        child: Center(
+                                          child: InkWell(
+                                            key: Key('edit_cost_price_btn_${line.variantId}'),
+                                            onTap: () => _showEditCostDialog(line),
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: (line.costPricePounds != null && line.costPricePounds! > 0)
+                                                    ? Colors.teal.shade50
+                                                    : Colors.amber.shade50,
+                                                borderRadius: BorderRadius.circular(8),
+                                                border: Border.all(
+                                                  color: (line.costPricePounds != null && line.costPricePounds! > 0)
+                                                      ? Colors.teal.shade300
+                                                      : Colors.amber.shade300,
+                                                ),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Text(
+                                                    (line.costPricePounds != null && line.costPricePounds! > 0)
+                                                        ? '${line.costPricePounds!.toStringAsFixed(2)} ج.م'
+                                                        : 'حدد السعر',
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: (line.costPricePounds != null && line.costPricePounds! > 0)
+                                                          ? Colors.teal.shade900
+                                                          : Colors.amber.shade900,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Icon(
+                                                    Icons.edit_outlined,
+                                                    size: 14,
+                                                    color: (line.costPricePounds != null && line.costPricePounds! > 0)
+                                                        ? Colors.teal.shade700
+                                                        : Colors.amber.shade700,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                       Expanded(
                                         flex: 2,

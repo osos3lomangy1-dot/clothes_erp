@@ -11,6 +11,7 @@ import '../di/injection.dart';
 import '../features/feature_gate.dart';
 import '../services/crash_logger_service.dart';
 import '../services/rest_sync_service.dart';
+import '../services/shortcut_settings_service.dart';
 import '../theme/app_branding.dart';
 import 'command_palette_dialog.dart';
 import '../../features/settings/presentation/widgets/shortcuts_config_dialog.dart';
@@ -73,6 +74,7 @@ class _MainLayoutState extends State<MainLayout> {
   @override
   void initState() {
     super.initState();
+    HardwareKeyboard.instance.addHandler(_handleGlobalHardwareKeys);
     _currentScreen = widget.child;
     if (widget.currentRoute == '/pos' || widget.child is PosScreen) {
       _activeTitle = 'نقطة البيع (الكاشير)';
@@ -122,6 +124,7 @@ class _MainLayoutState extends State<MainLayout> {
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleGlobalHardwareKeys);
     _activeInstallmentsSub?.cancel();
     _cloudSyncSub?.cancel();
     _syncSubscription?.cancel();
@@ -129,6 +132,50 @@ class _MainLayoutState extends State<MainLayout> {
       getIt<RestSyncService>().stopAutoSync();
     }
     super.dispose();
+  }
+
+  bool _handleGlobalHardwareKeys(KeyEvent event) {
+    if (!mounted) return false;
+    if (event is! KeyDownEvent) return false;
+
+    // Avoid triggering when a modal dialog is currently topmost
+    final route = ModalRoute.of(context);
+    if (route != null && !route.isCurrent) return false;
+
+    final isCtrl = HardwareKeyboard.instance.isControlPressed;
+    final isAlt = HardwareKeyboard.instance.isAltPressed;
+    final key = event.logicalKey;
+
+    // 1. Ctrl + K -> Command Palette
+    if (isCtrl && !isAlt && key == LogicalKeyboardKey.keyK) {
+      _openCommandPalette();
+      return true;
+    }
+
+    final svc = getIt.isRegistered<ShortcutSettingsService>()
+        ? getIt<ShortcutSettingsService>()
+        : null;
+
+    final posActivator = svc?.getActivator('openPos') ??
+        const SingleActivator(LogicalKeyboardKey.f1);
+    final shortcutsActivator = svc?.getActivator('openShortcuts') ??
+        const SingleActivator(LogicalKeyboardKey.f1, alt: true);
+
+    // 2. Open Shortcuts Guide (Alt + F1 by default)
+    if (shortcutsActivator.accepts(event, HardwareKeyboard.instance) ||
+        (isAlt && !isCtrl && key == LogicalKeyboardKey.f1)) {
+      _openShortcutsGuide();
+      return true;
+    }
+
+    // 3. Jump to POS Screen (F1 by default)
+    if (posActivator.accepts(event, HardwareKeyboard.instance) ||
+        (!isCtrl && !isAlt && key == LogicalKeyboardKey.f1)) {
+      _handleItemTap('نقطة البيع (الكاشير)', const PosScreen(), true, null);
+      return true;
+    }
+
+    return false;
   }
 
   Future<void> _handleSync() async {
@@ -216,10 +263,16 @@ class _MainLayoutState extends State<MainLayout> {
     return ValueListenableBuilder<AppBrandingConfig>(
       valueListenable: AppBranding.notifier,
       builder: (context, branding, _) {
+        final svc = getIt.isRegistered<ShortcutSettingsService>() ? getIt<ShortcutSettingsService>() : null;
+        final posAct = svc?.getActivator('openPos') ?? const SingleActivator(LogicalKeyboardKey.f1);
+        final shortcutsAct = svc?.getActivator('openShortcuts') ?? const SingleActivator(LogicalKeyboardKey.f1, alt: true);
+        final cmdAct = svc?.getActivator('openCommandPalette') ?? const SingleActivator(LogicalKeyboardKey.keyK, control: true);
+
         return CallbackShortcuts(
           bindings: {
-            const SingleActivator(LogicalKeyboardKey.keyK, control: true): _openCommandPalette,
-            const SingleActivator(LogicalKeyboardKey.f1): _openShortcutsGuide,
+            cmdAct: _openCommandPalette,
+            shortcutsAct: _openShortcutsGuide,
+            posAct: () => _handleItemTap('نقطة البيع (الكاشير)', const PosScreen(), true, null),
           },
           child: Focus(
             autofocus: true,
@@ -1125,8 +1178,12 @@ class _MainLayoutState extends State<MainLayout> {
     }
   }
 
-  void _openCommandPalette() {
-    final items = <CommandPaletteItem>[
+  bool _isPaletteOpen = false;
+  Future<void> _openCommandPalette() async {
+    if (_isPaletteOpen) return;
+    _isPaletteOpen = true;
+    try {
+      final items = <CommandPaletteItem>[
       // Screens
       CommandPaletteItem(
         id: 'nav_pos',
@@ -1270,17 +1327,27 @@ class _MainLayoutState extends State<MainLayout> {
       ),
     ];
 
-    showDialog(
-      context: context,
-      builder: (_) => CommandPaletteDialog(items: items),
-    );
+      await showDialog(
+        context: context,
+        builder: (_) => CommandPaletteDialog(items: items),
+      );
+    } finally {
+      _isPaletteOpen = false;
+    }
   }
 
-  void _openShortcutsGuide() {
-    showDialog(
-      context: context,
-      builder: (_) => const ShortcutsConfigDialog(),
-    );
+  bool _isShortcutsGuideOpen = false;
+  Future<void> _openShortcutsGuide() async {
+    if (_isShortcutsGuideOpen) return;
+    _isShortcutsGuideOpen = true;
+    try {
+      await showDialog(
+        context: context,
+        builder: (_) => const ShortcutsConfigDialog(),
+      );
+    } finally {
+      _isShortcutsGuideOpen = false;
+    }
   }
 
   Widget _navItem(
