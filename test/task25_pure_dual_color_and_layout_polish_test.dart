@@ -373,11 +373,18 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Clean Arabic labels
-      expect(find.text('1. مزايا الكاشير ونقطة البيع'), findsOneWidget);
+      // Clean Arabic labels in Master Modular Feature Hub
+      expect(find.text('المبيعات ونقطة البيع والعملاء'), findsOneWidget);
       expect(find.text('الدفع المجزأ'), findsOneWidget);
       expect(find.text('البيع الآجل والشكك'), findsOneWidget);
       expect(find.text('فواتير متعددة وتعليق الفاتورة'), findsOneWidget);
+
+      // Expand Module 2 (Delivery & Omnichannel)
+      await tester.ensureVisible(find.byKey(const Key('module_header_2')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('module_header_2')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('إدارة وتتبع الدليفري والطيارين'));
       expect(find.text('إدارة وتتبع الدليفري والطيارين'), findsOneWidget);
 
       // Ensure English parenthetical variants are gone
@@ -411,6 +418,13 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+
+      // Expand Module 2 to access delivery toggle
+      await tester.ensureVisible(find.byKey(const Key('module_header_2')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('module_header_2')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const Key('feature_delivery_toggle')));
 
       final switchFinder = find.byKey(const Key('feature_delivery_toggle'));
       expect(switchFinder, findsOneWidget);

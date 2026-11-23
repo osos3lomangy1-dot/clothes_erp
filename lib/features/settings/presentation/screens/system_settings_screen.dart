@@ -65,6 +65,24 @@ class _SettingsCategoryItem {
   });
 }
 
+class _QuickIndustryPreset {
+  final String id;
+  final String title;
+  final String subtitle;
+  final String recommendationBadge;
+  final IconData icon;
+  final Map<String, bool> features;
+
+  const _QuickIndustryPreset({
+    required this.id,
+    required this.title,
+    required this.subtitle,
+    required this.recommendationBadge,
+    required this.icon,
+    required this.features,
+  });
+}
+
 class _SystemSettingsView extends StatefulWidget {
   final String? initialCategory;
 
@@ -80,6 +98,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
   final FocusNode _searchFocus = FocusNode();
   String _searchQuery = '';
   bool _isSearchFocused = false;
+  final Set<int> _expandedModules = {0};
 
   @override
   void initState() {
@@ -560,37 +579,30 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
                 child: Align(
                   alignment: Alignment.topCenter,
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 860),
+                    constraints: BoxConstraints(
+                      maxWidth: currentCat == 'features' ? 780 : 860,
+                    ),
                     child: ListView(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 32,
                         vertical: 24,
                       ),
                       children: [
-                        // Category Header
-                        _CategoryHeader(
-                          icon: activeCategoryItem.icon,
-                          label: activeCategoryItem.label,
-                          subtitle: activeCategoryItem.subtitle,
-                        ),
-                        const SizedBox(height: 24),
+                        // Category Header (hidden for 'features' to eliminate redundancy)
+                        if (currentCat != 'features') ...[
+                          _CategoryHeader(
+                            icon: activeCategoryItem.icon,
+                            label: activeCategoryItem.label,
+                            subtitle: activeCategoryItem.subtitle,
+                          ),
+                          const SizedBox(height: 24),
+                        ],
 
-                        // ─── لوحة التحكم الشاملة في المزايا (Master Categorized Feature Control Matrix) ───
+                        // ─── لوحة التحكم الشاملة في المزايا (Master Modular Feature Hub) ───
                         if (currentCat == 'features') ...[
-                          _sectionTitle('1. مزايا الكاشير ونقطة البيع'),
-                          _buildPosFeaturesCard(state, userId),
-                          const SizedBox(height: 24),
-
-                          _sectionTitle('2. مزايا المخزون والأنشطة التجارية'),
-                          _buildInventoryFeaturesCard(state, userId),
-                          const SizedBox(height: 24),
-
-                          _sectionTitle('3. مزايا التجارة المتعددة والحجز المسبق'),
-                          _buildOmnichannelFeaturesCard(state, userId),
-                          const SizedBox(height: 24),
-
-                          _sectionTitle('4. مزايا الحسابات والورديات والأمان'),
-                          _buildFinancialAndSecurityFeaturesCard(state, userId),
+                          _buildIndustryPresetsStrip(state, userId),
+                          const SizedBox(height: 20),
+                          _buildMasterFeatureModules(state, userId),
                           const SizedBox(height: 32),
                         ],
 
@@ -1432,6 +1444,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
               ),
             ),
             TextButton.icon(
+              key: const Key('settings_clear_search_btn'),
               onPressed: () {
                 _searchCtrl.clear();
                 setState(() => _searchQuery = '');
@@ -1445,15 +1458,28 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
 
         if (!hasResults)
           Container(
-            padding: const EdgeInsets.all(32),
+            padding: const EdgeInsets.all(40),
             alignment: Alignment.center,
             child: Column(
               children: [
-                Icon(Icons.search_off_rounded, size: 48, color: Colors.grey.shade400),
+                Icon(
+                  Icons.search_off_rounded,
+                  size: 48,
+                  color: Colors.grey.shade400,
+                ),
                 const SizedBox(height: 12),
                 Text(
                   'لا توجد إعدادات أو ميزات مطابقة لـ "$_searchQuery"',
                   style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    _searchCtrl.clear();
+                    setState(() => _searchQuery = '');
+                  },
+                  icon: const Icon(Icons.clear_all_rounded, size: 16),
+                  label: const Text('مسح البحث'),
                 ),
               ],
             ),
@@ -1465,26 +1491,88 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
             child: Column(
               children: matchedFeatures.map((def) {
                 final isEnabled = state.features[def.key] ?? false;
-                return Column(
-                  children: [
-                    SwitchListTile(
-                      key: Key('feature_switch_${def.key}'),
-                      title: Text(
-                        def.label,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                final breadcrumb = _getFeatureModuleBreadcrumb(def.key);
+                return Container(
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.outlineVariant),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '$breadcrumb > ${def.label}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF0F172A),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'رمز الميزة: ${def.key}${def.coreAlwaysEnabled ? " (ميزة أساسية)" : ""}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      subtitle: Text(
-                        'المفتاح: ${def.key}${def.coreAlwaysEnabled ? " (ميزة أساسية دائماً مفعلة)" : ""}',
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                      const SizedBox(width: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isEnabled
+                              ? const Color(0xFFF0FDFA)
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: isEnabled
+                                ? AppColors.secondary.withValues(alpha: 0.3)
+                                : const Color(0xFFE2E8F0),
+                          ),
+                        ),
+                        child: Text(
+                          def.coreAlwaysEnabled
+                              ? 'أساسي'
+                              : (isEnabled ? 'مفعّل' : 'معطل'),
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.bold,
+                            color: isEnabled
+                                ? AppColors.secondary
+                                : const Color(0xFF94A3B8),
+                          ),
+                        ),
                       ),
-                      value: isEnabled,
-                      activeThumbColor: AppColors.secondary, activeTrackColor: AppColors.secondary.withValues(alpha: 0.38),
-                      onChanged: def.coreAlwaysEnabled
-                          ? null
-                          : (val) => _toggleFeature(context, def.key, val, userId),
-                    ),
-                    Divider(height: 1, color: AppColors.outlineVariant),
-                  ],
+                      const SizedBox(width: 8),
+                      Switch(
+                        key: Key('feature_switch_${def.key}'),
+                        value: isEnabled,
+                        activeThumbColor: AppColors.secondary,
+                        activeTrackColor:
+                            AppColors.secondary.withValues(alpha: 0.38),
+                        onChanged: def.coreAlwaysEnabled
+                            ? null
+                            : (val) => _toggleFeature(
+                                  context,
+                                  def.key,
+                                  val,
+                                  userId,
+                                ),
+                      ),
+                    ],
+                  ),
                 );
               }).toList(),
             ),
@@ -1663,365 +1751,1080 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
   }
 
   // ─── 1. كارت مزايا الكاشير ونقطة البيع (POS) ───
-  Widget _buildPosFeaturesCard(SettingsState state, String userId) {
-    final installmentsEnabled = state.features[FeatureKeys.installments] ?? false;
-    return _cardWrapper(
-      child: Column(
-        children: [
-          _cardHeader(
-            icon: Icons.point_of_sale_rounded,
-            title: 'مزايا الكاشير ونقطة البيع',
-            subtitle: 'التحكم في وظائف المبيعات، التسعير، طرق السداد، وإدارة الفواتير',
+  // ─── أنماط الأنشطة الجاهزة بنقرة واحدة (Quick Industry Presets) ───
+  static const List<_QuickIndustryPreset> _quickPresets = [
+    _QuickIndustryPreset(
+      id: 'boutique',
+      title: 'متجر ملابس وأزياء',
+      subtitle: 'مقاسات وألوان، باركود، دليفري، فواتير معلقة',
+      recommendationBadge: 'موصى به للأزياء',
+      icon: Icons.checkroom_rounded,
+      features: {
+        FeatureKeys.wholesalePricing: true,
+        FeatureKeys.splitPayment: true,
+        FeatureKeys.holdBills: true,
+        FeatureKeys.delivery: true,
+        FeatureKeys.lowStockAlerts: true,
+        FeatureKeys.productTimestamps: true,
+        FeatureKeys.shifts: true,
+        FeatureKeys.expenses: true,
+        FeatureKeys.reports: true,
+        FeatureKeys.managerPinProtection: true,
+        FeatureKeys.installments: false,
+        FeatureKeys.preOrders: false,
+        FeatureKeys.consolidatedBatches: false,
+        FeatureKeys.telegramBot: false,
+      },
+    ),
+    _QuickIndustryPreset(
+      id: 'wholesale',
+      title: 'تجارة جملة وتوزيع',
+      subtitle: 'أسعار جملة، بيع آجل، كشوف حسابات موردين',
+      recommendationBadge: 'موصى به للجملة',
+      icon: Icons.warehouse_rounded,
+      features: {
+        FeatureKeys.wholesalePricing: true,
+        FeatureKeys.splitPayment: true,
+        FeatureKeys.creditSales: true,
+        FeatureKeys.purchases: true,
+        FeatureKeys.suppliers: true,
+        FeatureKeys.consolidatedBatches: true,
+        FeatureKeys.lowStockAlerts: true,
+        FeatureKeys.reports: true,
+        FeatureKeys.shifts: true,
+        FeatureKeys.expenses: true,
+        FeatureKeys.partners: true,
+        FeatureKeys.installments: false,
+        FeatureKeys.loyalty: false,
+      },
+    ),
+    _QuickIndustryPreset(
+      id: 'home_appliances',
+      title: 'مفروشات وأجهزة منزلية',
+      subtitle: 'تقسيط ومرابحة، بيع بالأمتار، إيصالات أمانة',
+      recommendationBadge: 'موصى به للأجهزة',
+      icon: Icons.chair_rounded,
+      features: {
+        FeatureKeys.installments: true,
+        FeatureKeys.creditSales: true,
+        FeatureKeys.purchases: true,
+        FeatureKeys.suppliers: true,
+        FeatureKeys.splitPayment: true,
+        FeatureKeys.holdBills: true,
+        FeatureKeys.reports: true,
+        FeatureKeys.shifts: true,
+        FeatureKeys.expenses: true,
+        FeatureKeys.telegramBot: false,
+        FeatureKeys.consolidatedBatches: false,
+      },
+    ),
+    _QuickIndustryPreset(
+      id: 'minimal_pos',
+      title: 'كاشير سريع ومبسط',
+      subtitle: 'بيع نقدي سريع، واجهة مبسطة ومخزن خفيف',
+      recommendationBadge: 'موصى به للسرعة',
+      icon: Icons.flash_on_rounded,
+      features: {
+        FeatureKeys.shifts: true,
+        FeatureKeys.reports: true,
+        FeatureKeys.wholesalePricing: false,
+        FeatureKeys.splitPayment: false,
+        FeatureKeys.creditSales: false,
+        FeatureKeys.installments: false,
+        FeatureKeys.delivery: false,
+        FeatureKeys.preOrders: false,
+        FeatureKeys.loyalty: false,
+        FeatureKeys.promotions: false,
+        FeatureKeys.suppliers: false,
+        FeatureKeys.consolidatedBatches: false,
+        FeatureKeys.telegramBot: false,
+      },
+    ),
+  ];
+
+  bool _isPresetActive(_QuickIndustryPreset preset, Map<String, bool> currentFeatures) {
+    for (final entry in preset.features.entries) {
+      final currentVal = currentFeatures[entry.key] ??
+          FeatureKeys.byKey[entry.key]?.defaultEnabled ??
+          false;
+      if (currentVal != entry.value) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  void _promptApplyPreset(
+    BuildContext context,
+    _QuickIndustryPreset preset,
+    String userId,
+  ) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(preset.icon, color: AppColors.primary, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'تطبيق نمط "${preset.title}"',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'سيتم ضبط وتكييف ميزات النظام تلقائياً لتناسب "${preset.title}".',
+                style: const TextStyle(fontSize: 13, color: Color(0xFF475569)),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.outlineVariant),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'ملخص الإعداد: ${preset.subtitle}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'يمكنك دائماً إعادة تعديل أي ميزة يدوياً في أي وقت.',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          Divider(height: 24, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            title: 'شاشة الكاشير ونقطة البيع',
-            description: 'المحرك الأساسي لعمليات البيع، مسح الباركود، الفواتير الفورية، والطباعة',
-            isCore: true,
-            isEnabled: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: const Text('إلغاء'),
           ),
-          Divider(height: 16, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            key: const Key('feature_wholesale_pricing_toggle'),
-            title: 'البيع بسعر القطاعي والجملة',
-            description: 'تمكين زر التبديل السريع بين سعر القطاعي وسعر الجملة مباشرة على شاشة الكاشير',
-            isCore: false,
-            isEnabled: state.features[FeatureKeys.wholesalePricing] ?? true,
-            onChanged: (v) => _toggleFeature(context, FeatureKeys.wholesalePricing, v, userId),
-          ),
-          Divider(height: 16, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            key: const Key('feature_split_payment_toggle'),
-            title: 'الدفع المجزأ',
-            description: 'السماح بسداد الفاتورة الواحدة بجزء نقدي بالدرج وجزء بطاقة بنكية أو محفظة إلكترونية',
-            isCore: false,
-            isEnabled: state.features[FeatureKeys.splitPayment] ?? true,
-            onChanged: (v) => _toggleFeature(context, FeatureKeys.splitPayment, v, userId),
-          ),
-          Divider(height: 16, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            key: const Key('feature_credit_sales_toggle'),
-            title: 'البيع الآجل والشكك',
-            description: 'تمكين خيار "أجل / متبقي" وترحيل المبالغ المتبقية كديون في كشف حساب العميل',
-            dependencyInfo: 'يعتمد على: العملاء',
-            isCore: false,
-            isEnabled: state.features[FeatureKeys.creditSales] ?? true,
-            onChanged: (v) => _toggleFeature(context, FeatureKeys.creditSales, v, userId),
-          ),
-          Divider(height: 16, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            key: const Key('feature_hold_bills_toggle'),
-            title: 'فواتير متعددة وتعليق الفاتورة',
-            description: 'إتاحة شريط تبويبات الفواتير لتعليق فاتورة وخدمة عميل آخر في الطابور دون فقد البيانات',
-            isCore: false,
-            isEnabled: state.features[FeatureKeys.holdBills] ?? true,
-            onChanged: (v) => _toggleFeature(context, FeatureKeys.holdBills, v, userId),
-          ),
-          Divider(height: 16, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            key: const Key('feature_delivery_toggle'),
-            title: 'إدارة وتتبع الدليفري والطيارين',
-            description: 'تمكين شاشات أوردرات التوصيل، حساب رسوم الشحن، وتعيين الطيارين في نقطة البيع والقائمة',
-            isCore: false,
-            isEnabled: state.features[FeatureKeys.delivery] ?? false,
-            onChanged: (v) => _toggleFeature(context, FeatureKeys.delivery, v, userId),
-          ),
-          Divider(height: 16, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            key: const Key('feature_promotions_toggle'),
-            title: 'العروض والخصومات الترويجية',
-            description: 'تفعيل إنشاء عروض الخصم المباشر، باقات الشراء، والخصومات المئوية المؤقتة',
-            isCore: false,
-            isEnabled: state.features[FeatureKeys.promotions] ?? false,
-            onChanged: (v) => _toggleFeature(context, FeatureKeys.promotions, v, userId),
-          ),
-          Divider(height: 16, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            key: const Key('feature_loyalty_toggle'),
-            title: 'برنامج ولاء ونقاط العملاء',
-            description: 'احتساب نقاط مكافآت للمشتريات واستبدالها برصيد أو خصومات في الفواتير القادمة',
-            dependencyInfo: 'يعتمد على: العملاء',
-            isCore: false,
-            isEnabled: state.features[FeatureKeys.loyalty] ?? false,
-            onChanged: (v) => _toggleFeature(context, FeatureKeys.loyalty, v, userId),
-          ),
-          Divider(height: 16, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            key: const Key('feature_installments_master_toggle'),
-            title: 'نظام البيع بالتقسيط وإيصالات الأمانة',
-            description: 'تمكين البيع بنظام الأقساط الشهرية، احتساب المرابحة، جدولة السداد، وإيصالات الأمانة والتحصيل القضائي',
-            dependencyInfo: 'يعتمد على: العملاء',
-            isCore: false,
-            isEnabled: installmentsEnabled,
-            onChanged: (v) => _toggleFeature(context, FeatureKeys.installments, v, userId),
+          ElevatedButton(
+            key: const Key('confirm_apply_preset_btn'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: () async {
+              Navigator.of(dialogCtx).pop();
+              final cubit = context.read<SettingsCubit>();
+              for (final entry in preset.features.entries) {
+                await cubit.toggleFeature(entry.key, entry.value, userId);
+              }
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('تم تطبيق نمط "${preset.title}" بنجاح'),
+                    backgroundColor: AppColors.secondary,
+                    behavior: SnackBarBehavior.floating,
+                    duration: const Duration(seconds: 3),
+                  ),
+                );
+              }
+            },
+            child: const Text('تأكيد التطبيق'),
           ),
         ],
       ),
     );
   }
 
-  // ─── 2. كارت مزايا المخزون والأنشطة التجارية ───
-  Widget _buildInventoryFeaturesCard(SettingsState state, String userId) {
-    return _cardWrapper(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _cardHeader(
-            icon: Icons.inventory_2_rounded,
-            title: 'مزايا المخزون والأنشطة التجارية',
-            subtitle: 'التحكم في دليل المنتجات، المشتريات، الموردين، وتتبع الحركات',
-          ),
-          Divider(height: 24, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            title: 'إدارة المخزون ودليل المنتجات',
-            description: 'المحرك الأساسي لبطاقات الأصناف، الأقسام، المقاسات والألوان، وأسعار التكلفة والبيع',
-            isCore: true,
-            isEnabled: true,
-          ),
-          Divider(height: 16, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            title: 'سجل حركات المخزن والتدقيق المخزني',
-            description: 'تتبع حركات الإدخال، الصرف، التسوية، الجرد الدوري، وتاريخ كل حركة بالوقت والمسؤول',
-            isCore: true,
-            isEnabled: true,
-          ),
-          Divider(height: 16, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            key: const Key('feature_purchases_toggle'),
-            title: 'إدارة المشتريات وفواتير الشراء',
-            description: 'تسجيل فواتير الشراء الواردة، تكلفة الأصناف، وتحديث أرصدة المخازن آلياً',
-            isCore: false,
-            isEnabled: state.features[FeatureKeys.purchases] ?? true,
-            onChanged: (v) => _toggleFeature(context, FeatureKeys.purchases, v, userId),
-          ),
-          Divider(height: 16, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            key: const Key('feature_suppliers_toggle'),
-            title: 'دليل الموردين وحسابات التوريد',
-            description: 'إدارة سجلات الموردين، متابعة الديون المستحقة، ودفعات فواتير التوريد',
-            dependencyInfo: 'يعتمد على: المشتريات',
-            isCore: false,
-            isEnabled: state.features[FeatureKeys.suppliers] ?? true,
-            onChanged: (v) => _toggleFeature(context, FeatureKeys.suppliers, v, userId),
-          ),
-          Divider(height: 16, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            key: const Key('feature_low_stock_alerts_toggle'),
-            title: 'تنبيهات النواقص والحد الأدنى للمخزون',
-            description: 'إبراز الأصناف التي أوشكت على النفاد وإظهار مؤشرات تنبيه في الكروت وشريط الإشعارات',
-            isCore: false,
-            isEnabled: state.features[FeatureKeys.lowStockAlerts] ?? true,
-            onChanged: (v) => _toggleFeature(context, FeatureKeys.lowStockAlerts, v, userId),
-          ),
-          Divider(height: 16, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            key: const Key('feature_product_timestamps_toggle'),
-            title: 'عرض تواريخ التعديل والإنشاء على كروت المنتجات',
-            description: 'إظهار سطر التوثيق الرمادي الهادئ (أُضيف: ... • آخر تعديل: ...) أسفل بطاقات المنتجات',
-            isCore: false,
-            isEnabled: state.features[FeatureKeys.productTimestamps] ?? true,
-            onChanged: (v) => _toggleFeature(context, FeatureKeys.productTimestamps, v, userId),
-          ),
-          Divider(height: 16, color: AppColors.outlineVariant),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.outlineVariant),
+  Widget _buildIndustryPresetsStrip(SettingsState state, String userId) {
+    final currentFeatures = state.features;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 650;
+        final cards = _quickPresets.map((preset) {
+          final isActive = _isPresetActive(preset, currentFeatures);
+          return _buildPresetCard(
+            preset: preset,
+            isActive: isActive,
+            onTap: () => _promptApplyPreset(context, preset, userId),
+          );
+        }).toList();
+
+        if (isNarrow) {
+          return SizedBox(
+            height: 78,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: cards.length,
+              separatorBuilder: (context, index) => const SizedBox(width: 8),
+              itemBuilder: (_, i) => SizedBox(width: 220, child: cards[i]),
             ),
-            child: Row(
-              children: [
-                Icon(Icons.dashboard_customize_rounded, size: 18, color: AppColors.primary),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'تخصيص أقسام الأنشطة (ملابس، أحذية، إكسسوارات، أدوات منزلية)',
-                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                      ),
-                      Text(
-                        'التحكم في ظهور أو إخفاء حقول المقاسات والضمان والألوان في شاشة الإضافة ونقطة البيع',
-                        style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                      ),
-                    ],
-                  ),
-                ),
-                TextButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _selectedCategory = 'activities';
-                    });
-                  },
-                  icon: const Icon(Icons.arrow_back_rounded, size: 15),
-                  label: const Text('إدارة الأنشطة'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
-                ),
+          );
+        }
+
+        return SizedBox(
+          height: 78,
+          child: Row(
+            children: [
+              for (int i = 0; i < cards.length; i++) ...[
+                Expanded(child: cards[i]),
+                if (i < cards.length - 1) const SizedBox(width: 8),
               ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPresetCard({
+    required _QuickIndustryPreset preset,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      key: Key('preset_card_${preset.id}'),
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: 78,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: isActive ? const Color(0xFFF0FDFA) : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isActive ? AppColors.secondary : AppColors.outlineVariant,
+            width: isActive ? 1.5 : 1.0,
+          ),
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: AppColors.secondary.withValues(alpha: 0.12),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: isActive
+                    ? AppColors.secondary.withValues(alpha: 0.15)
+                    : AppColors.primary.withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                preset.icon,
+                size: 19,
+                color: isActive ? AppColors.secondary : AppColors.primary,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    preset.title,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.bold,
+                      color: isActive ? AppColors.secondary : const Color(0xFF0F172A),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    preset.subtitle,
+                    style: const TextStyle(
+                      fontSize: 9.5,
+                      color: Color(0xFF64748B),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: isActive ? const Color(0xFFCCFBF1) : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      isActive ? 'مطبق حالياً' : preset.recommendationBadge,
+                      style: TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.bold,
+                        color: isActive ? const Color(0xFF0D9488) : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getFeatureModuleBreadcrumb(String featureKey) {
+    switch (featureKey) {
+      case FeatureKeys.pos:
+      case FeatureKeys.wholesalePricing:
+      case FeatureKeys.splitPayment:
+      case FeatureKeys.creditSales:
+      case FeatureKeys.installments:
+      case FeatureKeys.holdBills:
+      case FeatureKeys.promotions:
+      case FeatureKeys.loyalty:
+        return 'المبيعات ونقطة البيع والعملاء';
+      case FeatureKeys.inventory:
+      case FeatureKeys.inventoryLogs:
+      case FeatureKeys.purchases:
+      case FeatureKeys.suppliers:
+      case FeatureKeys.lowStockAlerts:
+      case FeatureKeys.productTimestamps:
+        return 'المخازن والتوريد والتسعير';
+      case FeatureKeys.delivery:
+      case FeatureKeys.preOrders:
+      case FeatureKeys.consolidatedBatches:
+      case FeatureKeys.telegramBot:
+      case FeatureKeys.whatsappDirect:
+        return 'التوصيل والدليفري والتجارة الحديثة';
+      case FeatureKeys.shifts:
+      case FeatureKeys.blindShiftClosing:
+      case FeatureKeys.drawerPettyCash:
+      case FeatureKeys.expenses:
+      case FeatureKeys.reports:
+      case FeatureKeys.partners:
+        return 'الخزينة والمالية والورديات';
+      case FeatureKeys.employees:
+      case FeatureKeys.payroll:
+      case FeatureKeys.managerPinProtection:
+        return 'فريق العمل والأمان والرقابة';
+      default:
+        return 'مركز الإعدادات الموحد';
+    }
+  }
+
+  // ─── لوحة القيادة الموحدة للمزايا (5 موديولات رئيسية بالأكورديون) ───
+  Widget _buildMasterFeatureModules(SettingsState state, String userId) {
+    return Column(
+      children: [
+        _buildModule0(state, userId),
+        const SizedBox(height: 12),
+        _buildModule1(state, userId),
+        const SizedBox(height: 12),
+        _buildModule2(state, userId),
+        const SizedBox(height: 12),
+        _buildModule3(state, userId),
+        const SizedBox(height: 12),
+        _buildModule4(state, userId),
+      ],
+    );
+  }
+
+  Widget _buildAccordionCard({
+    required int index,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required int enabledCount,
+    required int totalCount,
+    required List<Widget> children,
+  }) {
+    final isExpanded = _expandedModules.contains(index);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isExpanded
+              ? AppColors.primary.withValues(alpha: 0.25)
+              : AppColors.outlineVariant,
+          width: isExpanded ? 1.2 : 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            key: Key('module_header_$index'),
+            onTap: () {
+              setState(() {
+                if (_expandedModules.contains(index)) {
+                  _expandedModules.remove(index);
+                } else {
+                  _expandedModules.add(index);
+                }
+              });
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(icon, color: AppColors.primary, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                title,
+                                style: const TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF0F172A),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF0FDFA),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: AppColors.secondary.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Text(
+                                '$enabledCount من $totalCount مفعّل',
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.secondary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            color: Color(0xFF64748B),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  AnimatedRotation(
+                    turns: isExpanded ? 0.5 : 0.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: Color(0xFF64748B),
+                      size: 22,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
+          if (isExpanded) ...[
+            Divider(height: 1, color: AppColors.outlineVariant),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: children,
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  // ─── 3. كارت مزايا التجارة المتعددة والحجز المسبق ───
-  Widget _buildOmnichannelFeaturesCard(SettingsState state, String userId) {
-    return _cardWrapper(
-      child: Column(
-        children: [
-          _cardHeader(
-            icon: Icons.local_shipping_rounded,
-            title: 'مزايا التجارة المتعددة والحجز المسبق',
-            subtitle: 'إدارة طلبات الحجز المسبق، الشحنات المجمعة، وتكامل تيليجرام وواتساب',
-          ),
-          Divider(height: 24, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            key: const Key('feature_pre_orders_toggle'),
-            title: 'موديول الحجز المسبق والطلبات الخاصة',
-            description: 'إدارة طلبات الاستيراد والحجز المسبق، تسجيل العربونات، وتتبع حالة وصول الشحنات',
-            isCore: false,
-            isEnabled: state.features[FeatureKeys.preOrders] ?? false,
-            onChanged: (v) => _toggleFeature(context, FeatureKeys.preOrders, v, userId),
-          ),
-          Divider(height: 16, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            key: const Key('feature_consolidated_batches_toggle'),
-            title: 'الشحنات المجمعة وتوزيع الشحن',
-            description: 'تمكين دورة شحن الكراتين المجمعة وتوزيع تكلفة الشحن على بنود العملاء بحسابات مرنة عادلة',
-            dependencyInfo: 'يعتمد على: الحجز المسبق',
-            isCore: false,
-            isEnabled: state.features[FeatureKeys.consolidatedBatches] ?? true,
-            onChanged: (v) => _toggleFeature(context, FeatureKeys.consolidatedBatches, v, userId),
-          ),
-          Divider(height: 16, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            key: const Key('feature_telegram_bot_toggle'),
-            title: 'سحب رسائل تيليجرام التلقائي',
-            description: 'الاستقبال الآلي للرسائل وحجوزات العملاء من جروبات وقنوات تيليجرام وتحويلها لأوردرات بضغطة زر',
-            dependencyInfo: 'يعتمد على: الحجز المسبق',
-            isCore: false,
-            isEnabled: state.features[FeatureKeys.telegramBot] ?? true,
-            onChanged: (v) => _toggleFeature(context, FeatureKeys.telegramBot, v, userId),
-          ),
-          Divider(height: 16, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            key: const Key('feature_whatsapp_direct_toggle'),
-            title: 'تنبيهات وتحديثات العملاء عبر واتساب',
-            description: 'أزرار مراسلة فورية للعميل برقم التتبع وتنبيهه عند وصول الشحنة للمحل واستحقاق المتبقي',
-            dependencyInfo: 'يعتمد على: الحجز المسبق',
-            isCore: false,
-            isEnabled: state.features[FeatureKeys.whatsappDirect] ?? true,
-            onChanged: (v) => _toggleFeature(context, FeatureKeys.whatsappDirect, v, userId),
-          ),
-        ],
-      ),
+  // ─── موديول 0: المبيعات ونقطة البيع والعملاء (8 مزايا) ───
+  Widget _buildModule0(SettingsState state, String userId) {
+    final wholesale = state.features[FeatureKeys.wholesalePricing] ?? true;
+    final split = state.features[FeatureKeys.splitPayment] ?? true;
+    final credit = state.features[FeatureKeys.creditSales] ?? true;
+    final hold = state.features[FeatureKeys.holdBills] ?? true;
+    final promo = state.features[FeatureKeys.promotions] ?? false;
+    final loyalty = state.features[FeatureKeys.loyalty] ?? false;
+    final installments = state.features[FeatureKeys.installments] ?? false;
+
+    final enabledCount = 1 +
+        (wholesale ? 1 : 0) +
+        (split ? 1 : 0) +
+        (credit ? 1 : 0) +
+        (hold ? 1 : 0) +
+        (promo ? 1 : 0) +
+        (loyalty ? 1 : 0) +
+        (installments ? 1 : 0);
+
+    return _buildAccordionCard(
+      index: 0,
+      icon: Icons.point_of_sale_rounded,
+      title: 'المبيعات ونقطة البيع والعملاء',
+      subtitle: 'التحكم في وظائف المبيعات، التسعير، طرق السداد، وإدارة الفواتير والعملاء',
+      enabledCount: enabledCount,
+      totalCount: 8,
+      children: [
+        _buildFeatureItem(
+          title: 'شاشة الكاشير ونقطة البيع',
+          description: 'المحرك الأساسي لعمليات البيع، مسح الباركود، الفواتير الفورية، والطباعة',
+          isCore: true,
+          isEnabled: true,
+        ),
+        Divider(height: 16, color: AppColors.outlineVariant),
+        _buildFeatureItem(
+          key: const Key('feature_wholesale_pricing_toggle'),
+          title: 'البيع بسعر القطاعي والجملة',
+          description: 'تمكين زر التبديل السريع بين سعر القطاعي وسعر الجملة مباشرة على شاشة الكاشير',
+          isCore: false,
+          isEnabled: wholesale,
+          onChanged: (v) => _toggleFeature(context, FeatureKeys.wholesalePricing, v, userId),
+        ),
+        Divider(height: 16, color: AppColors.outlineVariant),
+        _buildFeatureItem(
+          key: const Key('feature_split_payment_toggle'),
+          title: 'الدفع المجزأ',
+          description: 'السماح بسداد الفاتورة الواحدة بجزء نقدي بالدرج وجزء بطاقة بنكية أو محفظة إلكترونية',
+          isCore: false,
+          isEnabled: split,
+          onChanged: (v) => _toggleFeature(context, FeatureKeys.splitPayment, v, userId),
+        ),
+        Divider(height: 16, color: AppColors.outlineVariant),
+        _buildFeatureItem(
+          key: const Key('feature_credit_sales_toggle'),
+          title: 'البيع الآجل والشكك',
+          description: 'تمكين خيار "أجل / متبقي" وترحيل المبالغ المتبقية كديون في كشف حساب العميل',
+          dependencyInfo: 'يعتمد على: العملاء',
+          isCore: false,
+          isEnabled: credit,
+          onChanged: (v) => _toggleFeature(context, FeatureKeys.creditSales, v, userId),
+        ),
+        Divider(height: 16, color: AppColors.outlineVariant),
+        _buildFeatureItem(
+          key: const Key('feature_hold_bills_toggle'),
+          title: 'فواتير متعددة وتعليق الفاتورة',
+          description: 'إتاحة شريط تبويبات الفواتير لتعليق فاتورة وخدمة عميل آخر في الطابور دون فقد البيانات',
+          isCore: false,
+          isEnabled: hold,
+          onChanged: (v) => _toggleFeature(context, FeatureKeys.holdBills, v, userId),
+        ),
+        Divider(height: 16, color: AppColors.outlineVariant),
+        _buildFeatureItem(
+          key: const Key('feature_promotions_toggle'),
+          title: 'العروض والخصومات الترويجية',
+          description: 'تفعيل إنشاء عروض الخصم المباشر، باقات الشراء، والخصومات المئوية المؤقتة',
+          isCore: false,
+          isEnabled: promo,
+          onChanged: (v) => _toggleFeature(context, FeatureKeys.promotions, v, userId),
+        ),
+        Divider(height: 16, color: AppColors.outlineVariant),
+        _buildFeatureItem(
+          key: const Key('feature_loyalty_toggle'),
+          title: 'برنامج ولاء ونقاط العملاء',
+          description: 'احتساب نقاط مكافآت للمشتريات واستبدالها برصيد أو خصومات في الفواتير القادمة',
+          dependencyInfo: 'يعتمد على: العملاء',
+          isCore: false,
+          isEnabled: loyalty,
+          onChanged: (v) => _toggleFeature(context, FeatureKeys.loyalty, v, userId),
+        ),
+        Divider(height: 16, color: AppColors.outlineVariant),
+        _buildFeatureItem(
+          key: const Key('feature_installments_master_toggle'),
+          title: 'نظام البيع بالتقسيط وإيصالات الأمانة',
+          description: 'تمكين البيع بنظام الأقساط الشهرية، احتساب المرابحة، جدولة السداد، وإيصالات الأمانة والتحصيل القضائي',
+          dependencyInfo: 'يعتمد على: العملاء',
+          isCore: false,
+          isEnabled: installments,
+          onChanged: (v) => _toggleFeature(context, FeatureKeys.installments, v, userId),
+        ),
+      ],
     );
   }
 
-  // ─── 4. كارت مزايا الحسابات والورديات والأمان ───
-  Widget _buildFinancialAndSecurityFeaturesCard(SettingsState state, String userId) {
-    return _cardWrapper(
-      child: Column(
-        children: [
-          _cardHeader(
-            icon: Icons.admin_panel_settings_rounded,
-            title: 'مزايا الحسابات والورديات والأمان',
-            subtitle: 'إدارة دورة الكاش، إغلاق الوردية، التقارير المالية، وصلاحيات الحماية',
+  // ─── موديول 1: المخازن والتوريد والتسعير (6 مزايا) ───
+  Widget _buildModule1(SettingsState state, String userId) {
+    final purchases = state.features[FeatureKeys.purchases] ?? true;
+    final suppliers = state.features[FeatureKeys.suppliers] ?? true;
+    final lowStock = state.features[FeatureKeys.lowStockAlerts] ?? true;
+    final timestamps = state.features[FeatureKeys.productTimestamps] ?? true;
+
+    final enabledCount = 2 +
+        (purchases ? 1 : 0) +
+        (suppliers ? 1 : 0) +
+        (lowStock ? 1 : 0) +
+        (timestamps ? 1 : 0);
+
+    return _buildAccordionCard(
+      index: 1,
+      icon: Icons.inventory_2_rounded,
+      title: 'المخازن والتوريد والتسعير',
+      subtitle: 'التحكم في دليل الأصناف، المشتريات، الموردين، وتتبع الحركات والحد الأدنى',
+      enabledCount: enabledCount,
+      totalCount: 6,
+      children: [
+        _buildFeatureItem(
+          title: 'إدارة المخزون ودليل المنتجات',
+          description: 'المحرك الأساسي لبطاقات الأصناف، الأقسام، المقاسات والألوان، وأسعار التكلفة والبيع',
+          isCore: true,
+          isEnabled: true,
+        ),
+        Divider(height: 16, color: AppColors.outlineVariant),
+        _buildFeatureItem(
+          title: 'سجل حركات المخزن والتدقيق المخزني',
+          description: 'تتبع حركات الإدخال، الصرف، التسوية، الجرد الدوري، وتاريخ كل حركة بالوقت والمسؤول',
+          isCore: true,
+          isEnabled: true,
+        ),
+        Divider(height: 16, color: AppColors.outlineVariant),
+        _buildFeatureItem(
+          key: const Key('feature_purchases_toggle'),
+          title: 'إدارة المشتريات وفواتير الشراء',
+          description: 'تسجيل فواتير الشراء الواردة، تكلفة الأصناف، وتحديث أرصدة المخازن آلياً',
+          isCore: false,
+          isEnabled: purchases,
+          onChanged: (v) => _toggleFeature(context, FeatureKeys.purchases, v, userId),
+        ),
+        Divider(height: 16, color: AppColors.outlineVariant),
+        _buildFeatureItem(
+          key: const Key('feature_suppliers_toggle'),
+          title: 'دليل الموردين وحسابات التوريد',
+          description: 'إدارة سجلات الموردين، متابعة الديون المستحقة، ودفعات فواتير التوريد',
+          dependencyInfo: 'يعتمد على: المشتريات',
+          isCore: false,
+          isEnabled: suppliers,
+          onChanged: (v) => _toggleFeature(context, FeatureKeys.suppliers, v, userId),
+        ),
+        Divider(height: 16, color: AppColors.outlineVariant),
+        _buildFeatureItem(
+          key: const Key('feature_low_stock_alerts_toggle'),
+          title: 'تنبيهات النواقص والحد الأدنى للمخزون',
+          description: 'إبراز الأصناف التي أوشكت على النفاد وإظهار مؤشرات تنبيه في الكروت وشريط الإشعارات',
+          isCore: false,
+          isEnabled: lowStock,
+          onChanged: (v) => _toggleFeature(context, FeatureKeys.lowStockAlerts, v, userId),
+        ),
+        Divider(height: 16, color: AppColors.outlineVariant),
+        _buildFeatureItem(
+          key: const Key('feature_product_timestamps_toggle'),
+          title: 'عرض تواريخ التعديل والإنشاء على كروت المنتجات',
+          description: 'إظهار سطر التوثيق الرمادي الهادئ (أُضيف: ... • آخر تعديل: ...) أسفل بطاقات المنتجات',
+          isCore: false,
+          isEnabled: timestamps,
+          onChanged: (v) => _toggleFeature(context, FeatureKeys.productTimestamps, v, userId),
+        ),
+        Divider(height: 16, color: AppColors.outlineVariant),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.outlineVariant),
           ),
-          Divider(height: 24, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            key: const Key('feature_shifts_toggle'),
-            title: 'إدارة الورديات وتقفيل الكاشير',
-            description: 'إلزام الكاشير بفتح وردية وتحديد العهدة الافتتاحية وجرد الدرج النقدي عند تقفيل الوردية',
-            isCore: false,
-            isEnabled: state.features[FeatureKeys.shifts] ?? true,
-            onChanged: (v) => _toggleFeature(context, FeatureKeys.shifts, v, userId),
+          child: Row(
+            children: [
+              Icon(Icons.dashboard_customize_rounded, size: 18, color: AppColors.primary),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'تخصيص أقسام الأنشطة (ملابس، أحذية، إكسسوارات، أدوات منزلية)',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    Text(
+                      'التحكم في ظهور أو إخفاء حقول المقاسات والضمان والألوان في شاشة الإضافة ونقطة البيع',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _selectedCategory = 'activities';
+                  });
+                },
+                icon: const Icon(Icons.arrow_back_rounded, size: 15),
+                label: const Text('إدارة الأنشطة'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
           ),
-          Divider(height: 16, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            key: const Key('feature_blind_shift_closing_toggle'),
-            title: 'الجرد الأعمى عند تقفيل الوردية',
-            description: 'إخفاء الرصيد المتوقع للدرج وإلزام الكاشير بعدّ النقدية يدوياً لمنع التلاعب وتوليد تقرير العجز/الزيادة للمدير فقط',
-            dependencyInfo: 'يعتمد على: الورديات',
-            isCore: false,
-            isEnabled: state.features[FeatureKeys.blindShiftClosing] ?? false,
-            onChanged: (v) => _toggleFeature(context, FeatureKeys.blindShiftClosing, v, userId),
-          ),
-          Divider(height: 16, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            key: const Key('feature_drawer_petty_cash_toggle'),
-            title: 'حركات الدرج النقدية (مصروفات نثرية / إيداع)',
-            description: 'تمكين أزرار السحب والإيداع السريع للنقدية من درج الكاشير أثناء الوردية مع تدوين السبب',
-            dependencyInfo: 'يعتمد على: الورديات',
-            isCore: false,
-            isEnabled: state.features[FeatureKeys.drawerPettyCash] ?? true,
-            onChanged: (v) => _toggleFeature(context, FeatureKeys.drawerPettyCash, v, userId),
-          ),
-          Divider(height: 16, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            key: const Key('feature_expenses_toggle'),
-            title: 'المصروفات اليومية وسجل النثريات',
-            description: 'تسجيل بنود المصروفات التشغيلية اليومية والإيجارات والفواتير وخصمها من الخزينة العامة',
-            isCore: false,
-            isEnabled: state.features[FeatureKeys.expenses] ?? true,
-            onChanged: (v) => _toggleFeature(context, FeatureKeys.expenses, v, userId),
-          ),
-          Divider(height: 16, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            key: const Key('feature_reports_toggle'),
-            title: 'التقارير المالية والتحليلية',
-            description: 'لوحات مؤشرات الأداء، الأرباح، تقارير الضرائب، وحركة المبيعات والمنتجات الأكثر مبيعاً',
-            isCore: false,
-            isEnabled: state.features[FeatureKeys.reports] ?? true,
-            onChanged: (v) => _toggleFeature(context, FeatureKeys.reports, v, userId),
-          ),
-          Divider(height: 16, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            key: const Key('feature_partners_toggle'),
-            title: 'حسابات الشركاء وتوزيع الأرباح',
-            description: 'إدارة حصص الشركاء ورؤوس الأموال، تسجيل المسحوبات، وتوزيع الأرباح الصافية',
-            isCore: false,
-            isEnabled: state.features[FeatureKeys.partners] ?? false,
-            onChanged: (v) => _toggleFeature(context, FeatureKeys.partners, v, userId),
-          ),
-          Divider(height: 16, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            key: const Key('feature_employees_toggle'),
-            title: 'شؤون الموظفين وفريق العمل',
-            description: 'إدارة ملفات الموظفين، ساعات العمل، والصلاحيات الوظيفية',
-            isCore: false,
-            isEnabled: state.features[FeatureKeys.employees] ?? true,
-            onChanged: (v) => _toggleFeature(context, FeatureKeys.employees, v, userId),
-          ),
-          Divider(height: 16, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            key: const Key('feature_payroll_toggle'),
-            title: 'مسير الرواتب والمستحقات',
-            description: 'احتساب الرواتب الشهرية، الخصومات، البدلات، والمكافآت وترحيلها للخزينة',
-            dependencyInfo: 'يعتمد على: الموظفون',
-            isCore: false,
-            isEnabled: state.features[FeatureKeys.payroll] ?? true,
-            onChanged: (v) => _toggleFeature(context, FeatureKeys.payroll, v, userId),
-          ),
-          Divider(height: 16, color: AppColors.outlineVariant),
-          _buildFeatureItem(
-            key: const Key('feature_manager_pin_protection_toggle'),
-            title: 'طلب الرقم السري للمدير عند الخصم أو المرتجع',
-            description: 'قفل عمليات الخصم العالي أو إلغاء واسترجاع الفواتير بطلب PIN المدير لمنع تلاعب الكاشير',
-            isCore: false,
-            isEnabled: state.features[FeatureKeys.managerPinProtection] ?? false,
-            onChanged: (v) => _toggleFeature(context, FeatureKeys.managerPinProtection, v, userId),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
+
+  // ─── موديول 2: التوصيل والدليفري والتجارة الحديثة (5 مزايا) ───
+  Widget _buildModule2(SettingsState state, String userId) {
+    final delivery = state.features[FeatureKeys.delivery] ?? false;
+    final preOrders = state.features[FeatureKeys.preOrders] ?? false;
+    final consolidated = state.features[FeatureKeys.consolidatedBatches] ?? true;
+    final telegram = state.features[FeatureKeys.telegramBot] ?? true;
+    final whatsapp = state.features[FeatureKeys.whatsappDirect] ?? true;
+
+    final enabledCount = (delivery ? 1 : 0) +
+        (preOrders ? 1 : 0) +
+        (consolidated ? 1 : 0) +
+        (telegram ? 1 : 0) +
+        (whatsapp ? 1 : 0);
+
+    return _buildAccordionCard(
+      index: 2,
+      icon: Icons.local_shipping_rounded,
+      title: 'التوصيل والدليفري والتجارة الحديثة',
+      subtitle: 'إدارة طلبات الحجز المسبق، الشحنات المجمعة، وتكامل تيليجرام وواتساب',
+      enabledCount: enabledCount,
+      totalCount: 5,
+      children: [
+        _buildFeatureItem(
+          key: const Key('feature_delivery_toggle'),
+          title: 'إدارة وتتبع الدليفري والطيارين',
+          description: 'تمكين شاشات أوردرات التوصيل، حساب رسوم الشحن، وتعيين الطيارين في نقطة البيع والقائمة',
+          isCore: false,
+          isEnabled: delivery,
+          onChanged: (v) => _toggleFeature(context, FeatureKeys.delivery, v, userId),
+        ),
+        Divider(height: 16, color: AppColors.outlineVariant),
+        _buildFeatureItem(
+          key: const Key('feature_pre_orders_toggle'),
+          title: 'موديول الحجز المسبق والطلبات الخاصة',
+          description: 'إدارة طلبات الاستيراد والحجز المسبق، تسجيل العربونات، وتتبع حالة وصول الشحنات',
+          isCore: false,
+          isEnabled: preOrders,
+          onChanged: (v) => _toggleFeature(context, FeatureKeys.preOrders, v, userId),
+        ),
+        Divider(height: 16, color: AppColors.outlineVariant),
+        _buildFeatureItem(
+          key: const Key('feature_consolidated_batches_toggle'),
+          title: 'الشحنات المجمعة وتوزيع الشحن',
+          description: 'تمكين دورة شحن الكراتين المجمعة وتوزيع تكلفة الشحن على بنود العملاء بحسابات مرنة عادلة',
+          dependencyInfo: 'يعتمد على: الحجز المسبق',
+          isCore: false,
+          isEnabled: consolidated,
+          onChanged: (v) => _toggleFeature(context, FeatureKeys.consolidatedBatches, v, userId),
+        ),
+        Divider(height: 16, color: AppColors.outlineVariant),
+        _buildFeatureItem(
+          key: const Key('feature_telegram_bot_toggle'),
+          title: 'سحب رسائل تيليجرام التلقائي',
+          description: 'الاستقبال الآلي للرسائل وحجوزات العملاء من جروبات وقنوات تيليجرام وتحويلها لأوردرات بضغطة زر',
+          dependencyInfo: 'يعتمد على: الحجز المسبق',
+          isCore: false,
+          isEnabled: telegram,
+          onChanged: (v) => _toggleFeature(context, FeatureKeys.telegramBot, v, userId),
+        ),
+        Divider(height: 16, color: AppColors.outlineVariant),
+        _buildFeatureItem(
+          key: const Key('feature_whatsapp_direct_toggle'),
+          title: 'تنبيهات وتحديثات العملاء عبر واتساب',
+          description: 'أزرار مراسلة فورية للعميل برقم التتبع وتنبيهه عند وصول الشحنة للمحل واستحقاق المتبقي',
+          dependencyInfo: 'يعتمد على: الحجز المسبق',
+          isCore: false,
+          isEnabled: whatsapp,
+          onChanged: (v) => _toggleFeature(context, FeatureKeys.whatsappDirect, v, userId),
+        ),
+      ],
+    );
+  }
+
+  // ─── موديول 3: الخزينة والمالية والورديات (6 مزايا) ───
+  Widget _buildModule3(SettingsState state, String userId) {
+    final shifts = state.features[FeatureKeys.shifts] ?? true;
+    final blindShift = state.features[FeatureKeys.blindShiftClosing] ?? false;
+    final drawer = state.features[FeatureKeys.drawerPettyCash] ?? true;
+    final expenses = state.features[FeatureKeys.expenses] ?? true;
+    final reports = state.features[FeatureKeys.reports] ?? true;
+    final partners = state.features[FeatureKeys.partners] ?? false;
+
+    final enabledCount = (shifts ? 1 : 0) +
+        (blindShift ? 1 : 0) +
+        (drawer ? 1 : 0) +
+        (expenses ? 1 : 0) +
+        (reports ? 1 : 0) +
+        (partners ? 1 : 0);
+
+    return _buildAccordionCard(
+      index: 3,
+      icon: Icons.account_balance_wallet_rounded,
+      title: 'الخزينة والمالية والورديات',
+      subtitle: 'إدارة دورة الكاش، إغلاق الوردية، التقارير المالية، وتوزيع الأرباح',
+      enabledCount: enabledCount,
+      totalCount: 6,
+      children: [
+        _buildFeatureItem(
+          key: const Key('feature_shifts_toggle'),
+          title: 'إدارة الورديات وتقفيل الكاشير',
+          description: 'إلزام الكاشير بفتح وردية وتحديد العهدة الافتتاحية وجرد الدرج النقدي عند تقفيل الوردية',
+          isCore: false,
+          isEnabled: shifts,
+          onChanged: (v) => _toggleFeature(context, FeatureKeys.shifts, v, userId),
+        ),
+        Divider(height: 16, color: AppColors.outlineVariant),
+        _buildFeatureItem(
+          key: const Key('feature_blind_shift_closing_toggle'),
+          title: 'الجرد الأعمى عند تقفيل الوردية',
+          description: 'إخفاء الرصيد المتوقع للدرج وإلزام الكاشير بعدّ النقدية يدوياً لمنع التلاعب وتوليد تقرير العجز/الزيادة للمدير فقط',
+          dependencyInfo: 'يعتمد على: الورديات',
+          isCore: false,
+          isEnabled: blindShift,
+          onChanged: (v) => _toggleFeature(context, FeatureKeys.blindShiftClosing, v, userId),
+        ),
+        Divider(height: 16, color: AppColors.outlineVariant),
+        _buildFeatureItem(
+          key: const Key('feature_drawer_petty_cash_toggle'),
+          title: 'حركات الدرج النقدية (مصروفات نثرية / إيداع)',
+          description: 'تمكين أزرار السحب والإيداع السريع للنقدية من درج الكاشير أثناء الوردية مع تدوين السبب',
+          dependencyInfo: 'يعتمد على: الورديات',
+          isCore: false,
+          isEnabled: drawer,
+          onChanged: (v) => _toggleFeature(context, FeatureKeys.drawerPettyCash, v, userId),
+        ),
+        Divider(height: 16, color: AppColors.outlineVariant),
+        _buildFeatureItem(
+          key: const Key('feature_expenses_toggle'),
+          title: 'المصروفات اليومية وسجل النثريات',
+          description: 'تسجيل بنود المصروفات التشغيلية اليومية والإيجارات والفواتير وخصمها من الخزينة العامة',
+          isCore: false,
+          isEnabled: expenses,
+          onChanged: (v) => _toggleFeature(context, FeatureKeys.expenses, v, userId),
+        ),
+        Divider(height: 16, color: AppColors.outlineVariant),
+        _buildFeatureItem(
+          key: const Key('feature_reports_toggle'),
+          title: 'التقارير المالية والتحليلية',
+          description: 'لوحات مؤشرات الأداء، الأرباح، تقارير الضرائب، وحركة المبيعات والمنتجات الأكثر مبيعاً',
+          isCore: false,
+          isEnabled: reports,
+          onChanged: (v) => _toggleFeature(context, FeatureKeys.reports, v, userId),
+        ),
+        Divider(height: 16, color: AppColors.outlineVariant),
+        _buildFeatureItem(
+          key: const Key('feature_partners_toggle'),
+          title: 'حسابات الشركاء وتوزيع الأرباح',
+          description: 'إدارة حصص الشركاء ورؤوس الأموال، تسجيل المسحوبات، وتوزيع الأرباح الصافية',
+          isCore: false,
+          isEnabled: partners,
+          onChanged: (v) => _toggleFeature(context, FeatureKeys.partners, v, userId),
+        ),
+      ],
+    );
+  }
+
+  // ─── موديول 4: فريق العمل والأمان والرقابة (5 مزايا) ───
+  Widget _buildModule4(SettingsState state, String userId) {
+    final employees = state.features[FeatureKeys.employees] ?? true;
+    final payroll = state.features[FeatureKeys.payroll] ?? true;
+    final pinProtection = state.features[FeatureKeys.managerPinProtection] ?? false;
+
+    final enabledCount = (employees ? 1 : 0) +
+        (payroll ? 1 : 0) +
+        (pinProtection ? 1 : 0) +
+        2;
+
+    return _buildAccordionCard(
+      index: 4,
+      icon: Icons.admin_panel_settings_rounded,
+      title: 'فريق العمل والأمان والرقابة',
+      subtitle: 'إدارة شؤون الموظفين، الرواتب، حماية المدير بـ PIN، وصلاحيات الكاشير',
+      enabledCount: enabledCount,
+      totalCount: 5,
+      children: [
+        _buildFeatureItem(
+          key: const Key('feature_employees_toggle'),
+          title: 'شؤون الموظفين وفريق العمل',
+          description: 'إدارة ملفات الموظفين، ساعات العمل، والصلاحيات الوظيفية',
+          isCore: false,
+          isEnabled: employees,
+          onChanged: (v) => _toggleFeature(context, FeatureKeys.employees, v, userId),
+        ),
+        Divider(height: 16, color: AppColors.outlineVariant),
+        _buildFeatureItem(
+          key: const Key('feature_payroll_toggle'),
+          title: 'مسير الرواتب والمستحقات',
+          description: 'احتساب الرواتب الشهرية، الخصومات، البدلات، والمكافآت وترحيلها للخزينة',
+          dependencyInfo: 'يعتمد على: الموظفون',
+          isCore: false,
+          isEnabled: payroll,
+          onChanged: (v) => _toggleFeature(context, FeatureKeys.payroll, v, userId),
+        ),
+        Divider(height: 16, color: AppColors.outlineVariant),
+        _buildFeatureItem(
+          key: const Key('feature_manager_pin_protection_toggle'),
+          title: 'طلب الرقم السري للمدير عند الخصم أو المرتجع',
+          description: 'قفل عمليات الخصم العالي أو إلغاء واسترجاع الفواتير بطلب PIN المدير لمنع تلاعب الكاشير',
+          isCore: false,
+          isEnabled: pinProtection,
+          onChanged: (v) => _toggleFeature(context, FeatureKeys.managerPinProtection, v, userId),
+        ),
+        Divider(height: 16, color: AppColors.outlineVariant),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.outlineVariant),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.shield_outlined, size: 18, color: AppColors.primary),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'صلاحيات الكاشير الدقيقة وتحديد سقف الخصم',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    Text(
+                      'قفل حذف الصنف، سقف الخصم المسموح، وإلزام تصفير الفواتير',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton.icon(
+                key: const Key('open_cashier_permissions_btn'),
+                onPressed: () {
+                  setState(() {
+                    _selectedCategory = 'staff';
+                  });
+                },
+                icon: const Icon(Icons.arrow_back_rounded, size: 15),
+                label: const Text('ضبط الصلاحيات'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Divider(height: 16, color: AppColors.outlineVariant),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.outlineVariant),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.history_edu_rounded, size: 18, color: AppColors.primary),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'سجلات تدقيق العمليات الحساسة والأخطاء',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    Text(
+                      'مراجعة سجلات الأخطاء البرمجية والعمليات الإدارية الحساسة',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton.icon(
+                key: const Key('open_audit_crash_logs_btn'),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const CrashLogsScreen()),
+                  );
+                },
+                icon: const Icon(Icons.open_in_new_rounded, size: 15),
+                label: const Text('عرض السجلات'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
 
   Widget _sectionTitle(String title) {
     return Padding(
@@ -2111,8 +2914,13 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
     ValueChanged<bool>? onChanged,
     Key? key,
   }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: isEnabled ? Colors.white : const Color(0xFFF8FAFC).withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(8),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2126,7 +2934,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
                       child: Text(
                         title,
                         style: const TextStyle(
-                          fontSize: 14,
+                          fontSize: 13.5,
                           fontWeight: FontWeight.w600,
                           color: Color(0xFF0F172A),
                         ),
@@ -2173,7 +2981,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
                 Text(
                   description,
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: 11.5,
                     color: Color(0xFF64748B),
                     height: 1.35,
                   ),
@@ -2192,7 +3000,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
                     child: Text(
                       dependencyInfo,
                       style: const TextStyle(
-                        fontSize: 11,
+                        fontSize: 10.5,
                         color: Color(0xFFD97706),
                         fontWeight: FontWeight.w600,
                       ),
@@ -2202,20 +3010,74 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
               ],
             ),
           ),
-          const SizedBox(width: 14),
-          if (isCore)
-            const Switch(
-              value: true,
-              onChanged: null,
-            )
-          else
-            Switch(
-              key: key,
-              value: isEnabled,
-              onChanged: onChanged,
-              activeThumbColor: AppColors.secondary,
-              activeTrackColor: AppColors.secondary.withValues(alpha: 0.38),
-            ),
+          const SizedBox(width: 12),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isCore) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: const Text(
+                    'مفعّل',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF475569),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Switch(
+                  value: true,
+                  onChanged: null,
+                ),
+              ] else ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isEnabled
+                        ? const Color(0xFFF0FDFA)
+                        : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: isEnabled
+                          ? AppColors.secondary.withValues(alpha: 0.3)
+                          : const Color(0xFFE2E8F0),
+                    ),
+                  ),
+                  child: Text(
+                    isEnabled ? 'مفعّل' : 'معطل',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.bold,
+                      color: isEnabled
+                          ? AppColors.secondary
+                          : const Color(0xFF94A3B8),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Switch(
+                  key: key,
+                  value: isEnabled,
+                  onChanged: onChanged,
+                  activeThumbColor: AppColors.secondary,
+                  activeTrackColor: AppColors.secondary.withValues(alpha: 0.38),
+                ),
+              ],
+            ],
+          ),
         ],
       ),
     );
