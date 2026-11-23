@@ -36,6 +36,7 @@ import '../../../pre_orders/presentation/widgets/telegram_inbox_dialog.dart';
 import '../../../products/domain/entities/activity_type.dart';
 import '../../data/services/activity_settings_service.dart';
 import '../../../../core/services/store_presets_engine.dart';
+import '../../../../core/services/hotkey_strip_service.dart';
 
 class SystemSettingsScreen extends StatelessWidget {
   final String? initialCategory;
@@ -3234,6 +3235,16 @@ class _CashierPermissionsSettingsCardState
               value: _config.allowManualDiscount,
               onChanged: (v) => _update(_config.copyWith(allowManualDiscount: v)),
             ),
+            Divider(height: 1, color: AppColors.outlineVariant),
+            SwitchListTile(
+              key: const Key('cashier_perm_allow_purchases'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text('السماح بالاطلاع على فواتير المشتريات والتوريد', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+              subtitle: const Text('إتاحة شاشة المشتريات للكاشير لمتابعة فواتير وشحنات التوريد من الموردين', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+              activeThumbColor: AppColors.secondary, activeTrackColor: AppColors.secondary.withValues(alpha: 0.38),
+              value: _config.allowViewPurchases,
+              onChanged: (v) => _update(_config.copyWith(allowViewPurchases: v)),
+            ),
           ],
         ),
       ),
@@ -3674,11 +3685,13 @@ class _BrandingSettingsCardState extends State<_BrandingSettingsCard> {
   late Color _selectedPrimary;
   late Color _selectedSecondary;
   bool _saving = false;
+  bool _showHotkeyStrip = true;
 
   @override
   void initState() {
     super.initState();
     final cur = AppBranding.current;
+    _showHotkeyStrip = HotkeyStripService.current;
     _nameCtrl = TextEditingController(text: cur.appName);
     _selectedPrimary = cur.primaryColor;
     _selectedSecondary = cur.secondaryColor;
@@ -3989,7 +4002,24 @@ class _BrandingSettingsCardState extends State<_BrandingSettingsCard> {
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
+            Divider(height: 1, color: AppColors.outlineVariant),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              key: const Key('setting_show_hotkey_strip'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text('إظهار شريط الاختصارات السفلي', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+              subtitle: const Text('عرض شريط الاختصارات السريعة في أسفل الشاشة للكاشير والنظام (Hotkey Footer)', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+              activeThumbColor: AppColors.secondary,
+              activeTrackColor: AppColors.secondary.withValues(alpha: 0.38),
+              value: _showHotkeyStrip,
+              onChanged: (v) async {
+                setState(() => _showHotkeyStrip = v);
+                final gate = getIt<FeatureGate>();
+                await HotkeyStripService.setVisible(gate, v, userId: widget.userId);
+              },
+            ),
+            const SizedBox(height: 16),
 
             // 5. Action Buttons
             Wrap(

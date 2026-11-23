@@ -12,6 +12,7 @@ import '../features/feature_gate.dart';
 import '../services/crash_logger_service.dart';
 import '../services/rest_sync_service.dart';
 import '../services/shortcut_settings_service.dart';
+import '../services/hotkey_strip_service.dart';
 import '../theme/app_branding.dart';
 import 'command_palette_dialog.dart';
 import '../../features/settings/presentation/widgets/shortcuts_config_dialog.dart';
@@ -157,25 +158,29 @@ class _MainLayoutState extends State<MainLayout> {
         : null;
 
     final posActivator = svc?.getActivator('openPos') ??
-        const SingleActivator(LogicalKeyboardKey.f1);
+        const SingleActivator(LogicalKeyboardKey.keyP, alt: true);
     final shortcutsActivator = svc?.getActivator('openShortcuts') ??
-        const SingleActivator(LogicalKeyboardKey.f1, alt: true);
+        const SingleActivator(LogicalKeyboardKey.f1);
 
-    // 2. Open Shortcuts Guide (Alt + F1 by default)
+    // 2. Open Shortcuts Guide (F1 by default)
     if (shortcutsActivator.accepts(event, HardwareKeyboard.instance) ||
-        (isAlt && !isCtrl && key == LogicalKeyboardKey.f1)) {
+        (!isCtrl && !isAlt && key == LogicalKeyboardKey.f1)) {
       _openShortcutsGuide();
       return true;
     }
 
-    // 3. Jump to POS Screen (F1 by default)
+    // 3. Jump to POS Screen (Alt + P by default)
     if (posActivator.accepts(event, HardwareKeyboard.instance) ||
-        (!isCtrl && !isAlt && key == LogicalKeyboardKey.f1)) {
-      _handleItemTap('نقطة البيع (الكاشير)', const PosScreen(), true, null);
+        (isAlt && !isCtrl && key == LogicalKeyboardKey.keyP)) {
+      _openPos();
       return true;
     }
 
     return false;
+  }
+
+  void _openPos() {
+    _handleItemTap('نقطة البيع (الكاشير)', const PosScreen(), true, null);
   }
 
   Future<void> _handleSync() async {
@@ -264,15 +269,15 @@ class _MainLayoutState extends State<MainLayout> {
       valueListenable: AppBranding.notifier,
       builder: (context, branding, _) {
         final svc = getIt.isRegistered<ShortcutSettingsService>() ? getIt<ShortcutSettingsService>() : null;
-        final posAct = svc?.getActivator('openPos') ?? const SingleActivator(LogicalKeyboardKey.f1);
-        final shortcutsAct = svc?.getActivator('openShortcuts') ?? const SingleActivator(LogicalKeyboardKey.f1, alt: true);
+        final posAct = svc?.getActivator('openPos') ?? const SingleActivator(LogicalKeyboardKey.keyP, alt: true);
+        final shortcutsAct = svc?.getActivator('openShortcuts') ?? const SingleActivator(LogicalKeyboardKey.f1);
         final cmdAct = svc?.getActivator('openCommandPalette') ?? const SingleActivator(LogicalKeyboardKey.keyK, control: true);
 
         return CallbackShortcuts(
           bindings: {
             cmdAct: _openCommandPalette,
             shortcutsAct: _openShortcutsGuide,
-            posAct: () => _handleItemTap('نقطة البيع (الكاشير)', const PosScreen(), true, null),
+            posAct: _openPos,
           },
           child: Focus(
             autofocus: true,
@@ -565,7 +570,7 @@ class _MainLayoutState extends State<MainLayout> {
                                             ),
 
                                           // Purchases & Suppliers Group
-                                          if (isAdmin &&
+                                          if ((isAdmin || cashierPerms.allowViewPurchases) &&
                                               _featureEnabled(
                                                 features,
                                                 FeatureKeys.purchases,
@@ -1185,6 +1190,7 @@ class _MainLayoutState extends State<MainLayout> {
     try {
       final authState = context.read<AuthCubit>().state;
       final isAdmin = _isAdmin(authState);
+      final cashierPerms = CashierPermissionsService.current;
 
       final items = <CommandPaletteItem>[
       // Screens
@@ -1193,8 +1199,8 @@ class _MainLayoutState extends State<MainLayout> {
         title: 'نقطة البيع (الكاشير)',
         category: 'شاشات النظام',
         icon: Icons.point_of_sale_rounded,
-        subtitle: 'المبيعات السريعة وتسجيل الفواتير [F1]',
-        onSelect: () => _handleItemTap('نقطة البيع (الكاشير)', const PosScreen(), true, null),
+        subtitle: 'المبيعات السريعة وتسجيل الفواتير [Alt+P]',
+        onSelect: () => _openPos(),
       ),
       CommandPaletteItem(
         id: 'nav_products',
@@ -1204,14 +1210,15 @@ class _MainLayoutState extends State<MainLayout> {
         subtitle: 'دليل الأصناف والمقاسات والأسعار',
         onSelect: () => _handleItemTap('المنتجات والتصنيفات', const ProductListScreen(), false, null),
       ),
-      CommandPaletteItem(
-        id: 'nav_purchases',
-        title: 'فواتير المشتريات والموردين',
-        category: 'شاشات النظام',
-        icon: Icons.shopping_cart_rounded,
-        subtitle: 'توريد البضائع وإدخال الشحنات',
-        onSelect: () => _handleItemTap('المشتريات والموردين', const PurchasesScreen(), false, null),
-      ),
+      if (isAdmin || cashierPerms.allowViewPurchases)
+        CommandPaletteItem(
+          id: 'nav_purchases',
+          title: 'فواتير المشتريات والموردين',
+          category: 'شاشات النظام',
+          icon: Icons.shopping_cart_rounded,
+          subtitle: 'توريد البضائع وإدخال الشحنات',
+          onSelect: () => _handleItemTap('المشتريات والموردين', const PurchasesScreen(), false, null),
+        ),
       CommandPaletteItem(
         id: 'nav_invoices',
         title: 'سجل فواتير المبيعات',
@@ -1627,101 +1634,126 @@ class _MainLayoutState extends State<MainLayout> {
       ];
     }
 
-    return Container(
-      key: Key(stripKey),
-      height: 38,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: const BoxDecoration(
-        color: Color(0xFF0F172A),
-        border: Border(top: BorderSide(color: Color(0xFF1E293B))),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: items.map((item) {
-                  return Padding(
-                    padding: const EdgeInsets.only(left: 8.0),
-                    child: InkWell(
-                      key: Key(item.key),
-                      onTap: item.onTap,
-                      borderRadius: BorderRadius.circular(6),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1E293B),
+    return ValueListenableBuilder<bool>(
+      valueListenable: HotkeyStripService.isVisible,
+      builder: (context, visible, _) {
+        if (!visible) return const SizedBox.shrink();
+
+        return Container(
+          key: Key(stripKey),
+          height: 38,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: const BoxDecoration(
+            color: Color(0xFF0F172A),
+            border: Border(top: BorderSide(color: Color(0xFF1E293B))),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: items.map((item) {
+                      return Padding(
+                        padding: const EdgeInsets.only(left: 8.0),
+                        child: InkWell(
+                          key: Key(item.key),
+                          onTap: item.onTap,
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: const Color(0xFF334155),
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              item.icon,
-                              size: 13,
-                              color: Colors.grey.shade400,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
                             ),
-                            const SizedBox(width: 5),
-                            Text(
-                              item.label,
-                              style: const TextStyle(
-                                fontFamily: 'Cairo',
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1E293B),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: const Color(0xFF334155),
+                                width: 1,
                               ),
                             ),
-                          ],
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  item.icon,
+                                  size: 13,
+                                  color: Colors.grey.shade400,
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  item.label,
+                                  style: const TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-          InkWell(
-            key: const Key('contextual_hotkey_palette_shortcut'),
-            onTap: _openCommandPalette,
-            borderRadius: BorderRadius.circular(6),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.4),
-                  width: 1,
+                      );
+                    }).toList(),
+                  ),
                 ),
               ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.bolt_rounded, size: 14, color: Colors.white),
-                  SizedBox(width: 4),
-                  Text(
-                    'Ctrl+K',
-                    style: TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+              InkWell(
+                key: const Key('contextual_hotkey_palette_shortcut'),
+                onTap: _openCommandPalette,
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.4),
+                      width: 1,
                     ),
                   ),
-                ],
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.bolt_rounded, size: 14, color: Colors.white),
+                      SizedBox(width: 4),
+                      Text(
+                        'Ctrl+K',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(width: 8),
+              Tooltip(
+                message: 'طي شريط الاختصارات مؤقتاً',
+                child: InkWell(
+                  key: const Key('contextual_collapse_hotkey_strip_btn'),
+                  onTap: () => HotkeyStripService.toggleTemporary(false),
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E293B),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFF334155), width: 1),
+                    ),
+                    child: const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: Colors.white70),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

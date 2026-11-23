@@ -103,7 +103,7 @@ void main() {
 
       // 6. Custom
       expect(StorePreset.custom.icon, Icons.tune_rounded);
-      expect(StorePreset.custom.activities, isEmpty);
+      expect(StorePreset.custom.activities.length, equals(18));
     });
 
     test('StorePreset.detect accurately detects preset from active activity set', () {

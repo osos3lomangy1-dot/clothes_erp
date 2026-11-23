@@ -29,6 +29,7 @@ import '../../../installments/domain/services/installment_calculator.dart';
 import '../../../employees/presentation/widgets/cashier_profile_dialog.dart';
 import '../../../../core/features/feature_gate.dart';
 import '../../../../core/services/shortcut_settings_service.dart';
+import '../../../../core/services/hotkey_strip_service.dart';
 import '../../../settings/presentation/widgets/shortcuts_config_dialog.dart';
 import '../../../../core/services/crash_logger_service.dart';
 import '../../../../core/database/app_database.dart';
@@ -454,23 +455,19 @@ class _PosViewState extends State<_PosView> {
     final isCtrl = HardwareKeyboard.instance.isControlPressed;
     final isAlt = HardwareKeyboard.instance.isAltPressed;
 
-    // Shortcut [F1]: Focus search bar (when in POS)
-    final posActivator = s?.getActivator('openPos') ?? const SingleActivator(LogicalKeyboardKey.f1);
-    if (posActivator.accepts(event, HardwareKeyboard.instance) || (!isCtrl && !isAlt && key == LogicalKeyboardKey.f1)) {
+    // Shortcut [F1]: Open Shortcuts Guide
+    final shortcutsActivator = s?.getActivator('openShortcuts') ?? const SingleActivator(LogicalKeyboardKey.f1);
+    if (shortcutsActivator.accepts(event, HardwareKeyboard.instance) || (!isCtrl && !isAlt && key == LogicalKeyboardKey.f1)) {
       _scannerBuffer.clear();
-      _searchFocusNode.requestFocus();
-      if (_searchCtrl.text.isNotEmpty) {
-        _searchCtrl.selection = TextSelection(
-          baseOffset: 0,
-          extentOffset: _searchCtrl.text.length,
-        );
-      }
+      _openShortcutsGuide();
       return true;
     }
 
-    // Shortcut [F2]: Focus & select search bar
+    // Shortcut [F2] or [Ctrl+F]: Focus & select search bar
     final searchActivator = s?.getActivator('quickSearch') ?? const SingleActivator(LogicalKeyboardKey.f2);
-    if (searchActivator.accepts(event, HardwareKeyboard.instance) || (!isCtrl && !isAlt && key == LogicalKeyboardKey.f2)) {
+    if (searchActivator.accepts(event, HardwareKeyboard.instance) ||
+        (!isCtrl && !isAlt && key == LogicalKeyboardKey.f2) ||
+        (isCtrl && !isAlt && key == LogicalKeyboardKey.keyF)) {
       _scannerBuffer.clear();
       _searchFocusNode.requestFocus();
       if (_searchCtrl.text.isNotEmpty) {
@@ -523,7 +520,8 @@ class _PosViewState extends State<_PosView> {
     }
 
     // Shortcut [F7]: Open Pre-Orders Hub
-    if (key == LogicalKeyboardKey.f7) {
+    final preOrdersActivator = s?.getActivator('preOrders') ?? const SingleActivator(LogicalKeyboardKey.f7);
+    if (preOrdersActivator.accepts(event, HardwareKeyboard.instance) || (!isCtrl && !isAlt && key == LogicalKeyboardKey.f7)) {
       _scannerBuffer.clear();
       Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => const PreOrdersScreen()),
@@ -532,7 +530,8 @@ class _PosViewState extends State<_PosView> {
     }
 
     // Shortcut [F9]: Quick Re-Print Last Invoice
-    if (key == LogicalKeyboardKey.f9) {
+    final reprintActivator = s?.getActivator('reprintReceipt') ?? const SingleActivator(LogicalKeyboardKey.f9);
+    if (reprintActivator.accepts(event, HardwareKeyboard.instance) || (!isCtrl && !isAlt && key == LogicalKeyboardKey.f9)) {
       _scannerBuffer.clear();
       _reprintLastInvoice();
       return true;
@@ -771,9 +770,12 @@ class _PosViewState extends State<_PosView> {
     );
   }
 
+  void _openShortcutsGuide() => _showShortcutsGuide();
+
   Map<ShortcutActivator, VoidCallback> _buildPosShortcuts() {
     final Map<ShortcutActivator, VoidCallback> bindings = {
       const SingleActivator(LogicalKeyboardKey.f2): () => _searchFocusNode.requestFocus(),
+      const SingleActivator(LogicalKeyboardKey.keyF, control: true): () => _searchFocusNode.requestFocus(),
       const SingleActivator(LogicalKeyboardKey.f5): () => _cartPanelKey.currentState?.setPaymentMethod('cash'),
       const SingleActivator(LogicalKeyboardKey.f6): () => _cartPanelKey.currentState?.setPaymentMethod('card'),
       const SingleActivator(LogicalKeyboardKey.f10): () => _cartPanelKey.currentState?.addNewBillTab(),
@@ -799,83 +801,108 @@ class _PosViewState extends State<_PosView> {
   }
 
   Widget _buildHotkeyFooterStrip() {
-    return Container(
-      height: 38,
-      key: const Key('pos_hotkey_footer_strip'),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: const BoxDecoration(
-        color: Color(0xFF0F172A),
-        border: Border(top: BorderSide(color: Color(0xFF1E293B))),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildFooterHotkeyChip(
-                    key: const Key('pos_footer_hotkey_search'),
-                    label: 'F2 بحث',
-                    icon: Icons.search_rounded,
-                    onTap: () => _searchFocusNode.requestFocus(),
+    return ValueListenableBuilder<bool>(
+      valueListenable: HotkeyStripService.isVisible,
+      builder: (context, visible, _) {
+        if (!visible) return const SizedBox.shrink();
+
+        return Container(
+          height: 38,
+          key: const Key('pos_hotkey_footer_strip'),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: const BoxDecoration(
+            color: Color(0xFF0F172A),
+            border: Border(top: BorderSide(color: Color(0xFF1E293B))),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildFooterHotkeyChip(
+                        key: const Key('pos_footer_hotkey_search'),
+                        label: 'F2 بحث',
+                        icon: Icons.search_rounded,
+                        onTap: () => _searchFocusNode.requestFocus(),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildFooterHotkeyChip(
+                        key: const Key('pos_footer_hotkey_cash'),
+                        label: 'F5 كاش',
+                        icon: Icons.payments_outlined,
+                        onTap: () => _cartPanelKey.currentState?.setPaymentMethod('cash'),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildFooterHotkeyChip(
+                        key: const Key('pos_footer_hotkey_card'),
+                        label: 'F6 فيزا',
+                        icon: Icons.credit_card_rounded,
+                        onTap: () => _cartPanelKey.currentState?.setPaymentMethod('card'),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildFooterHotkeyChip(
+                        key: const Key('pos_footer_hotkey_hold'),
+                        label: 'F10 تعليق',
+                        icon: Icons.pause_circle_outline_rounded,
+                        onTap: () => _cartPanelKey.currentState?.addNewBillTab(),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildFooterHotkeyChip(
+                        key: const Key('pos_footer_hotkey_recall'),
+                        label: 'F11 استرجاع',
+                        icon: Icons.play_circle_outline_rounded,
+                        onTap: () => _cartPanelKey.currentState?.switchNextHeldBill(),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildFooterHotkeyChip(
+                        key: const Key('pos_footer_hotkey_discount'),
+                        label: 'Ctrl+D خصم',
+                        icon: Icons.percent_rounded,
+                        onTap: () => _cartPanelKey.currentState?.focusDiscount(),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  _buildFooterHotkeyChip(
-                    key: const Key('pos_footer_hotkey_cash'),
-                    label: 'F5 كاش',
-                    icon: Icons.payments_outlined,
-                    onTap: () => _cartPanelKey.currentState?.setPaymentMethod('cash'),
-                  ),
-                  const SizedBox(width: 8),
-                  _buildFooterHotkeyChip(
-                    key: const Key('pos_footer_hotkey_card'),
-                    label: 'F6 فيزا',
-                    icon: Icons.credit_card_rounded,
-                    onTap: () => _cartPanelKey.currentState?.setPaymentMethod('card'),
-                  ),
-                  const SizedBox(width: 8),
-                  _buildFooterHotkeyChip(
-                    key: const Key('pos_footer_hotkey_hold'),
-                    label: 'F10 تعليق',
-                    icon: Icons.pause_circle_outline_rounded,
-                    onTap: () => _cartPanelKey.currentState?.addNewBillTab(),
-                  ),
-                  const SizedBox(width: 8),
-                  _buildFooterHotkeyChip(
-                    key: const Key('pos_footer_hotkey_recall'),
-                    label: 'F11 استرجاع',
-                    icon: Icons.play_circle_outline_rounded,
-                    onTap: () => _cartPanelKey.currentState?.switchNextHeldBill(),
-                  ),
-                  const SizedBox(width: 8),
-                  _buildFooterHotkeyChip(
-                    key: const Key('pos_footer_hotkey_discount'),
-                    label: 'Ctrl+D خصم',
-                    icon: Icons.percent_rounded,
-                    onTap: () => _cartPanelKey.currentState?.focusDiscount(),
-                  ),
-                ],
+                ),
               ),
-            ),
+              const SizedBox(width: 12),
+              _buildFooterHotkeyChip(
+                key: const Key('pos_footer_hotkey_checkout'),
+                label: 'F12 دفع',
+                icon: Icons.check_circle_rounded,
+                isPrimary: true,
+                onTap: () => _cartPanelKey.currentState?.triggerCheckout(),
+              ),
+              const SizedBox(width: 8),
+              _buildFooterHotkeyChip(
+                key: const Key('pos_footer_hotkey_shortcuts'),
+                label: 'F1 دليل ومفاتيح',
+                icon: Icons.keyboard_rounded,
+                onTap: _showShortcutsGuide,
+              ),
+              const SizedBox(width: 8),
+              Tooltip(
+                message: 'طي شريط الاختصارات مؤقتاً',
+                child: InkWell(
+                  key: const Key('pos_collapse_hotkey_strip_btn'),
+                  onTap: () => HotkeyStripService.toggleTemporary(false),
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E293B),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFF334155), width: 1),
+                    ),
+                    child: const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: Colors.white70),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          _buildFooterHotkeyChip(
-            key: const Key('pos_footer_hotkey_checkout'),
-            label: 'F12 دفع',
-            icon: Icons.check_circle_rounded,
-            isPrimary: true,
-            onTap: () => _cartPanelKey.currentState?.triggerCheckout(),
-          ),
-          const SizedBox(width: 8),
-          _buildFooterHotkeyChip(
-            key: const Key('pos_footer_hotkey_shortcuts'),
-            label: 'F1 دليل ومفاتيح',
-            icon: Icons.keyboard_rounded,
-            onTap: _showShortcutsGuide,
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 

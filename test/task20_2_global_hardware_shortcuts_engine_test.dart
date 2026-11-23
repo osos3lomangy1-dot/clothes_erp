@@ -173,10 +173,10 @@ void main() {
   });
 
   group('Addendum 20.2: ShortcutSettingsService Configuration', () {
-    test('verifies default shortcuts: F1 for POS and Alt+F1 for guide', () {
+    test('verifies default shortcuts: Alt+P for POS and F1 for guide', () {
       final all = shortcutService.getAllShortcuts();
-      expect(all['openPos'], equals('F1'));
-      expect(all['openShortcuts'], equals('Alt+F1'));
+      expect(all['openPos'], equals('Alt+P'));
+      expect(all['openShortcuts'], equals('F1'));
       expect(all['quickPayCash'], equals('F5'));
       expect(all['quickPayCard'], equals('F6'));
       expect(all['holdBill'], equals('F10'));
@@ -184,12 +184,12 @@ void main() {
       expect(all['completeSale'], equals('F12'));
 
       final posAct = shortcutService.getActivator('openPos');
-      expect(posAct.trigger, equals(LogicalKeyboardKey.f1));
-      expect(posAct.alt, isFalse);
+      expect(posAct.trigger, equals(LogicalKeyboardKey.keyP));
+      expect(posAct.alt, isTrue);
 
       final guideAct = shortcutService.getActivator('openShortcuts');
       expect(guideAct.trigger, equals(LogicalKeyboardKey.f1));
-      expect(guideAct.alt, isTrue);
+      expect(guideAct.alt, isFalse);
     });
 
     test('loadShortcuts restores custom shortcut overrides from app_meta', () async {
@@ -200,12 +200,12 @@ void main() {
       final freshService = ShortcutSettingsService(db);
       await freshService.loadShortcuts();
       expect(freshService.getShortcut('openPos'), equals('F3'));
-      expect(freshService.getShortcut('openShortcuts'), equals('Alt+F1'));
+      expect(freshService.getShortcut('openShortcuts'), equals('F1'));
     });
   });
 
   group('Addendum 20.2: MainLayout Global Hardware Key Handling', () {
-    testWidgets('Pressing F1 in MainLayout switches directly to PosScreen', (tester) async {
+    testWidgets('Pressing Alt+P in MainLayout switches directly to PosScreen', (tester) async {
       final originalOnError = FlutterError.onError;
       FlutterError.onError = (FlutterErrorDetails details) {
         if (details.toString().contains('overflowed')) return;
@@ -241,8 +241,10 @@ void main() {
       expect(find.text('شاشة لوحة التحكم الحالية'), findsOneWidget);
       expect(find.byType(PosScreen), findsNothing);
 
-      // Simulate global hardware F1 press
-      await tester.sendKeyEvent(LogicalKeyboardKey.f1);
+      // Simulate global hardware Alt+P press
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyP);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.altLeft);
       await tester.pumpAndSettle();
 
       // MainLayout transitions to PosScreen
@@ -290,7 +292,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
     });
 
-    testWidgets('Pressing Alt+F1 opens ShortcutsConfigDialog', (tester) async {
+    testWidgets('Pressing F1 opens ShortcutsConfigDialog', (tester) async {
       tester.view.physicalSize = const Size(1280, 800);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() {
@@ -316,10 +318,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Simulate Alt + F1
-      await tester.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
+      // Simulate F1
       await tester.sendKeyEvent(LogicalKeyboardKey.f1);
-      await tester.sendKeyUpEvent(LogicalKeyboardKey.altLeft);
       await tester.pumpAndSettle();
 
       expect(find.byType(ShortcutsConfigDialog), findsOneWidget);

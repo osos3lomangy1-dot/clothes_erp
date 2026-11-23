@@ -23,6 +23,9 @@ class CashierPermissionsConfig {
   /// Allow cashier to apply exceptional manual discounts on POS
   final bool allowManualDiscount;
 
+  /// Allow cashier to view purchases and supplier invoices
+  final bool allowViewPurchases;
+
   const CashierPermissionsConfig({
     this.allowCreditSale = false,
     this.allowInstallments = false,
@@ -31,6 +34,7 @@ class CashierPermissionsConfig {
     this.allowCashExpenses = false,
     this.allowViewInvoicesHistory = false,
     this.allowManualDiscount = false,
+    this.allowViewPurchases = false,
   });
 
   CashierPermissionsConfig copyWith({
@@ -41,6 +45,7 @@ class CashierPermissionsConfig {
     bool? allowCashExpenses,
     bool? allowViewInvoicesHistory,
     bool? allowManualDiscount,
+    bool? allowViewPurchases,
   }) {
     return CashierPermissionsConfig(
       allowCreditSale: allowCreditSale ?? this.allowCreditSale,
@@ -51,6 +56,7 @@ class CashierPermissionsConfig {
       allowViewInvoicesHistory:
           allowViewInvoicesHistory ?? this.allowViewInvoicesHistory,
       allowManualDiscount: allowManualDiscount ?? this.allowManualDiscount,
+      allowViewPurchases: allowViewPurchases ?? this.allowViewPurchases,
     );
   }
 
@@ -63,6 +69,7 @@ class CashierPermissionsConfig {
       'allowCashExpenses': allowCashExpenses,
       'allowViewInvoicesHistory': allowViewInvoicesHistory,
       'allowManualDiscount': allowManualDiscount,
+      'allowViewPurchases': allowViewPurchases,
     };
   }
 
@@ -76,6 +83,7 @@ class CashierPermissionsConfig {
       allowViewInvoicesHistory:
           map['allowViewInvoicesHistory'] as bool? ?? false,
       allowManualDiscount: map['allowManualDiscount'] as bool? ?? false,
+      allowViewPurchases: map['allowViewPurchases'] as bool? ?? false,
     );
   }
 

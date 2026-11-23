@@ -23,17 +23,21 @@ class ShortcutSettingsService {
   ShortcutSettingsService(this._db);
 
   static const Map<String, String> defaultShortcuts = {
-    'openPos': 'F1',
+    'openPos': 'Alt+P',
     'openCommandPalette': 'Ctrl+K',
-    'openShortcuts': 'Alt+F1',
+    'openShortcuts': 'F1',
     'quickSearch': 'F2',
     'newRow': 'F3',
     'save': 'Ctrl+S',
     'quickPayCash': 'F5',
     'quickPayCard': 'F6',
+    'preOrders': 'F7',
+    'reprintReceipt': 'F9',
     'holdBill': 'F10',
     'recallBill': 'F11',
     'completeSale': 'F12',
+    'gridNavigation': '↑ ↓ ← →',
+    'cancelSelection': 'Esc',
     'focusDiscount': 'Ctrl+D',
     'openSettingsSearch': 'Ctrl+F',
   };
@@ -82,6 +86,30 @@ class ShortcutSettingsService {
       category: 'pos',
       defaultCombo: 'F2',
     ),
+    ShortcutDefinition(
+      action: 'preOrders',
+      label: 'الحجز المسبق والطلبات الخاصة',
+      category: 'pos',
+      defaultCombo: 'F7',
+    ),
+    ShortcutDefinition(
+      action: 'reprintReceipt',
+      label: 'إعادة طباعة آخر فاتورة',
+      category: 'pos',
+      defaultCombo: 'F9',
+    ),
+    ShortcutDefinition(
+      action: 'gridNavigation',
+      label: 'التنقل بالأسهم في شبكة المنتجات والإضافة بـ Enter',
+      category: 'pos',
+      defaultCombo: '↑ ↓ ← →',
+    ),
+    ShortcutDefinition(
+      action: 'cancelSelection',
+      label: 'إلغاء التحديد أو الخروج من النوافذ',
+      category: 'pos',
+      defaultCombo: 'Esc',
+    ),
 
     // 2. Inventory / Products
     ShortcutDefinition(
@@ -102,7 +130,7 @@ class ShortcutSettingsService {
       action: 'openPos',
       label: 'الانتقال الفوري لشاشة الكاشير من أي مكان',
       category: 'navigation',
-      defaultCombo: 'F1',
+      defaultCombo: 'Alt+P',
     ),
     ShortcutDefinition(
       action: 'openCommandPalette',
@@ -114,7 +142,7 @@ class ShortcutSettingsService {
       action: 'openShortcuts',
       label: 'دليل وتخصيص اختصارات النظام',
       category: 'navigation',
-      defaultCombo: 'Alt+F1',
+      defaultCombo: 'F1',
     ),
     ShortcutDefinition(
       action: 'openSettingsSearch',
@@ -206,8 +234,10 @@ class ShortcutSettingsService {
       case 'D': return LogicalKeyboardKey.keyD;
       case 'F': return LogicalKeyboardKey.keyF;
       case 'K': return LogicalKeyboardKey.keyK;
+      case 'P': return LogicalKeyboardKey.keyP;
       case 'S': return LogicalKeyboardKey.keyS;
       case 'ENTER': return LogicalKeyboardKey.enter;
+      case 'ESC':
       case 'ESCAPE': return LogicalKeyboardKey.escape;
       default: return LogicalKeyboardKey.f12;
     }
