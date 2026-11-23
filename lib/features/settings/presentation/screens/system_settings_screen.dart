@@ -4274,6 +4274,13 @@ class _SectorModeSettingsCard extends StatelessWidget {
             icon: Icons.kitchen_rounded,
             color: const Color(0xFFE65100),
           ),
+          (
+            key: RetailSector.hospitality,
+            title: RetailSector.getLabel(RetailSector.hospitality),
+            desc: RetailSector.getDescription(RetailSector.hospitality),
+            icon: Icons.restaurant_menu_rounded,
+            color: const Color(0xFFC2185B),
+          ),
         ];
 
         return Card(

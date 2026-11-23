@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../constants/app_colors.dart';
+import '../constants/retail_sector.dart';
 import '../database/app_database.dart';
 import '../di/injection.dart';
 import '../features/feature_gate.dart';
@@ -16,6 +17,7 @@ import '../services/hotkey_strip_service.dart';
 import '../theme/app_branding.dart';
 import 'command_palette_dialog.dart';
 import '../../features/settings/presentation/widgets/shortcuts_config_dialog.dart';
+import '../../features/barcode_printing/presentation/screens/barcode_customizer_screen.dart';
 import '../../features/auth/presentation/cubits/auth_cubit.dart';
 import '../../features/auth/presentation/cubits/auth_state.dart';
 import '../../features/crash_logs/presentation/screens/crash_logs_screen.dart';
@@ -71,6 +73,12 @@ class _MainLayoutState extends State<MainLayout> {
   StreamSubscription<String?>? _cloudSyncSub;
   StreamSubscription<List<CustomerInstallment>>? _activeInstallmentsSub;
   bool _hasActiveInstallments = false;
+  String _sectorMode = RetailSector.apparel;
+  StreamSubscription<String?>? _sectorModeSub;
+
+  String get _posTitle => RetailSector.isHospitalityMode(_sectorMode)
+      ? 'كاشير المطعم والصالة'
+      : 'نقطة البيع (الكاشير)';
 
   @override
   void initState() {
@@ -78,7 +86,7 @@ class _MainLayoutState extends State<MainLayout> {
     HardwareKeyboard.instance.addHandler(_handleGlobalHardwareKeys);
     _currentScreen = widget.child;
     if (widget.currentRoute == '/pos' || widget.child is PosScreen) {
-      _activeTitle = 'نقطة البيع (الكاشير)';
+      _activeTitle = _posTitle;
       _userCollapsedOverride = true;
       _autoCollapsedForPos = true;
       _savedCollapsedOverrideBeforePos = null;
@@ -86,6 +94,35 @@ class _MainLayoutState extends State<MainLayout> {
 
     final syncService = getIt.isRegistered<RestSyncService>() ? getIt<RestSyncService>() : null;
     final featureGate = getIt.isRegistered<FeatureGate>() ? getIt<FeatureGate>() : null;
+
+    if (featureGate != null) {
+      featureGate.getMeta(RetailSector.metaKey).then((val) {
+        if (val != null && mounted) {
+          setState(() {
+            _sectorMode = val;
+            if (_activeTitle == 'نقطة البيع (الكاشير)' || _activeTitle == 'كاشير المطعم والصالة') {
+              _activeTitle = _posTitle;
+            }
+          });
+        }
+      });
+
+      _sectorModeSub = featureGate.watchMeta(RetailSector.metaKey).listen((val) {
+        final mode = val ?? RetailSector.apparel;
+        if (mounted && _sectorMode != mode) {
+          setState(() {
+            _sectorMode = mode;
+            final isPos = _currentScreen is PosScreen ||
+                widget.currentRoute == '/pos' ||
+                _activeTitle == 'نقطة البيع (الكاشير)' ||
+                _activeTitle == 'كاشير المطعم والصالة';
+            if (isPos) {
+              _activeTitle = _posTitle;
+            }
+          });
+        }
+      });
+    }
 
     if (getIt.isRegistered<AppDatabase>()) {
       final db = getIt<AppDatabase>();
@@ -126,6 +163,7 @@ class _MainLayoutState extends State<MainLayout> {
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_handleGlobalHardwareKeys);
+    _sectorModeSub?.cancel();
     _activeInstallmentsSub?.cancel();
     _cloudSyncSub?.cancel();
     _syncSubscription?.cancel();
@@ -180,7 +218,7 @@ class _MainLayoutState extends State<MainLayout> {
   }
 
   void _openPos() {
-    _handleItemTap('نقطة البيع (الكاشير)', const PosScreen(), true, null);
+    _handleItemTap(_posTitle, const PosScreen(), true, null);
   }
 
   Future<void> _handleSync() async {
@@ -224,7 +262,7 @@ class _MainLayoutState extends State<MainLayout> {
     if (oldWidget.currentRoute != widget.currentRoute) {
       _currentScreen = widget.child;
       if (widget.currentRoute == '/pos' || widget.child is PosScreen) {
-        _activeTitle = 'نقطة البيع (الكاشير)';
+        _activeTitle = _posTitle;
         if (!_isCollapsed) {
           _savedCollapsedOverrideBeforePos = _userCollapsedOverride;
           _autoCollapsedForPos = true;
@@ -397,6 +435,7 @@ class _MainLayoutState extends State<MainLayout> {
                                   valueListenable:
                                       CashierPermissionsService.notifier,
                                   builder: (context, cashierPerms, _) {
+                                    final isHospitality = RetailSector.isHospitalityMode(_sectorMode);
                                     return SingleChildScrollView(
                                       padding: const EdgeInsets.symmetric(
                                         vertical: 4,
@@ -458,7 +497,7 @@ class _MainLayoutState extends State<MainLayout> {
                                           ))
                                             _navItem(
                                               Icons.point_of_sale_rounded,
-                                              'نقطة البيع (الكاشير)',
+                                              _posTitle,
                                               const PosScreen(),
                                             ),
 
@@ -492,10 +531,11 @@ class _MainLayoutState extends State<MainLayout> {
                                                   const DeliveryOrdersScreen(),
                                                   isSubItem: true,
                                                 ),
-                                              if (_featureEnabled(
-                                                features,
-                                                FeatureKeys.preOrders,
-                                              ))
+                                              if (!isHospitality &&
+                                                  _featureEnabled(
+                                                    features,
+                                                    FeatureKeys.preOrders,
+                                                  ))
                                                 _navItem(
                                                   Icons.bookmark_added_rounded,
                                                   'الحجز المسبق والعربونات',
@@ -566,6 +606,18 @@ class _MainLayoutState extends State<MainLayout> {
                                                     const InventoryLogsScreen(),
                                                     isSubItem: true,
                                                   ),
+                                                if (!isHospitality &&
+                                                    isAdmin &&
+                                                    _featureEnabled(
+                                                      features,
+                                                      FeatureKeys.inventory,
+                                                    ))
+                                                  _navItem(
+                                                    Icons.qr_code_2_rounded,
+                                                    'طباعة الباركود والملصقات',
+                                                    const BarcodeCustomizerScreen(),
+                                                    isSubItem: true,
+                                                  ),
                                               ],
                                             ),
 
@@ -617,7 +669,8 @@ class _MainLayoutState extends State<MainLayout> {
                                                     const CustomerScreen(),
                                                     isSubItem: true,
                                                   ),
-                                                if ((isAdmin ||
+                                                if (!isHospitality &&
+                                                    (isAdmin ||
                                                         cashierPerms
                                                             .allowInstallments) &&
                                                     (_featureEnabled(
@@ -752,7 +805,8 @@ class _MainLayoutState extends State<MainLayout> {
                             ),
                           ),
                         ),
-                        if (_activeTitle != 'نقطة البيع (الكاشير)')
+                        if (_activeTitle != 'نقطة البيع (الكاشير)' &&
+                            _activeTitle != 'كاشير المطعم والصالة')
                           _buildContextualHotkeyStrip(),
                       ],
                     ),
@@ -1142,7 +1196,10 @@ class _MainLayoutState extends State<MainLayout> {
         } catch (_) {}
       }
       final isPosScreen =
-          title == 'نقطة البيع (الكاشير)' || screen is PosScreen || isPos;
+          title == 'نقطة البيع (الكاشير)' ||
+          title == 'كاشير المطعم والصالة' ||
+          screen is PosScreen ||
+          isPos;
       if (_activeTitle == title) {
         if (_contentNavKey.currentState?.canPop() == true) {
           _contentNavKey.currentState?.popUntil((route) => route.isFirst);
@@ -1191,15 +1248,18 @@ class _MainLayoutState extends State<MainLayout> {
       final authState = context.read<AuthCubit>().state;
       final isAdmin = _isAdmin(authState);
       final cashierPerms = CashierPermissionsService.current;
+      final isHospitality = RetailSector.isHospitalityMode(_sectorMode);
 
       final items = <CommandPaletteItem>[
       // Screens
       CommandPaletteItem(
         id: 'nav_pos',
-        title: 'نقطة البيع (الكاشير)',
+        title: _posTitle,
         category: 'شاشات النظام',
         icon: Icons.point_of_sale_rounded,
-        subtitle: 'المبيعات السريعة وتسجيل الفواتير [Alt+P]',
+        subtitle: isHospitality
+            ? 'طلبات الصالة والسفري والدليفري واستثناءات المطبخ [Alt+P]'
+            : 'المبيعات السريعة وتسجيل الفواتير [Alt+P]',
         onSelect: () => _openPos(),
       ),
       CommandPaletteItem(
@@ -1251,14 +1311,33 @@ class _MainLayoutState extends State<MainLayout> {
         subtitle: 'بيانات العملاء والديون والولاء',
         onSelect: () => _handleItemTap('سجل العملاء', const CustomerScreen(), false, null),
       ),
-      CommandPaletteItem(
-        id: 'nav_installments',
-        title: 'إدارة عقود الأقساط',
-        category: 'شاشات النظام',
-        icon: Icons.payments_rounded,
-        subtitle: 'متابعة الدفعات والأقساط المستحقة',
-        onSelect: () => _handleItemTap('التقسيط', const InstallmentsListScreen(), false, null),
-      ),
+      if (!isHospitality)
+        CommandPaletteItem(
+          id: 'nav_installments',
+          title: 'إدارة عقود الأقساط',
+          category: 'شاشات النظام',
+          icon: Icons.payments_rounded,
+          subtitle: 'متابعة الدفعات والأقساط المستحقة',
+          onSelect: () => _handleItemTap('التقسيط', const InstallmentsListScreen(), false, null),
+        ),
+      if (!isHospitality)
+        CommandPaletteItem(
+          id: 'nav_batches',
+          title: 'الحجز المسبق وشحنات الاستيراد',
+          category: 'شاشات النظام',
+          icon: Icons.bookmark_added_rounded,
+          subtitle: 'إدارة الطلبات المسبقة وشحنات شي إن والتجميع',
+          onSelect: () => _handleItemTap('الحجز المسبق والعربونات', const PreOrdersScreen(), false, null),
+        ),
+      if (!isHospitality)
+        CommandPaletteItem(
+          id: 'nav_barcode_printing',
+          title: 'طباعة الباركود والملصقات',
+          category: 'شاشات النظام',
+          icon: Icons.qr_code_2_rounded,
+          subtitle: 'تصميم وطباعة ملصقات الباركود والأسعار',
+          onSelect: () => _handleItemTap('طباعة الباركود والملصقات', const BarcodeCustomizerScreen(), false, null),
+        ),
       CommandPaletteItem(
         id: 'nav_delivery',
         title: 'إدارة الدليفري والطيارين',

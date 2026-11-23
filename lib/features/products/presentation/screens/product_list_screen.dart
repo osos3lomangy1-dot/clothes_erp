@@ -161,7 +161,12 @@ class _ProductsAndCategoriesViewState
       context: context,
       barrierDismissible: false,
       builder: (_) => isSingle
-          ? SimpleProductFormDialog(product: product)
+          ? SimpleProductFormDialog(
+              product: product,
+              initialActivityType: RetailSector.isHospitalityMode(_sectorMode)
+                  ? ActivityType.restaurantsCafes
+                  : null,
+            )
           : ProductFormDialog(product: product),
     );
     if (context.mounted) {
@@ -530,8 +535,9 @@ class _ProductsAndCategoriesViewState
             onPressed: () => _importFromExcel(context),
           ),
           const SizedBox(width: 8),
-          if (_sectorMode == RetailSector.supermarket ||
-              RetailSector.isSingleProductMode(_sectorMode)) ...[
+          if ((_sectorMode == RetailSector.supermarket ||
+                  RetailSector.isSingleProductMode(_sectorMode)) &&
+              !RetailSector.isHospitalityMode(_sectorMode)) ...[
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: ElevatedButton.icon(
@@ -571,9 +577,11 @@ class _ProductsAndCategoriesViewState
                 size: 18,
               ),
               label: Text(
-                RetailSector.isSingleProductMode(_sectorMode)
-                    ? 'إضافة صنف جديد'
-                    : 'إضافة منتج جديد',
+                RetailSector.isHospitalityMode(_sectorMode)
+                    ? 'إضافة وجبة / مشروب'
+                    : (RetailSector.isSingleProductMode(_sectorMode)
+                        ? 'إضافة صنف جديد'
+                        : 'إضافة منتج جديد'),
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -681,55 +689,60 @@ class _ProductsAndCategoriesViewState
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.category_rounded,
-                      color: AppColors.primary,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'أقسام المتجر',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: AppColors.onSurface,
+                Expanded(
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.category_rounded,
+                        color: AppColors.primary,
+                        size: 18,
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '${categories.length}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
+                      const SizedBox(width: 6),
+                      const Flexible(
+                        child: Text(
+                          'أقسام المتجر',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: AppColors.onSurface,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${categories.length}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 TextButton.icon(
                   onPressed: () => _openAddCategoryDialog(context),
-                  icon: const Icon(Icons.add, size: 16),
+                  icon: const Icon(Icons.add, size: 14),
                   label: const Text(
                     'قسم جديد',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                   ),
                   style: TextButton.styleFrom(
                     foregroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
+                      horizontal: 6,
+                      vertical: 2,
                     ),
                   ),
                 ),
