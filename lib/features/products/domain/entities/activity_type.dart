@@ -46,6 +46,16 @@ enum ActivityType {
   petShop('petShop', 'مستلزمات حيوانات أليفة', Icons.pets_outlined, ActivitySector.generalHome),
   general('general', 'عام / تجاري مخصص', Icons.category_outlined, ActivitySector.generalHome);
 
+  // Aliases for alternate naming conventions
+  static const ActivityType shoesBags = footwearBags;
+  static const ActivityType textilesCurtains = textilesDecor;
+  static const ActivityType electronicsAppliances = electronicsMobiles;
+  static const ActivityType buildingSanitary = general;
+  static const ActivityType autoPartsAccessories = petShop;
+  static const ActivityType stationeryOffice = bookstoreStationery;
+  static const ActivityType jewelryAccessories = accessoriesBeauty;
+  static const ActivityType opticalWatches = watchesEyewear;
+
   final String code;
   final String label;
   final IconData icon;
@@ -310,7 +320,26 @@ enum StorePreset {
     'custom',
     'تخصيص يدوي حر',
     Icons.tune_rounded,
-    {},
+    {
+      ActivityType.clothing,
+      ActivityType.shoesBags,
+      ActivityType.textilesCurtains,
+      ActivityType.perfumesCosmetics,
+      ActivityType.electronicsAppliances,
+      ActivityType.homeLiving,
+      ActivityType.supermarketGroceries,
+      ActivityType.spicesNuts,
+      ActivityType.sweetsBakery,
+      ActivityType.restaurantsCafes,
+      ActivityType.pharmacySupplies,
+      ActivityType.kidsToys,
+      ActivityType.buildingSanitary,
+      ActivityType.autoPartsAccessories,
+      ActivityType.stationeryOffice,
+      ActivityType.sportsFitness,
+      ActivityType.jewelryAccessories,
+      ActivityType.opticalWatches,
+    },
     'تحديد حر للمولات والمتاجر الشاملة',
     false,
   );

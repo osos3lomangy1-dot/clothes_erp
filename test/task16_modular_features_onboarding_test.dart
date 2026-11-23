@@ -377,9 +377,9 @@ void main() {
       expect(find.byKey(const Key('setup_feature_preorders_switch')), findsOneWidget);
       expect(find.byKey(const Key('setup_feature_installments_switch')), findsOneWidget);
 
-      // Initially delivery is false
+      // Fashion is the default preset, so delivery is true by default
       final deliverySwitch = tester.widget<Switch>(find.byKey(const Key('setup_feature_delivery_switch')));
-      expect(deliverySwitch.value, isFalse);
+      expect(deliverySwitch.value, isTrue);
 
       // Tap Hospitality preset -> should suggest delivery = true
       final hospitalityPreset = find.byKey(const Key('preset_card_hospitality'));

@@ -119,10 +119,11 @@ class ActivitySettingsService {
     required String userId,
   }) async {
     if (preset == StorePreset.custom) {
-      // In custom mode, maintain current configuration without overriding
       final current = await getEnabledActivities();
       if (current.isEmpty) {
-        await setActivityEnabled(ActivityType.clothing, true, userId: userId);
+        for (final act in ActivityType.values) {
+          await setActivityEnabled(act, true, userId: userId);
+        }
       }
       return;
     }

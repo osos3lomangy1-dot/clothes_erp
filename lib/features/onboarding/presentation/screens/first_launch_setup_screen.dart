@@ -31,17 +31,18 @@ class _FirstLaunchSetupScreenState extends State<FirstLaunchSetupScreen> {
   final _storeNameController = TextEditingController();
   final _storePhoneController = TextEditingController();
   final _storeAddressController = TextEditingController();
+  String _selectedCurrency = 'ج.م';
 
   // Step 2: Store Preset & Operational Features
   StorePreset _selectedPreset = StorePreset.fashion;
-  bool _enableDelivery = false;
+  bool _enableDelivery = true;
   bool _enablePreOrders = false;
   bool _enableInstallments = false;
 
   void _selectPreset(StorePreset preset) {
     setState(() {
       _selectedPreset = preset;
-      _enableDelivery = (preset == StorePreset.hospitality);
+      _enableDelivery = (preset == StorePreset.hospitality || preset == StorePreset.fashion);
       _enableInstallments = (preset == StorePreset.electronics);
       _enablePreOrders = false;
     });
@@ -225,6 +226,26 @@ class _FirstLaunchSetupScreenState extends State<FirstLaunchSetupScreen> {
         AppMetaCompanion.insert(
           key: 'setup.completed',
           value: '1',
+          updatedAt: now,
+        ),
+        mode: drift.InsertMode.insertOrReplace,
+      );
+
+      // Save currency
+      await db.into(db.appMeta).insert(
+        AppMetaCompanion.insert(
+          key: 'store.currency',
+          value: _selectedCurrency,
+          updatedAt: now,
+        ),
+        mode: drift.InsertMode.insertOrReplace,
+      );
+
+      // Save branch name
+      await db.into(db.appMeta).insert(
+        AppMetaCompanion.insert(
+          key: 'branch_name',
+          value: storeName.isNotEmpty ? 'الفرع الرئيسي - $storeName' : 'الفرع الرئيسي',
           updatedAt: now,
         ),
         mode: drift.InsertMode.insertOrReplace,
@@ -498,6 +519,28 @@ class _FirstLaunchSetupScreenState extends State<FirstLaunchSetupScreen> {
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           ),
+        ),
+        const SizedBox(height: 16),
+        const Text('العملة الرسمية للمتجر *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<String>(
+          key: const Key('setup_store_currency_dropdown'),
+          initialValue: _selectedCurrency,
+          decoration: InputDecoration(
+            prefixIcon: const Icon(Icons.monetization_on_outlined, size: 20),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          ),
+          items: const [
+            DropdownMenuItem(value: 'ج.م', child: Text('ج.م — جنيه مصري')),
+            DropdownMenuItem(value: 'ر.س', child: Text('ر.س — ريال سعودي')),
+            DropdownMenuItem(value: 'د.إ', child: Text('د.إ — درهم إماراتي')),
+            DropdownMenuItem(value: 'د.ك', child: Text('د.ك — دينار كويتي')),
+            DropdownMenuItem(value: r'$', child: Text(r'$ — دولار أمريكي')),
+          ],
+          onChanged: (val) {
+            if (val != null) setState(() => _selectedCurrency = val);
+          },
         ),
       ],
     );
