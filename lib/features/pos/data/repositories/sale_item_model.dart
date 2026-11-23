@@ -15,6 +15,8 @@ class SaleItemModel extends SaleItemEntity {
     super.discount,
     super.promotionDiscount,
     super.isReturn,
+    super.kitchenNotes,
+    super.modifiers,
   });
 
   @override
@@ -33,6 +35,9 @@ class SaleItemModel extends SaleItemEntity {
     int? discount,
     int? promotionDiscount,
     bool? isReturn,
+    String? kitchenNotes,
+    bool clearKitchenNotes = false,
+    List<String>? modifiers,
   }) {
     return SaleItemModel(
       variantId: variantId ?? this.variantId,
@@ -50,6 +55,10 @@ class SaleItemModel extends SaleItemEntity {
       discount: discount ?? this.discount,
       promotionDiscount: promotionDiscount ?? this.promotionDiscount,
       isReturn: isReturn ?? this.isReturn,
+      kitchenNotes: clearKitchenNotes
+          ? null
+          : (kitchenNotes ?? this.kitchenNotes),
+      modifiers: modifiers ?? this.modifiers,
     );
   }
 
@@ -68,6 +77,11 @@ class SaleItemModel extends SaleItemEntity {
       discount: (json['discount'] as num?)?.toInt() ?? 0,
       promotionDiscount: (json['promotionDiscount'] as num?)?.toInt() ?? 0,
       isReturn: json['isReturn'] ?? false,
+      kitchenNotes: json['kitchenNotes'],
+      modifiers: (json['modifiers'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
     );
   }
 
@@ -86,6 +100,8 @@ class SaleItemModel extends SaleItemEntity {
       'discount': discount,
       'promotionDiscount': promotionDiscount,
       'isReturn': isReturn,
+      if (kitchenNotes != null) 'kitchenNotes': kitchenNotes,
+      if (modifiers.isNotEmpty) 'modifiers': modifiers,
     };
   }
 
@@ -104,6 +120,8 @@ class SaleItemModel extends SaleItemEntity {
       discount: entity.discount,
       promotionDiscount: entity.promotionDiscount,
       isReturn: entity.isReturn,
+      kitchenNotes: entity.kitchenNotes,
+      modifiers: entity.modifiers,
     );
   }
 }

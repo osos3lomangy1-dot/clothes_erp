@@ -14,6 +14,8 @@ class SaleItemEntity extends Equatable {
   final int discount;
   final int promotionDiscount;
   final bool isReturn;
+  final String? kitchenNotes;
+  final List<String> modifiers;
 
   const SaleItemEntity({
     required this.variantId,
@@ -29,6 +31,8 @@ class SaleItemEntity extends Equatable {
     this.discount = 0,
     this.promotionDiscount = 0,
     this.isReturn = false,
+    this.kitchenNotes,
+    this.modifiers = const [],
   });
 
   double get effectiveQuantity =>
@@ -55,6 +59,9 @@ class SaleItemEntity extends Equatable {
     int? discount,
     int? promotionDiscount,
     bool? isReturn,
+    String? kitchenNotes,
+    bool clearKitchenNotes = false,
+    List<String>? modifiers,
   }) {
     return SaleItemEntity(
       variantId: variantId ?? this.variantId,
@@ -72,6 +79,10 @@ class SaleItemEntity extends Equatable {
       discount: discount ?? this.discount,
       promotionDiscount: promotionDiscount ?? this.promotionDiscount,
       isReturn: isReturn ?? this.isReturn,
+      kitchenNotes: clearKitchenNotes
+          ? null
+          : (kitchenNotes ?? this.kitchenNotes),
+      modifiers: modifiers ?? this.modifiers,
     );
   }
 
@@ -96,5 +107,7 @@ class SaleItemEntity extends Equatable {
         discount,
         promotionDiscount,
         isReturn,
+        kitchenNotes,
+        modifiers,
       ];
 }

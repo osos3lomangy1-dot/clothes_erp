@@ -587,6 +587,21 @@ class PosCubit extends Cubit<PosState> {
     _updateCart(state, newCart);
   }
 
+  void updateKitchenNotes(String variantId, String? notes, {List<String>? modifiers, bool? isReturn}) {
+    final state = this.state;
+    final newCart = state.cart.map((item) {
+      if (item.variantId == variantId && (isReturn == null || item.isReturn == isReturn)) {
+        return item.copyWith(
+          kitchenNotes: notes,
+          clearKitchenNotes: notes == null || notes.trim().isEmpty,
+          modifiers: modifiers ?? item.modifiers,
+        );
+      }
+      return item;
+    }).toList();
+    _updateCart(state, newCart);
+  }
+
   void increaseQty(String variantId, {bool? isReturn}) {
     final state = this.state;
     SaleItemEntity? item;
