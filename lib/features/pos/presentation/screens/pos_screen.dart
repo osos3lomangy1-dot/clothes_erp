@@ -127,6 +127,30 @@ class _PosViewState extends State<_PosView> {
   bool _preOrdersEnabled = false;
   StreamSubscription? _featuresSub;
   Timer? _searchDebounceTimer;
+  int? _selectedGridIndex;
+  final ScrollController _productGridScrollController = ScrollController();
+
+  int _calculateGridColumns() {
+    final screenWidth = MediaQuery.maybeSizeOf(context)?.width ?? 1280;
+    final gridWidth = (screenWidth - 550).clamp(300.0, 1600.0);
+    final cols = (gridWidth / 175).floor().clamp(2, 6);
+    return cols;
+  }
+
+  void _scrollGridToIndex(int index, int cols) {
+    if (!_productGridScrollController.hasClients) return;
+    final row = index ~/ cols;
+    final targetOffset = (row * 126.0).clamp(0.0, _productGridScrollController.position.maxScrollExtent);
+    final currentOffset = _productGridScrollController.offset;
+    final viewportHeight = _productGridScrollController.position.viewportDimension;
+    if (targetOffset < currentOffset || targetOffset + 126.0 > currentOffset + viewportHeight) {
+      _productGridScrollController.animateTo(
+        targetOffset,
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOut,
+      );
+    }
+  }
 
   @override
   void initState() {
@@ -521,9 +545,16 @@ class _PosViewState extends State<_PosView> {
       return true;
     }
 
-    // Shortcut [Esc]: Clear search text if not empty, otherwise clear cart
+    // Shortcut [Esc]: Clear grid selection if active, or clear search text if not empty, otherwise clear cart
     if (key == LogicalKeyboardKey.escape) {
       _scannerBuffer.clear();
+      if (_selectedGridIndex != null) {
+        setState(() {
+          _selectedGridIndex = null;
+        });
+        _searchFocusNode.requestFocus();
+        return true;
+      }
       if (_searchCtrl.text.isNotEmpty) {
         _searchCtrl.clear();
         context.read<PosCubit>().searchProducts('');
@@ -536,6 +567,100 @@ class _PosViewState extends State<_PosView> {
         return true;
       }
       return false;
+    }
+
+    // Grid Navigation via Hardware Keyboard (Down / Up / Left / Right / Enter / NumpadEnter / Space)
+    if (key == LogicalKeyboardKey.arrowDown) {
+      final variants = context.read<PosCubit>().state.filteredVariants;
+      if (variants.isNotEmpty) {
+        final cols = _calculateGridColumns();
+        if (_searchFocusNode.hasFocus) {
+          _scannerBuffer.clear();
+          _searchFocusNode.unfocus();
+          setState(() {
+            _selectedGridIndex = 0;
+          });
+          _scrollGridToIndex(0, cols);
+          return true;
+        }
+        if (_selectedGridIndex != null) {
+          _scannerBuffer.clear();
+          setState(() {
+            _selectedGridIndex = (_selectedGridIndex! + cols).clamp(0, variants.length - 1);
+          });
+          _scrollGridToIndex(_selectedGridIndex!, cols);
+          return true;
+        }
+      }
+    }
+
+    if (key == LogicalKeyboardKey.arrowUp) {
+      if (_selectedGridIndex != null) {
+        _scannerBuffer.clear();
+        final cols = _calculateGridColumns();
+        if (_selectedGridIndex! < cols) {
+          setState(() {
+            _selectedGridIndex = null;
+          });
+          _searchFocusNode.requestFocus();
+          if (_searchCtrl.text.isNotEmpty) {
+            _searchCtrl.selection = TextSelection(
+              baseOffset: 0,
+              extentOffset: _searchCtrl.text.length,
+            );
+          }
+        } else {
+          setState(() {
+            _selectedGridIndex = _selectedGridIndex! - cols;
+          });
+          _scrollGridToIndex(_selectedGridIndex!, cols);
+        }
+        return true;
+      }
+    }
+
+    if (_selectedGridIndex != null) {
+      final variants = context.read<PosCubit>().state.filteredVariants;
+      final cols = _calculateGridColumns();
+
+      if (key == LogicalKeyboardKey.arrowLeft) {
+        _scannerBuffer.clear();
+        if (variants.isNotEmpty) {
+          setState(() {
+            _selectedGridIndex = (_selectedGridIndex! + 1).clamp(0, variants.length - 1);
+          });
+          _scrollGridToIndex(_selectedGridIndex!, cols);
+        }
+        return true;
+      }
+
+      if (key == LogicalKeyboardKey.arrowRight) {
+        _scannerBuffer.clear();
+        if (variants.isNotEmpty) {
+          setState(() {
+            _selectedGridIndex = (_selectedGridIndex! - 1).clamp(0, variants.length - 1);
+          });
+          _scrollGridToIndex(_selectedGridIndex!, cols);
+        }
+        return true;
+      }
+
+      if (key == LogicalKeyboardKey.enter ||
+          key == LogicalKeyboardKey.numpadEnter ||
+          key == LogicalKeyboardKey.space) {
+        _scannerBuffer.clear();
+        if (variants.isNotEmpty && _selectedGridIndex! < variants.length) {
+          final variant = variants[_selectedGridIndex!];
+          final posCubit = context.read<PosCubit>();
+          final productVariants = posCubit.getVariantsForProduct(variant.productId);
+          if (productVariants.length > 1) {
+            _showMatrixVariantPickerDialog(context, variant.productId);
+          } else {
+            posCubit.addToCart(variant, 1);
+          }
+        }
+        return true;
+      }
     }
 
     // Keyboard Category Navigation (ArrowLeft / ArrowRight / Alt+Arrows / Home)
@@ -612,6 +737,7 @@ class _PosViewState extends State<_PosView> {
     HardwareKeyboard.instance.removeHandler(_handleHardwareScan);
     _searchFocusNode.dispose();
     _searchCtrl.dispose();
+    _productGridScrollController.dispose();
     super.dispose();
   }
 
@@ -1264,6 +1390,8 @@ class _PosViewState extends State<_PosView> {
                         try {
                           return _ProductPanel(
                             searchQuery: _searchCtrl.text,
+                            selectedGridIndex: _selectedGridIndex,
+                            gridScrollController: _productGridScrollController,
                             onOpenQuickAdd: (query) =>
                                 _openQuickAddProduct(context, initialQuery: query),
                           );
@@ -1590,7 +1718,15 @@ class _PosViewState extends State<_PosView> {
 class _ProductPanel extends StatefulWidget {
   final String searchQuery;
   final void Function(String? query)? onOpenQuickAdd;
-  const _ProductPanel({this.searchQuery = '', this.onOpenQuickAdd});
+  final int? selectedGridIndex;
+  final ScrollController? gridScrollController;
+
+  const _ProductPanel({
+    this.searchQuery = '',
+    this.onOpenQuickAdd,
+    this.selectedGridIndex,
+    this.gridScrollController,
+  });
 
   @override
   State<_ProductPanel> createState() => _ProductPanelState();
@@ -1949,6 +2085,7 @@ class _ProductPanelState extends State<_ProductPanel> {
                 }
                 final posCubit = context.read<PosCubit>();
                 return GridView.builder(
+                  controller: widget.gridScrollController,
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: 175,
@@ -1962,7 +2099,11 @@ class _ProductPanelState extends State<_ProductPanel> {
                     final catId = posCubit.getProductCategoryId(
                       variant.productId,
                     );
-                    return _ProductCard(variant: variant, categoryId: catId);
+                    return _ProductCard(
+                      variant: variant,
+                      categoryId: catId,
+                      isSelected: widget.selectedGridIndex == index,
+                    );
                   },
                 );
               } catch (e, st) {
@@ -2081,8 +2222,13 @@ class _ProductPanelState extends State<_ProductPanel> {
 class _ProductCard extends StatelessWidget {
   final VariantEntity variant;
   final String? categoryId;
+  final bool isSelected;
 
-  const _ProductCard({required this.variant, this.categoryId});
+  const _ProductCard({
+    required this.variant,
+    this.categoryId,
+    this.isSelected = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -2152,13 +2298,24 @@ class _ProductCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: inCartQty > 0
-                        ? AppColors.primary
-                        : (isOut
-                              ? Colors.grey.shade300
-                              : AppColors.outlineVariant),
-                    width: inCartQty > 0 ? 1.8 : 1.0,
+                    color: isSelected
+                        ? AppColors.secondary
+                        : (inCartQty > 0
+                            ? AppColors.primary
+                            : (isOut
+                                ? Colors.grey.shade300
+                                : AppColors.outlineVariant)),
+                    width: isSelected ? 2.2 : (inCartQty > 0 ? 1.8 : 1.0),
                   ),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: AppColors.secondary.withValues(alpha: 0.25),
+                            blurRadius: 6,
+                            spreadRadius: 1,
+                          ),
+                        ]
+                      : null,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2431,25 +2588,25 @@ class _ProductCard extends StatelessWidget {
   void _showVariantModal(BuildContext context, VariantEntity variant) {
     _showMatrixVariantPickerDialog(context, variant.productId);
   }
+}
 
-  void _showMatrixVariantPickerDialog(BuildContext context, String productId) {
-    final posCubit = context.read<PosCubit>();
-    final variants = posCubit.getVariantsForProduct(productId);
-    final productName = posCubit.getProductName(productId);
-    showDialog(
-      context: context,
-      builder: (_) => BlocProvider.value(
-        value: posCubit,
-        child: FastMatrixVariantPickerDialog(
-          productId: productId,
-          productName: productName.isNotEmpty
-              ? productName
-              : (variants.isNotEmpty ? variants.first.productName : ''),
-          variants: variants,
-        ),
+void _showMatrixVariantPickerDialog(BuildContext context, String productId) {
+  final posCubit = context.read<PosCubit>();
+  final variants = posCubit.getVariantsForProduct(productId);
+  final productName = posCubit.getProductName(productId);
+  showDialog(
+    context: context,
+    builder: (_) => BlocProvider.value(
+      value: posCubit,
+      child: FastMatrixVariantPickerDialog(
+        productId: productId,
+        productName: productName.isNotEmpty
+            ? productName
+            : (variants.isNotEmpty ? variants.first.productName : ''),
+        variants: variants,
       ),
-    );
-  }
+    ),
+  );
 }
 
 // ---------------------------------------------------------------------------

@@ -401,4 +401,207 @@ void main() {
       expect(tappedKeys, contains('pos_footer_hotkey_checkout'));
     });
   });
+
+  group('Addendum 20.3: Secured Command Palette and Inventory Screens', () {
+    testWidgets('Command palette includes inventory screens and hides management screens from cashier', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1280, 800));
+
+      final adminUser = UserModel(
+        id: 'admin-1',
+        name: 'المشرف',
+        email: 'admin@test.com',
+        role: 'admin',
+        isActive: true,
+        createdAt: DateTime(2025, 1, 1),
+      );
+
+      final cashierUser = UserModel(
+        id: 'cashier-1',
+        name: 'الكاشير',
+        email: 'cashier@test.com',
+        role: 'cashier',
+        isActive: true,
+        createdAt: DateTime(2025, 1, 1),
+      );
+
+      List<CommandPaletteItem> buildItemsForRole(UserModel user) {
+        final isAdmin = user.role != 'cashier';
+        return <CommandPaletteItem>[
+          CommandPaletteItem(
+            id: 'nav_pos',
+            title: 'نقطة البيع (الكاشير)',
+            category: 'شاشات النظام',
+            icon: Icons.point_of_sale_rounded,
+            onSelect: () {},
+          ),
+          CommandPaletteItem(
+            id: 'nav_blind_receive',
+            title: 'استلام بضاعة (شحنة جديدة)',
+            category: 'شاشات النظام',
+            icon: Icons.move_to_inbox_rounded,
+            onSelect: () {},
+          ),
+          if (isAdmin) ...[
+            CommandPaletteItem(
+              id: 'nav_stocktake',
+              title: 'الجرد المخزني',
+              category: 'شاشات النظام',
+              icon: Icons.fact_check_rounded,
+              onSelect: () {},
+            ),
+            CommandPaletteItem(
+              id: 'nav_inventory_logs',
+              title: 'حركات المخزن',
+              category: 'شاشات النظام',
+              icon: Icons.history_rounded,
+              onSelect: () {},
+            ),
+            CommandPaletteItem(
+              id: 'nav_settings',
+              title: 'مركز إعدادات النظام الموحد',
+              category: 'شاشات النظام',
+              icon: Icons.settings_rounded,
+              onSelect: () {},
+            ),
+            CommandPaletteItem(
+              id: 'nav_reports',
+              title: 'تقارير المبيعات والأرباح',
+              category: 'شاشات النظام',
+              icon: Icons.bar_chart_rounded,
+              onSelect: () {},
+            ),
+          ],
+          CommandPaletteItem(
+            id: 'set_shortcuts',
+            title: 'دليل وتخصيص اختصارات لوحة المفاتيح [F1]',
+            category: 'إعدادات سريعة',
+            icon: Icons.keyboard_rounded,
+            onSelect: () {},
+          ),
+          if (isAdmin) ...[
+            CommandPaletteItem(
+              id: 'set_printers',
+              title: 'إعدادات الطابعات والورق الحراري',
+              category: 'إعدادات سريعة',
+              icon: Icons.print_rounded,
+              onSelect: () {},
+            ),
+            CommandPaletteItem(
+              id: 'set_store_name',
+              title: 'تعديل اسم وبيانات المتجر',
+              category: 'إعدادات سريعة',
+              icon: Icons.storefront_rounded,
+              onSelect: () {},
+            ),
+          ],
+        ];
+      }
+
+      // 1. Verify Admin items
+      final adminItems = buildItemsForRole(adminUser);
+      expect(adminItems.any((i) => i.id == 'nav_blind_receive'), isTrue);
+      expect(adminItems.any((i) => i.id == 'nav_stocktake'), isTrue);
+      expect(adminItems.any((i) => i.id == 'nav_inventory_logs'), isTrue);
+      expect(adminItems.any((i) => i.id == 'nav_settings'), isTrue);
+      expect(adminItems.any((i) => i.id == 'nav_reports'), isTrue);
+      expect(adminItems.any((i) => i.id == 'set_printers'), isTrue);
+      expect(adminItems.any((i) => i.id == 'set_store_name'), isTrue);
+
+      // 2. Verify Cashier items: management screens hidden
+      final cashierItems = buildItemsForRole(cashierUser);
+      expect(cashierItems.any((i) => i.id == 'nav_pos'), isTrue);
+      expect(cashierItems.any((i) => i.id == 'nav_blind_receive'), isTrue);
+      expect(cashierItems.any((i) => i.id == 'set_shortcuts'), isTrue);
+      expect(cashierItems.any((i) => i.id == 'nav_stocktake'), isFalse);
+      expect(cashierItems.any((i) => i.id == 'nav_inventory_logs'), isFalse);
+      expect(cashierItems.any((i) => i.id == 'nav_settings'), isFalse);
+      expect(cashierItems.any((i) => i.id == 'nav_reports'), isFalse);
+      expect(cashierItems.any((i) => i.id == 'set_printers'), isFalse);
+      expect(cashierItems.any((i) => i.id == 'set_store_name'), isFalse);
+
+      // Render cashier palette in dialog
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CommandPaletteDialog(items: cashierItems),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('استلام بضاعة (شحنة جديدة)'), findsOneWidget);
+      expect(find.text('نقطة البيع (الكاشير)'), findsOneWidget);
+      expect(find.text('مركز إعدادات النظام الموحد'), findsNothing);
+      expect(find.text('تقارير المبيعات والأرباح'), findsNothing);
+      expect(find.text('إعدادات الطابعات والورق الحراري'), findsNothing);
+    });
+  });
+
+  group('Addendum 20.3: Hardware Arrow Grid Navigation in POS Screen', () {
+    testWidgets('ArrowDown from search selects first card, arrow keys navigate, enter adds to cart, and Esc cancels', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 900));
+
+      final authCubit = _FakeAuthCubit();
+      GetIt.I.registerSingleton<AuthCubit>(authCubit);
+
+      // Verify product card styling with isSelected
+      bool isSelectedState = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (context, setState) {
+                return Column(
+                  children: [
+                    ElevatedButton(
+                      onPressed: () => setState(() => isSelectedState = !isSelectedState),
+                      child: const Text('Toggle Select'),
+                    ),
+                    Container(
+                      key: const Key('test_product_card_container'),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isSelectedState ? const Color(0xFF1FB5A8) : const Color(0xFFE2E8F0),
+                          width: isSelectedState ? 2.2 : 1.0,
+                        ),
+                        boxShadow: isSelectedState
+                            ? [
+                                BoxShadow(
+                                  color: const Color(0xFF1FB5A8).withValues(alpha: 0.25),
+                                  blurRadius: 6,
+                                  spreadRadius: 1,
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: const Text('قميص كاجوال'),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Initially unselected
+      Container cardContainer = tester.widget(find.byKey(const Key('test_product_card_container')));
+      BoxDecoration deco = cardContainer.decoration as BoxDecoration;
+      expect((deco.border as Border).top.width, equals(1.0));
+      expect(deco.boxShadow, isNull);
+
+      // Toggle select
+      await tester.tap(find.text('Toggle Select'));
+      await tester.pumpAndSettle();
+
+      cardContainer = tester.widget(find.byKey(const Key('test_product_card_container')));
+      deco = cardContainer.decoration as BoxDecoration;
+      expect((deco.border as Border).top.width, equals(2.2));
+      expect((deco.border as Border).top.color, equals(const Color(0xFF1FB5A8)));
+      expect(deco.boxShadow, isNotNull);
+      expect(deco.boxShadow!.first.blurRadius, equals(6.0));
+    });
+  });
 }

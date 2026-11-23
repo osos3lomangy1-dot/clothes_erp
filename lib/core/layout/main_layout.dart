@@ -1183,6 +1183,9 @@ class _MainLayoutState extends State<MainLayout> {
     if (_isPaletteOpen) return;
     _isPaletteOpen = true;
     try {
+      final authState = context.read<AuthCubit>().state;
+      final isAdmin = _isAdmin(authState);
+
       final items = <CommandPaletteItem>[
       // Screens
       CommandPaletteItem(
@@ -1258,21 +1261,47 @@ class _MainLayoutState extends State<MainLayout> {
         onSelect: () => _handleItemTap('إدارة الدليفري والطيارين', const DeliveryOrdersScreen(), false, null),
       ),
       CommandPaletteItem(
-        id: 'nav_settings',
-        title: 'مركز إعدادات النظام الموحد',
+        id: 'nav_blind_receive',
+        title: 'استلام بضاعة (شحنة جديدة)',
         category: 'شاشات النظام',
-        icon: Icons.settings_rounded,
-        subtitle: 'تخصيص كامل للنظام والمزايا والطباعة',
-        onSelect: () => _handleItemTap('إعدادات النظام', const SystemSettingsScreen(), false, null),
+        icon: Icons.move_to_inbox_rounded,
+        subtitle: 'فحص الباركود واستلام الشحنات وتحديث المخزون',
+        onSelect: () => _handleItemTap('استلام بضاعة (شحنة جديدة)', const BlindReceiveScreen(), false, null),
       ),
-      CommandPaletteItem(
-        id: 'nav_reports',
-        title: 'تقارير المبيعات والأرباح',
-        category: 'شاشات النظام',
-        icon: Icons.bar_chart_rounded,
-        subtitle: 'الرسوم البيانية والتحليلات المالية',
-        onSelect: () => _handleItemTap('تقارير المبيعات', const ReportsScreen(), false, null),
-      ),
+      if (isAdmin) ...[
+        CommandPaletteItem(
+          id: 'nav_stocktake',
+          title: 'الجرد المخزني',
+          category: 'شاشات النظام',
+          icon: Icons.fact_check_rounded,
+          subtitle: 'مطابقة الأرصدة الفعلية وحساب الفروقات والتسوية',
+          onSelect: () => _handleItemTap('الجرد المخزني', const StocktakeScreen(), false, null),
+        ),
+        CommandPaletteItem(
+          id: 'nav_inventory_logs',
+          title: 'حركات المخزن',
+          category: 'شاشات النظام',
+          icon: Icons.history_rounded,
+          subtitle: 'سجل حركات دخول وخروج وتعديل المخزون',
+          onSelect: () => _handleItemTap('حركات المخزن', const InventoryLogsScreen(), false, null),
+        ),
+        CommandPaletteItem(
+          id: 'nav_settings',
+          title: 'مركز إعدادات النظام الموحد',
+          category: 'شاشات النظام',
+          icon: Icons.settings_rounded,
+          subtitle: 'تخصيص كامل للنظام والمزايا والطباعة',
+          onSelect: () => _handleItemTap('إعدادات النظام', const SystemSettingsScreen(), false, null),
+        ),
+        CommandPaletteItem(
+          id: 'nav_reports',
+          title: 'تقارير المبيعات والأرباح',
+          category: 'شاشات النظام',
+          icon: Icons.bar_chart_rounded,
+          subtitle: 'الرسوم البيانية والتحليلات المالية',
+          onSelect: () => _handleItemTap('تقارير المبيعات', const ReportsScreen(), false, null),
+        ),
+      ],
 
       // Quick Actions
       CommandPaletteItem(
@@ -1309,22 +1338,24 @@ class _MainLayoutState extends State<MainLayout> {
         subtitle: 'تعديل وتعيين أزرار الكيبورد لكل العمليات',
         onSelect: _openShortcutsGuide,
       ),
-      CommandPaletteItem(
-        id: 'set_printers',
-        title: 'إعدادات الطابعات والورق الحراري',
-        category: 'إعدادات سريعة',
-        icon: Icons.print_rounded,
-        subtitle: 'تخصيص مقاس الورق وترويسة الفاتورة',
-        onSelect: () => _handleItemTap('إعدادات النظام', const SystemSettingsScreen(initialCategory: 'printing'), false, null),
-      ),
-      CommandPaletteItem(
-        id: 'set_store_name',
-        title: 'تعديل اسم وبيانات المتجر',
-        category: 'إعدادات سريعة',
-        icon: Icons.storefront_rounded,
-        subtitle: 'الهاتف، العنوان، والألوان الرسمية',
-        onSelect: () => _handleItemTap('إعدادات النظام', const SystemSettingsScreen(initialCategory: 'store'), false, null),
-      ),
+      if (isAdmin) ...[
+        CommandPaletteItem(
+          id: 'set_printers',
+          title: 'إعدادات الطابعات والورق الحراري',
+          category: 'إعدادات سريعة',
+          icon: Icons.print_rounded,
+          subtitle: 'تخصيص مقاس الورق وترويسة الفاتورة',
+          onSelect: () => _handleItemTap('إعدادات النظام', const SystemSettingsScreen(initialCategory: 'printing'), false, null),
+        ),
+        CommandPaletteItem(
+          id: 'set_store_name',
+          title: 'تعديل اسم وبيانات المتجر',
+          category: 'إعدادات سريعة',
+          icon: Icons.storefront_rounded,
+          subtitle: 'الهاتف، العنوان، والألوان الرسمية',
+          onSelect: () => _handleItemTap('إعدادات النظام', const SystemSettingsScreen(initialCategory: 'store'), false, null),
+        ),
+      ],
     ];
 
       await showDialog(

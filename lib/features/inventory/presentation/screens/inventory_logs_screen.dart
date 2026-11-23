@@ -6,6 +6,8 @@ import '../../../../core/di/injection.dart';
 import '../../domain/entities/inventory_log_entity.dart';
 import '../cubits/inventory_log_cubit.dart';
 
+typedef StockMovementsScreen = InventoryLogsScreen;
+
 class InventoryLogsScreen extends StatelessWidget {
   const InventoryLogsScreen({super.key});
 
