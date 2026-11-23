@@ -336,9 +336,9 @@ void main() {
       expect(find.text('مركز الإعدادات الموحد'), findsOneWidget);
       expect(find.text('لوحة التحكم في المزايا'), findsWidgets);
 
-      // Verify centered spotlight search and Ctrl + F badge
+      // Verify clean spotlight search without Ctrl + F badge
       expect(find.byKey(const Key('settings_search_field')), findsOneWidget);
-      expect(find.byKey(const Key('settings_search_kbd_badge')), findsOneWidget);
+      expect(find.byKey(const Key('settings_search_kbd_badge')), findsNothing);
 
       // Verify isolated action buttons are removed to eliminate visual fragmentation
       expect(find.byKey(const Key('settings_reset_defaults_btn')), findsNothing);

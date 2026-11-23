@@ -367,32 +367,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
                       });
                     },
                   )
-                : Padding(
-                    padding: const EdgeInsetsDirectional.only(end: 8),
-                    child: Container(
-                      key: const Key('settings_search_kbd_badge'),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceContainer,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: AppColors.outlineVariant,
-                        ),
-                      ),
-                      child: const Text(
-                        'Ctrl + F',
-                        style: TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.onSurface,
-                        ),
-                      ),
-                    ),
-                  ),
+                : null,
             border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 10,

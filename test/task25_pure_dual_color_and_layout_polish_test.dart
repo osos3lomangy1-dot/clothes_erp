@@ -515,23 +515,20 @@ void main() {
       final textField = tester.widget<TextField>(searchFinder);
       expect(textField.decoration?.hintText, equals('ابحث عن ميزة، قسم، أو صلاحية...'));
 
-      // Verify real Kbd badge is present initially
-      expect(find.byKey(const Key('settings_search_kbd_badge')), findsOneWidget);
-      expect(find.text('Ctrl + F'), findsOneWidget);
+      // Verify no Kbd badge is present (clean enterprise design)
+      expect(find.byKey(const Key('settings_search_kbd_badge')), findsNothing);
       expect(find.byKey(const Key('settings_search_clear_btn')), findsNothing);
 
-      // Enter text: badge disappears and clear button appears
+      // Enter text: clear button appears
       await tester.enterText(searchFinder, 'دليفري');
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('settings_search_kbd_badge')), findsNothing);
       expect(find.byKey(const Key('settings_search_clear_btn')), findsOneWidget);
 
-      // Tap clear button: text clears and Kbd badge returns
+      // Tap clear button: text clears
       await tester.tap(find.byKey(const Key('settings_search_clear_btn')));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('settings_search_kbd_badge')), findsOneWidget);
       expect(find.byKey(const Key('settings_search_clear_btn')), findsNothing);
     });
   });
