@@ -1,13 +1,16 @@
 import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uuid/uuid.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/utils/barcode_helper.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../../barcode_printing/domain/models/barcode_label_item.dart';
 import '../../../barcode_printing/presentation/dialogs/barcode_print_dialog.dart';
+import '../../../products/domain/entities/activity_type.dart';
 import '../../../products/presentation/screens/product_form_screen.dart';
 import '../../data/datasources/inventory_local_data_source.dart';
 import '../cubits/goods_receipt_cubit.dart';
@@ -206,7 +209,23 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
                     ),
                     onChanged: (val) => setDialogState(() => searchFilter = val),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: OutlinedButton.icon(
+                      key: const Key('search_dialog_add_variant_btn'),
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      icon: const Icon(Icons.add_circle_outline, size: 16),
+                      label: const Text('إضافة مقاس جديد لصنف مسجل', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      onPressed: () {
+                        Navigator.pop(dialogCtx);
+                        _showAddNewVariantToExistingProductDialog();
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   Expanded(
                     child: filtered.isEmpty
                         ? const Center(child: Text('لا توجد نتائج مطابقة للبحث'))
@@ -254,6 +273,242 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
               TextButton(
                 onPressed: () => Navigator.pop(dialogCtx),
                 child: const Text('إلغاء'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _showAddNewVariantToExistingProductDialog() async {
+    final db = getIt<AppDatabase>();
+    final products = await (db.select(db.products)
+          ..where((p) => p.deletedAt.isNull())
+          ..orderBy([(p) => OrderingTerm.asc(p.name)]))
+        .get();
+
+    if (!mounted) return;
+    if (products.isEmpty) {
+      _showToast('لا توجد منتجات مسجلة لإضافة مقاس لها', isError: true);
+      return;
+    }
+
+    Product selectedProduct = products.first;
+    final sizeCtrl = TextEditingController(text: 'L');
+    final colorCtrl = TextEditingController(text: 'افتراضي');
+    final costCtrl = TextEditingController(text: '100.00');
+    final sellCtrl = TextEditingController(text: '150.00');
+    final qtyCtrl = TextEditingController(text: '10');
+
+    List<String> getSizesForProduct(Product p) {
+      final act = ActivityType.fromString(p.activityType);
+      switch (act) {
+        case ActivityType.clothing:
+          return const ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL', 'Free Size'];
+        case ActivityType.footwearBags:
+          return const ['37', '38', '39', '40', '41', '42', '43', '44', '45'];
+        case ActivityType.textilesDecor:
+          return const ['1.5×2 م', '2×3 م', '2.5×3.5 م', '3×4 م', 'مشاية 1×3 م', 'مشاية 80×2 م', 'رول كامل', 'بالمتر'];
+        default:
+          return act.standardSizes.isNotEmpty
+              ? act.standardSizes
+              : const ['S', 'M', 'L', 'XL', '2XL', 'Free Size'];
+      }
+    }
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) {
+          final adaptiveSizes = getSizesForProduct(selectedProduct);
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                Icon(Icons.style_outlined, color: AppColors.primary),
+                const SizedBox(width: 8),
+                const Text('إضافة مقاس جديد لصنف مسجل في الشحنة', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              ],
+            ),
+            content: SizedBox(
+              width: 500,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    DropdownButtonFormField<Product>(
+                      key: const Key('select_existing_product_dropdown'),
+                      initialValue: selectedProduct,
+                      decoration: const InputDecoration(
+                        labelText: 'اختر الموديل / المنتج المسجل *',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: products.map((p) => DropdownMenuItem(value: p, child: Text(p.name))).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setDialogState(() {
+                            selectedProduct = val;
+                            final newSizes = getSizesForProduct(val);
+                            if (newSizes.isNotEmpty) {
+                              sizeCtrl.text = newSizes.first;
+                            }
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'المقاسات السريعة (${ActivityType.fromString(selectedProduct.activityType).labelArabic}):',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade700),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        for (final s in adaptiveSizes)
+                          ActionChip(
+                            key: Key('shipment_size_chip_$s'),
+                            label: Text(s, style: TextStyle(fontSize: 11, fontWeight: sizeCtrl.text == s ? FontWeight.bold : FontWeight.normal)),
+                            backgroundColor: sizeCtrl.text == s ? AppColors.primary.withValues(alpha: 0.15) : const Color(0xFFF1F5F9),
+                            side: BorderSide(color: sizeCtrl.text == s ? AppColors.primary : Colors.grey.shade300),
+                            onPressed: () => setDialogState(() => sizeCtrl.text = s),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            key: const Key('new_variant_size_field'),
+                            controller: sizeCtrl,
+                            decoration: const InputDecoration(
+                              labelText: 'المقاس / البعد *',
+                              hintText: 'مثال: 2×3 م أو 42 أو XL',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            key: const Key('new_variant_color_field'),
+                            controller: colorCtrl,
+                            decoration: const InputDecoration(
+                              labelText: 'اللون',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            key: const Key('new_variant_cost_field'),
+                            controller: costCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(
+                              labelText: 'سعر الشراء / التكلفة (ج.م) *',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            key: const Key('new_variant_sell_field'),
+                            controller: sellCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(
+                              labelText: 'سعر البيع (ج.م) *',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      key: const Key('new_variant_qty_field'),
+                      controller: qtyCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'الكمية المستلمة في الشحنة *',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton.icon(
+                key: const Key('confirm_add_new_variant_btn'),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                icon: const Icon(Icons.check, color: Colors.white, size: 18),
+                label: const Text('حفظ وإدراج في الشحنة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                onPressed: () async {
+                  final size = sizeCtrl.text.trim();
+                  if (size.isEmpty) {
+                    _showToast('يرجى تحديد المقاس أو البعد', isError: true);
+                    return;
+                  }
+                  final costPounds = double.tryParse(costCtrl.text.trim()) ?? 0.0;
+                  final sellPounds = double.tryParse(sellCtrl.text.trim()) ?? 0.0;
+                  final qty = int.tryParse(qtyCtrl.text.trim()) ?? 0;
+                  if (qty <= 0) {
+                    _showToast('يرجى إدخال كمية صحيحة أكبر من صفر', isError: true);
+                    return;
+                  }
+
+                  final newVariantId = const Uuid().v4();
+                  final cleanSku = BarcodeHelper.generateSku(size: size);
+                  final color = colorCtrl.text.trim().isEmpty ? 'افتراضي' : colorCtrl.text.trim();
+
+                  await db.into(db.productVariants).insert(
+                    ProductVariantsCompanion.insert(
+                      id: newVariantId,
+                      branchId: selectedProduct.branchId,
+                      productId: selectedProduct.id,
+                      sku: cleanSku,
+                      size: size,
+                      color: color,
+                      costPrice: (costPounds * 100).round(),
+                      sellPrice: (sellPounds * 100).round(),
+                      quantity: const Value(0),
+                      createdAt: DateTime.now(),
+                      updatedAt: DateTime.now(),
+                    ),
+                  );
+
+                  if (!mounted) return;
+                  setState(() {
+                    _lines.add(_ReceiptLineItem(
+                      variantId: newVariantId,
+                      productName: selectedProduct.name,
+                      sku: cleanSku,
+                      color: color,
+                      size: size,
+                      quantity: qty,
+                    ));
+                  });
+                  if (ctx.mounted) {
+                    Navigator.pop(ctx);
+                  }
+                  _showToast('تمت إضافة المقاس الجديد وإدراجه بالشحنة المستلمة بنجاح');
+                },
               ),
             ],
           );
@@ -375,22 +630,25 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
                 },
               )
             : null,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'استلام بضاعة جديدة (Goods Receipt)',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.onSurface),
-            ),
-            Text(
-              'تسجيل الكميات المستلمة للمخزن بدون مورد أو أسعار تكلفة',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-          ],
+        title: const Text(
+          'استلام بضاعة جديدة',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.onSurface),
         ),
         actions: [
           OutlinedButton.icon(
+            key: const Key('blind_receive_add_variant_btn'),
             style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            icon: Icon(Icons.style_outlined, color: AppColors.primary, size: 18),
+            label: const Text('إضافة مقاس لصنف مسجل', style: TextStyle(fontWeight: FontWeight.bold)),
+            onPressed: _showAddNewVariantToExistingProductDialog,
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             icon: Icon(Icons.add_box_rounded, color: AppColors.primary, size: 18),
@@ -402,11 +660,11 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.teal.shade700,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
               icon: const Icon(Icons.qr_code_2_rounded, color: Colors.white, size: 18),
-              label: Text('طباعة ملصقات الباركود (${_lines.length})', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              label: Text('طباعة ملصقات (${_lines.length})', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               onPressed: _openPrintShipmentBarcodesDialog,
             ),
             const SizedBox(width: 8),
@@ -414,7 +672,7 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green.shade700,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             icon: _isSaving
@@ -425,7 +683,7 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
                   )
                 : const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
             label: Text(
-              _isSaving ? 'جاري الحفظ...' : 'حفظ الشحنة المستلمة ($_totalItemsCount قطعة)',
+              _isSaving ? 'جاري الحفظ...' : 'حفظ الشحنة ($_totalItemsCount قطعة)',
               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
             onPressed: _isSaving ? null : _saveReceipt,

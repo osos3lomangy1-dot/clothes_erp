@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/navigation/app_navigator.dart';
+import '../../../../core/utils/barcode_helper.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../../products/domain/entities/product_entity.dart';
@@ -151,6 +152,7 @@ class _VariantFormBodyState extends State<_VariantFormBody> {
   late final TextEditingController _minStockCtrl;
   final FocusNode _sizeFocusNode = FocusNode();
 
+  late ActivityType _activeSector;
   bool _siblingPrefillSynced = false;
   bool _addAnotherRequested = false;
   int _savedInSessionCount = 0;
@@ -166,6 +168,7 @@ class _VariantFormBodyState extends State<_VariantFormBody> {
   @override
   void initState() {
     super.initState();
+    _activeSector = widget.product.activityTypeEnum;
     final v = widget.variant;
     _skuCtrl = TextEditingController(text: v?.productCode ?? '');
     _colorCtrl = TextEditingController(text: v?.color ?? '');
@@ -199,6 +202,265 @@ class _VariantFormBodyState extends State<_VariantFormBody> {
     _minStockCtrl.dispose();
     _sizeFocusNode.dispose();
     super.dispose();
+  }
+
+  List<String> _getSizesForCurrentSector() {
+    switch (_activeSector) {
+      case ActivityType.clothing:
+        return const ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL', 'Free Size'];
+      case ActivityType.footwearBags:
+        return const ['37', '38', '39', '40', '41', '42', '43', '44', '45'];
+      case ActivityType.textilesDecor:
+        return const ['1.5×2 م', '2×3 م', '2.5×3.5 م', '3×4 م', 'مشاية 1×3 م', 'مشاية 80×2 م', 'رول كامل', 'بالمتر'];
+      default:
+        return _activeSector.standardSizes.isNotEmpty
+            ? _activeSector.standardSizes
+            : const ['S', 'M', 'L', 'XL', '2XL', 'Free Size'];
+    }
+  }
+
+  void _selectSizeChip(String size, VariantFormCubit cubit) {
+    _sizeCtrl.text = size;
+    cubit.onSizeChanged(size);
+    final cleanSku = BarcodeHelper.generateSku(size: size);
+    _skuCtrl.text = cleanSku;
+    cubit.onProductCodeChanged(cleanSku);
+    setState(() {});
+  }
+
+  Future<void> _openDimensionToolDialog(VariantFormCubit cubit) async {
+    final widthCtrl = TextEditingController(text: '2');
+    final lengthCtrl = TextEditingController(text: '3');
+
+    await showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                Icon(Icons.straighten, color: AppColors.primary),
+                const SizedBox(width: 8),
+                const Text('تحديد المقاس بالأمتار (مفروشات وسجاد)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              ],
+            ),
+            content: SizedBox(
+              width: 380,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'اختر نموذجاً سريعاً أو اكتب العرض والطول بالأمتار:',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (final preset in const [
+                        {'w': '1.5', 'l': '2', 'label': '1.5×2 م'},
+                        {'w': '2', 'l': '3', 'label': '2×3 م'},
+                        {'w': '2.5', 'l': '3.5', 'label': '2.5×3.5 م'},
+                        {'w': '3', 'l': '4', 'label': '3×4 م'},
+                        {'w': '1', 'l': '3', 'label': 'مشاية 1×3 م'},
+                        {'w': '0.8', 'l': '2', 'label': 'مشاية 80×2 م'},
+                      ])
+                        ActionChip(
+                          label: Text(preset['label']!, style: const TextStyle(fontSize: 11)),
+                          onPressed: () {
+                            setDialogState(() {
+                              widthCtrl.text = preset['w']!;
+                              lengthCtrl.text = preset['l']!;
+                            });
+                          },
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          key: const Key('dimension_width_field'),
+                          controller: widthCtrl,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: const InputDecoration(
+                            labelText: 'العرض (م)',
+                            hintText: 'مثال: 2 أو 1.8',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text('×', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          key: const Key('dimension_length_field'),
+                          controller: lengthCtrl,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: const InputDecoration(
+                            labelText: 'الطول (م)',
+                            hintText: 'مثال: 3 أو 2.7',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogCtx),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton.icon(
+                key: const Key('confirm_dimension_btn'),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                icon: const Icon(Icons.check, color: Colors.white, size: 18),
+                label: const Text('تطبيق المقاس', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                onPressed: () {
+                  final w = widthCtrl.text.trim();
+                  final l = lengthCtrl.text.trim();
+                  if (w.isEmpty || l.isEmpty) return;
+                  final formatted = '$w×$l م';
+                  _selectSizeChip(formatted, cubit);
+                  Navigator.pop(dialogCtx);
+                },
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSectorDropdown() {
+    return PopupMenuButton<ActivityType>(
+      tooltip: 'تغيير نوع المقاسات',
+      initialValue: _activeSector,
+      onSelected: (act) => setState(() => _activeSector = act),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            _activeSector.labelArabic,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primary,
+            ),
+          ),
+          Icon(Icons.arrow_drop_down, size: 18, color: AppColors.primary),
+        ],
+      ),
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: ActivityType.clothing,
+          child: Text('ملابس وأزياء (S..5XL)'),
+        ),
+        const PopupMenuItem(
+          value: ActivityType.footwearBags,
+          child: Text('أحذية وشنط (37..45)'),
+        ),
+        const PopupMenuItem(
+          value: ActivityType.textilesDecor,
+          child: Text('مفروشات وسجاد وأقمشة'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAdaptiveSizeChipsSection(VariantFormCubit cubit) {
+    final sizes = _getSizesForCurrentSector();
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.tune_rounded, size: 16, color: AppColors.primary),
+              const SizedBox(width: 6),
+              const Expanded(
+                child: Text(
+                  'مقاسات سريعة:',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+              ),
+              _buildSectorDropdown(),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              for (final size in sizes)
+                ActionChip(
+                  key: Key('size_chip_$size'),
+                  label: Text(
+                    size,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: _sizeCtrl.text == size
+                          ? FontWeight.bold
+                          : FontWeight.w500,
+                      color: _sizeCtrl.text == size
+                          ? AppColors.primary
+                          : Colors.grey.shade800,
+                    ),
+                  ),
+                  backgroundColor: _sizeCtrl.text == size
+                      ? AppColors.primary.withValues(alpha: 0.15)
+                      : Colors.white,
+                  side: BorderSide(
+                    color: _sizeCtrl.text == size
+                        ? AppColors.primary
+                        : Colors.grey.shade300,
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                  onPressed: () => _selectSizeChip(size, cubit),
+                ),
+              OutlinedButton.icon(
+                key: const Key('variant_dimension_tool_btn'),
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  minimumSize: const Size(0, 32),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: BorderSide(color: Colors.blueGrey.shade300),
+                  ),
+                ),
+                icon: const Icon(Icons.straighten, size: 14),
+                label: const Text(
+                  'مقاس بالأمتار',
+                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                ),
+                onPressed: () => _openDimensionToolDialog(cubit),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   void _syncFromSiblingState(VariantFormState state) {
@@ -463,15 +725,20 @@ class _VariantFormBodyState extends State<_VariantFormBody> {
                       focusNode: _sizeFocusNode,
                       autofocus: !state.isEdit,
                       decoration: _cleanFieldDecoration(
-                        hintText: 'مثال: L أو 42',
+                        hintText: 'مثال: L أو 42 أو 2×3 م',
                         prefixIcon: Icons.straighten_rounded,
                       ),
-                      onChanged: cubit.onSizeChanged,
+                      onChanged: (val) {
+                        cubit.onSizeChanged(val);
+                        setState(() {});
+                      },
                     ),
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 10),
+            _buildAdaptiveSizeChipsSection(cubit),
             const SizedBox(height: 14),
             Row(
               children: [
@@ -580,8 +847,11 @@ class _VariantFormBodyState extends State<_VariantFormBody> {
           ],
         );
 
-        final footerActions = Row(
-          mainAxisAlignment: MainAxisAlignment.end,
+        final footerActions = Wrap(
+          alignment: WrapAlignment.end,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 10,
+          runSpacing: 10,
           children: [
             TextButton(
               onPressed: isLoading ? null : () => _closeDialog(context),
@@ -590,8 +860,7 @@ class _VariantFormBodyState extends State<_VariantFormBody> {
                 style: TextStyle(color: Colors.grey.shade700),
               ),
             ),
-            const Spacer(),
-            if (!state.isEdit) ...[
+            if (!state.isEdit)
               OutlinedButton.icon(
                 key: const Key('variant_save_and_add_another_btn'),
                 onPressed: canSubmit
@@ -612,8 +881,6 @@ class _VariantFormBodyState extends State<_VariantFormBody> {
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-            ],
             ElevatedButton.icon(
               key: const Key('variant_submit_btn'),
               style: ElevatedButton.styleFrom(
