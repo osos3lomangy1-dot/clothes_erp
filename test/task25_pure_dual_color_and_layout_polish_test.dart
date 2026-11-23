@@ -1,4 +1,5 @@
 import 'package:clothes_erp/core/constants/app_colors.dart';
+import 'package:flutter/services.dart';
 import 'package:clothes_erp/core/database/app_database.dart';
 import 'package:clothes_erp/core/database/branch_provider.dart';
 import 'package:clothes_erp/core/database/tx_writer.dart';
@@ -777,6 +778,57 @@ void main() {
         ),
         findsOneWidget,
       );
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 100));
+    });
+
+    testWidgets('POS hardware keyboard arrow keys navigate custom categories and Home resets to All', (tester) async {
+      tester.view.physicalSize = const Size(1400, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: MultiBlocProvider(
+              providers: [
+                BlocProvider<AuthCubit>.value(value: authCubit),
+                BlocProvider<ShiftCubit>.value(value: shiftCubit),
+                BlocProvider<PosCubit>.value(value: posCubit),
+              ],
+              child: const PosScreen(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(posCubit.state.selectedCategory, equals('All'));
+
+      // Press ArrowLeft (moves to next category: cat-1)
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pumpAndSettle();
+      expect(posCubit.state.selectedCategory, equals('cat-1'));
+
+      // Press ArrowLeft again (moves to next category: cat-2)
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pumpAndSettle();
+      expect(posCubit.state.selectedCategory, equals('cat-2'));
+
+      // Press ArrowRight (moves back to cat-1)
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pumpAndSettle();
+      expect(posCubit.state.selectedCategory, equals('cat-1'));
+
+      // Press Home (resets directly to All)
+      await tester.sendKeyEvent(LogicalKeyboardKey.home);
+      await tester.pumpAndSettle();
+      expect(posCubit.state.selectedCategory, equals('All'));
 
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump(const Duration(milliseconds: 100));

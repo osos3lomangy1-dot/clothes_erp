@@ -389,6 +389,33 @@ class _PosViewState extends State<_PosView> {
     );
   }
 
+  void _navigateCategory({required bool forward}) {
+    final posCubit = context.read<PosCubit>();
+    final categories = posCubit.state.categories;
+    if (categories.isEmpty) return;
+
+    final total = categories.length + 1;
+    final currentCatId = posCubit.state.selectedCategory;
+    int currentIndex = 0;
+    if (currentCatId != 'All') {
+      final idx = categories.indexWhere((c) => c.id == currentCatId);
+      if (idx >= 0) {
+        currentIndex = idx + 1;
+      }
+    }
+
+    final targetIndex = forward
+        ? (currentIndex + 1) % total
+        : (currentIndex - 1 + total) % total;
+
+    if (targetIndex == 0) {
+      posCubit.resetAllFilters();
+    } else {
+      final targetCat = categories[targetIndex - 1];
+      posCubit.filterByCategory(targetCat.id);
+    }
+  }
+
   bool _handleHardwareScan(KeyEvent event) {
     if (!mounted) return false;
     if (event is! KeyDownEvent) return false;
@@ -509,6 +536,37 @@ class _PosViewState extends State<_PosView> {
         return true;
       }
       return false;
+    }
+
+    // Keyboard Category Navigation (ArrowLeft / ArrowRight / Alt+Arrows / Home)
+    final primaryFocus = FocusManager.instance.primaryFocus;
+    final isTextInputFocused = primaryFocus != null &&
+        primaryFocus.context != null &&
+        (primaryFocus.context!.widget is EditableText || _searchFocusNode.hasFocus);
+    final isSearchTextEmpty = _searchCtrl.text.isEmpty;
+    final canNavigateArrows = !isCtrl && (!isTextInputFocused || (_searchFocusNode.hasFocus && isSearchTextEmpty));
+
+    if (isAlt && (key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.arrowRight)) {
+      _scannerBuffer.clear();
+      _navigateCategory(forward: key == LogicalKeyboardKey.arrowLeft);
+      return true;
+    }
+    if (canNavigateArrows) {
+      if (key == LogicalKeyboardKey.arrowLeft) {
+        _scannerBuffer.clear();
+        _navigateCategory(forward: true);
+        return true;
+      }
+      if (key == LogicalKeyboardKey.arrowRight) {
+        _scannerBuffer.clear();
+        _navigateCategory(forward: false);
+        return true;
+      }
+      if (key == LogicalKeyboardKey.home) {
+        _scannerBuffer.clear();
+        context.read<PosCubit>().resetAllFilters();
+        return true;
+      }
     }
 
     final now = DateTime.now();
@@ -1571,6 +1629,30 @@ class _ProductPanelState extends State<_ProductPanel> {
     );
   }
 
+  void _scrollToSelectedCategory(PosState state) {
+    if (!_categoryScrollController.hasClients) return;
+    if (state.selectedCategory == 'All') {
+      _categoryScrollController.animateTo(
+        0.0,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    } else {
+      final idx = state.categories.indexWhere((c) => c.id == state.selectedCategory);
+      if (idx >= 0) {
+        final targetOffset = ((idx + 1) * 115.0).clamp(
+          0.0,
+          _categoryScrollController.position.maxScrollExtent,
+        );
+        _categoryScrollController.animateTo(
+          targetOffset,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
+      }
+    }
+  }
+
   Widget _buildScrollNavBtn({
     required IconData icon,
     required String tooltip,
@@ -1623,7 +1705,11 @@ class _ProductPanelState extends State<_ProductPanel> {
       children: [
         const SizedBox(height: 10),
         // Pure Merchant Dynamic Category Bar (Addendum 25.3: Smooth Multi-Device Scrollable)
-        BlocBuilder<PosCubit, PosState>(
+        BlocConsumer<PosCubit, PosState>(
+          listenWhen: (prev, curr) => prev.selectedCategory != curr.selectedCategory,
+          listener: (context, state) {
+            _scrollToSelectedCategory(state);
+          },
           builder: (context, state) {
             final selectedActivity = state.selectedActivity;
             final allSelectedCategory = state.selectedCategory == 'All';
