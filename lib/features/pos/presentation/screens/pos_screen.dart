@@ -3069,6 +3069,17 @@ class _CartPanelState extends State<_CartPanel> {
     _handleCheckout(state);
   }
 
+  void _openExchangeItemDialog() {
+    final posCubit = context.read<PosCubit>();
+    showDialog(
+      context: context,
+      builder: (_) => BlocProvider.value(
+        value: posCubit,
+        child: const _ExchangeItemDialog(),
+      ),
+    );
+  }
+
   void clearCartAndInputs() {
     if (!mounted) return;
     context.read<PosCubit>().clearCart();
@@ -4164,6 +4175,52 @@ class _CartPanelState extends State<_CartPanel> {
                                   ),
                                 ),
                               ),
+                              const SizedBox(width: 4),
+                              Tooltip(
+                                message: 'إضافة صنف مرتجع للاستبدال',
+                                child: InkWell(
+                                  key: const Key('pos_exchange_item_btn'),
+                                  onTap: _openExchangeItemDialog,
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.secondary.withValues(
+                                        alpha: 0.12,
+                                      ),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: AppColors.secondary.withValues(
+                                          alpha: 0.35,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.swap_horiz_rounded,
+                                          size: 14,
+                                          color: AppColors.secondary,
+                                        ),
+                                        SizedBox(width: 3),
+                                        Text(
+                                          'استبدال صنف',
+                                          style: TextStyle(
+                                            fontFamily: 'Cairo',
+                                            fontSize: 10.5,
+                                            color: AppColors.secondary,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
                               if (state.cart.isNotEmpty) ...[
                                 const SizedBox(width: 4),
                                 Tooltip(
@@ -4660,10 +4717,11 @@ class _CartPanelState extends State<_CartPanel> {
                               builder: (context) {
                                 final Map<String, List<SaleItemEntity>> grouped = {};
                                 for (final item in state.cart) {
-                                  final key = (item.productId != null &&
+                                  final baseKey = (item.productId != null &&
                                           item.productId!.isNotEmpty)
                                       ? item.productId!
                                       : item.variantId;
+                                  final key = item.isReturn ? 'exchange_$baseKey' : baseKey;
                                   grouped.putIfAbsent(key, () => []).add(item);
                                 }
                                 final groupEntries = grouped.entries.toList();
@@ -4688,7 +4746,7 @@ class _CartPanelState extends State<_CartPanel> {
                                       );
                                       final maxStock = v?.quantity ?? 999;
                                       return _CartItemTile(
-                                        key: ValueKey(item.variantId),
+                                        key: ValueKey('${item.variantId}_${item.isReturn}'),
                                         item: item,
                                         maxStock: maxStock,
                                       );
@@ -4900,35 +4958,71 @@ class _CartPanelState extends State<_CartPanel> {
                               ),
                               SizedBox(height: isCompact ? 4 : 6),
 
-                              // Grand Total
+                              // Grand Total / Net Settlement Banner
                               Container(
                                 padding: EdgeInsets.symmetric(
                                   horizontal: 10,
                                   vertical: isCompact ? 4 : 6,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.surfaceContainer,
+                                  color: state.hasExchangeItems
+                                      ? (state.isZeroNetExchange
+                                          ? AppColors.success.withValues(alpha: 0.1)
+                                          : state.total < 0
+                                              ? AppColors.error.withValues(alpha: 0.1)
+                                              : AppColors.primary.withValues(alpha: 0.08))
+                                      : AppColors.surfaceContainer,
                                   borderRadius: BorderRadius.circular(10),
+                                  border: state.hasExchangeItems
+                                      ? Border.all(
+                                          color: state.isZeroNetExchange
+                                              ? AppColors.success.withValues(alpha: 0.35)
+                                              : state.total < 0
+                                                  ? AppColors.error.withValues(alpha: 0.35)
+                                                  : AppColors.primary.withValues(alpha: 0.35),
+                                        )
+                                      : null,
                                 ),
                                 child: Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
-                                      'الإجمالي النهائي',
+                                      state.hasExchangeItems
+                                          ? (state.isZeroNetExchange
+                                              ? 'صافي تسوية الاستبدال (متطابق)'
+                                              : state.total < 0
+                                                  ? 'باقي استبدال مسترد للزبون'
+                                                  : 'صافي فرق السعر (المطلوب تحصيله)')
+                                          : 'الإجمالي النهائي',
                                       style: TextStyle(
                                         fontFamily: 'Cairo',
                                         fontSize: isCompact ? 12 : 14,
                                         fontWeight: FontWeight.bold,
+                                        color: state.hasExchangeItems
+                                            ? (state.isZeroNetExchange
+                                                ? AppColors.success
+                                                : state.total < 0
+                                                    ? AppColors.error
+                                                    : AppColors.primary)
+                                            : null,
                                       ),
                                     ),
                                     Text(
-                                      '${Money(state.total).toDisplay()} ج.م',
+                                      state.total < 0
+                                          ? '-${Money(state.total.abs()).toDisplay()} ج.م'
+                                          : '${Money(state.total).toDisplay()} ج.م',
                                       style: TextStyle(
                                         fontFamily: 'Cairo',
                                         fontSize: isCompact ? 16 : 20,
                                         fontWeight: FontWeight.w900,
-                                        color: AppColors.primary,
+                                        color: state.hasExchangeItems
+                                            ? (state.isZeroNetExchange
+                                                ? AppColors.success
+                                                : state.total < 0
+                                                    ? AppColors.error
+                                                    : AppColors.primary)
+                                            : AppColors.primary,
                                       ),
                                     ),
                                   ],
@@ -5095,116 +5189,172 @@ class _CartPanelState extends State<_CartPanel> {
                                 _buildCreditPaymentSection(state),
                               ],
 
-                              // Smart Cash Tender Presets (hide presets when isCompact to save vertical space)
+                              // Smart Cash Tender Presets & Exchange Notice
                               if (_paymentMethod == 'cash') ...[
-                                if (!isCompact) ...[
-                                  const SizedBox(height: 5),
-                                  _buildSmartCashTenderPresets(state),
-                                ],
-
-                                // Unified Single Row for Received and Change
-                                SizedBox(height: isCompact ? 4 : 6),
-                                SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: Row(
-                                    children: [
-                                      Text(
-                                        'المستلم:',
-                                        style: TextStyle(
-                                          fontFamily: 'Cairo',
-                                          fontSize: isCompact ? 11 : 12,
-                                          color: Colors.grey.shade600,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      InkWell(
-                                        onTap: () {
-                                          _receivedCtrl.text = Money(
-                                            state.total,
-                                          ).toDisplay();
-                                          setState(() {});
-                                        },
-                                        borderRadius: BorderRadius.circular(5),
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 5,
-                                            vertical: 1.5,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.primary.withValues(
-                                              alpha: 0.1,
-                                            ),
-                                            borderRadius:
-                                                BorderRadius.circular(5),
-                                          ),
+                                if (state.hasExchangeItems && state.isZeroNetExchange) ...[
+                                  SizedBox(height: isCompact ? 4 : 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.success.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+                                    ),
+                                    child: const Row(
+                                      children: [
+                                        Icon(Icons.check_circle_rounded, size: 16, color: AppColors.success),
+                                        SizedBox(width: 8),
+                                        Expanded(
                                           child: Text(
-                                            'بالضبط',
+                                            'استبدال متطابق القيمة (صافي 0 ج.م) - يتم الإغلاق فوراً بدون دفع أو استرداد',
                                             style: TextStyle(
                                               fontFamily: 'Cairo',
-                                              fontSize: 9.5,
+                                              fontSize: 11,
                                               fontWeight: FontWeight.bold,
-                                              color: AppColors.primary,
+                                              color: AppColors.success,
                                             ),
                                           ),
                                         ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      SizedBox(
-                                        width: 75,
-                                        height: 28,
-                                        child: TextField(
-                                          controller: _receivedCtrl,
-                                          keyboardType: TextInputType.number,
-                                          style: const TextStyle(
-                                            fontFamily: 'Cairo',
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
+                                      ],
+                                    ),
+                                  ),
+                                ] else if (state.hasExchangeItems && state.total < 0) ...[
+                                  SizedBox(height: isCompact ? 4 : 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.error.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.money_off_rounded, size: 16, color: AppColors.error),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'باقي استبدال للعميل: يُصرف ${Money(state.total.abs()).toDisplay()} ج.م نقداً من الدرج',
+                                            style: const TextStyle(
+                                              fontFamily: 'Cairo',
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.error,
+                                            ),
                                           ),
-                                          decoration: InputDecoration(
-                                            hintText: '0.00',
-                                            isDense: true,
-                                            filled: true,
-                                            fillColor:
-                                                AppColors.surfaceContainerLowest,
-                                            contentPadding:
-                                                const EdgeInsets.symmetric(
-                                                  horizontal: 6,
-                                                  vertical: 4,
-                                                ),
-                                            border: OutlineInputBorder(
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ] else if (state.total > 0) ...[
+                                  if (!isCompact) ...[
+                                    const SizedBox(height: 5),
+                                    _buildSmartCashTenderPresets(state),
+                                  ],
+
+                                  // Unified Single Row for Received and Change
+                                  SizedBox(height: isCompact ? 4 : 6),
+                                  SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: Row(
+                                      children: [
+                                        Text(
+                                          'المستلم:',
+                                          style: TextStyle(
+                                            fontFamily: 'Cairo',
+                                            fontSize: isCompact ? 11 : 12,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        InkWell(
+                                          onTap: () {
+                                            _receivedCtrl.text = Money(
+                                              state.total,
+                                            ).toDisplay();
+                                            setState(() {});
+                                          },
+                                          borderRadius: BorderRadius.circular(5),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 5,
+                                              vertical: 1.5,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.primary.withValues(
+                                                alpha: 0.1,
+                                              ),
                                               borderRadius:
-                                                  BorderRadius.circular(6),
-                                              borderSide: const BorderSide(
-                                                color: AppColors.outlineVariant,
+                                                  BorderRadius.circular(5),
+                                            ),
+                                            child: Text(
+                                              'بالضبط',
+                                              style: TextStyle(
+                                                fontFamily: 'Cairo',
+                                                fontSize: 9.5,
+                                                fontWeight: FontWeight.bold,
+                                                color: AppColors.primary,
                                               ),
                                             ),
                                           ),
-                                          onChanged: (_) => setState(() {}),
                                         ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Text(
-                                        'الباقي: ',
-                                        style: TextStyle(
-                                          fontFamily: 'Cairo',
-                                          fontSize: isCompact ? 11 : 12,
-                                          color: Colors.grey.shade600,
+                                        const SizedBox(width: 6),
+                                        SizedBox(
+                                          width: 75,
+                                          height: 28,
+                                          child: TextField(
+                                            controller: _receivedCtrl,
+                                            keyboardType: TextInputType.number,
+                                            style: const TextStyle(
+                                              fontFamily: 'Cairo',
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            decoration: InputDecoration(
+                                              hintText: '0.00',
+                                              isDense: true,
+                                              filled: true,
+                                              fillColor:
+                                                  AppColors.surfaceContainerLowest,
+                                              contentPadding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 4,
+                                                  ),
+                                              border: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                                borderSide: const BorderSide(
+                                                  color: AppColors.outlineVariant,
+                                                ),
+                                              ),
+                                            ),
+                                            onChanged: (_) => setState(() {}),
+                                          ),
                                         ),
-                                      ),
-                                      Text(
-                                        '${Money(changePiasters).toDisplay()} ج.م',
-                                        style: TextStyle(
-                                          fontFamily: 'Cairo',
-                                          fontSize: isCompact ? 12 : 13.5,
-                                          fontWeight: FontWeight.bold,
-                                          color: changePiasters > 0
-                                              ? AppColors.success
-                                              : AppColors.onSurface,
+                                        const SizedBox(width: 12),
+                                        Text(
+                                          'الباقي: ',
+                                          style: TextStyle(
+                                            fontFamily: 'Cairo',
+                                            fontSize: isCompact ? 11 : 12,
+                                            color: Colors.grey.shade600,
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                        Text(
+                                          '${Money(changePiasters).toDisplay()} ج.م',
+                                          style: TextStyle(
+                                            fontFamily: 'Cairo',
+                                            fontSize: isCompact ? 12 : 13.5,
+                                            fontWeight: FontWeight.bold,
+                                            color: changePiasters > 0
+                                                ? AppColors.success
+                                                : AppColors.onSurface,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
+                                ],
                               ],
 
                               SizedBox(height: isCompact ? 6 : 8),
@@ -5219,7 +5369,13 @@ class _CartPanelState extends State<_CartPanel> {
                                           ? null
                                           : () => _handleCheckout(state),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.primary,
+                                    backgroundColor: state.hasExchangeItems
+                                        ? (state.isZeroNetExchange
+                                            ? AppColors.success
+                                            : state.total < 0
+                                                ? AppColors.error
+                                                : AppColors.primary)
+                                        : AppColors.primary,
                                     foregroundColor: Colors.white,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(10),
@@ -5228,8 +5384,14 @@ class _CartPanelState extends State<_CartPanel> {
                                   ),
                                   icon: state.isProcessing
                                       ? const SizedBox.shrink()
-                                      : const Icon(
-                                          Icons.check_circle_rounded,
+                                      : Icon(
+                                          state.hasExchangeItems
+                                              ? (state.isZeroNetExchange
+                                                  ? Icons.swap_horiz_rounded
+                                                  : state.total < 0
+                                                      ? Icons.money_off_rounded
+                                                      : Icons.price_check_rounded)
+                                              : Icons.check_circle_rounded,
                                           size: 20,
                                           color: Colors.white,
                                         ),
@@ -5242,11 +5404,17 @@ class _CartPanelState extends State<_CartPanel> {
                                             strokeWidth: 2,
                                           ),
                                         )
-                                      : const Text(
-                                          'إتمام عملية البيع [F12]',
-                                          style: TextStyle(
+                                      : Text(
+                                          state.hasExchangeItems
+                                              ? (state.isZeroNetExchange
+                                                  ? 'إتمام استبدال متطابق (بدون دفع) [F12]'
+                                                  : state.total < 0
+                                                      ? 'صرف باقي استبدال للعميل (${Money(state.total.abs()).toDisplay()} ج.م) [F12]'
+                                                      : 'تحصيل فرق الاستبدال (${Money(state.total).toDisplay()} ج.م) [F12]')
+                                              : 'إتمام عملية البيع [F12]',
+                                          style: const TextStyle(
                                             fontFamily: 'Cairo',
-                                            fontSize: 14.5,
+                                            fontSize: 14,
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
@@ -5771,7 +5939,7 @@ class _CartGroupAccordionCardState extends State<_CartGroupAccordionCard> {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 6),
                     child: _CartItemTile(
-                      key: ValueKey(it.variantId),
+                      key: ValueKey('${it.variantId}_${it.isReturn}'),
                       item: it,
                       maxStock: maxStock,
                     ),
@@ -5835,7 +6003,7 @@ class _CartItemTileState extends State<_CartItemTile> {
   void initState() {
     super.initState();
     _qtyCtrl = TextEditingController(
-      text: _formatQty(widget.item.effectiveQuantity),
+      text: '${widget.item.isReturn ? "-" : ""}${_formatQty(widget.item.effectiveQuantity)}',
     );
   }
 
@@ -5843,9 +6011,10 @@ class _CartItemTileState extends State<_CartItemTile> {
   void didUpdateWidget(covariant _CartItemTile oldWidget) {
     super.didUpdateWidget(oldWidget);
     if ((oldWidget.item.effectiveQuantity != widget.item.effectiveQuantity ||
-         oldWidget.item.quantity != widget.item.quantity) &&
+         oldWidget.item.quantity != widget.item.quantity ||
+         oldWidget.item.isReturn != widget.item.isReturn) &&
         !_qtyFocus.hasFocus) {
-      _qtyCtrl.text = _formatQty(widget.item.effectiveQuantity);
+      _qtyCtrl.text = '${widget.item.isReturn ? "-" : ""}${_formatQty(widget.item.effectiveQuantity)}';
     }
   }
 
@@ -5857,7 +6026,7 @@ class _CartItemTileState extends State<_CartItemTile> {
   }
 
   void _onQtyChanged(String val) {
-    val = val.trim();
+    val = val.replaceAll('-', '').trim();
     if (val.isEmpty) return;
     final parsedDouble = double.tryParse(val);
     if (parsedDouble == null || parsedDouble <= 0) return;
@@ -5867,13 +6036,18 @@ class _CartItemTileState extends State<_CartItemTile> {
         widget.item.variantId,
         parsedDouble,
         widget.item.unit ?? (_isDecimalItem ? 'م' : null),
+        widget.item.isReturn,
       );
     } else {
       final parsedInt = parsedDouble.toInt();
-      final valid = (widget.maxStock > 0 && parsedInt > widget.maxStock)
+      final valid = (!widget.item.isReturn && widget.maxStock > 0 && parsedInt > widget.maxStock)
           ? widget.maxStock
           : parsedInt;
-      context.read<PosCubit>().updateQuantity(widget.item.variantId, valid);
+      context.read<PosCubit>().updateQuantity(
+        widget.item.variantId,
+        valid,
+        isReturn: widget.item.isReturn,
+      );
     }
   }
 
@@ -5965,6 +6139,7 @@ class _CartItemTileState extends State<_CartItemTile> {
               context.read<PosCubit>().updateUnitPrice(
                 item.variantId,
                 piasters,
+                isReturn: item.isReturn,
               );
               Navigator.pop(ctx);
             },
@@ -6005,10 +6180,14 @@ class _CartItemTileState extends State<_CartItemTile> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
+        color: item.isReturn
+            ? AppColors.error.withValues(alpha: 0.04)
+            : AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppColors.outlineVariant.withValues(alpha: 0.7),
+          color: item.isReturn
+              ? AppColors.error.withValues(alpha: 0.35)
+              : AppColors.outlineVariant.withValues(alpha: 0.7),
         ),
       ),
       child: Row(
@@ -6017,16 +6196,50 @@ class _CartItemTileState extends State<_CartItemTile> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  item.productName,
-                  style: TextStyle(
-                    fontFamily: 'Cairo',
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    color: AppColors.onSurface,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.productName,
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: item.isReturn
+                              ? AppColors.error
+                              : AppColors.onSurface,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (item.isReturn) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        key: Key('exchange_item_badge_${item.variantId}'),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 1.5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: AppColors.error.withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: const Text(
+                          'مرتجع استبدال',
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.error,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 2),
                 Wrap(
@@ -6076,14 +6289,18 @@ class _CartItemTileState extends State<_CartItemTile> {
                           children: [
                             Flexible(
                               child: Text(
-                                '${Money(item.price).toDisplay()} ج.م',
+                                item.isReturn
+                                    ? '-${Money(item.price).toDisplay()} ج.م'
+                                    : '${Money(item.price).toDisplay()} ج.م',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   fontFamily: 'Cairo',
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
-                                  color: AppColors.primary,
+                                  color: item.isReturn
+                                      ? AppColors.error
+                                      : AppColors.primary,
                                 ),
                               ),
                             ),
@@ -6091,7 +6308,9 @@ class _CartItemTileState extends State<_CartItemTile> {
                             Icon(
                               Icons.edit_outlined,
                               size: 12,
-                              color: AppColors.primary,
+                              color: item.isReturn
+                                  ? AppColors.error
+                                  : AppColors.primary,
                             ),
                           ],
                         ),
@@ -6154,8 +6373,10 @@ class _CartItemTileState extends State<_CartItemTile> {
                     minWidth: 28,
                     minHeight: 28,
                   ),
-                  onPressed: () =>
-                      context.read<PosCubit>().decreaseQty(item.variantId),
+                  onPressed: () => context.read<PosCubit>().decreaseQty(
+                        item.variantId,
+                        isReturn: item.isReturn,
+                      ),
                 ),
                 // Inline Direct Text Input for Quantity
                 Container(
@@ -6171,13 +6392,15 @@ class _CartItemTileState extends State<_CartItemTile> {
                   child: TextField(
                     controller: _qtyCtrl,
                     focusNode: _qtyFocus,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontFamily: 'Cairo',
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
+                      color: item.isReturn ? AppColors.error : AppColors.primary,
                     ),
                     decoration: const InputDecoration(
                       contentPadding: EdgeInsets.zero,
@@ -6196,7 +6419,7 @@ class _CartItemTileState extends State<_CartItemTile> {
                     minWidth: 28,
                     minHeight: 28,
                   ),
-                  onPressed: item.quantity >= widget.maxStock
+                  onPressed: (!item.isReturn && item.quantity >= widget.maxStock)
                       ? () {
                           AppFloatingToast.show(
                             context,
@@ -6205,8 +6428,9 @@ class _CartItemTileState extends State<_CartItemTile> {
                           );
                         }
                       : () => context.read<PosCubit>().increaseQty(
-                          item.variantId,
-                        ),
+                            item.variantId,
+                            isReturn: item.isReturn,
+                          ),
                 ),
               ],
             ),
@@ -6220,17 +6444,19 @@ class _CartItemTileState extends State<_CartItemTile> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '${Money(item.total).toDisplay()} ج.م',
+                item.isReturn
+                    ? '-${Money(item.total.abs()).toDisplay()} ج.م'
+                    : '${Money(item.total).toDisplay()} ج.م',
                 style: TextStyle(
                   fontFamily: 'Cairo',
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
-                  color: AppColors.primary,
+                  color: item.isReturn ? AppColors.error : AppColors.primary,
                 ),
               ),
               if (_isDecimalItem || item.decimalQuantity != null)
                 Text(
-                  '${_formatQty(item.effectiveQuantity)} ${item.unit ?? "م"}',
+                  '${item.isReturn ? "-" : ""}${_formatQty(item.effectiveQuantity)} ${item.unit ?? "م"}',
                   style: TextStyle(
                     fontFamily: 'Cairo',
                     fontSize: 10,
@@ -6248,10 +6474,298 @@ class _CartItemTileState extends State<_CartItemTile> {
             ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-            onPressed: () =>
-                context.read<PosCubit>().removeFromCart(item.variantId),
+            onPressed: () => context.read<PosCubit>().removeFromCart(
+                  item.variantId,
+                  isReturn: item.isReturn,
+                ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// FAST IN-CART ITEM EXCHANGE PICKER DIALOG (Task 28)
+// ---------------------------------------------------------------------------
+class _ExchangeItemDialog extends StatefulWidget {
+  const _ExchangeItemDialog();
+
+  @override
+  State<_ExchangeItemDialog> createState() => _ExchangeItemDialogState();
+}
+
+class _ExchangeItemDialogState extends State<_ExchangeItemDialog> {
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final posCubit = context.read<PosCubit>();
+    final allVariants = posCubit.allVariants;
+
+    final filteredVariants = _searchQuery.trim().isEmpty
+        ? allVariants.take(40).toList()
+        : allVariants.where((v) {
+            final q = _searchQuery.trim().toLowerCase();
+            final prodName = posCubit.getProductName(v.productId).toLowerCase();
+            final code = v.productCode.toLowerCase();
+            final sku = v.sku.toLowerCase();
+            final color = v.color.toLowerCase();
+            final size = v.size.toLowerCase();
+            return prodName.contains(q) ||
+                code.contains(q) ||
+                sku.contains(q) ||
+                color.contains(q) ||
+                size.contains(q);
+          }).toList();
+
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      titlePadding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      contentPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: AppColors.secondary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.swap_horiz_rounded,
+              color: AppColors.secondary,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'استبدال صنف - اختيار المرتجع',
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'ابحث عن الصنف المرتجع بالاسم أو الباركود لإدراجه في السلة كبند استبدال سالب',
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 10.5,
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close_rounded),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 540,
+        height: 480,
+        child: Column(
+          children: [
+            const SizedBox(height: 8),
+            TextField(
+              key: const Key('exchange_item_search_field'),
+              controller: _searchCtrl,
+              autofocus: true,
+              style: const TextStyle(fontFamily: 'Cairo', fontSize: 13),
+              decoration: InputDecoration(
+                hintText: 'ابحث عن صنف للاستبدال (الاسم، الباركود، الكود، المقاس)...',
+                prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                suffixIcon: _searchCtrl.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear_rounded, size: 18),
+                        onPressed: () {
+                          _searchCtrl.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                      )
+                    : null,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                filled: true,
+                fillColor: AppColors.surfaceContainerLowest,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: AppColors.outlineVariant),
+                ),
+              ),
+              onChanged: (val) => setState(() => _searchQuery = val),
+            ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: filteredVariants.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search_off_rounded,
+                            size: 44,
+                            color: Colors.grey.shade400,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _searchQuery.isEmpty
+                                ? 'لا توجد أصناف مسجلة في النظام'
+                                : 'لا توجد نتائج تطابق "$_searchQuery"',
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              color: Colors.grey.shade600,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.separated(
+                      itemCount: filteredVariants.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 6),
+                      itemBuilder: (ctx, idx) {
+                        final v = filteredVariants[idx];
+                        final prodName = posCubit.getProductName(v.productId);
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceContainerLowest,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: AppColors.outlineVariant.withValues(alpha: 0.6),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      prodName.isNotEmpty ? prodName : 'صنف #${v.id}',
+                                      style: const TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Wrap(
+                                      spacing: 6,
+                                      runSpacing: 2,
+                                      children: [
+                                        if (v.size.isNotEmpty && v.size != '-')
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.surfaceContainerLow,
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              'المقاس: ${v.size}',
+                                              style: const TextStyle(fontFamily: 'Cairo', fontSize: 10, fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                        if (v.color.isNotEmpty && v.color != '-')
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.surfaceContainerLow,
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              'اللون: ${v.color}',
+                                              style: const TextStyle(fontFamily: 'Cairo', fontSize: 10, fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                        if (v.productCode.isNotEmpty)
+                                          Text(
+                                            'كود: ${v.productCode}',
+                                            style: TextStyle(fontFamily: 'Cairo', fontSize: 10, color: Colors.grey.shade600),
+                                          ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    '${Money(v.salePrice).toDisplay()} ج.م',
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                  Text(
+                                    'الرصيد: ${v.quantity}',
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: 10,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(width: 8),
+                              ElevatedButton.icon(
+                                key: Key('confirm_exchange_item_btn_${v.id}'),
+                                onPressed: () {
+                                  posCubit.addExchangeItem(v, 1);
+                                  Navigator.of(context).pop();
+                                  AppFloatingToast.show(
+                                    context,
+                                    message: 'تمت إضافة صنف مرتجع للاستبدال: $prodName',
+                                    type: ToastType.info,
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.secondary,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                icon: const Icon(Icons.swap_horiz_rounded, size: 16),
+                                label: const Text(
+                                  'إدراج كمرتجع',
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }

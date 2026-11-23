@@ -46,6 +46,15 @@ class PosState {
     this.promotionDiscountPiasters = 0,
   });
 
+  bool get hasExchangeItems => cart.any((item) => item.isReturn);
+  int get returnItemsTotal => cart
+      .where((item) => item.isReturn)
+      .fold<int>(0, (sum, item) => sum + (item.price * item.effectiveQuantity).round());
+  int get newItemsTotal => cart
+      .where((item) => !item.isReturn)
+      .fold<int>(0, (sum, item) => sum + (item.price * item.effectiveQuantity).round());
+  bool get isZeroNetExchange => hasExchangeItems && total == 0;
+
   PosState copyWith({
     List<VariantEntity>? filteredVariants,
     List<CategoryEntity>? categories,
@@ -301,6 +310,8 @@ class PosCubit extends Cubit<PosState> {
     return _productInstallmentEligibleMap[productId] ?? true;
   }
 
+  List<VariantEntity> get allVariants => List.unmodifiable(_allVariants);
+
   List<VariantEntity> getVariantsForProduct(String productId) =>
       _allVariants.where((v) => v.productId == productId).toList();
 
@@ -371,7 +382,7 @@ class PosCubit extends Cubit<PosState> {
   void addToCart(VariantEntity variant, [int quantity = 1]) {
     if (quantity <= 0) return;
     final state = this.state;
-    final existingIndex = state.cart.indexWhere((item) => item.variantId == variant.id);
+    final existingIndex = state.cart.indexWhere((item) => item.variantId == variant.id && !item.isReturn);
     List<SaleItemEntity> newCart;
     if (existingIndex >= 0) {
       final existing = state.cart[existingIndex];
@@ -388,6 +399,33 @@ class PosCubit extends Cubit<PosState> {
         color: variant.color,
         price: variant.salePrice,
         quantity: quantity,
+      );
+      newCart = [...state.cart, newItem];
+    }
+    _updateCart(state, newCart);
+  }
+
+  void addExchangeItem(VariantEntity variant, [int quantity = 1]) {
+    if (quantity <= 0) return;
+    final state = this.state;
+    final existingIndex = state.cart.indexWhere((item) => item.variantId == variant.id && item.isReturn);
+    List<SaleItemEntity> newCart;
+    if (existingIndex >= 0) {
+      final existing = state.cart[existingIndex];
+      final updated = existing.copyWith(quantity: existing.quantity + quantity);
+      newCart = List<SaleItemEntity>.from(state.cart);
+      newCart[existingIndex] = updated;
+    } else {
+      final newItem = SaleItemEntity(
+        variantId: variant.id,
+        productId: variant.productId,
+        categoryId: _productCategoryMap[variant.productId],
+        productName: variant.productName,
+        size: variant.size,
+        color: variant.color,
+        price: variant.salePrice,
+        quantity: quantity,
+        isReturn: true,
       );
       newCart = [...state.cart, newItem];
     }
@@ -459,20 +497,26 @@ class PosCubit extends Cubit<PosState> {
     }
   }
 
-  void removeFromCart(String variantId) {
+  void removeFromCart(String variantId, {bool? isReturn}) {
     final state = this.state;
-    final newCart = state.cart.where((item) => item.variantId != variantId).toList();
+    final newCart = state.cart.where((item) {
+      if (item.variantId != variantId) return true;
+      if (isReturn != null) {
+        return item.isReturn != isReturn;
+      }
+      return false;
+    }).toList();
     _updateCart(state, newCart);
   }
 
-  void updateQuantity(String variantId, int newQty) {
+  void updateQuantity(String variantId, int newQty, {bool? isReturn}) {
     final state = this.state;
     if (newQty <= 0) {
-      removeFromCart(variantId);
+      removeFromCart(variantId, isReturn: isReturn);
       return;
     }
     final newCart = state.cart.map((item) {
-      if (item.variantId == variantId) {
+      if (item.variantId == variantId && (isReturn == null || item.isReturn == isReturn)) {
         return item.copyWith(
           quantity: newQty,
           clearDecimalQuantity: true,
@@ -483,14 +527,14 @@ class PosCubit extends Cubit<PosState> {
     _updateCart(state, newCart);
   }
 
-  void updateDecimalQuantity(String variantId, double newQty, [String? unit]) {
+  void updateDecimalQuantity(String variantId, double newQty, [String? unit, bool? isReturn]) {
     final state = this.state;
     if (newQty <= 0) {
-      removeFromCart(variantId);
+      removeFromCart(variantId, isReturn: isReturn);
       return;
     }
     final newCart = state.cart.map((item) {
-      if (item.variantId == variantId) {
+      if (item.variantId == variantId && (isReturn == null || item.isReturn == isReturn)) {
         return item.copyWith(
           quantity: newQty.ceil(),
           decimalQuantity: newQty,
@@ -502,28 +546,32 @@ class PosCubit extends Cubit<PosState> {
     _updateCart(state, newCart);
   }
 
-  void increaseQty(String variantId) {
+  void increaseQty(String variantId, {bool? isReturn}) {
     final state = this.state;
     SaleItemEntity? item;
     try {
-      item = state.cart.firstWhere((i) => i.variantId == variantId);
+      item = state.cart.firstWhere(
+        (i) => i.variantId == variantId && (isReturn == null || i.isReturn == isReturn),
+      );
     } catch (_) {
       item = null;
     }
     if (item != null) {
       if (item.decimalQuantity != null && item.decimalQuantity! > 0) {
-        updateDecimalQuantity(variantId, item.decimalQuantity! + 1.0, item.unit);
+        updateDecimalQuantity(variantId, item.decimalQuantity! + 1.0, item.unit, item.isReturn);
       } else {
-        updateQuantity(variantId, item.quantity + 1);
+        updateQuantity(variantId, item.quantity + 1, isReturn: item.isReturn);
       }
     }
   }
 
-  void decreaseQty(String variantId) {
+  void decreaseQty(String variantId, {bool? isReturn}) {
     final state = this.state;
     SaleItemEntity? item;
     try {
-      item = state.cart.firstWhere((i) => i.variantId == variantId);
+      item = state.cart.firstWhere(
+        (i) => i.variantId == variantId && (isReturn == null || i.isReturn == isReturn),
+      );
     } catch (_) {
       item = null;
     }
@@ -531,20 +579,20 @@ class PosCubit extends Cubit<PosState> {
       if (item.decimalQuantity != null && item.decimalQuantity! > 0) {
         final newQty = item.decimalQuantity! - 1.0;
         if (newQty <= 0) {
-          removeFromCart(variantId);
+          removeFromCart(variantId, isReturn: item.isReturn);
         } else {
-          updateDecimalQuantity(variantId, newQty, item.unit);
+          updateDecimalQuantity(variantId, newQty, item.unit, item.isReturn);
         }
       } else {
-        updateQuantity(variantId, item.quantity - 1);
+        updateQuantity(variantId, item.quantity - 1, isReturn: item.isReturn);
       }
     }
   }
 
-  void updateUnitPrice(String variantId, int newPrice) {
+  void updateUnitPrice(String variantId, int newPrice, {bool? isReturn}) {
     final state = this.state;
     final newCart = state.cart.map((item) {
-      if (item.variantId == variantId) {
+      if (item.variantId == variantId && (isReturn == null || item.isReturn == isReturn)) {
         return item.copyWith(price: newPrice);
       }
       return item;
@@ -712,7 +760,10 @@ class PosCubit extends Cubit<PosState> {
     final subtotal = updatedCart.fold<int>(
       0,
       (sum, item) =>
-          sum + (item.isReturn ? 0 : (item.price * item.effectiveQuantity).round()),
+          sum +
+          (item.isReturn
+              ? -(item.price * item.effectiveQuantity).round()
+              : (item.price * item.effectiveQuantity).round()),
     );
     final totalPromo = evalResult.totalPromotionDiscountPiasters;
     final totalCustomer = evalResult.totalCustomerDiscountPiasters;
@@ -722,7 +773,7 @@ class PosCubit extends Cubit<PosState> {
     );
 
     final computedTotal = subtotal - manualItemDiscounts - totalPromo - totalCustomer;
-    final finalTotal = computedTotal < 0 ? 0 : computedTotal;
+    final finalTotal = computedTotal;
 
     emit(state.copyWith(
       cart: updatedCart,

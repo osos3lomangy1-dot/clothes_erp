@@ -93,6 +93,10 @@ class PosLocalDataSource {
 
     await _tx.write(
       writeFn: () async {
+        final dbTotal = total < 0 ? 0 : total;
+        final dbSubtotal = total < 0 ? 0 : total;
+        final saleNote = total < 0 ? 'استبدال - استرداد باقي نقدية للعميل: ${total.abs()}' : null;
+
         await _db.into(_db.sales).insert(SalesCompanion.insert(
           id: effectiveSaleId,
           branchId: branchId,
@@ -100,10 +104,11 @@ class PosLocalDataSource {
           cashierId: cashierId,
           shiftId: Value(effectiveShiftId),
           customerId: Value(customerId),
-          subtotal: total,
+          subtotal: dbSubtotal,
           discountType: 'none',
-          total: total,
+          total: dbTotal,
           paymentMethod: effectivePaymentMethod,
+          note: Value(saleNote),
           date: now,
           createdAt: now,
           updatedAt: now,
@@ -168,11 +173,12 @@ class PosLocalDataSource {
             );
           }
 
+          final isReturn = (item['isReturn'] as bool?) ?? false;
           await _inventory.applyStockMovement(
             variantId: item['variantId'] as String,
-            qtyDelta: -qty,
-            type: StockMovementType.sale,
-            reason: 'sale',
+            qtyDelta: isReturn ? qty : -qty,
+            type: isReturn ? StockMovementType.return_ : StockMovementType.sale,
+            reason: isReturn ? 'استبدال صنف (مرتجع)' : 'sale',
             userId: cashierId,
             refType: 'sale',
             refId: effectiveSaleId,
@@ -205,34 +211,41 @@ class PosLocalDataSource {
         if (!isInstallment && !isCredit) {
           for (final split in effectiveSplits) {
             final spId = _uuid.v4();
-            await _db.into(_db.salePayments).insert(
-              SalePaymentsCompanion.insert(
-                id: spId,
-                branchId: branchId,
-                saleId: effectiveSaleId,
-                method: split.method,
-                amountPiasters: split.amountPiasters,
-                shiftId: Value(effectiveShiftId),
-                createdAt: nowSec,
-                updatedAt: nowSec,
-              ),
-            );
+            if (split.amountPiasters > 0) {
+              await _db.into(_db.salePayments).insert(
+                SalePaymentsCompanion.insert(
+                  id: spId,
+                  branchId: branchId,
+                  saleId: effectiveSaleId,
+                  method: split.method,
+                  amountPiasters: split.amountPiasters,
+                  shiftId: Value(effectiveShiftId),
+                  createdAt: nowSec,
+                  updatedAt: nowSec,
+                ),
+              );
+            }
 
-            await _db.into(_db.cashMovements).insert(
-              CashMovementsCompanion.insert(
-                id: _uuid.v4(),
-                branchId: branchId,
-                shiftId: Value(effectiveShiftId),
-                type: 'sale',
-                method: split.method,
-                direction: 'in',
-                amountPiasters: split.amountPiasters,
-                referenceId: Value(effectiveSaleId),
-                notes: Value('مبيعات نقطة بيع (${split.method})'),
-                createdAt: nowSec,
-                updatedAt: nowSec,
-              ),
-            );
+            if (split.amountPiasters != 0) {
+              final isRefund = split.amountPiasters < 0;
+              await _db.into(_db.cashMovements).insert(
+                CashMovementsCompanion.insert(
+                  id: _uuid.v4(),
+                  branchId: branchId,
+                  shiftId: Value(effectiveShiftId),
+                  type: isRefund ? 'refund' : 'sale',
+                  method: split.method,
+                  direction: isRefund ? 'out' : 'in',
+                  amountPiasters: split.amountPiasters.abs(),
+                  referenceId: Value(effectiveSaleId),
+                  notes: Value(isRefund
+                      ? 'صرف باقي استبدال نقدي للعميل'
+                      : 'مبيعات نقطة بيع (${split.method})'),
+                  createdAt: nowSec,
+                  updatedAt: nowSec,
+                ),
+              );
+            }
           }
         } else if (isCredit) {
           // In credit sales, record down payments (cash/card) in sale_payments & cash_movements

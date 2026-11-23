@@ -33,6 +33,7 @@ class PosRepositoryImpl implements PosRepository {
         'cost': 0,
         'discount': i.discount,
         'promotionDiscount': i.promotionDiscount,
+        'isReturn': i.isReturn,
       }).toList();
       final createdId = await _localDataSource.checkout(
         items: items,
