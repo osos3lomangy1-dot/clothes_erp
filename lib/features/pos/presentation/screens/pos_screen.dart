@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -1528,10 +1529,79 @@ class _PosViewState extends State<_PosView> {
 // ---------------------------------------------------------------------------
 // RIGHT PANEL: PRODUCTS
 // ---------------------------------------------------------------------------
-class _ProductPanel extends StatelessWidget {
+class _ProductPanel extends StatefulWidget {
   final String searchQuery;
   final void Function(String? query)? onOpenQuickAdd;
   const _ProductPanel({this.searchQuery = '', this.onOpenQuickAdd});
+
+  @override
+  State<_ProductPanel> createState() => _ProductPanelState();
+}
+
+class _ProductPanelState extends State<_ProductPanel> {
+  final ScrollController _categoryScrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _categoryScrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollForward() {
+    if (!_categoryScrollController.hasClients) return;
+    final max = _categoryScrollController.position.maxScrollExtent;
+    final target = (_categoryScrollController.offset + 220).clamp(0.0, max);
+    _categoryScrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
+  }
+
+  void _scrollBackward() {
+    if (!_categoryScrollController.hasClients) return;
+    final target = (_categoryScrollController.offset - 220).clamp(
+      0.0,
+      _categoryScrollController.position.maxScrollExtent,
+    );
+    _categoryScrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
+  }
+
+  Widget _buildScrollNavBtn({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          hoverColor: const Color(0xFFF1F5F9),
+          child: Container(
+            width: 28,
+            height: 38,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Icon(
+              icon,
+              size: 16,
+              color: const Color(0xFF475569),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1552,7 +1622,7 @@ class _ProductPanel extends StatelessWidget {
     return Column(
       children: [
         const SizedBox(height: 10),
-        // Pure Merchant Dynamic Category Bar (Addendum 25.3)
+        // Pure Merchant Dynamic Category Bar (Addendum 25.3: Smooth Multi-Device Scrollable)
         BlocBuilder<PosCubit, PosState>(
           builder: (context, state) {
             final selectedActivity = state.selectedActivity;
@@ -1575,49 +1645,105 @@ class _ProductPanel extends StatelessWidget {
                 return Container(
                   height: 38,
                   margin: const EdgeInsets.symmetric(horizontal: 12),
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
+                  child: Row(
                     children: [
-                      // Single Master 'All' Button (Addendum 25.3: Unified Single "الكل")
-                      _categoryChip(
-                        key: const Key('pos_all_filter_chip'),
-                        label: 'الكل',
-                        icon: Icons.apps_rounded,
-                        count: allVariants.length,
-                        isSelected: selectedActivity == 'all' && allSelectedCategory,
-                        onTap: () => posCubit.resetAllFilters(),
+                      // Backward scroll button (moves towards start in RTL)
+                      _buildScrollNavBtn(
+                        icon: Icons.chevron_right_rounded,
+                        tooltip: 'السابق',
+                        onTap: _scrollBackward,
                       ),
-                      for (final cat in state.categories) ...[
-                        () {
-                          final count = allVariants.where((v) {
-                            try {
-                              return posCubit.getProductCategoryId(v.productId) == cat.id;
-                            } catch (_) {
-                              return false;
+                      const SizedBox(width: 4),
+                      // Horizontal Category Strip
+                      Expanded(
+                        child: Listener(
+                          onPointerSignal: (pointerSignal) {
+                            if (pointerSignal is PointerScrollEvent &&
+                                _categoryScrollController.hasClients) {
+                              final delta = pointerSignal.scrollDelta.dy != 0
+                                  ? pointerSignal.scrollDelta.dy
+                                  : pointerSignal.scrollDelta.dx;
+                              final target = (_categoryScrollController.offset + delta).clamp(
+                                0.0,
+                                _categoryScrollController.position.maxScrollExtent,
+                              );
+                              _categoryScrollController.jumpTo(target);
                             }
-                          }).length;
-                          return _categoryChip(
-                            key: Key('pos_category_chip_${cat.id}'),
-                            label: cat.name,
-                            count: count,
-                            isSelected: state.selectedCategory == cat.id,
-                            onTap: () => posCubit.filterByCategory(cat.id),
-                          );
-                        }(),
-                      ],
-                      if (preOrdersOn)
-                        _categoryChip(
-                          key: const Key('pos_pre_orders_chip'),
-                          label: 'حجز مسبق',
-                          icon: Icons.event_note_rounded,
-                          isSelected: false,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const PreOrdersScreen()),
-                            );
                           },
+                          child: ScrollConfiguration(
+                            behavior: ScrollConfiguration.of(context).copyWith(
+                              dragDevices: {
+                                PointerDeviceKind.touch,
+                                PointerDeviceKind.mouse,
+                                PointerDeviceKind.trackpad,
+                                PointerDeviceKind.stylus,
+                              },
+                              scrollbars: false,
+                            ),
+                            child: RawScrollbar(
+                              controller: _categoryScrollController,
+                              thumbVisibility: false,
+                              thickness: 2.5,
+                              radius: const Radius.circular(2),
+                              thumbColor: AppColors.primary.withValues(alpha: 0.35),
+                              child: ListView(
+                                controller: _categoryScrollController,
+                                physics: const BouncingScrollPhysics(),
+                                scrollDirection: Axis.horizontal,
+                                children: [
+                                  // Single Master 'All' Button (Addendum 25.3: Unified Single "الكل")
+                                  _categoryChip(
+                                    key: const Key('pos_all_filter_chip'),
+                                    label: 'الكل',
+                                    icon: Icons.apps_rounded,
+                                    count: allVariants.length,
+                                    isSelected: selectedActivity == 'all' && allSelectedCategory,
+                                    onTap: () => posCubit.resetAllFilters(),
+                                  ),
+                                  for (final cat in state.categories) ...[
+                                    () {
+                                      final count = allVariants.where((v) {
+                                        try {
+                                          return posCubit.getProductCategoryId(v.productId) == cat.id;
+                                        } catch (_) {
+                                          return false;
+                                        }
+                                      }).length;
+                                      return _categoryChip(
+                                        key: Key('pos_category_chip_${cat.id}'),
+                                        label: cat.name,
+                                        count: count,
+                                        isSelected: state.selectedCategory == cat.id,
+                                        onTap: () => posCubit.filterByCategory(cat.id),
+                                      );
+                                    }(),
+                                  ],
+                                  if (preOrdersOn)
+                                    _categoryChip(
+                                      key: const Key('pos_pre_orders_chip'),
+                                      label: 'حجز مسبق',
+                                      icon: Icons.event_note_rounded,
+                                      isSelected: false,
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(builder: (_) => const PreOrdersScreen()),
+                                        );
+                                      },
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
+                      ),
+                      const SizedBox(width: 4),
+                      // Forward scroll button (moves towards end in RTL)
+                      _buildScrollNavBtn(
+                        icon: Icons.chevron_left_rounded,
+                        tooltip: 'التالي',
+                        onTap: _scrollForward,
+                      ),
                     ],
                   ),
                 );
@@ -1687,7 +1813,7 @@ class _ProductPanel extends StatelessWidget {
                   );
                 }
                 if (state.filteredVariants.isEmpty) {
-                  final query = searchQuery.trim();
+                  final query = widget.searchQuery.trim();
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -1709,7 +1835,7 @@ class _ProductPanel extends StatelessWidget {
                         if (query.isNotEmpty) ...[
                           const SizedBox(height: 12),
                           ElevatedButton.icon(
-                            onPressed: () => onOpenQuickAdd?.call(query),
+                            onPressed: () => widget.onOpenQuickAdd?.call(query),
                             icon: const Icon(Icons.add_rounded, size: 18),
                             label: Text(
                               'إضافة "$query" كصنف جديد',
