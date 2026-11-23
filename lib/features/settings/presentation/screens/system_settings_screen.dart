@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -100,7 +99,6 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
   String _searchQuery = '';
   bool _isSearchFocused = false;
   final Set<int> _expandedModules = {0};
-  final ScrollController _presetsScrollController = ScrollController();
 
   @override
   void initState() {
@@ -119,7 +117,6 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
     _searchFocus.removeListener(_onSearchFocusChanged);
     _searchCtrl.dispose();
     _searchFocus.dispose();
-    _presetsScrollController.dispose();
     super.dispose();
   }
 
@@ -383,78 +380,6 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
     );
   }
 
-  void _promptResetDefaults(BuildContext context) {
-    final cat = _activeCategoryItem;
-    showDialog(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(Icons.restart_alt_rounded, color: AppColors.primary, size: 22),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'استعادة خيارات ${cat.label}',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0F172A),
-                ),
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          'هل أنت متأكد من رغبتك في استعادة الخيارات والأنماط الافتراضية لقسم "${cat.label}"؟',
-          style: const TextStyle(fontSize: 13, color: Color(0xFF334155)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogCtx).pop(),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            onPressed: () async {
-              Navigator.of(dialogCtx).pop();
-              final catKey = _currentCategory();
-              if (catKey == 'features') {
-                final userId = _userId(context);
-                final defaultPreset = _quickPresets.first;
-                final cubit = context.read<SettingsCubit>();
-                for (final entry in defaultPreset.features.entries) {
-                  await cubit.toggleFeature(entry.key, entry.value, userId);
-                }
-              }
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('تمت استعادة الخيارات الافتراضية لقسم "${cat.label}" بنجاح'),
-                    backgroundColor: const Color(0xFF0F172A),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              }
-            },
-            child: const Text('استعادة الآن'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isAdmin = _isAdmin(context);
@@ -493,114 +418,20 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
             title: LayoutBuilder(
               builder: (context, constraints) {
                 final availableWidth = constraints.maxWidth;
-                final isWide = availableWidth >= 950;
+                final isWide = availableWidth >= 900;
                 final leadingInfo = _buildAppBarLeadingInfo();
-
-                if (isWide) {
-                  return Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Align(
-                        alignment: AlignmentDirectional.centerStart,
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxWidth: ((availableWidth - 400.0) / 2 + 60).clamp(280.0, 520.0),
-                          ),
-                          child: leadingInfo,
-                        ),
-                      ),
-                      Center(
-                        child: _buildSpotlightSearchField(400.0),
-                      ),
-                    ],
-                  );
-                }
 
                 return Row(
                   children: [
                     Expanded(child: leadingInfo),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 16),
                     _buildSpotlightSearchField(
-                      (availableWidth * 0.30).clamp(150.0, 300.0),
+                      isWide ? 380.0 : (availableWidth * 0.32).clamp(160.0, 300.0),
                     ),
                   ],
                 );
               },
             ),
-            actions: [
-              Padding(
-                padding: const EdgeInsetsDirectional.only(end: 18),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Reset defaults button
-                    IconButton(
-                      key: const Key('settings_reset_defaults_btn'),
-                      tooltip: 'استعادة الخيارات الافتراضية للقسم',
-                      icon: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                        ),
-                        child: const Icon(
-                          Icons.restart_alt_rounded,
-                          size: 19,
-                          color: Color(0xFF475569),
-                        ),
-                      ),
-                      onPressed: () => _promptResetDefaults(context),
-                    ),
-                    const SizedBox(width: 8),
-                    // F1 Shortcuts help button
-                    Tooltip(
-                      message: 'دليل ومساعدة الاختصارات السريعة (F1)',
-                      child: InkWell(
-                        key: const Key('settings_shortcuts_help_btn'),
-                        borderRadius: BorderRadius.circular(8),
-                        onTap: () {
-                          showDialog(
-                            context: context,
-                            builder: (_) => const ShortcutsConfigDialog(),
-                          );
-                        },
-                        child: Container(
-                          height: 36,
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.keyboard_outlined,
-                                size: 17,
-                                color: Color(0xFF475569),
-                              ),
-                              SizedBox(width: 6),
-                              Text(
-                                'F1',
-                                style: TextStyle(
-                                  fontFamily: 'monospace',
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 11,
-                                  color: Color(0xFF334155),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
             backgroundColor: Colors.white,
             foregroundColor: AppColors.onSurface,
             elevation: 0,
@@ -1650,42 +1481,13 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isEnabled
-                              ? const Color(0xFFF0FDFA)
-                              : Colors.white,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: isEnabled
-                                ? AppColors.secondary.withValues(alpha: 0.3)
-                                : const Color(0xFFE2E8F0),
-                          ),
-                        ),
-                        child: Text(
-                          def.coreAlwaysEnabled
-                              ? 'أساسي'
-                              : (isEnabled ? 'مفعّل' : 'معطل'),
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.bold,
-                            color: isEnabled
-                                ? AppColors.secondary
-                                : const Color(0xFF94A3B8),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
                       Switch(
                         key: Key('feature_switch_${def.key}'),
                         value: isEnabled,
                         activeThumbColor: AppColors.secondary,
-                        activeTrackColor:
-                            AppColors.secondary.withValues(alpha: 0.38),
+                        activeTrackColor: AppColors.secondary.withValues(alpha: 0.38),
+                        inactiveThumbColor: Colors.white,
+                        inactiveTrackColor: const Color(0xFFE2E8F0),
                         onChanged: def.coreAlwaysEnabled
                             ? null
                             : (val) => _toggleFeature(
@@ -2090,53 +1892,27 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
 
   Widget _buildIndustryPresetsStrip(SettingsState state, String userId) {
     final currentFeatures = state.features;
-    final cards = _quickPresets.map((preset) {
-      final isActive = _isPresetActive(preset, currentFeatures);
-      return _buildPresetCard(
-        preset: preset,
-        isActive: isActive,
-        onTap: () => _promptApplyPreset(context, preset, userId),
-      );
-    }).toList();
-
-    return SizedBox(
-      height: 86,
-      child: Listener(
-        onPointerSignal: (pointerSignal) {
-          if (pointerSignal is PointerScrollEvent && _presetsScrollController.hasClients) {
-            final newOffset = _presetsScrollController.offset + pointerSignal.scrollDelta.dy;
-            _presetsScrollController.animateTo(
-              newOffset.clamp(0.0, _presetsScrollController.position.maxScrollExtent),
-              duration: const Duration(milliseconds: 100),
-              curve: Curves.easeOut,
-            );
-          }
-        },
-        child: ScrollConfiguration(
-          behavior: ScrollConfiguration.of(context).copyWith(
-            dragDevices: {
-              PointerDeviceKind.touch,
-              PointerDeviceKind.mouse,
-              PointerDeviceKind.trackpad,
-            },
-          ),
-          child: SingleChildScrollView(
-            controller: _presetsScrollController,
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            child: Row(
-              children: [
-                for (int i = 0; i < cards.length; i++) ...[
-                  SizedBox(
-                    width: 260,
-                    child: cards[i],
-                  ),
-                  if (i < cards.length - 1) const SizedBox(width: 12),
-                ],
-              ],
+    return Container(
+      height: 42,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          for (int i = 0; i < _quickPresets.length; i++) ...[
+            Expanded(
+              child: _buildPresetCard(
+                preset: _quickPresets[i],
+                isActive: _isPresetActive(_quickPresets[i], currentFeatures),
+                onTap: () => _promptApplyPreset(context, _quickPresets[i], userId),
+              ),
             ),
-          ),
-        ),
+            if (i < _quickPresets.length - 1) const SizedBox(width: 4),
+          ],
+        ],
       ),
     );
   }
@@ -2149,92 +1925,66 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
     return InkWell(
       key: Key('preset_card_${preset.id}'),
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(7),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        height: 86,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 6),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFFF0FDFA) : Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isActive ? AppColors.secondary : AppColors.outlineVariant,
-            width: isActive ? 1.5 : 1.0,
-          ),
+          color: isActive ? AppColors.primary : Colors.white,
+          borderRadius: BorderRadius.circular(7),
+          border: isActive
+              ? null
+              : Border.all(color: const Color(0xFFE2E8F0)),
           boxShadow: isActive
               ? [
                   BoxShadow(
-                    color: AppColors.secondary.withValues(alpha: 0.12),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
+                    color: AppColors.primary.withValues(alpha: 0.18),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
                   ),
                 ]
               : null,
         ),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 36,
-              height: 36,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: isActive
-                    ? AppColors.secondary.withValues(alpha: 0.15)
-                    : AppColors.primary.withValues(alpha: 0.07),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                preset.icon,
-                size: 22,
-                color: isActive ? AppColors.secondary : AppColors.primary,
+            Icon(
+              preset.icon,
+              size: 16,
+              color: isActive ? AppColors.secondary : const Color(0xFF64748B),
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                preset.title,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
+                  color: isActive ? Colors.white : const Color(0xFF334155),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    preset.title,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: isActive ? AppColors.secondary : const Color(0xFF0F172A),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+            if (isActive) ...[
+              const SizedBox(width: 5),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                decoration: BoxDecoration(
+                  color: AppColors.secondary.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  'مطبق حالياً ✓',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.secondary,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    preset.subtitle,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF64748B),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: isActive ? const Color(0xFFCCFBF1) : const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      isActive ? 'مطبق حالياً ✓' : preset.recommendationBadge,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: isActive ? const Color(0xFF0D9488) : const Color(0xFF64748B),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),
@@ -3149,73 +2899,21 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
             ),
           ),
           const SizedBox(width: 12),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (isCore) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: const Text(
-                    'مفعّل',
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF475569),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Switch(
-                  value: true,
-                  onChanged: null,
-                ),
-              ] else ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isEnabled
-                        ? const Color(0xFFF0FDFA)
-                        : const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: isEnabled
-                          ? AppColors.secondary.withValues(alpha: 0.3)
-                          : const Color(0xFFE2E8F0),
-                    ),
-                  ),
-                  child: Text(
-                    isEnabled ? 'مفعّل' : 'معطل',
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.bold,
-                      color: isEnabled
-                          ? AppColors.secondary
-                          : const Color(0xFF94A3B8),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Switch(
-                  key: key,
-                  value: isEnabled,
-                  onChanged: onChanged,
-                  activeThumbColor: AppColors.secondary,
-                  activeTrackColor: AppColors.secondary.withValues(alpha: 0.38),
-                ),
-              ],
-            ],
-          ),
+          if (isCore)
+            const Switch(
+              value: true,
+              onChanged: null,
+            )
+          else
+            Switch(
+              key: key,
+              value: isEnabled,
+              onChanged: onChanged,
+              activeThumbColor: AppColors.secondary,
+              activeTrackColor: AppColors.secondary.withValues(alpha: 0.38),
+              inactiveThumbColor: Colors.white,
+              inactiveTrackColor: const Color(0xFFE2E8F0),
+            ),
         ],
       ),
     );

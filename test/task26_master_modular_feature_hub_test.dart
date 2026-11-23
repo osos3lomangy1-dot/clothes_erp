@@ -248,7 +248,7 @@ void main() {
       expect(find.byKey(const Key('feature_suppliers_toggle')), findsOneWidget);
     });
 
-    testWidgets('5. Direct status anchors (مفعّل / معطل / أساسي مفعّل) render next to switches', (tester) async {
+    testWidgets('5. Addendum 26.3: Pure clean switch rows without redundant مفعّل / معطل pills', (tester) async {
       tester.view.physicalSize = const Size(1400, 900);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() {
@@ -260,9 +260,10 @@ void main() {
       await tester.pumpAndSettle();
 
       // Inside open Module 0:
-      // Status badges should be rendered
-      expect(find.text('مفعّل'), findsWidgets);
-      expect(find.text('معطل'), findsWidgets);
+      // Redundant text pills next to switches are completely removed
+      expect(find.text('مفعّل'), findsNothing);
+      expect(find.text('معطل'), findsNothing);
+      // Locked core features retain [ 🔒 أساسي مفعّل ] next to the title
       expect(find.text('أساسي مفعّل'), findsWidgets);
     });
 
@@ -319,7 +320,7 @@ void main() {
       expect(find.byIcon(Icons.search_off_rounded), findsOneWidget);
     });
 
-    testWidgets('8. Addendum 26.2: Centered AppBar actions, Spotlight search field, and breadcrumbs', (tester) async {
+    testWidgets('8. Addendum 26.3: Cohesive AppBar with Spotlight search and breadcrumbs without isolated buttons', (tester) async {
       tester.view.physicalSize = const Size(1400, 900);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() {
@@ -339,18 +340,9 @@ void main() {
       expect(find.byKey(const Key('settings_search_field')), findsOneWidget);
       expect(find.byKey(const Key('settings_search_kbd_badge')), findsOneWidget);
 
-      // Verify AppBar actions
-      expect(find.byKey(const Key('settings_reset_defaults_btn')), findsOneWidget);
-      expect(find.byKey(const Key('settings_shortcuts_help_btn')), findsOneWidget);
-
-      // Tapping reset defaults opens confirmation dialog
-      await tester.tap(find.byKey(const Key('settings_reset_defaults_btn')));
-      await tester.pumpAndSettle();
-      expect(find.text('استعادة خيارات لوحة التحكم في المزايا'), findsOneWidget);
-
-      // Dismiss dialog
-      await tester.tap(find.text('إلغاء'));
-      await tester.pumpAndSettle();
+      // Verify isolated action buttons are removed to eliminate visual fragmentation
+      expect(find.byKey(const Key('settings_reset_defaults_btn')), findsNothing);
+      expect(find.byKey(const Key('settings_shortcuts_help_btn')), findsNothing);
     });
   });
 }
