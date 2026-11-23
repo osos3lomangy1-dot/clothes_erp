@@ -21,11 +21,13 @@ import '../../../settings/data/services/activity_settings_service.dart';
 class SimpleProductFormDialog extends StatelessWidget {
   final ProductEntity? product;
   final String? initialQuery;
+  final ActivityType? initialActivityType;
 
   const SimpleProductFormDialog({
     super.key,
     this.product,
     this.initialQuery,
+    this.initialActivityType,
   });
 
   @override
@@ -40,6 +42,7 @@ class SimpleProductFormDialog extends StatelessWidget {
           child: _SimpleProductFormInternal(
             product: product,
             initialQuery: initialQuery,
+            initialActivityType: initialActivityType,
           ),
         ),
       ),
@@ -50,10 +53,12 @@ class SimpleProductFormDialog extends StatelessWidget {
 class _SimpleProductFormInternal extends StatefulWidget {
   final ProductEntity? product;
   final String? initialQuery;
+  final ActivityType? initialActivityType;
 
   const _SimpleProductFormInternal({
     this.product,
     this.initialQuery,
+    this.initialActivityType,
   });
 
   @override
@@ -92,7 +97,11 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
   void initState() {
     super.initState();
     final p = widget.product;
-    if (p != null) {
+    if (widget.initialActivityType != null) {
+      _activityType = widget.initialActivityType!;
+      _isRollMode = false;
+      _rollWidthCtrl = TextEditingController(text: '1.0 م');
+    } else if (p != null) {
       _activityType = p.activityTypeEnum;
       _isRollMode = p.sellMode == 'meter';
       _rollWidthCtrl = TextEditingController(text: p.rollWidth ?? '1.0 م');
@@ -101,7 +110,13 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
       _rollWidthCtrl = TextEditingController(text: '1.0 م');
       if (getIt.isRegistered<ActivitySettingsService>()) {
         final cached = getIt<ActivitySettingsService>().cachedEnabledActivities;
-        _activityType = cached.isNotEmpty ? cached.first : ActivityType.clothing;
+        if (cached.contains(ActivityType.restaurantsCafes)) {
+          _activityType = ActivityType.restaurantsCafes;
+        } else if (cached.isNotEmpty) {
+          _activityType = cached.first;
+        } else {
+          _activityType = ActivityType.clothing;
+        }
       } else {
         _activityType = ActivityType.clothing;
       }
@@ -111,7 +126,7 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
     _costCtrl = TextEditingController(text: '0.00');
     _sellCtrl = TextEditingController(text: '0.00');
     _wholesaleCtrl = TextEditingController(text: '0.00');
-    _qtyCtrl = TextEditingController(text: '0');
+    _qtyCtrl = TextEditingController(text: _activityType == ActivityType.restaurantsCafes ? '999' : '0');
     _minStockCtrl = TextEditingController(text: '${p?.minStock ?? 5}');
     _descCtrl = TextEditingController(text: p?.description ?? '');
     _warrantyCtrl = TextEditingController(text: p?.warrantyPeriod ?? '');
@@ -124,12 +139,25 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
     if (p != null) {
       _loadExistingVariant(p.id);
     } else {
-      if (getIt.isRegistered<ActivitySettingsService>()) {
+      if (getIt.isRegistered<ActivitySettingsService>() && widget.initialActivityType == null) {
         getIt<ActivitySettingsService>().getEnabledActivities().then((acts) {
-          if (mounted && acts.isNotEmpty && acts.first != _activityType) {
-            setState(() {
-              _activityType = acts.first;
-            });
+          if (mounted && acts.isNotEmpty) {
+            final target = acts.contains(ActivityType.restaurantsCafes)
+                ? ActivityType.restaurantsCafes
+                : acts.first;
+            if (target != _activityType) {
+              setState(() {
+                _activityType = target;
+                if (_activityType == ActivityType.restaurantsCafes) {
+                  if (_qtyCtrl.text == '0' || _qtyCtrl.text.isEmpty) {
+                    _qtyCtrl.text = '999';
+                  }
+                  if (_barcodeCtrl.text.isEmpty || _barcodeCtrl.text.startsWith('200')) {
+                    _generateBarcode();
+                  }
+                }
+              });
+            }
           }
         });
       }
@@ -170,8 +198,12 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
   }
 
   void _generateBarcode() {
-    final rand = Random().nextInt(899999) + 100000;
-    _barcodeCtrl.text = '200$rand';
+    if (_activityType == ActivityType.restaurantsCafes) {
+      _barcodeCtrl.text = 'REST-${DateTime.now().millisecondsSinceEpoch % 1000000}';
+    } else {
+      final rand = Random().nextInt(899999) + 100000;
+      _barcodeCtrl.text = '200$rand';
+    }
   }
 
   @override
@@ -200,6 +232,9 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
 
   Future<void> _handleSave(List<CategoryEntity> categories) async {
     if (!_formKey.currentState!.validate()) return;
+    if (_selectedCategoryId == null && categories.isNotEmpty) {
+      _selectedCategoryId = categories.first.id;
+    }
     if (_selectedCategoryId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -213,11 +248,19 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
     setState(() => _isSaving = true);
 
     final cleanName = _nameCtrl.text.trim();
-    final cleanBarcode = _barcodeCtrl.text.trim();
+    var cleanBarcode = _barcodeCtrl.text.trim();
+    if (cleanBarcode.isEmpty) {
+      if (_activityType == ActivityType.restaurantsCafes) {
+        cleanBarcode = 'REST-${DateTime.now().millisecondsSinceEpoch % 1000000}';
+      } else {
+        cleanBarcode = 'SKU-${DateTime.now().millisecondsSinceEpoch % 1000000}';
+      }
+    }
     final costPiasters = _parsePiasters(_costCtrl.text);
     final sellPiasters = _parsePiasters(_sellCtrl.text);
     final wholesalePiasters = _parsePiasters(_wholesaleCtrl.text);
-    final qty = int.tryParse(_qtyCtrl.text.trim()) ?? 0;
+    final defaultQty = _activityType == ActivityType.restaurantsCafes ? 999 : 0;
+    final qty = int.tryParse(_qtyCtrl.text.trim()) ?? defaultQty;
     final minStock = int.tryParse(_minStockCtrl.text.trim()) ?? 5;
     final desc = _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim();
 
@@ -351,7 +394,7 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
       setState(() {
         _selectedCategoryId = newCat.id;
       });
-      context.read<ProductFormCubit>().init(widget.product);
+      context.read<ProductFormCubit>().reloadCategories(selectCategoryId: newCat.id);
     }
   }
 
@@ -498,7 +541,20 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
                                 return Padding(
                                   padding: const EdgeInsets.only(left: 8.0),
                                   child: InkWell(
-                                    onTap: () => setState(() => _activityType = act),
+                                    onTap: () {
+                                      setState(() {
+                                        _activityType = act;
+                                        if (act == ActivityType.restaurantsCafes) {
+                                          if (_qtyCtrl.text == '0' || _qtyCtrl.text.isEmpty) {
+                                            _qtyCtrl.text = '999';
+                                          }
+                                          if (_barcodeCtrl.text.isEmpty || _barcodeCtrl.text.startsWith('200')) {
+                                            _generateBarcode();
+                                          }
+                                        }
+                                      });
+                                      context.read<ProductFormCubit>().onActivityTypeChanged(act.code);
+                                    },
                                     borderRadius: BorderRadius.circular(10),
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -549,8 +605,14 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
                               controller: _nameCtrl,
                               decoration: InputDecoration(
                                 labelText: 'اسم الصنف / المنتج *',
-                                hintText: 'مثال: طقم حلل جرانيت 10 قطع / شيبسي جبنة',
-                                prefixIcon: const Icon(Icons.inventory_2_outlined),
+                                hintText: _activityType == ActivityType.restaurantsCafes
+                                    ? 'مثال: برجر دبل تشيز / بيتزا مارجريتا / كابتشينو'
+                                    : 'مثال: طقم حلل جرانيت 10 قطع / شيبسي جبنة',
+                                prefixIcon: Icon(
+                                  _activityType == ActivityType.restaurantsCafes
+                                      ? Icons.restaurant_menu_rounded
+                                      : Icons.inventory_2_outlined,
+                                ),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),
@@ -569,7 +631,9 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
                             child: TextFormField(
                               controller: _barcodeCtrl,
                               decoration: InputDecoration(
-                                labelText: 'الباركود / الكود (SKU) *',
+                                labelText: _activityType == ActivityType.restaurantsCafes
+                                    ? 'الباركود / الكود (SKU) (اختياري)'
+                                    : 'الباركود / الكود (SKU) *',
                                 prefixIcon: const Icon(Icons.qr_code_scanner_rounded),
                                 suffixIcon: IconButton(
                                   tooltip: 'توليد باركود تلقائي',
@@ -581,8 +645,10 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
                                 ),
                               ),
                               validator: (v) {
-                                if (v == null || v.trim().isEmpty) {
-                                  return 'الباركود مطلوب';
+                                if (_activityType != ActivityType.restaurantsCafes) {
+                                  if (v == null || v.trim().isEmpty) {
+                                    return 'الباركود مطلوب';
+                                  }
                                 }
                                 return null;
                               },
@@ -600,7 +666,7 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
                             child: DropdownButtonFormField<String>(
                               initialValue: categories.any((c) => c.id == _selectedCategoryId)
                                   ? _selectedCategoryId
-                                  : null,
+                                  : (categories.isNotEmpty ? categories.first.id : null),
                               decoration: InputDecoration(
                                 labelText: 'القسم / التصنيف *',
                                 prefixIcon: const Icon(Icons.category_outlined),
@@ -619,7 +685,12 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
                               onChanged: (val) {
                                 setState(() => _selectedCategoryId = val);
                               },
-                              validator: (v) => v == null ? 'يرجى اختيار القسم' : null,
+                              validator: (v) {
+                                if (_selectedCategoryId == null && v == null) {
+                                  return 'يرجى اختيار القسم';
+                                }
+                                return null;
+                              },
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -994,6 +1065,7 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
                     ),
                     const SizedBox(width: 10),
                     ElevatedButton.icon(
+                      key: const Key('simple_product_save_btn'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         padding: const EdgeInsets.symmetric(

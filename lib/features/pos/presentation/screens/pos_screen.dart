@@ -746,10 +746,17 @@ class _PosViewState extends State<_PosView> {
     String? initialQuery,
   }) async {
     final posCubit = context.read<PosCubit>();
+    ActivityType? targetActivity;
+    if (getIt.isRegistered<ActivitySettingsService>()) {
+      if (getIt<ActivitySettingsService>().cachedEnabledActivities.contains(ActivityType.restaurantsCafes)) {
+        targetActivity = ActivityType.restaurantsCafes;
+      }
+    }
     final barcodeOrResult = await showDialog<dynamic>(
       context: context,
       builder: (_) => SimpleProductFormDialog(
         initialQuery: initialQuery ?? _searchCtrl.text.trim(),
+        initialActivityType: targetActivity,
       ),
     );
     if (!mounted) return;

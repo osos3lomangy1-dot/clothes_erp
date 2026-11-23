@@ -7,6 +7,8 @@ import '../../../../core/navigation/app_navigator.dart';
 import '../../../../core/utils/barcode_helper.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
+import '../../../categories/domain/entities/category_entity.dart';
+import '../../../categories/presentation/screens/category_form_screen.dart';
 import '../../data/datasources/product_local_data_source.dart';
 import '../../domain/entities/product_entity.dart';
 import '../cubits/product_form_cubit.dart';
@@ -149,6 +151,12 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
   @override
   void initState() {
     super.initState();
+    if (getIt.isRegistered<ActivitySettingsService>()) {
+      final cached = getIt<ActivitySettingsService>().cachedEnabledActivities;
+      if (cached.contains(ActivityType.restaurantsCafes)) {
+        _singleQtyCtrl.text = '999';
+      }
+    }
     _singleSkuCtrl = TextEditingController(text: _generateSingleBarcode());
     _warrantyCtrl = TextEditingController(text: widget.product?.warrantyPeriod ?? '');
     _brandOrModelCtrl = TextEditingController(text: widget.product?.brandOrModel ?? '');
@@ -164,6 +172,12 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
   }
 
   String _generateSingleBarcode() {
+    if (getIt.isRegistered<ActivitySettingsService>()) {
+      final cached = getIt<ActivitySettingsService>().cachedEnabledActivities;
+      if (cached.contains(ActivityType.restaurantsCafes)) {
+        return 'REST-${DateTime.now().millisecondsSinceEpoch % 1000000}';
+      }
+    }
     final millis = DateTime.now().millisecondsSinceEpoch.toString();
     return 'SKU-${millis.substring(millis.length - 6)}';
   }
@@ -436,6 +450,17 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
     return null;
   }
 
+  Future<void> _openAddCategoryQuick(BuildContext context) async {
+    final newCat = await showDialog<CategoryEntity?>(
+      context: context,
+      builder: (_) => const CategoryFormDialog(),
+    );
+    if (newCat != null && mounted) {
+      if (!context.mounted) return;
+      context.read<ProductFormCubit>().reloadCategories(selectCategoryId: newCat.id);
+    }
+  }
+
   Future<void> _handleSubmit(BuildContext context, ProductFormState state) async {
     setState(() => _validationError = null);
 
@@ -516,14 +541,19 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
     final List<VariantInput> variants = [];
 
     if (isSingleItem) {
-      final sku = _singleSkuCtrl.text.trim();
+      var sku = _singleSkuCtrl.text.trim();
       final costPounds = double.tryParse(_singleCostCtrl.text.trim()) ?? 0.0;
       final sellPounds = double.tryParse(_singleSellCtrl.text.trim()) ?? 0.0;
-      final qty = int.tryParse(_singleQtyCtrl.text.trim()) ?? 0;
+      final defaultQty = state.activityTypeEnum == ActivityType.restaurantsCafes ? 999 : 0;
+      final qty = int.tryParse(_singleQtyCtrl.text.trim()) ?? defaultQty;
 
       if (sku.isEmpty) {
-        setState(() => _validationError = 'كود الصنف (الباركود) مطلوب');
-        return;
+        if (state.activityTypeEnum == ActivityType.restaurantsCafes) {
+          sku = 'REST-${DateTime.now().millisecondsSinceEpoch % 1000000}';
+        } else {
+          setState(() => _validationError = 'كود الصنف (الباركود) مطلوب');
+          return;
+        }
       }
 
       if (state.existingSkus.contains(sku.toLowerCase())) {
@@ -854,7 +884,17 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                         return Padding(
                                           padding: const EdgeInsets.only(left: 8.0),
                                           child: InkWell(
-                                            onTap: () => context.read<ProductFormCubit>().onActivityTypeChanged(act.code),
+                                            onTap: () {
+                                              context.read<ProductFormCubit>().onActivityTypeChanged(act.code);
+                                              if (act == ActivityType.restaurantsCafes) {
+                                                if (_singleQtyCtrl.text == '0' || _singleQtyCtrl.text.isEmpty) {
+                                                  _singleQtyCtrl.text = '999';
+                                                }
+                                                if (_singleSkuCtrl.text.isEmpty || _singleSkuCtrl.text.startsWith('SKU-')) {
+                                                  _singleSkuCtrl.text = 'REST-${DateTime.now().millisecondsSinceEpoch % 1000000}';
+                                                }
+                                              }
+                                            },
                                             borderRadius: BorderRadius.circular(10),
                                             child: Container(
                                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -903,8 +943,14 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                       initialValue: state.name,
                                       decoration: InputDecoration(
                                         labelText: 'اسم المنتج *',
-                                        hintText: 'مثال: بنطلون جينز سليم فيت',
-                                        prefixIcon: const Icon(Icons.checkroom),
+                                        hintText: state.activityTypeEnum == ActivityType.restaurantsCafes
+                                            ? 'مثال: برجر دبل تشيز / بيتزا مارجريتا / كابتشينو'
+                                            : 'مثال: بنطلون جينز سليم فيت',
+                                        prefixIcon: Icon(
+                                          state.activityTypeEnum == ActivityType.restaurantsCafes
+                                              ? Icons.restaurant_menu_rounded
+                                              : Icons.checkroom,
+                                        ),
                                         filled: true,
                                         fillColor: Colors.grey.shade50,
                                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
@@ -915,27 +961,48 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                   const SizedBox(width: 12),
                                   Expanded(
                                     flex: 2,
-                                    child: DropdownButtonFormField<String>(
-                                      initialValue: state.categoryId,
-                                      decoration: InputDecoration(
-                                        labelText: 'التصنيف *',
-                                        prefixIcon: const Icon(Icons.category),
-                                        filled: true,
-                                        fillColor: Colors.grey.shade50,
-                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                      ),
-                                      items: state.categories.map((category) {
-                                        return DropdownMenuItem(
-                                          value: category.id,
-                                          child: Text(category.name),
-                                        );
-                                      }).toList(),
-                                      onChanged: (value) {
-                                        if (value != null) {
-                                          final category = state.categories.firstWhere((c) => c.id == value);
-                                          context.read<ProductFormCubit>().onCategoryChanged(category.id, category.name);
-                                        }
-                                      },
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: DropdownButtonFormField<String>(
+                                            key: const Key('product_category_dropdown'),
+                                            isExpanded: true,
+                                            initialValue: state.categories.any((c) => c.id == state.categoryId)
+                                                ? state.categoryId
+                                                : (state.categories.isNotEmpty && state.activityTypeEnum == ActivityType.restaurantsCafes ? state.categories.first.id : null),
+                                            decoration: InputDecoration(
+                                              labelText: 'التصنيف *',
+                                              prefixIcon: const Icon(Icons.category),
+                                              filled: true,
+                                              fillColor: Colors.grey.shade50,
+                                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                            ),
+                                            items: state.categories.map((category) {
+                                              return DropdownMenuItem(
+                                                value: category.id,
+                                                child: Text(category.name),
+                                              );
+                                            }).toList(),
+                                            onChanged: (value) {
+                                              if (value != null) {
+                                                final category = state.categories.firstWhere((c) => c.id == value);
+                                                context.read<ProductFormCubit>().onCategoryChanged(category.id, category.name);
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        OutlinedButton.icon(
+                                          key: const Key('add_category_quick_btn'),
+                                          style: OutlinedButton.styleFrom(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                          ),
+                                          icon: const Icon(Icons.add_rounded, size: 18),
+                                          label: const Text('قسم جديد', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
+                                          onPressed: () => _openAddCategoryQuick(context),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
@@ -1301,12 +1368,18 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                         child: TextFormField(
                                           controller: _singleSkuCtrl,
                                           decoration: InputDecoration(
-                                            labelText: 'الباركود / كود المنتج (SKU) *',
+                                            labelText: state.activityTypeEnum == ActivityType.restaurantsCafes
+                                                ? 'الباركود / كود المنتج (SKU) (اختياري)'
+                                                : 'الباركود / كود المنتج (SKU) *',
                                             prefixIcon: const Icon(Icons.qr_code_scanner_rounded),
                                             suffixIcon: IconButton(
                                               tooltip: 'توليد باركود تلقائي',
                                               icon: const Icon(Icons.autorenew_rounded),
-                                              onPressed: () => setState(() => _singleSkuCtrl.text = _generateSingleBarcode()),
+                                              onPressed: () => setState(() {
+                                                _singleSkuCtrl.text = state.activityTypeEnum == ActivityType.restaurantsCafes
+                                                    ? 'REST-${DateTime.now().millisecondsSinceEpoch % 1000000}'
+                                                    : _generateSingleBarcode();
+                                              }),
                                             ),
                                             filled: true,
                                             fillColor: Colors.grey.shade50,
@@ -1805,6 +1878,7 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                   ),
                   const SizedBox(width: 12),
                   ElevatedButton.icon(
+                    key: const Key('product_form_save_btn'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -1817,7 +1891,11 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                     label: Text(
                       state.status == ProductFormStatus.loading
                           ? 'جاري الحفظ...'
-                          : (state.isEdit ? 'تحديث المنتج' : 'حفظ المنتج وجدول المقاسات'),
+                          : (state.isEdit
+                              ? 'تحديث المنتج'
+                              : (state.activityTypeEnum.isSingleItem
+                                  ? 'حفظ الصنف'
+                                  : 'حفظ المنتج وجدول المقاسات')),
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                     ),
                     onPressed: state.status == ProductFormStatus.loading ? null : () => _handleSubmit(context, state),

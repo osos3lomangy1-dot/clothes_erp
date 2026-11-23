@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/arabic_text_helper.dart';
+import '../../../categories/domain/repositories/category_repository.dart';
 import '../../../categories/domain/usecases/get_categories_usecase.dart';
 import '../../../product_variants/data/datasources/variant_local_data_source.dart';
 import '../../data/datasources/product_local_data_source.dart';
@@ -62,12 +63,19 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       } catch (_) {}
     }
 
-    categoriesResult.fold(
-      (failure) => emit(state.copyWith(
+    await categoriesResult.fold(
+      (failure) async => emit(state.copyWith(
         status: ProductFormStatus.error,
         errorMessage: failure.message,
       )),
-      (categories) {
+      (categories) async {
+        var cats = categories;
+        if (cats.isEmpty && defaultActivity == 'restaurantsCafes') {
+          if (getIt.isRegistered<CategoryRepository>()) {
+            final seedRes = await getIt<CategoryRepository>().seedDefaultHospitalityCategories();
+            cats = seedRes.getOrElse(() => cats);
+          }
+        }
         if (product != null) {
           emit(state.copyWith(
             name: product.name,
@@ -81,7 +89,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             isInstallmentEligible: product.isInstallmentEligible,
             createdAt: product.createdAt,
             updatedAt: product.updatedAt,
-            categories: categories,
+            categories: cats,
             existingProducts: existingProducts,
             existingSkus: existingSkus,
             isEdit: true,
@@ -89,17 +97,42 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             status: ProductFormStatus.initial,
           ));
         } else {
+          final isHosp = defaultActivity == 'restaurantsCafes';
+          final firstCat = (isHosp && cats.isNotEmpty) ? cats.first : null;
           emit(state.copyWith(
             activityType: defaultActivity,
+            categoryId: firstCat?.id,
+            categoryName: firstCat?.name,
             warrantyPeriod: null,
             brandOrModel: null,
             isInstallmentEligible: true,
-            categories: categories,
+            categories: cats,
             existingProducts: existingProducts,
             existingSkus: existingSkus,
             status: ProductFormStatus.initial,
           ));
         }
+      },
+    );
+  }
+
+  Future<void> reloadCategories({String? selectCategoryId}) async {
+    final categoriesResult = await _getCategoriesUseCase();
+    categoriesResult.fold(
+      (_) {},
+      (categories) {
+        String? catName;
+        if (selectCategoryId != null) {
+          final found = categories.where((c) => c.id == selectCategoryId);
+          if (found.isNotEmpty) {
+            catName = found.first.name;
+          }
+        }
+        emit(state.copyWith(
+          categories: categories,
+          categoryId: selectCategoryId ?? state.categoryId,
+          categoryName: catName ?? state.categoryName,
+        ));
       },
     );
   }
@@ -141,7 +174,22 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     emit(state.copyWith(categoryId: id, categoryName: name));
   }
 
-  void onActivityTypeChanged(String type) {
+  Future<void> onActivityTypeChanged(String type) async {
+    if (type == 'restaurantsCafes') {
+      var cats = state.categories;
+      if (cats.isEmpty && getIt.isRegistered<CategoryRepository>()) {
+        final seedRes = await getIt<CategoryRepository>().seedDefaultHospitalityCategories();
+        cats = seedRes.getOrElse(() => cats);
+      }
+      final firstCat = cats.isNotEmpty ? cats.first : null;
+      emit(state.copyWith(
+        activityType: type,
+        categories: cats,
+        categoryId: (state.categoryId == null || state.categoryId!.isEmpty) ? firstCat?.id : state.categoryId,
+        categoryName: (state.categoryName == null || state.categoryName!.isEmpty) ? firstCat?.name : state.categoryName,
+      ));
+      return;
+    }
     emit(state.copyWith(activityType: type));
   }
 

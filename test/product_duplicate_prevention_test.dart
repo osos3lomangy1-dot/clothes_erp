@@ -29,6 +29,8 @@ class FakeCategoryRepository implements CategoryRepository {
   Future<Either<Failure, List<CategoryEntity>>> getCategories() async => Right(categories);
   @override
   Future<Either<Failure, void>> updateCategory(CategoryEntity category) async => const Right(null);
+  @override
+  Future<Either<Failure, List<CategoryEntity>>> seedDefaultHospitalityCategories() async => Right(categories);
 }
 
 class FakeProductRepository implements ProductRepository {

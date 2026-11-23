@@ -7,4 +7,5 @@ abstract class CategoryRepository {
   Future<Either<Failure, void>> addCategory(CategoryEntity category);
   Future<Either<Failure, void>> updateCategory(CategoryEntity category);
   Future<Either<Failure, void>> deleteCategory(String id);
+  Future<Either<Failure, List<CategoryEntity>>> seedDefaultHospitalityCategories() async => const Right([]);
 }
