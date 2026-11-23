@@ -146,7 +146,7 @@ void main() {
       expect(find.text('تجارة جملة وتوزيع'), findsOneWidget);
       expect(find.text('مفروشات وأجهزة منزلية'), findsOneWidget);
       expect(find.text('كاشير سريع ومبسط'), findsOneWidget);
-      expect(find.text('مطبق حالياً'), findsOneWidget);
+      expect(find.text('مطبق حالياً ✓'), findsOneWidget);
     });
 
     testWidgets('2. Tapping an inactive preset opens confirmation dialog and applies features on confirm', (tester) async {
@@ -161,6 +161,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Tap Minimalist POS preset card
+      await tester.ensureVisible(find.byKey(const Key('preset_card_minimal_pos')));
       await tester.tap(find.byKey(const Key('preset_card_minimal_pos')));
       await tester.pumpAndSettle();
 
@@ -316,6 +317,40 @@ void main() {
 
       expect(find.text('لا توجد إعدادات أو ميزات مطابقة لـ "كلمة غير موجودة بتاتاً"'), findsOneWidget);
       expect(find.byIcon(Icons.search_off_rounded), findsOneWidget);
+    });
+
+    testWidgets('8. Addendum 26.2: Centered AppBar actions, Spotlight search field, and breadcrumbs', (tester) async {
+      tester.view.physicalSize = const Size(1400, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(buildTestScreen());
+      await tester.pumpAndSettle();
+
+      // Verify breadcrumb chip and title
+      expect(find.byKey(const Key('settings_active_breadcrumb_chip')), findsOneWidget);
+      expect(find.text('مركز الإعدادات الموحد'), findsOneWidget);
+      expect(find.text('لوحة التحكم في المزايا'), findsWidgets);
+
+      // Verify centered spotlight search and Ctrl + F badge
+      expect(find.byKey(const Key('settings_search_field')), findsOneWidget);
+      expect(find.byKey(const Key('settings_search_kbd_badge')), findsOneWidget);
+
+      // Verify AppBar actions
+      expect(find.byKey(const Key('settings_reset_defaults_btn')), findsOneWidget);
+      expect(find.byKey(const Key('settings_shortcuts_help_btn')), findsOneWidget);
+
+      // Tapping reset defaults opens confirmation dialog
+      await tester.tap(find.byKey(const Key('settings_reset_defaults_btn')));
+      await tester.pumpAndSettle();
+      expect(find.text('استعادة خيارات لوحة التحكم في المزايا'), findsOneWidget);
+
+      // Dismiss dialog
+      await tester.tap(find.text('إلغاء'));
+      await tester.pumpAndSettle();
     });
   });
 }

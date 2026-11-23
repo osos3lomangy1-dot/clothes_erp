@@ -2758,11 +2758,11 @@ enum ActivityType {
 ---
 
 #### 🧪 3. معايير القبول واختبارات الملحق 26.2:
-- [ ] توسط حقل البحث Spotlight في منتصف الـ AppBar ليتطابق مع عمود المحتوى.
-- [ ] ملء طرف الـ AppBar الأيسر بأزرار الإجراءات السريعة ومنع أي فجوات بيضاء.
-- [ ] تحويل شريط القوالب إلى شريط أفقي Scrollable بعرض كارت 260px دون بتر للنصوص.
-- [ ] استمرار عمل كافة مفاتيح الـ Widget (`settings_search_field`, `settings_search_kbd_badge`, `settings_search_clear_btn`, `settings_active_breadcrumb_chip`).
-- [ ] استمرار اجتياز كافة اختبارات الـ Regression وخلو `dart analyze lib/ test/ tool/` من أي أخطاء أو تحذيرات (0 issues).
+- [x] توسط حقل البحث Spotlight في منتصف الـ AppBar ليتطابق مع عمود المحتوى.
+- [x] ملء طرف الـ AppBar الأيسر بأزرار الإجراءات السريعة ومنع أي فجوات بيضاء.
+- [x] تحويل شريط القوالب إلى شريط أفقي Scrollable بعرض كارت 260px دون بتر للنصوص.
+- [x] استمرار عمل كافة مفاتيح الـ Widget (`settings_search_field`, `settings_search_kbd_badge`, `settings_search_clear_btn`, `settings_active_breadcrumb_chip`).
+- [x] استمرار اجتياز كافة اختبارات الـ Regression وخلو `dart analyze lib/ test/ tool/` من أي أخطاء أو تحذيرات (0 issues).
 
 ---
 

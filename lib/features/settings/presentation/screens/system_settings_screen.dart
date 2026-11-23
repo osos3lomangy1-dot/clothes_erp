@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -99,6 +100,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
   String _searchQuery = '';
   bool _isSearchFocused = false;
   final Set<int> _expandedModules = {0};
+  final ScrollController _presetsScrollController = ScrollController();
 
   @override
   void initState() {
@@ -117,6 +119,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
     _searchFocus.removeListener(_onSearchFocusChanged);
     _searchCtrl.dispose();
     _searchFocus.dispose();
+    _presetsScrollController.dispose();
     super.dispose();
   }
 
@@ -223,6 +226,235 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
     return 'admin';
   }
 
+  Widget _buildAppBarLeadingInfo() {
+    final activeItem = _activeCategoryItem;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(
+            Icons.tune_rounded,
+            color: AppColors.primary,
+            size: 22,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Flexible(
+                    child: Text(
+                      'مركز الإعدادات الموحد',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: Color(0xFF0F172A),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 6),
+                    child: Icon(
+                      Icons.chevron_left_rounded,
+                      size: 16,
+                      color: Color(0xFF94A3B8),
+                    ),
+                  ),
+                  Flexible(
+                    child: Container(
+                      key: const Key('settings_active_breadcrumb_chip'),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Text(
+                        activeItem.label,
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF334155),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              const Text(
+                'تحكم شامل في ميزات النظام وصلاحيات العمل وهوية المتجر',
+                style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSpotlightSearchField(double width) {
+    return Container(
+      width: width,
+      height: 40,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: TextField(
+        key: const Key('settings_search_field'),
+        controller: _searchCtrl,
+        focusNode: _searchFocus,
+        onChanged: (val) {
+          setState(() {
+            _searchQuery = val.trim();
+          });
+        },
+        style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+        decoration: InputDecoration(
+          isDense: true,
+          hintText: 'ابحث عن ميزة، قسم، أو صلاحية...',
+          hintStyle: const TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            size: 19,
+            color: Color(0xFF64748B),
+          ),
+          prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          suffixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  key: const Key('settings_search_clear_btn'),
+                  icon: const Icon(Icons.close_rounded, size: 16, color: Color(0xFF64748B)),
+                  splashRadius: 16,
+                  padding: EdgeInsets.zero,
+                  onPressed: () {
+                    _searchCtrl.clear();
+                    setState(() {
+                      _searchQuery = '';
+                    });
+                  },
+                )
+              : Padding(
+                  padding: const EdgeInsetsDirectional.only(end: 8),
+                  child: Container(
+                    key: const Key('settings_search_kbd_badge'),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      'Ctrl + F',
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF475569),
+                      ),
+                    ),
+                  ),
+                ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+        ),
+      ),
+    );
+  }
+
+  void _promptResetDefaults(BuildContext context) {
+    final cat = _activeCategoryItem;
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.restart_alt_rounded, color: AppColors.primary, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'استعادة خيارات ${cat.label}',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'هل أنت متأكد من رغبتك في استعادة الخيارات والأنماط الافتراضية لقسم "${cat.label}"؟',
+          style: const TextStyle(fontSize: 13, color: Color(0xFF334155)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () async {
+              Navigator.of(dialogCtx).pop();
+              final catKey = _currentCategory();
+              if (catKey == 'features') {
+                final userId = _userId(context);
+                final defaultPreset = _quickPresets.first;
+                final cubit = context.read<SettingsCubit>();
+                for (final entry in defaultPreset.features.entries) {
+                  await cubit.toggleFeature(entry.key, entry.value, userId);
+                }
+              }
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('تمت استعادة الخيارات الافتراضية لقسم "${cat.label}" بنجاح'),
+                    backgroundColor: const Color(0xFF0F172A),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+            child: const Text('استعادة الآن'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isAdmin = _isAdmin(context);
@@ -238,15 +470,16 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
       );
     }
 
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final searchWidth = screenWidth < 900
-        ? (screenWidth * 0.32).clamp(180.0, 360.0)
-        : 360.0;
-
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.keyF, control: true): () {
           _searchFocus.requestFocus();
+        },
+        const SingleActivator(LogicalKeyboardKey.f1): () {
+          showDialog(
+            context: context,
+            builder: (_) => const ShortcutsConfigDialog(),
+          );
         },
       },
       child: Focus(
@@ -256,224 +489,115 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
           appBar: AppBar(
             toolbarHeight: 68,
             titleSpacing: 20,
-            title: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    Icons.tune_rounded,
-                    color: AppColors.primary,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Flexible(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
+            automaticallyImplyLeading: false,
+            title: LayoutBuilder(
+              builder: (context, constraints) {
+                final availableWidth = constraints.maxWidth;
+                final isWide = availableWidth >= 950;
+                final leadingInfo = _buildAppBarLeadingInfo();
+
+                if (isWide) {
+                  return Stack(
+                    alignment: Alignment.center,
                     children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Flexible(
-                            child: Text(
-                              'مركز الإعدادات الموحد',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: Color(0xFF0F172A),
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: ((availableWidth - 400.0) / 2 + 60).clamp(280.0, 520.0),
                           ),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 8),
-                            child: Icon(
-                              Icons.chevron_left_rounded,
-                              size: 18,
-                              color: Color(0xFF94A3B8),
-                            ),
-                          ),
-                          Flexible(
-                            child: Container(
-                              key: const Key('settings_active_breadcrumb_chip'),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 3.5,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF1F5F9),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: const Color(0xFFE2E8F0)),
-                              ),
-                              child: Text(
-                                _activeCategoryItem.label,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF334155),
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 3),
-                      const Text(
-                        'تحكم شامل في ميزات النظام وصلاحيات العمل وهوية المتجر',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          color: Color(0xFF64748B),
+                          child: leadingInfo,
                         ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
+                      ),
+                      Center(
+                        child: _buildSpotlightSearchField(400.0),
                       ),
                     ],
-                  ),
-                ),
-              ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    Expanded(child: leadingInfo),
+                    const SizedBox(width: 8),
+                    _buildSpotlightSearchField(
+                      (availableWidth * 0.30).clamp(150.0, 300.0),
+                    ),
+                  ],
+                );
+              },
             ),
             actions: [
               Padding(
-                padding: const EdgeInsetsDirectional.only(end: 20),
-                child: Center(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    width: searchWidth,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: _isSearchFocused
-                            ? AppColors.secondary
-                            : const Color(0xFFE2E8F0),
-                        width: _isSearchFocused ? 1.5 : 1.0,
-                      ),
-                      boxShadow: _isSearchFocused
-                          ? [
-                              BoxShadow(
-                                color: AppColors.secondary.withValues(
-                                  alpha: 0.15,
-                                ),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: TextField(
-                      key: const Key('settings_search_field'),
-                      controller: _searchCtrl,
-                      focusNode: _searchFocus,
-                      textAlignVertical: TextAlignVertical.center,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF0F172A),
-                      ),
-                      onChanged: (val) =>
-                          setState(() => _searchQuery = val.trim()),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        hintText: 'ابحث عن ميزة، قسم، أو صلاحية...',
-                        hintStyle: const TextStyle(
-                          fontSize: 12.5,
-                          color: Color(0xFF94A3B8),
+                padding: const EdgeInsetsDirectional.only(end: 18),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Reset defaults button
+                    IconButton(
+                      key: const Key('settings_reset_defaults_btn'),
+                      tooltip: 'استعادة الخيارات الافتراضية للقسم',
+                      icon: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
                         ),
-                        prefixIcon: Icon(
-                          Icons.search_rounded,
+                        child: const Icon(
+                          Icons.restart_alt_rounded,
                           size: 19,
-                          color: _isSearchFocused
-                              ? AppColors.secondary
-                              : const Color(0xFF94A3B8),
+                          color: Color(0xFF475569),
                         ),
-                        prefixIconConstraints: const BoxConstraints(
-                          minWidth: 36,
-                          minHeight: 36,
-                        ),
-                        suffixIcon: _searchCtrl.text.isNotEmpty
-                            ? IconButton(
-                                key: const Key('settings_search_clear_btn'),
-                                icon: const Icon(
-                                  Icons.close_rounded,
-                                  size: 16,
-                                  color: Color(0xFF64748B),
-                                ),
-                                tooltip: 'مسح البحث',
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(
-                                  minWidth: 36,
-                                  minHeight: 36,
-                                ),
-                                splashRadius: 16,
-                                onPressed: () {
-                                  _searchCtrl.clear();
-                                  setState(() => _searchQuery = '');
-                                },
-                              )
-                            : GestureDetector(
-                                onTap: () => _searchFocus.requestFocus(),
-                                child: Padding(
-                                  padding: const EdgeInsetsDirectional.only(
-                                    end: 8,
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.center,
-                                    children: [
-                                      Container(
-                                        key: const Key(
-                                          'settings_search_kbd_badge',
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 7,
-                                          vertical: 3,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFE2E8F0),
-                                          borderRadius:
-                                              BorderRadius.circular(5),
-                                          border: Border.all(
-                                            color: const Color(0xFFCBD5E1),
-                                          ),
-                                        ),
-                                        child: const Text(
-                                          'Ctrl + F',
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(0xFF475569),
-                                            fontFamily: 'monospace',
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                      ),
+                      onPressed: () => _promptResetDefaults(context),
+                    ),
+                    const SizedBox(width: 8),
+                    // F1 Shortcuts help button
+                    Tooltip(
+                      message: 'دليل ومساعدة الاختصارات السريعة (F1)',
+                      child: InkWell(
+                        key: const Key('settings_shortcuts_help_btn'),
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () {
+                          showDialog(
+                            context: context,
+                            builder: (_) => const ShortcutsConfigDialog(),
+                          );
+                        },
+                        child: Container(
+                          height: 36,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.keyboard_outlined,
+                                size: 17,
+                                color: Color(0xFF475569),
+                              ),
+                              SizedBox(width: 6),
+                              Text(
+                                'F1',
+                                style: TextStyle(
+                                  fontFamily: 'monospace',
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11,
+                                  color: Color(0xFF334155),
                                 ),
                               ),
-                        suffixIconConstraints: const BoxConstraints(
-                          minWidth: 44,
-                          minHeight: 36,
-                        ),
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 8,
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ],
@@ -1966,42 +2090,54 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
 
   Widget _buildIndustryPresetsStrip(SettingsState state, String userId) {
     final currentFeatures = state.features;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isNarrow = constraints.maxWidth < 650;
-        final cards = _quickPresets.map((preset) {
-          final isActive = _isPresetActive(preset, currentFeatures);
-          return _buildPresetCard(
-            preset: preset,
-            isActive: isActive,
-            onTap: () => _promptApplyPreset(context, preset, userId),
-          );
-        }).toList();
+    final cards = _quickPresets.map((preset) {
+      final isActive = _isPresetActive(preset, currentFeatures);
+      return _buildPresetCard(
+        preset: preset,
+        isActive: isActive,
+        onTap: () => _promptApplyPreset(context, preset, userId),
+      );
+    }).toList();
 
-        if (isNarrow) {
-          return SizedBox(
-            height: 78,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: cards.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 8),
-              itemBuilder: (_, i) => SizedBox(width: 220, child: cards[i]),
-            ),
-          );
-        }
-
-        return SizedBox(
-          height: 78,
-          child: Row(
-            children: [
-              for (int i = 0; i < cards.length; i++) ...[
-                Expanded(child: cards[i]),
-                if (i < cards.length - 1) const SizedBox(width: 8),
-              ],
-            ],
+    return SizedBox(
+      height: 86,
+      child: Listener(
+        onPointerSignal: (pointerSignal) {
+          if (pointerSignal is PointerScrollEvent && _presetsScrollController.hasClients) {
+            final newOffset = _presetsScrollController.offset + pointerSignal.scrollDelta.dy;
+            _presetsScrollController.animateTo(
+              newOffset.clamp(0.0, _presetsScrollController.position.maxScrollExtent),
+              duration: const Duration(milliseconds: 100),
+              curve: Curves.easeOut,
+            );
+          }
+        },
+        child: ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(
+            dragDevices: {
+              PointerDeviceKind.touch,
+              PointerDeviceKind.mouse,
+              PointerDeviceKind.trackpad,
+            },
           ),
-        );
-      },
+          child: SingleChildScrollView(
+            controller: _presetsScrollController,
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            child: Row(
+              children: [
+                for (int i = 0; i < cards.length; i++) ...[
+                  SizedBox(
+                    width: 260,
+                    child: cards[i],
+                  ),
+                  if (i < cards.length - 1) const SizedBox(width: 12),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -2016,8 +2152,8 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
       borderRadius: BorderRadius.circular(10),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        height: 78,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        height: 86,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: isActive ? const Color(0xFFF0FDFA) : Colors.white,
           borderRadius: BorderRadius.circular(10),
@@ -2038,7 +2174,9 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(6),
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: isActive
                     ? AppColors.secondary.withValues(alpha: 0.15)
@@ -2047,11 +2185,11 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
               ),
               child: Icon(
                 preset.icon,
-                size: 19,
+                size: 22,
                 color: isActive ? AppColors.secondary : AppColors.primary,
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2061,34 +2199,34 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
                   Text(
                     preset.title,
                     style: TextStyle(
-                      fontSize: 11.5,
+                      fontSize: 13,
                       fontWeight: FontWeight.bold,
                       color: isActive ? AppColors.secondary : const Color(0xFF0F172A),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 1),
+                  const SizedBox(height: 2),
                   Text(
                     preset.subtitle,
                     style: const TextStyle(
-                      fontSize: 9.5,
+                      fontSize: 11,
                       color: Color(0xFF64748B),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: isActive ? const Color(0xFFCCFBF1) : const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      isActive ? 'مطبق حالياً' : preset.recommendationBadge,
+                      isActive ? 'مطبق حالياً ✓' : preset.recommendationBadge,
                       style: TextStyle(
-                        fontSize: 8.5,
+                        fontSize: 10,
                         fontWeight: FontWeight.bold,
                         color: isActive ? const Color(0xFF0D9488) : const Color(0xFF64748B),
                       ),
