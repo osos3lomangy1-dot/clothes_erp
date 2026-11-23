@@ -70,7 +70,7 @@ class _PaymentMethodPieChartState extends State<PaymentMethodPieChart> {
                 const SizedBox(width: 12),
                 const Expanded(
                   child: Text(
-                    'توزيع طرق الدفع (Donut Chart)',
+                    'توزيع طرق الدفع',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -111,12 +111,12 @@ class _PaymentMethodPieChartState extends State<PaymentMethodPieChart> {
               )
             else
               Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Expanded(
-                    flex: 5,
-                    child: SizedBox(
-                      height: 190,
-                      child: PieChart(
+                  SizedBox(
+                    width: 190,
+                    height: 190,
+                    child: PieChart(
                         PieChartData(
                           pieTouchData: PieTouchData(
                             touchCallback: (event, pieTouchResponse) {
@@ -157,10 +157,8 @@ class _PaymentMethodPieChartState extends State<PaymentMethodPieChart> {
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 24),
                   Expanded(
-                    flex: 6,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: List.generate(validEntries.length, (i) {

@@ -1448,11 +1448,12 @@ class _MainLayoutState extends State<MainLayout> {
 
   Widget _buildContextualHotkeyStrip() {
     final title = _activeTitle.toLowerCase();
-    final bool isProducts = title.contains('منتجات') ||
-        title.contains('تصنيفات') ||
-        title.contains('مخزون') ||
-        title.contains('جرد') ||
-        title.contains('بضاعة');
+    final bool isStocktake = title.contains('جرد');
+    final bool isProducts = !isStocktake &&
+        (title.contains('منتجات') ||
+            title.contains('تصنيفات') ||
+            title.contains('مخزون') ||
+            title.contains('بضاعة'));
     final bool isDelivery = title.contains('دليفري') ||
         title.contains('توصيل') ||
         title.contains('طيار') ||
@@ -1460,16 +1461,42 @@ class _MainLayoutState extends State<MainLayout> {
     final bool isPurchases =
         title.contains('مشتريات') || title.contains('مورد');
 
-    final String stripKey = isProducts
-        ? 'contextual_hotkey_strip_products'
-        : isDelivery
-            ? 'contextual_hotkey_strip_delivery'
-            : isPurchases
-                ? 'contextual_hotkey_strip_purchases'
-                : 'contextual_hotkey_strip_general';
+    final String stripKey = isStocktake
+        ? 'contextual_hotkey_strip_stocktake'
+        : isProducts
+            ? 'contextual_hotkey_strip_products'
+            : isDelivery
+                ? 'contextual_hotkey_strip_delivery'
+                : isPurchases
+                    ? 'contextual_hotkey_strip_purchases'
+                    : 'contextual_hotkey_strip_general';
 
     final List<_ContextualHotkeyItem> items;
-    if (isProducts) {
+    if (isStocktake) {
+      items = [
+        const _ContextualHotkeyItem(
+          key: 'hotkey_stocktake_confirm_qty',
+          label: 'Enter تأكيد الكمية',
+          icon: Icons.keyboard_return_rounded,
+        ),
+        const _ContextualHotkeyItem(
+          key: 'hotkey_stocktake_search',
+          label: 'F2 بحث صنف',
+          icon: Icons.search_rounded,
+        ),
+        const _ContextualHotkeyItem(
+          key: 'hotkey_stocktake_commit',
+          label: 'Ctrl+S اعتماد الجرد',
+          icon: Icons.check_circle_rounded,
+        ),
+        _ContextualHotkeyItem(
+          key: 'hotkey_stocktake_shortcuts',
+          label: 'F1 اختصارات',
+          icon: Icons.keyboard_rounded,
+          onTap: _openShortcutsGuide,
+        ),
+      ];
+    } else if (isProducts) {
       items = [
         const _ContextualHotkeyItem(
           key: 'hotkey_products_new_size',

@@ -290,6 +290,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
             children: [
               // ── Settings Sidebar (Right rail in RTL) ──
               Container(
+                key: const Key('settings_sidebar_container'),
                 width: 220,
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -376,7 +377,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
 
                         // ─── لوحة التحكم الشاملة في المزايا (Master Categorized Feature Control Matrix) ───
                         if (currentCat == 'features') ...[
-                          _sectionTitle('1. مزايا الكاشير ونقطة البيع (POS)'),
+                          _sectionTitle('1. مزايا الكاشير ونقطة البيع'),
                           _buildPosFeaturesCard(state, userId),
                           const SizedBox(height: 24),
 
@@ -419,7 +420,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
                                   color: AppColors.outlineVariant,
                                 ),
                                 _buildFeatureItem(
-                                  title: 'شاشة الكاشير ونقطة البيع (POS)',
+                                  title: 'شاشة الكاشير ونقطة البيع',
                                   description:
                                       'المحرك الأساسي لعمليات البيع، مسح الباركود، الفواتير الفورية، وتطبيق الخصومات',
                                   isCore: true,
@@ -521,7 +522,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
                                       color: Color(0xFF64748B),
                                     ),
                                   ),
-                                  activeThumbColor: AppColors.primary,
+                                  activeThumbColor: AppColors.secondary, activeTrackColor: AppColors.secondary.withValues(alpha: 0.38),
                                   value: state.cashEnabled,
                                   onChanged: (v) => _setPaymentMethod(
                                     context,
@@ -550,7 +551,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
                                       color: Color(0xFF64748B),
                                     ),
                                   ),
-                                  activeThumbColor: AppColors.primary,
+                                  activeThumbColor: AppColors.secondary, activeTrackColor: AppColors.secondary.withValues(alpha: 0.38),
                                   value: state.cardEnabled,
                                   onChanged: (v) => _setPaymentMethod(
                                     context,
@@ -580,7 +581,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
                                       color: Color(0xFF64748B),
                                     ),
                                   ),
-                                  activeThumbColor: AppColors.primary,
+                                  activeThumbColor: AppColors.secondary, activeTrackColor: AppColors.secondary.withValues(alpha: 0.38),
                                   value: state.creditPaymentEnabled,
                                   onChanged: (v) => _setPaymentMethod(
                                     context,
@@ -611,7 +612,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
                                         color: Color(0xFF64748B),
                                       ),
                                     ),
-                                    activeThumbColor: AppColors.primary,
+                                    activeThumbColor: AppColors.secondary, activeTrackColor: AppColors.secondary.withValues(alpha: 0.38),
                                     value: state.installmentPaymentEnabled,
                                     onChanged: (v) => _setPaymentMethod(
                                       context,
@@ -1078,7 +1079,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
                                   size: 22,
                                 ),
                               ),
-                              activeThumbColor: AppColors.primary,
+                              activeThumbColor: AppColors.secondary, activeTrackColor: AppColors.secondary.withValues(alpha: 0.38),
                               value: state.cloudSyncEnabled,
                               onChanged: (v) async {
                                 final err = await context
@@ -1277,7 +1278,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
                         style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                       ),
                       value: isEnabled,
-                      activeThumbColor: AppColors.primary,
+                      activeThumbColor: AppColors.secondary, activeTrackColor: AppColors.secondary.withValues(alpha: 0.38),
                       onChanged: def.coreAlwaysEnabled
                           ? null
                           : (val) => _toggleFeature(context, def.key, val, userId),
@@ -1469,12 +1470,12 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
         children: [
           _cardHeader(
             icon: Icons.point_of_sale_rounded,
-            title: 'مزايا الكاشير ونقطة البيع (POS)',
+            title: 'مزايا الكاشير ونقطة البيع',
             subtitle: 'التحكم في وظائف المبيعات، التسعير، طرق السداد، وإدارة الفواتير',
           ),
           Divider(height: 24, color: AppColors.outlineVariant),
           _buildFeatureItem(
-            title: 'شاشة الكاشير ونقطة البيع (POS)',
+            title: 'شاشة الكاشير ونقطة البيع',
             description: 'المحرك الأساسي لعمليات البيع، مسح الباركود، الفواتير الفورية، والطباعة',
             isCore: true,
             isEnabled: true,
@@ -1491,7 +1492,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
           Divider(height: 16, color: AppColors.outlineVariant),
           _buildFeatureItem(
             key: const Key('feature_split_payment_toggle'),
-            title: 'الدفع المجزأ (Split Payment)',
+            title: 'الدفع المجزأ',
             description: 'السماح بسداد الفاتورة الواحدة بجزء نقدي بالدرج وجزء بطاقة بنكية أو محفظة إلكترونية',
             isCore: false,
             isEnabled: state.features[FeatureKeys.splitPayment] ?? true,
@@ -1500,7 +1501,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
           Divider(height: 16, color: AppColors.outlineVariant),
           _buildFeatureItem(
             key: const Key('feature_credit_sales_toggle'),
-            title: 'البيع الآجل والشكك (Credit Sales)',
+            title: 'البيع الآجل والشكك',
             description: 'تمكين خيار "أجل / متبقي" وترحيل المبالغ المتبقية كديون في كشف حساب العميل',
             dependencyInfo: 'يعتمد على: العملاء',
             isCore: false,
@@ -1510,7 +1511,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
           Divider(height: 16, color: AppColors.outlineVariant),
           _buildFeatureItem(
             key: const Key('feature_hold_bills_toggle'),
-            title: 'فواتير متعددة وتعليق الفاتورة (Hold / Multi-Bills)',
+            title: 'فواتير متعددة وتعليق الفاتورة',
             description: 'إتاحة شريط تبويبات الفواتير لتعليق فاتورة وخدمة عميل آخر في الطابور دون فقد البيانات',
             isCore: false,
             isEnabled: state.features[FeatureKeys.holdBills] ?? true,
@@ -1519,7 +1520,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
           Divider(height: 16, color: AppColors.outlineVariant),
           _buildFeatureItem(
             key: const Key('feature_delivery_toggle'),
-            title: 'إدارة وتتبع الدليفري والطيارين (Delivery)',
+            title: 'إدارة وتتبع الدليفري والطيارين',
             description: 'تمكين شاشات أوردرات التوصيل، حساب رسوم الشحن، وتعيين الطيارين في نقطة البيع والقائمة',
             isCore: false,
             isEnabled: state.features[FeatureKeys.delivery] ?? false,
@@ -1682,7 +1683,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
           Divider(height: 24, color: AppColors.outlineVariant),
           _buildFeatureItem(
             key: const Key('feature_pre_orders_toggle'),
-            title: 'موديول الحجز المسبق والطلبات الخاصة (Pre-Orders)',
+            title: 'موديول الحجز المسبق والطلبات الخاصة',
             description: 'إدارة طلبات الاستيراد والحجز المسبق، تسجيل العربونات، وتتبع حالة وصول الشحنات',
             isCore: false,
             isEnabled: state.features[FeatureKeys.preOrders] ?? false,
@@ -1691,7 +1692,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
           Divider(height: 16, color: AppColors.outlineVariant),
           _buildFeatureItem(
             key: const Key('feature_consolidated_batches_toggle'),
-            title: 'الشحنات المجمعة وتوزيع الشحن (Consolidated Batches)',
+            title: 'الشحنات المجمعة وتوزيع الشحن',
             description: 'تمكين دورة شحن الكراتين المجمعة وتوزيع تكلفة الشحن على بنود العملاء بحسابات مرنة عادلة',
             dependencyInfo: 'يعتمد على: الحجز المسبق',
             isCore: false,
@@ -1701,7 +1702,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
           Divider(height: 16, color: AppColors.outlineVariant),
           _buildFeatureItem(
             key: const Key('feature_telegram_bot_toggle'),
-            title: 'سحب رسائل تيليجرام التلقائي (Telegram Bot Polling)',
+            title: 'سحب رسائل تيليجرام التلقائي',
             description: 'الاستقبال الآلي للرسائل وحجوزات العملاء من جروبات وقنوات تيليجرام وتحويلها لأوردرات بضغطة زر',
             dependencyInfo: 'يعتمد على: الحجز المسبق',
             isCore: false,
@@ -1711,7 +1712,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
           Divider(height: 16, color: AppColors.outlineVariant),
           _buildFeatureItem(
             key: const Key('feature_whatsapp_direct_toggle'),
-            title: 'تنبيهات وتحديثات العملاء عبر واتساب (WhatsApp Direct)',
+            title: 'تنبيهات وتحديثات العملاء عبر واتساب',
             description: 'أزرار مراسلة فورية للعميل برقم التتبع وتنبيهه عند وصول الشحنة للمحل واستحقاق المتبقي',
             dependencyInfo: 'يعتمد على: الحجز المسبق',
             isCore: false,
@@ -1736,7 +1737,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
           Divider(height: 24, color: AppColors.outlineVariant),
           _buildFeatureItem(
             key: const Key('feature_shifts_toggle'),
-            title: 'إدارة الورديات وتقفيل الكاشير (Shift Z-Report)',
+            title: 'إدارة الورديات وتقفيل الكاشير',
             description: 'إلزام الكاشير بفتح وردية وتحديد العهدة الافتتاحية وجرد الدرج النقدي عند تقفيل الوردية',
             isCore: false,
             isEnabled: state.features[FeatureKeys.shifts] ?? true,
@@ -1745,7 +1746,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
           Divider(height: 16, color: AppColors.outlineVariant),
           _buildFeatureItem(
             key: const Key('feature_blind_shift_closing_toggle'),
-            title: 'الجرد الأعمى عند تقفيل الوردية (Blind Shift Closing)',
+            title: 'الجرد الأعمى عند تقفيل الوردية',
             description: 'إخفاء الرصيد المتوقع للدرج وإلزام الكاشير بعدّ النقدية يدوياً لمنع التلاعب وتوليد تقرير العجز/الزيادة للمدير فقط',
             dependencyInfo: 'يعتمد على: الورديات',
             isCore: false,
@@ -2012,7 +2013,8 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
               key: key,
               value: isEnabled,
               onChanged: onChanged,
-              activeThumbColor: AppColors.primary,
+              activeThumbColor: AppColors.secondary,
+              activeTrackColor: AppColors.secondary.withValues(alpha: 0.38),
             ),
         ],
       ),
@@ -2073,33 +2075,16 @@ class _SidebarNavItem extends StatelessWidget {
                 ),
                 const SizedBox(width: 11),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.label,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight:
-                              selected ? FontWeight.bold : FontWeight.w600,
-                          color: selected
-                              ? AppColors.primary
-                              : const Color(0xFF0F172A),
-                        ),
-                      ),
-                      const SizedBox(height: 1),
-                      Text(
-                        item.subtitle,
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          color: selected
-                              ? AppColors.primary.withValues(alpha: 0.8)
-                              : const Color(0xFF94A3B8),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                  child: Text(
+                    item.label,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight:
+                          selected ? FontWeight.bold : FontWeight.w600,
+                      color: selected
+                          ? AppColors.primary
+                          : const Color(0xFF0F172A),
+                    ),
                   ),
                 ),
                 if (selected)
@@ -2273,7 +2258,7 @@ class _CashierPermissionsSettingsCardState
               contentPadding: EdgeInsets.zero,
               title: const Text('السماح بالبيع الآجل (على الحساب)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
               subtitle: const Text('تمكين الكاشير من اختيار الدفع الآجل وربط الفاتورة بمديونية العميل', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-              activeThumbColor: AppColors.primary,
+              activeThumbColor: AppColors.secondary, activeTrackColor: AppColors.secondary.withValues(alpha: 0.38),
               value: _config.allowCreditSale,
               onChanged: (v) => _update(_config.copyWith(allowCreditSale: v)),
             ),
@@ -2282,7 +2267,7 @@ class _CashierPermissionsSettingsCardState
               contentPadding: EdgeInsets.zero,
               title: const Text('السماح ببيع الأقساط (عقود التقسيط)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
               subtitle: const Text('تمكين الكاشير من إنشاء وجدولة عقود أقساط جديدة للعميل من شاشة البيع', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-              activeThumbColor: AppColors.primary,
+              activeThumbColor: AppColors.secondary, activeTrackColor: AppColors.secondary.withValues(alpha: 0.38),
               value: _config.allowInstallments,
               onChanged: (v) => _update(_config.copyWith(allowInstallments: v)),
             ),
@@ -2291,7 +2276,7 @@ class _CashierPermissionsSettingsCardState
               contentPadding: EdgeInsets.zero,
               title: const Text('السماح باستلام شحنات بضاعة للمخزن', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
               subtitle: const Text('إظهار شاشة استلام البضاعة (الشحنة الجديدة) وتحديث كميات المخزن', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-              activeThumbColor: AppColors.primary,
+              activeThumbColor: AppColors.secondary, activeTrackColor: AppColors.secondary.withValues(alpha: 0.38),
               value: _config.allowGoodsIntake,
               onChanged: (v) => _update(_config.copyWith(allowGoodsIntake: v)),
             ),
@@ -2300,7 +2285,7 @@ class _CashierPermissionsSettingsCardState
               contentPadding: EdgeInsets.zero,
               title: const Text('السماح بإضافة وتعديل بيانات العملاء', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
               subtitle: const Text('إتاحة شاشة سجل العملاء للكاشير لتسجيل عميل جديد أو تحديث بياناته', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-              activeThumbColor: AppColors.primary,
+              activeThumbColor: AppColors.secondary, activeTrackColor: AppColors.secondary.withValues(alpha: 0.38),
               value: _config.allowManageCustomers,
               onChanged: (v) => _update(_config.copyWith(allowManageCustomers: v)),
             ),
@@ -2309,7 +2294,7 @@ class _CashierPermissionsSettingsCardState
               contentPadding: EdgeInsets.zero,
               title: const Text('السماح بتسجيل مصروفات نثرية من الدرج', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
               subtitle: const Text('تمكين الكاشير من إثبات مصاريف يومية صغيرة (بوفيه/نظافة) تخصم من الدرج', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-              activeThumbColor: AppColors.primary,
+              activeThumbColor: AppColors.secondary, activeTrackColor: AppColors.secondary.withValues(alpha: 0.38),
               value: _config.allowCashExpenses,
               onChanged: (v) => _update(_config.copyWith(allowCashExpenses: v)),
             ),
@@ -2318,7 +2303,7 @@ class _CashierPermissionsSettingsCardState
               contentPadding: EdgeInsets.zero,
               title: const Text('السماح بالاطلاع على سجل الفواتير العامة', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
               subtitle: const Text('إتاحة فواتير المحل والورديات السابقة كاملة (بدلاً من الاقتصار على فواتير ورديته)', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-              activeThumbColor: AppColors.primary,
+              activeThumbColor: AppColors.secondary, activeTrackColor: AppColors.secondary.withValues(alpha: 0.38),
               value: _config.allowViewInvoicesHistory,
               onChanged: (v) => _update(_config.copyWith(allowViewInvoicesHistory: v)),
             ),
@@ -2327,7 +2312,7 @@ class _CashierPermissionsSettingsCardState
               contentPadding: EdgeInsets.zero,
               title: const Text('السماح بخصم يدوي استثنائي على الفاتورة', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
               subtitle: const Text('تمكين الكاشير من إدخال خصم يدوي إضافي دون طلب موافقة المدير', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-              activeThumbColor: AppColors.primary,
+              activeThumbColor: AppColors.secondary, activeTrackColor: AppColors.secondary.withValues(alpha: 0.38),
               value: _config.allowManualDiscount,
               onChanged: (v) => _update(_config.copyWith(allowManualDiscount: v)),
             ),
@@ -2422,7 +2407,7 @@ class _InstallmentSettingsSectionState
                 'تأكيد المدير عند إنشاء عقد تقسيط، تسجيل دفعة، التسوية المبكرة، أو الإلغاء',
                 style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
               ),
-              activeThumbColor: AppColors.primary,
+              activeThumbColor: AppColors.secondary, activeTrackColor: AppColors.secondary.withValues(alpha: 0.38),
               value: _pinRequired,
               onChanged: (v) async {
                 final uid = _userId(context);
@@ -2602,7 +2587,7 @@ class _CreditSalesSettingsSectionState
                 'إظهار طريقة الدفع "آجل" في شاشة البيع، مع تسجيل الفواتير في ذمة العميل',
                 style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
               ),
-              activeThumbColor: AppColors.primary,
+              activeThumbColor: AppColors.secondary, activeTrackColor: AppColors.secondary.withValues(alpha: 0.38),
               value: creditEnabled,
               onChanged: (v) async {
                 final err = await context
@@ -2630,7 +2615,7 @@ class _CreditSalesSettingsSectionState
                 'طلب موافقة وتأكيد المدير برقم الـ PIN عند إتمام أي عملية بيع بالآجل',
                 style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
               ),
-              activeThumbColor: AppColors.primary,
+              activeThumbColor: AppColors.secondary, activeTrackColor: AppColors.secondary.withValues(alpha: 0.38),
               value: _creditPinRequired,
               onChanged: (v) async {
                 await pinSvc.setCreditPinRequired(

@@ -622,48 +622,57 @@ class _PosViewState extends State<_PosView> {
       ),
       child: Row(
         children: [
-          _buildFooterHotkeyChip(
-            key: const Key('pos_footer_hotkey_search'),
-            label: 'F2 بحث',
-            icon: Icons.search_rounded,
-            onTap: () => _searchFocusNode.requestFocus(),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildFooterHotkeyChip(
+                    key: const Key('pos_footer_hotkey_search'),
+                    label: 'F2 بحث',
+                    icon: Icons.search_rounded,
+                    onTap: () => _searchFocusNode.requestFocus(),
+                  ),
+                  const SizedBox(width: 8),
+                  _buildFooterHotkeyChip(
+                    key: const Key('pos_footer_hotkey_cash'),
+                    label: 'F5 كاش',
+                    icon: Icons.payments_outlined,
+                    onTap: () => _cartPanelKey.currentState?.setPaymentMethod('cash'),
+                  ),
+                  const SizedBox(width: 8),
+                  _buildFooterHotkeyChip(
+                    key: const Key('pos_footer_hotkey_card'),
+                    label: 'F6 فيزا',
+                    icon: Icons.credit_card_rounded,
+                    onTap: () => _cartPanelKey.currentState?.setPaymentMethod('card'),
+                  ),
+                  const SizedBox(width: 8),
+                  _buildFooterHotkeyChip(
+                    key: const Key('pos_footer_hotkey_hold'),
+                    label: 'F10 تعليق',
+                    icon: Icons.pause_circle_outline_rounded,
+                    onTap: () => _cartPanelKey.currentState?.addNewBillTab(),
+                  ),
+                  const SizedBox(width: 8),
+                  _buildFooterHotkeyChip(
+                    key: const Key('pos_footer_hotkey_recall'),
+                    label: 'F11 استرجاع',
+                    icon: Icons.play_circle_outline_rounded,
+                    onTap: () => _cartPanelKey.currentState?.switchNextHeldBill(),
+                  ),
+                  const SizedBox(width: 8),
+                  _buildFooterHotkeyChip(
+                    key: const Key('pos_footer_hotkey_discount'),
+                    label: 'Ctrl+D خصم',
+                    icon: Icons.percent_rounded,
+                    onTap: () => _cartPanelKey.currentState?.focusDiscount(),
+                  ),
+                ],
+              ),
+            ),
           ),
-          const SizedBox(width: 8),
-          _buildFooterHotkeyChip(
-            key: const Key('pos_footer_hotkey_cash'),
-            label: 'F5 كاش',
-            icon: Icons.payments_outlined,
-            onTap: () => _cartPanelKey.currentState?.setPaymentMethod('cash'),
-          ),
-          const SizedBox(width: 8),
-          _buildFooterHotkeyChip(
-            key: const Key('pos_footer_hotkey_card'),
-            label: 'F6 فيزا',
-            icon: Icons.credit_card_rounded,
-            onTap: () => _cartPanelKey.currentState?.setPaymentMethod('card'),
-          ),
-          const SizedBox(width: 8),
-          _buildFooterHotkeyChip(
-            key: const Key('pos_footer_hotkey_hold'),
-            label: 'F10 تعليق',
-            icon: Icons.pause_circle_outline_rounded,
-            onTap: () => _cartPanelKey.currentState?.addNewBillTab(),
-          ),
-          const SizedBox(width: 8),
-          _buildFooterHotkeyChip(
-            key: const Key('pos_footer_hotkey_recall'),
-            label: 'F11 استرجاع',
-            icon: Icons.play_circle_outline_rounded,
-            onTap: () => _cartPanelKey.currentState?.switchNextHeldBill(),
-          ),
-          const SizedBox(width: 8),
-          _buildFooterHotkeyChip(
-            key: const Key('pos_footer_hotkey_discount'),
-            label: 'Ctrl+D خصم',
-            icon: Icons.percent_rounded,
-            onTap: () => _cartPanelKey.currentState?.focusDiscount(),
-          ),
-          const Spacer(),
+          const SizedBox(width: 12),
           _buildFooterHotkeyChip(
             key: const Key('pos_footer_hotkey_checkout'),
             label: 'F12 دفع',
@@ -1528,17 +1537,19 @@ class _ProductPanel extends StatelessWidget {
     return Column(
       children: [
         const SizedBox(height: 10),
-        // Activity Filter Bar: Multi-Activity store tabs
+        // Unified Category & Activity Filter Bar (Task 25: Streamlined single-row filter)
         BlocBuilder<PosCubit, PosState>(
-          buildWhen: (prev, curr) => prev.selectedActivity != curr.selectedActivity,
           builder: (context, state) {
-            final selected = state.selectedActivity;
+            final selectedActivity = state.selectedActivity;
+            final allSelectedCategory = state.selectedCategory == 'All';
+
             return StreamBuilder<List<ActivityType>>(
               stream: getIt.isRegistered<ActivitySettingsService>()
                   ? getIt<ActivitySettingsService>().watchEnabledActivities()
                   : Stream.value(ActivityType.values),
               builder: (context, actSnap) {
                 final enabledActs = actSnap.data ?? ActivityType.values;
+                final bool showMultiActivities = enabledActs.length > 1;
 
                 return StreamBuilder<bool>(
                   stream: getIt.isRegistered<ActivitySettingsService>()
@@ -1553,23 +1564,44 @@ class _ProductPanel extends StatelessWidget {
                       child: ListView(
                         scrollDirection: Axis.horizontal,
                         children: [
-                          _activityTab(
-                            label: 'الكل',
-                            icon: Icons.apps_rounded,
-                            isSelected: selected == 'all',
-                            onTap: () => context.read<PosCubit>().filterByActivity('all'),
-                          ),
-                          for (final act in enabledActs) ...[
-                            const SizedBox(width: 8),
+                          if (showMultiActivities) ...[
                             _activityTab(
-                              label: act.labelArabic,
-                              icon: act.icon,
-                              isSelected: selected == act.code,
-                              onTap: () => context.read<PosCubit>().filterByActivity(act.code),
+                              label: 'الكل',
+                              icon: Icons.apps_rounded,
+                              isSelected: selectedActivity == 'all',
+                              onTap: () => context.read<PosCubit>().filterByActivity('all'),
+                            ),
+                            for (final act in enabledActs) ...[
+                              const SizedBox(width: 6),
+                              _activityTab(
+                                label: act.labelArabic,
+                                icon: act.icon,
+                                isSelected: selectedActivity == act.code,
+                                onTap: () => context.read<PosCubit>().filterByActivity(act.code),
+                              ),
+                            ],
+                            Container(
+                              height: 24,
+                              width: 1,
+                              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                              color: AppColors.outlineVariant,
+                            ),
+                          ],
+                          _categoryChip(
+                            label: 'الكل',
+                            isSelected: allSelectedCategory,
+                            onTap: () => context.read<PosCubit>().filterByCategory('All'),
+                          ),
+                          for (final cat in state.categories) ...[
+                            const SizedBox(width: 6),
+                            _categoryChip(
+                              label: cat.name,
+                              isSelected: state.selectedCategory == cat.id,
+                              onTap: () => context.read<PosCubit>().filterByCategory(cat.id),
                             ),
                           ],
                           if (preOrdersOn) ...[
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 6),
                             _activityTab(
                               label: 'حجز مسبق',
                               icon: Icons.event_note_rounded,
@@ -1589,53 +1621,6 @@ class _ProductPanel extends StatelessWidget {
                 );
               },
             );
-          },
-        ),
-        const SizedBox(height: 8),
-        // Category Chips: Horizontal scrollable row
-        BlocBuilder<PosCubit, PosState>(
-          builder: (context, state) {
-            try {
-              final allSelected = state.selectedCategory == 'All';
-              return SizedBox(
-                height: 36,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  children: [
-                    _categoryChip(
-                      label: 'الكل',
-                      isSelected: allSelected,
-                      onTap: () =>
-                          context.read<PosCubit>().filterByCategory('All'),
-                    ),
-                    const SizedBox(width: 6),
-                    ...state.categories.map((cat) {
-                      final isSelected = state.selectedCategory == cat.id;
-                      return Padding(
-                        padding: const EdgeInsets.only(left: 6),
-                        child: _categoryChip(
-                          label: cat.name,
-                          isSelected: isSelected,
-                          onTap: () =>
-                              context.read<PosCubit>().filterByCategory(cat.id),
-                        ),
-                      );
-                    }),
-                  ],
-                ),
-              );
-            } catch (e) {
-              return Container(
-                height: 44,
-                color: Colors.red.shade50,
-                padding: const EdgeInsets.all(8),
-                child: Text(
-                  'CatChip error: $e',
-                  style: const TextStyle(color: Colors.red, fontSize: 10),
-                ),
-              );
-            }
           },
         ),
 
@@ -2094,26 +2079,30 @@ class _ProductCard extends StatelessWidget {
                                     ),
                                     decoration: BoxDecoration(
                                       color: isOut
-                                          ? Colors.grey.shade300
+                                          ? const Color(0xFFE2E8F0)
                                           : AppColors.primary,
                                       borderRadius: BorderRadius.circular(6),
                                     ),
-                                    child: const Row(
+                                    child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Icon(
                                           Icons.add_rounded,
                                           size: 14,
-                                          color: Colors.white,
+                                          color: isOut
+                                              ? const Color(0xFF475569)
+                                              : Colors.white,
                                         ),
-                                        SizedBox(width: 2),
+                                        const SizedBox(width: 2),
                                         Text(
                                           'إضافة',
                                           style: TextStyle(
                                             fontFamily: 'Cairo',
                                             fontSize: 10.5,
                                             fontWeight: FontWeight.bold,
-                                            color: Colors.white,
+                                            color: isOut
+                                                ? const Color(0xFF475569)
+                                                : Colors.white,
                                           ),
                                         ),
                                       ],
@@ -2719,13 +2708,15 @@ class _VariantModalState extends State<_VariantModal> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
+                    disabledBackgroundColor: const Color(0xFFE2E8F0),
+                    disabledForegroundColor: const Color(0xFF64748B),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.add_shopping_cart_rounded,
-                    color: Colors.white,
+                    color: maxStock <= 0 ? const Color(0xFF64748B) : Colors.white,
                     size: 18,
                   ),
                   label: Text(

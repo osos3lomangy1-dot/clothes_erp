@@ -1120,8 +1120,12 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
             const SizedBox(width: 8),
           ],
           ElevatedButton.icon(
+            key: const Key('save_shipment_appbar_btn'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green.shade700,
+              backgroundColor: _totalItemsCount > 0 ? AppColors.primary : const Color(0xFFE2E8F0),
+              foregroundColor: _totalItemsCount > 0 ? Colors.white : const Color(0xFF94A3B8),
+              disabledBackgroundColor: const Color(0xFFE2E8F0),
+              disabledForegroundColor: const Color(0xFF94A3B8),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
@@ -1131,12 +1135,19 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
                     height: 18,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
-                : const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                : Icon(
+                    Icons.check_circle_rounded,
+                    color: _totalItemsCount > 0 && !_isSaving ? Colors.white : const Color(0xFF94A3B8),
+                    size: 18,
+                  ),
             label: Text(
               _isSaving ? 'جاري الحفظ...' : 'حفظ الشحنة ($_totalItemsCount قطعة)',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: _totalItemsCount > 0 && !_isSaving ? Colors.white : const Color(0xFF94A3B8),
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            onPressed: _isSaving ? null : _saveReceipt,
+            onPressed: (_isSaving || _totalItemsCount == 0) ? null : _saveReceipt,
           ),
           const SizedBox(width: 16),
         ],

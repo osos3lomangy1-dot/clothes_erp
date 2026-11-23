@@ -75,12 +75,15 @@ class FinancialComparisonBarChart extends StatelessWidget {
                   child: Icon(Icons.bar_chart_rounded, color: AppColors.primary, size: 22),
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  'المقارنة المالية (إيرادات / تكاليف / مصروفات / أرباح)',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.onSurface,
+                const Expanded(
+                  child: Text(
+                    'المقارنة المالية (إيرادات / تكاليف / مصروفات / أرباح)',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.onSurface,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -162,7 +165,7 @@ class FinancialComparisonBarChart extends StatelessWidget {
                       bottomTitles: AxisTitles(
                         sideTitles: SideTitles(
                           showTitles: true,
-                          reservedSize: 32,
+                          reservedSize: 36,
                           getTitlesWidget: (value, meta) {
                             final idx = value.toInt();
                             if (idx < 0 || idx >= bars.length) return const SizedBox.shrink();

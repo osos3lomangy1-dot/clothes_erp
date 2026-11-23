@@ -769,44 +769,55 @@ class _StocktakeScreenState extends State<StocktakeScreen> {
       ),
       child: Row(
         children: [
-          // Product info
+          // Product info & Details with adjacent system stock
           Expanded(
-            flex: 4,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text(
-                  item.productName,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 14),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        item.productName,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 14),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${item.color} • مقاس ${item.size}  |  كود: ${item.sku}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  '${item.color} • مقاس ${item.size}  |  كود: ${item.sku}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('بالنظام: ',
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                      Text(
+                        '${item.quantity}',
+                        style: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-
-          // System Qty
-          SizedBox(
-            width: 100,
-            child: Column(
-              children: [
-                Text('بالنظام',
-                    style:
-                        TextStyle(fontSize: 11, color: Colors.grey.shade600)),
-                Text(
-                  '${item.quantity}',
-                  style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-          ),
+          const SizedBox(width: 16),
 
           // Actual Count Input + Stepper
           SizedBox(
@@ -865,6 +876,7 @@ class _StocktakeScreenState extends State<StocktakeScreen> {
               ],
             ),
           ),
+          const SizedBox(width: 12),
 
           // Variance Badge
           SizedBox(
