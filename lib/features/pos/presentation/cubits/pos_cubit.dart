@@ -305,7 +305,7 @@ class PosCubit extends Cubit<PosState> {
       final pName = _productNameMap[v.productId] ?? '';
       final catId = _productCategoryMap[v.productId];
       final catName = _categoryNameMap[catId] ?? '';
-      final token = _normalize('$pName ${v.productName ?? ''} ${v.sku} ${v.productCode} ${v.color} ${v.size} $catName');
+      final token = _normalize('$pName ${v.productName} ${v.sku} ${v.productCode} ${v.color} ${v.size} $catName');
       searchTokenMap[v.id] = token;
       if (v.productCode.isNotEmpty) {
         barcodeMap[v.productCode.trim()] = v;
