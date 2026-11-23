@@ -465,6 +465,14 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
+      // Expand delivery module accordion (Task 26 modular structure)
+      final module2Header = find.byKey(const Key('module_header_2'));
+      if (module2Header.evaluate().isNotEmpty) {
+        await tester.ensureVisible(module2Header);
+        await tester.tap(module2Header);
+        await tester.pumpAndSettle();
+      }
+
       final deliveryToggle = find.byKey(const Key('feature_delivery_toggle'));
       expect(deliveryToggle, findsOneWidget);
 

@@ -242,60 +242,69 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
           ),
         ),
         const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'مركز الإعدادات الموحد',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    color: Color(0xFF0F172A),
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 6),
-                  child: Icon(
-                    Icons.chevron_left_rounded,
-                    size: 16,
-                    color: Color(0xFF94A3B8),
-                  ),
-                ),
-                Container(
-                  key: const Key('settings_active_breadcrumb_chip'),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: Text(
-                    activeItem.label,
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF334155),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Flexible(
+                    child: Text(
+                      'مركز الإعدادات الموحد',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: Color(0xFF0F172A),
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 2),
-            const Text(
-              'تحكم شامل في ميزات النظام وصلاحيات العمل وهوية المتجر',
-              style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-              maxLines: 1,
-            ),
-          ],
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 6),
+                    child: Icon(
+                      Icons.chevron_left_rounded,
+                      size: 16,
+                      color: Color(0xFF94A3B8),
+                    ),
+                  ),
+                  Flexible(
+                    child: Container(
+                      key: const Key('settings_active_breadcrumb_chip'),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Text(
+                        activeItem.label,
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF334155),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              const Text(
+                'تحكم شامل في ميزات النظام وصلاحيات العمل وهوية المتجر',
+                style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -433,26 +442,36 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
             title: LayoutBuilder(
               builder: (context, constraints) {
                 final availableWidth = constraints.maxWidth;
-                final isWide = availableWidth >= 900;
+                final isWide = availableWidth >= 950;
                 final leadingInfo = _buildAppBarLeadingInfo();
 
-                if (!isWide && availableWidth < 680) {
+                if (availableWidth < 700) {
                   return Row(
                     children: [
-                      Flexible(child: leadingInfo),
-                      const SizedBox(width: 12),
-                      _buildSpotlightSearchField(200.0),
+                      Expanded(child: leadingInfo),
+                      const SizedBox(width: 10),
+                      _buildSpotlightSearchField(180.0),
+                    ],
+                  );
+                }
+
+                if (!isWide) {
+                  return Row(
+                    children: [
+                      Expanded(child: leadingInfo),
+                      const SizedBox(width: 16),
+                      _buildSpotlightSearchField(
+                        (availableWidth * 0.35).clamp(200.0, 320.0),
+                      ),
                     ],
                   );
                 }
 
                 return Row(
                   children: [
-                    leadingInfo,
+                    Flexible(child: leadingInfo),
                     const SizedBox(width: 24),
-                    _buildSpotlightSearchField(
-                      isWide ? 380.0 : (availableWidth - 360).clamp(200.0, 360.0),
-                    ),
+                    _buildSpotlightSearchField(380.0),
                     const Spacer(),
                   ],
                 );
