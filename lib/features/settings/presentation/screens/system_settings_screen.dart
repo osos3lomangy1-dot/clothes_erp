@@ -236,75 +236,66 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(
-            Icons.tune_rounded,
+            activeItem.icon,
             color: AppColors.primary,
-            size: 22,
+            size: 20,
           ),
         ),
-        const SizedBox(width: 10),
-        Flexible(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Flexible(
-                    child: Text(
-                      'مركز الإعدادات الموحد',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: Color(0xFF0F172A),
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'مركز الإعدادات الموحد',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: Color(0xFF0F172A),
                   ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 6),
-                    child: Icon(
-                      Icons.chevron_left_rounded,
-                      size: 16,
-                      color: Color(0xFF94A3B8),
-                    ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 6),
+                  child: Icon(
+                    Icons.chevron_left_rounded,
+                    size: 16,
+                    color: Color(0xFF94A3B8),
                   ),
-                  Flexible(
-                    child: Container(
-                      key: const Key('settings_active_breadcrumb_chip'),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Text(
-                        activeItem.label,
-                        style: const TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF334155),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
+                ),
+                Container(
+                  key: const Key('settings_active_breadcrumb_chip'),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
                   ),
-                ],
-              ),
-              const SizedBox(height: 2),
-              const Text(
-                'تحكم شامل في ميزات النظام وصلاحيات العمل وهوية المتجر',
-                style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Text(
+                    activeItem.label,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF334155),
+                    ),
+                    maxLines: 1,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            const Text(
+              'تحكم شامل في ميزات وصلاحيات النظام وهوية المتجر',
+              style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+              maxLines: 1,
+            ),
+          ],
         ),
       ],
     );
@@ -313,11 +304,14 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
   Widget _buildSpotlightSearchField(double width) {
     return Container(
       width: width,
-      height: 40,
+      height: 38,
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: _isSearchFocused ? AppColors.primary : const Color(0xFFCBD5E1),
+          width: _isSearchFocused ? 1.4 : 1.0,
+        ),
       ),
       child: TextField(
         key: const Key('settings_search_field'),
@@ -374,7 +368,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
                   ),
                 ),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+          contentPadding: const EdgeInsets.symmetric(vertical: 9),
         ),
       ),
     );
@@ -412,7 +406,7 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
         child: Scaffold(
           backgroundColor: const Color(0xFFF8FAFC),
           appBar: AppBar(
-            toolbarHeight: 68,
+            toolbarHeight: 64,
             titleSpacing: 20,
             automaticallyImplyLeading: false,
             title: LayoutBuilder(
@@ -421,13 +415,24 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
                 final isWide = availableWidth >= 900;
                 final leadingInfo = _buildAppBarLeadingInfo();
 
+                if (!isWide && availableWidth < 680) {
+                  return Row(
+                    children: [
+                      Flexible(child: leadingInfo),
+                      const SizedBox(width: 12),
+                      _buildSpotlightSearchField(200.0),
+                    ],
+                  );
+                }
+
                 return Row(
                   children: [
-                    Expanded(child: leadingInfo),
-                    const SizedBox(width: 16),
+                    leadingInfo,
+                    const SizedBox(width: 24),
                     _buildSpotlightSearchField(
-                      isWide ? 380.0 : (availableWidth * 0.32).clamp(160.0, 300.0),
+                      isWide ? 380.0 : (availableWidth - 360).clamp(200.0, 360.0),
                     ),
+                    const Spacer(),
                   ],
                 );
               },
