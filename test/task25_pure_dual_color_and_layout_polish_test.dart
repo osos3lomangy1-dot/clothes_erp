@@ -168,6 +168,18 @@ class _FakePosCubit extends Cubit<PosState> implements PosCubit {
     emit(state.copyWith(selectedActivity: actCode));
   }
   @override
+  void resetAllFilters() {
+    emit(state.copyWith(selectedActivity: 'all', selectedCategory: 'All'));
+  }
+  @override
+  void resetFilters() => resetAllFilters();
+  @override
+  void searchProducts(String query) {
+    emit(state.copyWith());
+  }
+  @override
+  String get currentSearchQuery => '';
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
@@ -637,6 +649,61 @@ void main() {
 
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump(const Duration(milliseconds: 100));
+    });
+
+    testWidgets('Addendum 25.2: POS renders single master "الكل" and resets all filters on tap', (tester) async {
+      tester.view.physicalSize = const Size(1400, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: MultiBlocProvider(
+              providers: [
+                BlocProvider<AuthCubit>.value(value: authCubit),
+                BlocProvider<ShiftCubit>.value(value: shiftCubit),
+                BlocProvider<PosCubit>.value(value: posCubit),
+              ],
+              child: const PosScreen(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify that 'الكل' appears exactly once in the filter bar
+      expect(find.text('الكل'), findsOneWidget, reason: 'Duplicate "الكل" chip must be eliminated');
+
+      // Tap 'ملابس وأزياء' activity tab
+      await tester.tap(find.text('ملابس وأزياء').first);
+      await tester.pumpAndSettle();
+      expect(posCubit.state.selectedActivity, equals('clothing'));
+
+      // Tap master 'الكل' button
+      await tester.tap(find.text('الكل').first);
+      await tester.pumpAndSettle();
+      expect(posCubit.state.selectedCategory, equals('All'));
+      expect(posCubit.state.selectedActivity, equals('all'));
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 100));
+    });
+
+    test('Addendum 25.2: PosCubit.resetAllFilters resets both activity and category in a single pass', () {
+      final cubit = posCubit;
+      cubit.filterByCategory('cat-1');
+      cubit.filterByActivity('clothing');
+      expect(cubit.state.selectedCategory, equals('cat-1'));
+      expect(cubit.state.selectedActivity, equals('clothing'));
+
+      cubit.resetAllFilters();
+      expect(cubit.state.selectedCategory, equals('All'));
+      expect(cubit.state.selectedActivity, equals('all'));
     });
 
     testWidgets('BlindReceiveScreen save button is disabled when empty (0 pieces)', (tester) async {

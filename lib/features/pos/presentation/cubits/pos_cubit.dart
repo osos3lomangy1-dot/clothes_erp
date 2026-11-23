@@ -128,6 +128,8 @@ class PosCubit extends Cubit<PosState> {
   Map<String, bool> _productInstallmentEligibleMap = {};
   List<Promotion> _activePromotions = [];
   Map<String, Set<String>> _categoryDescendants = {};
+  Map<String, String> _searchTokenMap = {};
+  Map<String, VariantEntity> _barcodeMap = {};
   String _currentSearchQuery = '';
   String _currentSelectedCategoryId = 'All';
   String _currentSelectedActivity = 'all';
@@ -136,6 +138,7 @@ class PosCubit extends Cubit<PosState> {
   Set<String> _currentEnabledActivities = {};
 
   Set<String> get currentEnabledActivities => _currentEnabledActivities;
+  String get currentSearchQuery => _currentSearchQuery;
 
   PosCubit(
     this._createSaleUseCase,
@@ -217,6 +220,7 @@ class PosCubit extends Cubit<PosState> {
                 createdAt: v.createdAt,
                 productName: _productNameMap[v.productId],
               )).toList();
+              _rebuildSearchIndex();
               if (isClosed) return;
               final prev = state;
               List<VariantEntity> filtered = _allVariants;
@@ -242,6 +246,8 @@ class PosCubit extends Cubit<PosState> {
               if (_currentSearchQuery.trim().isNotEmpty) {
                 final q = _normalize(_currentSearchQuery);
                 filtered = filtered.where((v) {
+                  final token = _searchTokenMap[v.id];
+                  if (token != null) return token.contains(q);
                   final prodName = _normalize(getProductName(v.productId));
                   final variantProdName = _normalize(v.productName);
                   final sku = _normalize(v.sku);
@@ -292,6 +298,28 @@ class PosCubit extends Cubit<PosState> {
         .trim();
   }
 
+  void _rebuildSearchIndex() {
+    final searchTokenMap = <String, String>{};
+    final barcodeMap = <String, VariantEntity>{};
+    for (final v in _allVariants) {
+      final pName = _productNameMap[v.productId] ?? '';
+      final catId = _productCategoryMap[v.productId];
+      final catName = _categoryNameMap[catId] ?? '';
+      final token = _normalize('$pName ${v.productName ?? ''} ${v.sku} ${v.productCode} ${v.color} ${v.size} $catName');
+      searchTokenMap[v.id] = token;
+      if (v.productCode.isNotEmpty) {
+        barcodeMap[v.productCode.trim()] = v;
+        barcodeMap[_normalize(v.productCode)] = v;
+      }
+      if (v.sku.isNotEmpty) {
+        barcodeMap[v.sku.trim()] = v;
+        barcodeMap[_normalize(v.sku)] = v;
+      }
+    }
+    _searchTokenMap = searchTokenMap;
+    _barcodeMap = barcodeMap;
+  }
+
   void filterByCategory(String categoryId) {
     _currentSelectedCategoryId = categoryId;
     _applyFilters();
@@ -301,6 +329,14 @@ class PosCubit extends Cubit<PosState> {
     _currentSelectedActivity = activity;
     _applyFilters();
   }
+
+  void resetAllFilters() {
+    _currentSelectedActivity = 'all';
+    _currentSelectedCategoryId = 'All';
+    _applyFilters();
+  }
+
+  void resetFilters() => resetAllFilters();
 
   String? getProductCategoryId(String productId) => _productCategoryMap[productId];
   String? getProductActivityType(String productId) => _productActivityTypeMap[productId];
@@ -352,6 +388,8 @@ class PosCubit extends Cubit<PosState> {
     if (_currentSearchQuery.trim().isNotEmpty) {
       final q = _normalize(_currentSearchQuery);
       result = result.where((v) {
+        final token = _searchTokenMap[v.id];
+        if (token != null) return token.contains(q);
         final prodName = _normalize(getProductName(v.productId));
         final variantProdName = _normalize(v.productName);
         final sku = _normalize(v.sku);
@@ -471,22 +509,25 @@ class PosCubit extends Cubit<PosState> {
   bool addByBarcode(String barcode) {
     final clean = _normalize(barcode);
     if (clean.isEmpty) return false;
-    try {
-      final match = _allVariants.firstWhere(
-        (v) =>
-            _normalize(v.sku) == clean ||
-            _normalize(v.productCode) == clean ||
-            _normalize(getProductName(v.productId)) == clean ||
-            _normalize(v.productName) == clean,
-      );
-      if (match.quantity > 0) {
-        addToCart(match, 1);
-        return true;
+    VariantEntity? match = _barcodeMap[clean] ?? _barcodeMap[barcode.trim()];
+    if (match == null) {
+      try {
+        match = _allVariants.firstWhere(
+          (v) =>
+              _normalize(v.sku) == clean ||
+              _normalize(v.productCode) == clean ||
+              _normalize(getProductName(v.productId)) == clean ||
+              _normalize(v.productName) == clean,
+        );
+      } catch (_) {
+        return false;
       }
-      return false;
-    } catch (_) {
-      return false;
     }
+    if (match.quantity > 0) {
+      addToCart(match, 1);
+      return true;
+    }
+    return false;
   }
 
   VariantEntity? getVariantById(String variantId) {

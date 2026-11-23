@@ -125,6 +125,7 @@ class _PosViewState extends State<_PosView> {
   bool _deliveryEnabled = false;
   bool _preOrdersEnabled = false;
   StreamSubscription? _featuresSub;
+  Timer? _searchDebounceTimer;
 
   @override
   void initState() {
@@ -547,6 +548,7 @@ class _PosViewState extends State<_PosView> {
 
   @override
   void dispose() {
+    _searchDebounceTimer?.cancel();
     _featuresSub?.cancel();
     HardwareKeyboard.instance.removeHandler(_handleHardwareScan);
     _searchFocusNode.dispose();
@@ -990,42 +992,47 @@ class _PosViewState extends State<_PosView> {
                               color: AppColors.primary,
                               size: 18,
                             ),
-                            suffixIcon: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (_searchCtrl.text.isNotEmpty)
-                                  IconButton(
-                                    icon: const Icon(Icons.clear, size: 16),
-                                    onPressed: () {
-                                      _searchCtrl.clear();
-                                      context.read<PosCubit>().searchProducts('');
-                                      setState(() {});
-                                    },
-                                  ),
-                                Container(
-                                  margin: const EdgeInsets.only(left: 6),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surfaceContainer,
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(
-                                      color: AppColors.outlineVariant,
+                            suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                              valueListenable: _searchCtrl,
+                              builder: (context, val, _) {
+                                return Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (val.text.isNotEmpty)
+                                      IconButton(
+                                        icon: const Icon(Icons.clear, size: 16),
+                                        onPressed: () {
+                                          _searchDebounceTimer?.cancel();
+                                          _searchCtrl.clear();
+                                          context.read<PosCubit>().searchProducts('');
+                                        },
+                                      ),
+                                    Container(
+                                      margin: const EdgeInsets.only(left: 6),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.surfaceContainer,
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: AppColors.outlineVariant,
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        'F2',
+                                        style: TextStyle(
+                                          fontFamily: 'Cairo',
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.onSurface,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                  child: const Text(
-                                    'F2',
-                                    style: TextStyle(
-                                      fontFamily: 'Cairo',
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.onSurface,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                                  ],
+                                );
+                              },
                             ),
                             border: InputBorder.none,
                             contentPadding: const EdgeInsets.symmetric(
@@ -1034,16 +1041,24 @@ class _PosViewState extends State<_PosView> {
                             ),
                           ),
                           onChanged: (val) {
-                            context.read<PosCubit>().searchProducts(val);
-                            setState(() {});
+                            _searchDebounceTimer?.cancel();
+                            if (val.isEmpty) {
+                              context.read<PosCubit>().searchProducts('');
+                            } else {
+                              _searchDebounceTimer = Timer(const Duration(milliseconds: 150), () {
+                                if (mounted) {
+                                  context.read<PosCubit>().searchProducts(val);
+                                }
+                              });
+                            }
                           },
                           onSubmitted: (val) {
+                            _searchDebounceTimer?.cancel();
                             if (val.trim().isNotEmpty) {
                               final added = context.read<PosCubit>().addByBarcode(val.trim());
                               if (added) {
                                 _searchCtrl.clear();
                                 context.read<PosCubit>().searchProducts('');
-                                setState(() {});
                               }
                             }
                           },
@@ -1564,13 +1579,14 @@ class _ProductPanel extends StatelessWidget {
                       child: ListView(
                         scrollDirection: Axis.horizontal,
                         children: [
+                          // Single Master 'All' Button (Addendum 25.2: Unified Single "الكل")
+                          _activityTab(
+                            label: 'الكل',
+                            icon: Icons.apps_rounded,
+                            isSelected: selectedActivity == 'all' && allSelectedCategory,
+                            onTap: () => context.read<PosCubit>().resetAllFilters(),
+                          ),
                           if (showMultiActivities) ...[
-                            _activityTab(
-                              label: 'الكل',
-                              icon: Icons.apps_rounded,
-                              isSelected: selectedActivity == 'all',
-                              onTap: () => context.read<PosCubit>().filterByActivity('all'),
-                            ),
                             for (final act in enabledActs) ...[
                               const SizedBox(width: 6),
                               _activityTab(
@@ -1587,11 +1603,6 @@ class _ProductPanel extends StatelessWidget {
                               color: AppColors.outlineVariant,
                             ),
                           ],
-                          _categoryChip(
-                            label: 'الكل',
-                            isSelected: allSelectedCategory,
-                            onTap: () => context.read<PosCubit>().filterByCategory('All'),
-                          ),
                           for (final cat in state.categories) ...[
                             const SizedBox(width: 6),
                             _categoryChip(
