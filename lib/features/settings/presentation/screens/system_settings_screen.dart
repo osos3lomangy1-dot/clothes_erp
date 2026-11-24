@@ -14,6 +14,7 @@ import '../../../../core/services/crash_logger_service.dart';
 import '../../../../core/services/database_reset_service.dart';
 import '../../../../core/services/license_activation_service.dart';
 import '../../../../core/theme/app_branding.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../auth/domain/models/cashier_permissions_config.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
@@ -3686,6 +3687,8 @@ class _BrandingSettingsCardState extends State<_BrandingSettingsCard> {
   late TextEditingController _secondaryHexCtrl;
   late Color _selectedPrimary;
   late Color _selectedSecondary;
+  late String _selectedFontFamily;
+  late double _selectedFontScale;
   bool _saving = false;
   bool _showHotkeyStrip = true;
 
@@ -3697,6 +3700,8 @@ class _BrandingSettingsCardState extends State<_BrandingSettingsCard> {
     _nameCtrl = TextEditingController(text: cur.appName);
     _selectedPrimary = cur.primaryColor;
     _selectedSecondary = cur.secondaryColor;
+    _selectedFontFamily = cur.fontFamily;
+    _selectedFontScale = cur.fontScale;
     _primaryHexCtrl = TextEditingController(
       text: '#${AppBranding.colorToHex(cur.primaryColor).substring(2)}',
     );
@@ -3743,6 +3748,8 @@ class _BrandingSettingsCardState extends State<_BrandingSettingsCard> {
         appName: name,
         primaryColor: _selectedPrimary,
         secondaryColor: _selectedSecondary,
+        fontFamily: _selectedFontFamily,
+        fontScale: _selectedFontScale,
         userId: widget.userId,
       );
       if (!mounted) return;
@@ -3787,6 +3794,8 @@ class _BrandingSettingsCardState extends State<_BrandingSettingsCard> {
         _nameCtrl.text = def.appName;
         _selectedPrimary = def.primaryColor;
         _selectedSecondary = def.secondaryColor;
+        _selectedFontFamily = def.fontFamily;
+        _selectedFontScale = def.fontScale;
         _primaryHexCtrl.text =
             '#${AppBranding.colorToHex(def.primaryColor).substring(2)}';
         _secondaryHexCtrl.text =
@@ -3800,6 +3809,95 @@ class _BrandingSettingsCardState extends State<_BrandingSettingsCard> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  Widget _buildFontFamilyCapsule(String family, String label) {
+    final isSelected =
+        _selectedFontFamily.toLowerCase() == family.toLowerCase();
+    return InkWell(
+      key: Key('font_family_capsule_$family'),
+      borderRadius: BorderRadius.circular(8),
+      onTap: () {
+        setState(() {
+          _selectedFontFamily = family;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? _selectedPrimary.withValues(alpha: 0.1)
+              : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? _selectedPrimary : AppColors.outlineVariant,
+            width: isSelected ? 1.6 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isSelected) ...[
+              Icon(Icons.check, size: 14, color: _selectedPrimary),
+              const SizedBox(width: 5),
+            ],
+            Text(
+              label,
+              style: AppTheme.getTextStyle(
+                fontFamily: family,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? _selectedPrimary : const Color(0xFF0F172A),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFontScaleCapsule(double scale, String label) {
+    final isSelected = (_selectedFontScale - scale).abs() < 0.01;
+    final scaleKey = (scale * 100).round().toString();
+    return InkWell(
+      key: Key('font_scale_capsule_$scaleKey'),
+      borderRadius: BorderRadius.circular(8),
+      onTap: () {
+        setState(() {
+          _selectedFontScale = scale;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? _selectedPrimary.withValues(alpha: 0.1)
+              : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? _selectedPrimary : AppColors.outlineVariant,
+            width: isSelected ? 1.6 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isSelected) ...[
+              Icon(Icons.check, size: 14, color: _selectedPrimary),
+              const SizedBox(width: 5),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? _selectedPrimary : const Color(0xFF0F172A),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -3979,7 +4077,8 @@ class _BrandingSettingsCardState extends State<_BrandingSettingsCard> {
                       _nameCtrl.text.trim().isEmpty
                           ? AppBrandingConfig.defaults.appName
                           : _nameCtrl.text.trim(),
-                      style: const TextStyle(
+                      style: AppTheme.getTextStyle(
+                        fontFamily: _selectedFontFamily,
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
@@ -3999,6 +4098,97 @@ class _BrandingSettingsCardState extends State<_BrandingSettingsCard> {
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                       ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Divider(height: 1, color: AppColors.outlineVariant),
+            const SizedBox(height: 16),
+
+            // Typography & Font Scale Section (Addendum 30.8)
+            const Text(
+              'نوع وحجم الخط (Typography & Text Scale):',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // 1. Font Family Capsules
+            const Text(
+              'نوع الخط:',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildFontFamilyCapsule('Cairo', 'Cairo (الافتراضي)'),
+                _buildFontFamilyCapsule('Almarai', 'Almarai (المراعي)'),
+                _buildFontFamilyCapsule('Tajawal', 'Tajawal (تجوال)'),
+                _buildFontFamilyCapsule('Alexandria', 'Alexandria (الإسكندرية)'),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            // 2. Font Scale Capsules
+            const Text(
+              'حجم الخط والعرض في النظام:',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildFontScaleCapsule(0.85, '85% مدمج'),
+                _buildFontScaleCapsule(1.0, '100% قياسي'),
+                _buildFontScaleCapsule(1.15, '115% مريح'),
+                _buildFontScaleCapsule(1.30, '130% كبير'),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            // 3. Live Text Preview Box
+            Container(
+              key: const Key('typography_live_preview_box'),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.outlineVariant),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.text_fields_rounded, size: 16, color: _selectedPrimary),
+                      const SizedBox(width: 6),
+                      Text(
+                        'صندوق المعاينة الحية للخط: [$_selectedFontFamily - ${(_selectedFontScale * 100).round()}%]',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: _selectedPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'نظام بيعة لإدارة المبيعات والمطاعم - 1234567890',
+                    key: const Key('typography_live_preview_text'),
+                    style: AppTheme.getTextStyle(
+                      fontFamily: _selectedFontFamily,
+                      fontSize: 14 * _selectedFontScale,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF0F172A),
                     ),
                   ),
                 ],

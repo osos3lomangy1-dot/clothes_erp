@@ -267,12 +267,19 @@ class _MyAppState extends State<MyApp> {
             theme: AppTheme.build(
               primary: branding.primaryColor,
               secondary: branding.secondaryColor,
+              fontFamily: branding.fontFamily,
             ),
             navigatorObservers: [CrashRouteObserver()],
             builder: (context, child) {
+              final mediaQuery = MediaQuery.of(context);
               return Directionality(
                 textDirection: TextDirection.rtl,
-                child: child ?? const SizedBox.shrink(),
+                child: MediaQuery(
+                  data: mediaQuery.copyWith(
+                    textScaler: TextScaler.linear(branding.fontScale),
+                  ),
+                  child: child ?? const SizedBox.shrink(),
+                ),
               );
             },
             home: !_setupCompleted

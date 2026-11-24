@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../constants/app_colors.dart';
 
 class AppTheme {
@@ -7,17 +8,103 @@ class AppTheme {
         secondary: AppColors.primaryContainer,
       );
 
+  static TextStyle getTextStyle({
+    required String fontFamily,
+    double? fontSize,
+    FontWeight? fontWeight,
+    Color? color,
+    double? height,
+  }) {
+    final clean = fontFamily.trim();
+    try {
+      switch (clean.toLowerCase()) {
+        case 'almarai':
+          return GoogleFonts.almarai(
+            fontSize: fontSize,
+            fontWeight: fontWeight,
+            color: color,
+            height: height,
+          );
+        case 'tajawal':
+          return GoogleFonts.tajawal(
+            fontSize: fontSize,
+            fontWeight: fontWeight,
+            color: color,
+            height: height,
+          );
+        case 'alexandria':
+          return GoogleFonts.alexandria(
+            fontSize: fontSize,
+            fontWeight: fontWeight,
+            color: color,
+            height: height,
+          );
+        case 'cairo':
+        default:
+          return TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: fontSize,
+            fontWeight: fontWeight,
+            color: color,
+            height: height,
+          );
+      }
+    } catch (_) {
+      return TextStyle(
+        fontFamily: 'Cairo',
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        color: color,
+        height: height,
+      );
+    }
+  }
+
+  static TextTheme _createTextTheme(String fontFamily) {
+    final base = ThemeData.light().textTheme;
+    try {
+      switch (fontFamily.toLowerCase()) {
+        case 'almarai':
+          return GoogleFonts.almaraiTextTheme(base).apply(
+            bodyColor: AppColors.onSurface,
+            displayColor: AppColors.onSurface,
+          );
+        case 'tajawal':
+          return GoogleFonts.tajawalTextTheme(base).apply(
+            bodyColor: AppColors.onSurface,
+            displayColor: AppColors.onSurface,
+          );
+        case 'alexandria':
+          return GoogleFonts.alexandriaTextTheme(base).apply(
+            bodyColor: AppColors.onSurface,
+            displayColor: AppColors.onSurface,
+          );
+        case 'cairo':
+        default:
+          return base.apply(
+            fontFamily: 'Cairo',
+            bodyColor: AppColors.onSurface,
+            displayColor: AppColors.onSurface,
+          );
+      }
+    } catch (_) {
+      return base.apply(
+        fontFamily: 'Cairo',
+        bodyColor: AppColors.onSurface,
+        displayColor: AppColors.onSurface,
+      );
+    }
+  }
+
   static ThemeData build({
     required Color primary,
     required Color secondary,
+    String fontFamily = 'Cairo',
   }) {
-    const fontFamily = 'Cairo';
+    final effectiveFontFamily =
+        fontFamily.trim().isEmpty ? 'Cairo' : fontFamily.trim();
 
-    final textTheme = ThemeData.light().textTheme.apply(
-          fontFamily: fontFamily,
-          bodyColor: AppColors.onSurface,
-          displayColor: AppColors.onSurface,
-        );
+    final textTheme = _createTextTheme(effectiveFontFamily);
 
     final colorScheme = ColorScheme.light(
       primary: primary,
@@ -40,26 +127,26 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: AppColors.surface,
-      fontFamily: fontFamily,
+      fontFamily: effectiveFontFamily,
       textTheme: textTheme,
       
       // Modern Light AppBar
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: AppColors.surfaceContainerLowest,
         foregroundColor: AppColors.onSurface,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: true,
-        shape: Border(
+        shape: const Border(
           bottom: BorderSide(color: AppColors.outlineVariant, width: 1.0),
         ),
-        titleTextStyle: TextStyle(
-          fontFamily: fontFamily,
+        titleTextStyle: getTextStyle(
+          fontFamily: effectiveFontFamily,
           fontSize: 17,
           fontWeight: FontWeight.w700,
           color: AppColors.onSurface,
         ),
-        iconTheme: IconThemeData(color: AppColors.onSurface),
+        iconTheme: const IconThemeData(color: AppColors.onSurface),
       ),
 
       // Modern Flat Card with soft border
@@ -77,13 +164,13 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surfaceContainerLowest,
-        labelStyle: const TextStyle(
-          fontFamily: fontFamily,
+        labelStyle: getTextStyle(
+          fontFamily: effectiveFontFamily,
           fontSize: 13.5,
           color: AppColors.onSurfaceVariant,
         ),
-        floatingLabelStyle: TextStyle(
-          fontFamily: fontFamily,
+        floatingLabelStyle: getTextStyle(
+          fontFamily: effectiveFontFamily,
           fontSize: 13.5,
           fontWeight: FontWeight.w700,
           color: primary,
@@ -120,7 +207,11 @@ class AppTheme {
           shadowColor: Colors.transparent,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          textStyle: const TextStyle(fontFamily: fontFamily, fontWeight: FontWeight.w700, fontSize: 14),
+          textStyle: getTextStyle(
+            fontFamily: effectiveFontFamily,
+            fontWeight: FontWeight.w700,
+            fontSize: 14,
+          ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -129,13 +220,21 @@ class AppTheme {
           side: const BorderSide(color: AppColors.outlineVariant, width: 1.2),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          textStyle: const TextStyle(fontFamily: fontFamily, fontWeight: FontWeight.w600, fontSize: 13.5),
+          textStyle: getTextStyle(
+            fontFamily: effectiveFontFamily,
+            fontWeight: FontWeight.w600,
+            fontSize: 13.5,
+          ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: primary,
-          textStyle: const TextStyle(fontFamily: fontFamily, fontWeight: FontWeight.w600, fontSize: 13.5),
+          textStyle: getTextStyle(
+            fontFamily: effectiveFontFamily,
+            fontWeight: FontWeight.w600,
+            fontSize: 13.5,
+          ),
         ),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(

@@ -6,28 +6,38 @@ class AppBrandingConfig {
   final String appName;
   final Color primaryColor;
   final Color secondaryColor;
+  final String fontFamily;
+  final double fontScale;
 
   const AppBrandingConfig({
     required this.appName,
     required this.primaryColor,
     required this.secondaryColor,
+    this.fontFamily = 'Cairo',
+    this.fontScale = 1.0,
   });
 
   static const AppBrandingConfig defaults = AppBrandingConfig(
     appName: 'بيعة',
     primaryColor: Color(0xFF0A2E5C),
     secondaryColor: Color(0xFF1FB5A8),
+    fontFamily: 'Cairo',
+    fontScale: 1.0,
   );
 
   AppBrandingConfig copyWith({
     String? appName,
     Color? primaryColor,
     Color? secondaryColor,
+    String? fontFamily,
+    double? fontScale,
   }) {
     return AppBrandingConfig(
       appName: appName ?? this.appName,
       primaryColor: primaryColor ?? this.primaryColor,
       secondaryColor: secondaryColor ?? this.secondaryColor,
+      fontFamily: fontFamily ?? this.fontFamily,
+      fontScale: fontScale ?? this.fontScale,
     );
   }
 
@@ -38,11 +48,18 @@ class AppBrandingConfig {
           runtimeType == other.runtimeType &&
           appName == other.appName &&
           primaryColor.toARGB32() == other.primaryColor.toARGB32() &&
-          secondaryColor.toARGB32() == other.secondaryColor.toARGB32();
+          secondaryColor.toARGB32() == other.secondaryColor.toARGB32() &&
+          fontFamily == other.fontFamily &&
+          fontScale == other.fontScale;
 
   @override
-  int get hashCode =>
-      Object.hash(appName, primaryColor.toARGB32(), secondaryColor.toARGB32());
+  int get hashCode => Object.hash(
+        appName,
+        primaryColor.toARGB32(),
+        secondaryColor.toARGB32(),
+        fontFamily,
+        fontScale,
+      );
 }
 
 class AppColorPreset {
@@ -61,6 +78,22 @@ class AppBranding {
   static const String keyAppName = 'branding.app_name';
   static const String keyPrimaryColor = 'branding.primary_color';
   static const String keySecondaryColor = 'branding.secondary_color';
+  static const String keyFontFamily = 'branding.font_family';
+  static const String keyFontScale = 'branding.font_scale';
+
+  static const List<String> supportedFonts = [
+    'Cairo',
+    'Almarai',
+    'Tajawal',
+    'Alexandria',
+  ];
+
+  static const List<double> supportedFontScales = [
+    0.85,
+    1.0,
+    1.15,
+    1.30,
+  ];
 
   static final ValueNotifier<AppBrandingConfig> notifier =
       ValueNotifier<AppBrandingConfig>(AppBrandingConfig.defaults);
@@ -145,6 +178,10 @@ class AppBranding {
       final name = await gate.getMeta(keyAppName);
       final primaryHex = await gate.getMeta(keyPrimaryColor);
       final secondaryHex = await gate.getMeta(keySecondaryColor);
+      final fontFamily = await gate.getMeta(keyFontFamily);
+      final fontScaleStr = await gate.getMeta(keyFontScale);
+      final fontScale =
+          fontScaleStr != null ? double.tryParse(fontScaleStr) : null;
 
       final config = AppBrandingConfig(
         appName: (name != null && name.trim().isNotEmpty)
@@ -154,6 +191,10 @@ class AppBranding {
             AppBrandingConfig.defaults.primaryColor,
         secondaryColor: parseHexColor(secondaryHex) ??
             AppBrandingConfig.defaults.secondaryColor,
+        fontFamily: (fontFamily != null && fontFamily.trim().isNotEmpty)
+            ? fontFamily.trim()
+            : AppBrandingConfig.defaults.fontFamily,
+        fontScale: fontScale ?? AppBrandingConfig.defaults.fontScale,
       );
       apply(config);
     } catch (_) {
@@ -166,18 +207,29 @@ class AppBranding {
     required String appName,
     required Color primaryColor,
     required Color secondaryColor,
+    String? fontFamily,
+    double? fontScale,
     required String userId,
   }) async {
     final cleanName =
         appName.trim().isEmpty ? AppBrandingConfig.defaults.appName : appName.trim();
+    final effectiveFontFamily = (fontFamily != null && fontFamily.trim().isNotEmpty)
+        ? fontFamily.trim()
+        : current.fontFamily;
+    final effectiveFontScale = fontScale ?? current.fontScale;
+
     await gate.setMeta(keyAppName, cleanName, userId: userId);
     await gate.setMeta(keyPrimaryColor, colorToHex(primaryColor), userId: userId);
     await gate.setMeta(keySecondaryColor, colorToHex(secondaryColor), userId: userId);
+    await gate.setMeta(keyFontFamily, effectiveFontFamily, userId: userId);
+    await gate.setMeta(keyFontScale, effectiveFontScale.toString(), userId: userId);
 
     apply(AppBrandingConfig(
       appName: cleanName,
       primaryColor: primaryColor,
       secondaryColor: secondaryColor,
+      fontFamily: effectiveFontFamily,
+      fontScale: effectiveFontScale,
     ));
   }
 
@@ -190,6 +242,8 @@ class AppBranding {
       appName: AppBrandingConfig.defaults.appName,
       primaryColor: AppBrandingConfig.defaults.primaryColor,
       secondaryColor: AppBrandingConfig.defaults.secondaryColor,
+      fontFamily: AppBrandingConfig.defaults.fontFamily,
+      fontScale: AppBrandingConfig.defaults.fontScale,
       userId: userId,
     );
   }
