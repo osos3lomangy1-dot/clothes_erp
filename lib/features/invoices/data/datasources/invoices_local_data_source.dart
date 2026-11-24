@@ -189,7 +189,17 @@ class InvoicesLocalDataSourceImpl implements InvoicesLocalDataSource {
   static InvoiceItemDetailsEntity _mapSaleItemToEntity(SaleItem it) {
     double? decimalQty;
     String? unit;
-    final meterMatch = RegExp(r'([\d.]+)\s*م').firstMatch(it.size);
+    String cleanSize = it.size;
+    String? kitchenNotes;
+
+    final noteMatch = RegExp(r'\[ملاحظة:\s*(.*?)\]').firstMatch(it.size);
+    if (noteMatch != null) {
+      kitchenNotes = noteMatch.group(1);
+      cleanSize =
+          it.size.replaceAll(RegExp(r'\s*\[ملاحظة:\s*.*?\]'), '').trim();
+    }
+
+    final meterMatch = RegExp(r'([\d.]+)\s*م').firstMatch(cleanSize);
     if (meterMatch != null) {
       decimalQty = double.tryParse(meterMatch.group(1)!);
       unit = 'م';
@@ -199,7 +209,7 @@ class InvoicesLocalDataSourceImpl implements InvoicesLocalDataSource {
       variantId: it.variantId,
       productName: it.productName,
       color: it.color,
-      size: it.size,
+      size: cleanSize,
       qty: it.qty,
       decimalQty: decimalQty,
       unit: unit,
@@ -208,6 +218,10 @@ class InvoicesLocalDataSourceImpl implements InvoicesLocalDataSource {
       lineDiscount: it.lineDiscount,
       promotionDiscount: it.promotionDiscountPiasters,
       lineTotal: it.lineTotal,
+      kitchenNotes: kitchenNotes,
+      modifiers: (kitchenNotes != null && kitchenNotes.isNotEmpty)
+          ? [kitchenNotes]
+          : const [],
     );
   }
 }

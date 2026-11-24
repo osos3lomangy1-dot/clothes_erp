@@ -10,6 +10,8 @@ import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../../barcode_printing/domain/models/barcode_label_item.dart';
 import '../../../barcode_printing/presentation/dialogs/barcode_print_dialog.dart';
 import '../../../product_variants/domain/entities/variant_entity.dart';
+import '../../../products/domain/entities/activity_type.dart';
+import '../../../settings/data/services/activity_settings_service.dart';
 import '../cubits/inventory_cubit.dart';
 import '../cubits/inventory_state.dart';
 import '../widgets/inventory_action_dialogs.dart';
@@ -58,6 +60,15 @@ class _InventoryScreenState extends State<InventoryScreen> {
       if (auth is AuthAuthenticated) return auth.user.id;
     } catch (_) {}
     return 'admin';
+  }
+
+  bool get _isHospitality {
+    if (getIt.isRegistered<ActivitySettingsService>()) {
+      return getIt<ActivitySettingsService>()
+          .cachedEnabledActivities
+          .contains(ActivityType.restaurantsCafes);
+    }
+    return false;
   }
 
   Future<void> _openReceiveShipmentScreen(BuildContext context) async {
@@ -198,7 +209,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     ),
                   ),
                   Text(
-                    'تقييم رأس المال، متابعة الأرصدة، تسوية التالف، وحركات كل صنف',
+                    _isHospitality
+                        ? 'تقييم تكلفة الوجبات، مخزون المواد الخام، والهالك'
+                        : 'تقييم رأس المال، متابعة الأرصدة، تسوية التالف، وحركات كل صنف',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
                 ],
@@ -253,34 +266,35 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       label: const Text('تصدير إكسيل'),
                     ),
                   ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 8,
-                    horizontal: 12,
-                  ),
-                  child: ElevatedButton.icon(
-                    key: const Key('inventory_receive_shipment_btn'),
-                    icon: const Icon(
-                      Icons.local_shipping_outlined,
-                      color: Colors.white,
-                      size: 18,
+                if (!_isHospitality)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: 12,
                     ),
-                    label: const Text(
-                      'استلام شحنة بضاعة',
-                      style: TextStyle(
+                    child: ElevatedButton.icon(
+                      key: const Key('inventory_receive_shipment_btn'),
+                      icon: const Icon(
+                        Icons.local_shipping_outlined,
                         color: Colors.white,
-                        fontWeight: FontWeight.bold,
+                        size: 18,
                       ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                      label: const Text(
+                        'استلام شحنة بضاعة',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: () => _openReceiveShipmentScreen(context),
                     ),
-                    onPressed: () => _openReceiveShipmentScreen(context),
                   ),
-                ),
               ],
             ),
             body: BlocBuilder<InventoryCubit, InventoryState>(
@@ -451,8 +465,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                   final searchField = TextField(
                                     controller: _searchController,
                                     decoration: InputDecoration(
-                                      hintText:
-                                          'ابحث بالاسم، الكود (SKU)، اللون، المقاس، أو التصنيف...',
+                                      hintText: _isHospitality
+                                          ? 'ابحث باسم الوجبة، الخامة، الكود، أو القسم...'
+                                          : 'ابحث بالاسم، الكود (SKU)، اللون، المقاس، أو التصنيف...',
                                       hintStyle: TextStyle(
                                         fontSize: 13,
                                         color: Colors.grey.shade500,
@@ -495,6 +510,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                       DropdownButtonFormField<String?>(
                                     initialValue: _selectedCategory,
                                     isDense: true,
+                                    isExpanded: true,
                                     decoration: const InputDecoration(
                                       labelText: 'التصنيف',
                                       filled: true,
@@ -526,6 +542,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                       DropdownButtonFormField<_InventorySort>(
                                     initialValue: _sort,
                                     isDense: true,
+                                    isExpanded: true,
                                     decoration: const InputDecoration(
                                       labelText: 'الترتيب',
                                       filled: true,
@@ -674,12 +691,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                     ? 'المخزن فارغ حالياً'
                                     : 'لا توجد أصناف مطابقة للبحث أو التصفية',
                                 subtitle: allItems.isEmpty
-                                    ? 'لم يتم تسجيل أي أصناف أو كميات بالمخزن بعد. يمكنك استلام شحنة بضاعة جديدة الآن.'
+                                    ? (_isHospitality
+                                        ? 'لم يتم تسجيل أي خامات أو وجبات بالمخزن بعد. يمكنك تسجيل مشتريات خامات جديدة.'
+                                        : 'لم يتم تسجيل أي أصناف أو كميات بالمخزن بعد. يمكنك استلام شحنة بضاعة جديدة الآن.')
                                     : 'جرّب تغيير فلتر الحالة أو التصنيف أو مسح نص البحث.',
-                                actionLabel: allItems.isEmpty
+                                actionLabel: allItems.isEmpty && !_isHospitality
                                     ? 'استلام شحنة بضاعة'
                                     : null,
-                                onAction: allItems.isEmpty
+                                onAction: allItems.isEmpty && !_isHospitality
                                     ? () => _openReceiveShipmentScreen(context)
                                     : null,
                               )
@@ -812,8 +831,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       _badge('SKU: ${item.productCode}'),
-                      if (item.color.isNotEmpty) _badge('اللون: ${item.color}'),
-                      if (item.size.isNotEmpty) _badge('المقاس: ${item.size}'),
+                      if (!_isHospitality && item.color.isNotEmpty) _badge('اللون: ${item.color}'),
+                      if (!_isHospitality && item.size.isNotEmpty) _badge('المقاس: ${item.size}'),
                       Text(
                         'البيع: ${Money(item.salePrice).toDisplay()} ج.م',
                         style: const TextStyle(

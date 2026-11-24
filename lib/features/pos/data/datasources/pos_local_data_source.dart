@@ -129,9 +129,13 @@ class PosLocalDataSource {
           final calculatedLineTotal = (price * effectiveQty).round() - lineDiscount - promoDiscount;
           final lineTotal = calculatedLineTotal < 0 ? 0 : calculatedLineTotal;
 
-          final effectiveSize = (decimalQty != null && decimalQty > 0)
+          final kitchenNotes = item['kitchenNotes'] as String?;
+          String effectiveSize = (decimalQty != null && decimalQty > 0)
               ? '${item['size'] ?? ""} • $decimalQty ${item['unit'] ?? "م"}'.trim()
               : (item['size'] as String? ?? '-');
+          if (kitchenNotes != null && kitchenNotes.trim().isNotEmpty) {
+            effectiveSize = '$effectiveSize [ملاحظة: ${kitchenNotes.trim()}]';
+          }
 
           await _db.into(_db.saleItems).insert(SaleItemsCompanion.insert(
             id: sItemId,

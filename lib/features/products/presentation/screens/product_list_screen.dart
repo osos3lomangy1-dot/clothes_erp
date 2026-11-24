@@ -525,20 +525,24 @@ class _ProductsAndCategoriesViewState
                 onPressed: () => Navigator.of(context).maybePop(),
               )
             : null,
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'دليل المنتجات والتصنيفات',
-              style: TextStyle(
+              _isHospitality
+                  ? 'قائمة الطعام والمشروبات (المنيو)'
+                  : 'دليل المنتجات والتصنيفات',
+              style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
                 color: AppColors.onSurface,
               ),
             ),
             Text(
-              'إدارة الأقسام والأصناف والمقاسات وجداول الأسعار في مكان واحد',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+              _isHospitality
+                  ? 'إدارة أقسام المنيو والوجبات والمشروبات وجداول الأسعار'
+                  : 'إدارة الأقسام والأصناف والمقاسات وجداول الأسعار في مكان واحد',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ],
         ),

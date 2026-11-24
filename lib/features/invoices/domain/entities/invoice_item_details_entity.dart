@@ -14,6 +14,8 @@ class InvoiceItemDetailsEntity extends Equatable {
   final int lineDiscount; // in piasters
   final int promotionDiscount; // in piasters
   final int lineTotal; // in piasters
+  final String? kitchenNotes;
+  final List<String> modifiers;
 
   const InvoiceItemDetailsEntity({
     required this.id,
@@ -29,7 +31,45 @@ class InvoiceItemDetailsEntity extends Equatable {
     this.lineDiscount = 0,
     this.promotionDiscount = 0,
     required this.lineTotal,
+    this.kitchenNotes,
+    this.modifiers = const [],
   });
+
+  InvoiceItemDetailsEntity copyWith({
+    String? id,
+    String? variantId,
+    String? productName,
+    String? color,
+    String? size,
+    int? qty,
+    double? decimalQty,
+    String? unit,
+    int? price,
+    int? costPrice,
+    int? lineDiscount,
+    int? promotionDiscount,
+    int? lineTotal,
+    String? kitchenNotes,
+    List<String>? modifiers,
+  }) {
+    return InvoiceItemDetailsEntity(
+      id: id ?? this.id,
+      variantId: variantId ?? this.variantId,
+      productName: productName ?? this.productName,
+      color: color ?? this.color,
+      size: size ?? this.size,
+      qty: qty ?? this.qty,
+      decimalQty: decimalQty ?? this.decimalQty,
+      unit: unit ?? this.unit,
+      price: price ?? this.price,
+      costPrice: costPrice ?? this.costPrice,
+      lineDiscount: lineDiscount ?? this.lineDiscount,
+      promotionDiscount: promotionDiscount ?? this.promotionDiscount,
+      lineTotal: lineTotal ?? this.lineTotal,
+      kitchenNotes: kitchenNotes ?? this.kitchenNotes,
+      modifiers: modifiers ?? this.modifiers,
+    );
+  }
 
   /// Effective quantity: returns decimalQty if available and positive, else qty as double
   double get effectiveQuantity =>
@@ -63,6 +103,8 @@ class InvoiceItemDetailsEntity extends Equatable {
         lineDiscount,
         promotionDiscount,
         lineTotal,
+        kitchenNotes,
+        modifiers,
       ];
 }
 

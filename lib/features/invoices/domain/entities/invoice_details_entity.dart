@@ -19,6 +19,10 @@ class InvoiceDetailsEntity extends Equatable {
   final String? shiftId;
   final String status;
   final List<InvoiceItemDetailsEntity> items;
+  final String? orderType; // 'dineIn', 'takeaway', 'delivery'
+  final String? tableNumber;
+  final String? orderNumber;
+  final String? wifiInfo;
 
   const InvoiceDetailsEntity({
     required this.id,
@@ -36,7 +40,55 @@ class InvoiceDetailsEntity extends Equatable {
     this.shiftId,
     this.status = 'completed',
     required this.items,
+    this.orderType,
+    this.tableNumber,
+    this.orderNumber,
+    this.wifiInfo,
   });
+
+  InvoiceDetailsEntity copyWith({
+    String? id,
+    String? shortRef,
+    DateTime? date,
+    String? cashierId,
+    String? cashierName,
+    String? customerId,
+    String? customerName,
+    String? customerPhone,
+    int? subtotal,
+    int? discountAmount,
+    int? total,
+    String? paymentMethod,
+    String? shiftId,
+    String? status,
+    List<InvoiceItemDetailsEntity>? items,
+    String? orderType,
+    String? tableNumber,
+    String? orderNumber,
+    String? wifiInfo,
+  }) {
+    return InvoiceDetailsEntity(
+      id: id ?? this.id,
+      shortRef: shortRef ?? this.shortRef,
+      date: date ?? this.date,
+      cashierId: cashierId ?? this.cashierId,
+      cashierName: cashierName ?? this.cashierName,
+      customerId: customerId ?? this.customerId,
+      customerName: customerName ?? this.customerName,
+      customerPhone: customerPhone ?? this.customerPhone,
+      subtotal: subtotal ?? this.subtotal,
+      discountAmount: discountAmount ?? this.discountAmount,
+      total: total ?? this.total,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      shiftId: shiftId ?? this.shiftId,
+      status: status ?? this.status,
+      items: items ?? this.items,
+      orderType: orderType ?? this.orderType,
+      tableNumber: tableNumber ?? this.tableNumber,
+      orderNumber: orderNumber ?? this.orderNumber,
+      wifiInfo: wifiInfo ?? this.wifiInfo,
+    );
+  }
 
   int get totalItemsCount => items.fold<int>(0, (sum, i) => sum + i.qty);
   int get totalPromotionDiscount =>
@@ -63,6 +115,10 @@ class InvoiceDetailsEntity extends Equatable {
         shiftId,
         status,
         items,
+        orderType,
+        tableNumber,
+        orderNumber,
+        wifiInfo,
       ];
 }
 

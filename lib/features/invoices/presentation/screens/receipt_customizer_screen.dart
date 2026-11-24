@@ -30,6 +30,7 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
   late TextEditingController _taxNumberCtrl;
   late TextEditingController _returnPolicyCtrl;
   late TextEditingController _footerGreetingCtrl;
+  late TextEditingController _wifiInfoCtrl;
 
   late int _paperWidthMm;
   late bool _showCashierName;
@@ -53,6 +54,7 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
     _taxNumberCtrl = TextEditingController(text: cfg.taxNumber);
     _returnPolicyCtrl = TextEditingController(text: cfg.returnPolicy);
     _footerGreetingCtrl = TextEditingController(text: cfg.footerGreeting);
+    _wifiInfoCtrl = TextEditingController(text: cfg.wifiInfo);
 
     _paperWidthMm = cfg.paperWidthMm;
     _showCashierName = cfg.showCashierName;
@@ -73,6 +75,7 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
     _taxNumberCtrl.dispose();
     _returnPolicyCtrl.dispose();
     _footerGreetingCtrl.dispose();
+    _wifiInfoCtrl.dispose();
     super.dispose();
   }
 
@@ -92,6 +95,7 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
         groupVariantsOnReceipt: _groupVariantsOnReceipt,
         returnPolicy: _returnPolicyCtrl.text.trim(),
         footerGreeting: _footerGreetingCtrl.text.trim(),
+        wifiInfo: _wifiInfoCtrl.text.trim(),
       );
 
   String _getUserId(BuildContext context) {
@@ -172,6 +176,24 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
             child: const Text('استعادة'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _applyHospitalityTemplate() {
+    final hosp = ReceiptConfig.hospitalityDefaults;
+    setState(() {
+      _storeActivityCtrl.text = hosp.storeActivity;
+      _returnPolicyCtrl.text = hosp.returnPolicy;
+      _footerGreetingCtrl.text = hosp.footerGreeting;
+      _showItemDetails = hosp.showItemDetails; // false
+      _wifiInfoCtrl.text = hosp.wifiInfo;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('تم تطبيق قالب المطاعم والكافيهات بنجاح'),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }
@@ -273,6 +295,20 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
         ),
         actions: [
           OutlinedButton.icon(
+            key: const Key('apply_hospitality_template_btn'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              side: BorderSide(color: AppColors.outlineVariant),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: _applyHospitalityTemplate,
+            icon: const Icon(Icons.restaurant_rounded, size: 18),
+            label: const Text('قالب المطاعم والكافيهات'),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.primary,
               side: BorderSide(color: AppColors.outlineVariant),
@@ -358,8 +394,9 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Icon(Icons.remove_red_eye_outlined, color: AppColors.primary, size: 18),
                     const SizedBox(width: 6),
@@ -556,13 +593,15 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
             const SizedBox(height: 14),
 
             // Paper Roll Width Selector
-            Row(
+            Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 const Text(
                   'عرض بكرة الورق الحراري:',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                 ),
-                const SizedBox(width: 16),
                 ChoiceChip(
                   label: const Text('80 مم (القياسي العريض)'),
                   selected: _paperWidthMm == 80,
@@ -570,7 +609,6 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
                     if (val) setState(() => _paperWidthMm = 80);
                   },
                 ),
-                const SizedBox(width: 10),
                 ChoiceChip(
                   label: const Text('58 مم (الصغير المدمج)'),
                   selected: _paperWidthMm == 58,
@@ -679,6 +717,34 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
               ),
               onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _wifiInfoCtrl,
+              decoration: InputDecoration(
+                labelText: 'بيانات واي فاي المطعم أو المتجر (اختياري)',
+                prefixIcon: const Icon(Icons.wifi_rounded, size: 20),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: const Key('apply_hospitality_template_body_btn'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: BorderSide(color: AppColors.primary.withValues(alpha: 0.5)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: _applyHospitalityTemplate,
+                icon: const Icon(Icons.restaurant_menu_rounded, size: 18),
+                label: const Text('تطبيق قالب المطاعم والكافيهات'),
+              ),
             ),
           ],
         ),

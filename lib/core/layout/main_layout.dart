@@ -613,9 +613,10 @@ class _MainLayoutState extends State<MainLayout> {
                                                     isSubItem: true,
                                                   ),
                                                 ],
-                                                if (isAdmin ||
-                                                    cashierPerms
-                                                        .allowGoodsIntake)
+                                                if ((isAdmin ||
+                                                        cashierPerms
+                                                            .allowGoodsIntake) &&
+                                                    !_isHospitality)
                                                   _navItem(
                                                     Icons.move_to_inbox_rounded,
                                                     'استلام بضاعة (شحنة جديدة)',
@@ -1373,14 +1374,15 @@ class _MainLayoutState extends State<MainLayout> {
         subtitle: 'طلبات التوصيل ومتابعة الكباتن',
         onSelect: () => _handleItemTap('إدارة الدليفري والطيارين', const DeliveryOrdersScreen(), false, null),
       ),
-      CommandPaletteItem(
-        id: 'nav_blind_receive',
-        title: 'استلام بضاعة (شحنة جديدة)',
-        category: 'شاشات النظام',
-        icon: Icons.move_to_inbox_rounded,
-        subtitle: 'فحص الباركود واستلام الشحنات وتحديث المخزون',
-        onSelect: () => _handleItemTap('استلام بضاعة (شحنة جديدة)', const BlindReceiveScreen(), false, null),
-      ),
+      if (!_isHospitality)
+        CommandPaletteItem(
+          id: 'nav_blind_receive',
+          title: 'استلام بضاعة (شحنة جديدة)',
+          category: 'شاشات النظام',
+          icon: Icons.move_to_inbox_rounded,
+          subtitle: 'فحص الباركود واستلام الشحنات وتحديث المخزون',
+          onSelect: () => _handleItemTap('استلام بضاعة (شحنة جديدة)', const BlindReceiveScreen(), false, null),
+        ),
       if (isAdmin) ...[
         CommandPaletteItem(
           id: 'nav_stocktake',

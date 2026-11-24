@@ -16,6 +16,7 @@ class ReceiptConfig extends Equatable {
   final bool groupVariantsOnReceipt; // Task 17: Group multiple variants of same model in receipt
   final String returnPolicy;
   final String footerGreeting;
+  final String wifiInfo;
 
   const ReceiptConfig({
     required this.storeName,
@@ -33,6 +34,7 @@ class ReceiptConfig extends Equatable {
     this.groupVariantsOnReceipt = true,
     this.returnPolicy = 'الاستبدال والاسترجاع خلال 14 يوماً مع وجود الفاتورة وأصل التكت بحالته',
     this.footerGreeting = 'شكراً لزيارتكم ونتمنى لكم يوماً سعيداً',
+    this.wifiInfo = '',
   });
 
   static const ReceiptConfig defaults = ReceiptConfig(
@@ -51,6 +53,27 @@ class ReceiptConfig extends Equatable {
     groupVariantsOnReceipt: true,
     returnPolicy: 'الاستبدال والاسترجاع خلال 14 يوماً مع وجود الفاتورة وأصل التكت بحالته',
     footerGreeting: 'شكراً لزيارتكم ونتمنى لكم يوماً سعيداً',
+    wifiInfo: '',
+  );
+
+  static const ReceiptConfig hospitalityDefaults = ReceiptConfig(
+    storeName: 'بيعة - مطاعم وكافيهات',
+    storeActivity: 'مطاعم وكافيهات',
+    storePhone: '01000000000',
+    storePhoneSecondary: '',
+    storeAddress: 'بني سويف',
+    taxNumber: '',
+    paperWidthMm: 80,
+    showCashierName: true,
+    showCustomerInfo: true,
+    showPaymentMethod: true,
+    showBarcode: true,
+    showItemDetails: false,
+    groupVariantsOnReceipt: true,
+    returnPolicy:
+        'الأطعمة والمشروبات الطازجة غير قابلة للاسترجاع بعد مغادرة الطاولة أو استلام الأوردر لسلامة الغذاء.',
+    footerGreeting: 'شكراً لزيارتكم ونتمنى لكم وجبة شهية!',
+    wifiInfo: 'WiFi: Restaurant-Guest',
   );
 
   ReceiptConfig copyWith({
@@ -69,6 +92,7 @@ class ReceiptConfig extends Equatable {
     bool? groupVariantsOnReceipt,
     String? returnPolicy,
     String? footerGreeting,
+    String? wifiInfo,
   }) {
     return ReceiptConfig(
       storeName: storeName ?? this.storeName,
@@ -86,6 +110,7 @@ class ReceiptConfig extends Equatable {
       groupVariantsOnReceipt: groupVariantsOnReceipt ?? this.groupVariantsOnReceipt,
       returnPolicy: returnPolicy ?? this.returnPolicy,
       footerGreeting: footerGreeting ?? this.footerGreeting,
+      wifiInfo: wifiInfo ?? this.wifiInfo,
     );
   }
 
@@ -106,6 +131,7 @@ class ReceiptConfig extends Equatable {
         groupVariantsOnReceipt,
         returnPolicy,
         footerGreeting,
+        wifiInfo,
       ];
 }
 

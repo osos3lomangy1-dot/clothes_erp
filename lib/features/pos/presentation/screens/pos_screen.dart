@@ -4367,6 +4367,39 @@ class _CartPanelState extends State<_CartPanel> {
     );
   }
 
+  bool get _isHospitality {
+    if (getIt.isRegistered<ActivitySettingsService>()) {
+      return getIt<ActivitySettingsService>()
+          .cachedEnabledActivities
+          .contains(ActivityType.restaurantsCafes);
+    }
+    return false;
+  }
+
+  InvoiceDetailsEntity? _enrichHospitalityInvoice(
+    InvoiceDetailsEntity? inv,
+    PosState state,
+  ) {
+    if (inv == null) return null;
+    if (!_isHospitality) return inv;
+    return inv.copyWith(
+      orderType: _hospitalityOrderType,
+      tableNumber: _hospitalityOrderType == 'dineIn' ? _tableNumber : null,
+      orderNumber: inv.shortRef,
+      items: inv.items.asMap().entries.map((entry) {
+        final idx = entry.key;
+        final itm = entry.value;
+        if (idx < state.cart.length) {
+          return itm.copyWith(
+            kitchenNotes: state.cart[idx].kitchenNotes,
+            modifiers: state.cart[idx].modifiers,
+          );
+        }
+        return itm;
+      }).toList(),
+    );
+  }
+
   void _printKitchenOrderTicket(BuildContext context) {
     final posCubit = context.read<PosCubit>();
     final cart = posCubit.state.cart;
@@ -4670,6 +4703,7 @@ class _CartPanelState extends State<_CartPanel> {
         (_) {},
         (list) => latestInvoice = list.isNotEmpty ? list.first : null,
       );
+      latestInvoice = _enrichHospitalityInvoice(latestInvoice, state);
 
       if (_deliveryOrder != null) {
         final deliveryRepo = getIt<DeliveryRepository>();
@@ -4748,6 +4782,7 @@ class _CartPanelState extends State<_CartPanel> {
         (_) {},
         (list) => latestInvoice = list.isNotEmpty ? list.first : null,
       );
+      latestInvoice = _enrichHospitalityInvoice(latestInvoice, state);
 
       if (_deliveryOrder != null) {
         final deliveryRepo = getIt<DeliveryRepository>();
@@ -4982,6 +5017,7 @@ class _CartPanelState extends State<_CartPanel> {
         (_) {},
         (list) => latestInvoice = list.isNotEmpty ? list.first : null,
       );
+      latestInvoice = _enrichHospitalityInvoice(latestInvoice, state);
 
       if (_deliveryOrder != null) {
         final deliveryRepo = getIt<DeliveryRepository>();

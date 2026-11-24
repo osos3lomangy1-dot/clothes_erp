@@ -5,11 +5,14 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import '../../../../core/di/injection.dart';
 import '../../../../core/theme/app_branding.dart';
 import '../../../../core/utils/money.dart';
 import '../../../customers/domain/entities/customer_entity.dart';
 import '../../../installments/domain/entities/customer_installment_entity.dart';
 import '../../../installments/domain/entities/installment_schedule_entry.dart';
+import '../../../products/domain/entities/activity_type.dart';
+import '../../../settings/data/services/activity_settings_service.dart';
 import '../../data/services/receipt_settings_service.dart';
 import '../../domain/entities/invoice_details_entity.dart';
 import '../../domain/entities/invoice_item_details_entity.dart';
@@ -69,6 +72,11 @@ class ReceiptPdfService {
     String? storePhone,
     String? storeAddress,
     String? returnPolicy,
+    bool? isHospitality,
+    String? orderType,
+    String? tableNumber,
+    String? orderNumber,
+    String? wifiInfo,
   }) async {
     final cfg = config ?? ReceiptSettingsService.current;
     final effectiveStoreName =
@@ -78,8 +86,73 @@ class ReceiptPdfService {
             : AppBranding.current.appName);
     final effectiveStorePhone = storePhone ?? cfg.storePhone;
     final effectiveStoreAddress = storeAddress ?? cfg.storeAddress;
-    final effectiveReturnPolicy = returnPolicy ?? cfg.returnPolicy;
-    final effectiveFooterGreeting = cfg.footerGreeting;
+
+    final bool isHospitalityMode = isHospitality ??
+        (invoice.orderType != null ||
+            invoice.tableNumber != null ||
+            invoice.orderNumber != null ||
+            cfg.storeActivity.contains('مطاعم') ||
+            cfg.storeActivity.contains('كافيه') ||
+            cfg.returnPolicy.contains('الأطعمة والمشروبات') ||
+            (getIt.isRegistered<ActivitySettingsService>() &&
+                getIt<ActivitySettingsService>()
+                    .cachedEnabledActivities
+                    .contains(ActivityType.restaurantsCafes)));
+
+    final effectiveOrderType = orderType ?? invoice.orderType ?? 'dineIn';
+    final effectiveTableNumber = tableNumber ?? invoice.tableNumber ?? '1';
+    final rawOrderNumber =
+        orderNumber ?? invoice.orderNumber ?? invoice.shortRef;
+    final effectiveOrderNumber = rawOrderNumber.startsWith('#')
+        ? rawOrderNumber.substring(1)
+        : rawOrderNumber;
+
+    final String orderBadgeLabel;
+    if (effectiveOrderType == 'dineIn' ||
+        effectiveOrderType == 'dine_in' ||
+        effectiveOrderType == 'صالة') {
+      final tblStr = effectiveTableNumber.startsWith('رقم')
+          ? effectiveTableNumber
+          : 'رقم $effectiveTableNumber';
+      orderBadgeLabel = '[ صالة - طاولة: $tblStr ]';
+    } else if (effectiveOrderType == 'delivery' ||
+        effectiveOrderType == 'توصيل' ||
+        deliveryOrder != null) {
+      final custName =
+          invoice.customerName ?? deliveryOrder?.customerName ?? '';
+      final custPhone =
+          invoice.customerPhone ?? deliveryOrder?.customerPhone ?? '';
+      if (custName.isNotEmpty && custPhone.isNotEmpty) {
+        orderBadgeLabel = '[ دليفري - العميل: $custName - الهاتف: $custPhone ]';
+      } else if (custName.isNotEmpty) {
+        orderBadgeLabel = '[ دليفري - العميل: $custName ]';
+      } else {
+        orderBadgeLabel = '[ دليفري / توصيل طلبات ]';
+      }
+    } else {
+      orderBadgeLabel = '[ تك أواي / سفري ]';
+    }
+
+    String effectiveReturnPolicy = returnPolicy ?? cfg.returnPolicy;
+    String effectiveFooterGreeting = cfg.footerGreeting;
+    final effectiveWifi = wifiInfo ??
+        (cfg.wifiInfo.isNotEmpty
+            ? cfg.wifiInfo
+            : (invoice.wifiInfo ?? ''));
+
+    if (isHospitalityMode) {
+      if (effectiveReturnPolicy.contains('14 يوماً') ||
+          effectiveReturnPolicy.contains('الملابس') ||
+          effectiveReturnPolicy.contains('التكت') ||
+          effectiveReturnPolicy == ReceiptConfig.defaults.returnPolicy) {
+        effectiveReturnPolicy =
+            'الأطعمة والمشروبات الطازجة غير قابلة للاسترجاع بعد مغادرة الطاولة أو استلام الأوردر لسلامة الغذاء.';
+      }
+      if (effectiveFooterGreeting == ReceiptConfig.defaults.footerGreeting ||
+          effectiveFooterGreeting.isEmpty) {
+        effectiveFooterGreeting = 'شكراً لزيارتكم ونتمنى لكم وجبة شهية!';
+      }
+    }
 
     final doc = pw.Document();
     final font = await _loadArabicFont();
@@ -167,6 +240,49 @@ class ReceiptPdfService {
                       color: PdfColors.grey700,
                     ),
                     textAlign: pw.TextAlign.center,
+                  ),
+                ],
+
+                if (isHospitalityMode) ...[
+                  pw.SizedBox(height: 6),
+                  pw.Container(
+                    width: double.infinity,
+                    padding: const pw.EdgeInsets.symmetric(
+                      vertical: 4,
+                      horizontal: 6,
+                    ),
+                    decoration: pw.BoxDecoration(
+                      border: pw.Border.all(
+                        color: PdfColors.grey800,
+                        width: 1.5,
+                      ),
+                      borderRadius: const pw.BorderRadius.all(
+                        pw.Radius.circular(4),
+                      ),
+                    ),
+                    child: pw.Column(
+                      children: [
+                        pw.Text(
+                          'طلب رقم: #$effectiveOrderNumber',
+                          style: pw.TextStyle(
+                            font: boldFont,
+                            fontSize: 15,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                          textAlign: pw.TextAlign.center,
+                        ),
+                        pw.SizedBox(height: 2),
+                        pw.Text(
+                          orderBadgeLabel,
+                          style: pw.TextStyle(
+                            font: boldFont,
+                            fontSize: 10,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                          textAlign: pw.TextAlign.center,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
 
@@ -297,7 +413,7 @@ class ReceiptPdfService {
                 pw.SizedBox(height: 4),
 
                 // Items Rows
-                ..._buildReceiptItemRows(invoice.items, cfg, boldFont),
+                ..._buildReceiptItemRows(invoice.items, cfg, boldFont, isHospitality: isHospitalityMode),
 
                 pw.SizedBox(height: 6),
                 _dashedLine(),
@@ -540,8 +656,33 @@ class ReceiptPdfService {
                     style: pw.TextStyle(font: boldFont, fontSize: 8),
                     textAlign: pw.TextAlign.center,
                   ),
-                  pw.SizedBox(height: 8),
+                  pw.SizedBox(height: 4),
                 ],
+                if (isHospitalityMode) ...[
+                  if (effectiveWifi.isNotEmpty) ...[
+                    pw.Text(
+                      effectiveWifi,
+                      style: const pw.TextStyle(
+                        fontSize: 7,
+                        color: PdfColors.grey700,
+                      ),
+                      textAlign: pw.TextAlign.center,
+                    ),
+                    pw.SizedBox(height: 2),
+                  ],
+                  if (effectiveStorePhone.isNotEmpty) ...[
+                    pw.Text(
+                      'خدمة التوصيل والطلبات: $effectiveStorePhone',
+                      style: const pw.TextStyle(
+                        fontSize: 7,
+                        color: PdfColors.grey700,
+                      ),
+                      textAlign: pw.TextAlign.center,
+                    ),
+                    pw.SizedBox(height: 2),
+                  ],
+                ],
+                pw.SizedBox(height: 6),
               ],
             ),
           );
@@ -581,8 +722,9 @@ class ReceiptPdfService {
   static List<pw.Widget> _buildReceiptItemRows(
     List<InvoiceItemDetailsEntity> items,
     ReceiptConfig cfg,
-    pw.Font boldFont,
-  ) {
+    pw.Font boldFont, {
+    bool isHospitality = false,
+  }) {
     if (cfg.groupVariantsOnReceipt) {
       final Map<String, List<InvoiceItemDetailsEntity>> grouped = {};
       for (final it in items) {
@@ -592,10 +734,16 @@ class ReceiptPdfService {
       return grouped.values.map((group) {
         if (group.length == 1) {
           final it = group.first;
-          final itemLabel = cfg.showItemDetails &&
-                  (it.color.isNotEmpty || it.size.isNotEmpty)
+          final itemLabel = (!isHospitality &&
+                  cfg.showItemDetails &&
+                  (it.color.isNotEmpty || it.size.isNotEmpty))
               ? '${it.productName} (${it.color} - ${it.size})'
               : it.productName;
+          final noteText = (it.kitchenNotes != null &&
+                  it.kitchenNotes!.trim().isNotEmpty)
+              ? it.kitchenNotes!.trim()
+              : (it.modifiers.isNotEmpty ? it.modifiers.join(' - ') : null);
+
           return pw.Padding(
             padding: const pw.EdgeInsets.symmetric(vertical: 2),
             child: pw.Column(
@@ -605,6 +753,19 @@ class ReceiptPdfService {
                   itemLabel,
                   style: pw.TextStyle(fontSize: 8, font: boldFont),
                 ),
+                if (noteText != null) ...[
+                  pw.Padding(
+                    padding:
+                        const pw.EdgeInsets.only(top: 1, bottom: 1, right: 4),
+                    child: pw.Text(
+                      '* ملاحظة التحضير: ($noteText)',
+                      style: const pw.TextStyle(
+                        fontSize: 7,
+                        color: PdfColors.grey700,
+                      ),
+                    ),
+                  ),
+                ],
                 pw.Row(
                   children: [
                     pw.Expanded(flex: 5, child: pw.SizedBox()),
@@ -641,6 +802,18 @@ class ReceiptPdfService {
           final first = group.first;
           final totalQty = group.fold<int>(0, (sum, i) => sum + i.qty);
           final totalLine = group.fold<int>(0, (sum, i) => sum + i.lineTotal);
+
+          final groupNotes = group
+              .map((i) =>
+                  (i.kitchenNotes != null && i.kitchenNotes!.trim().isNotEmpty)
+                      ? i.kitchenNotes!.trim()
+                      : (i.modifiers.isNotEmpty
+                          ? i.modifiers.join(' - ')
+                          : null))
+              .whereType<String>()
+              .toSet()
+              .join('، ');
+
           final variantsSummary = group.map((i) {
             final desc = [
               if (i.size.isNotEmpty && i.size != '-') i.size,
@@ -658,13 +831,27 @@ class ReceiptPdfService {
                   first.productName,
                   style: pw.TextStyle(fontSize: 8, font: boldFont),
                 ),
-                pw.Text(
-                  '($variantsSummary)',
-                  style: const pw.TextStyle(
-                    fontSize: 7,
-                    color: PdfColors.grey700,
+                if (!isHospitality)
+                  pw.Text(
+                    '($variantsSummary)',
+                    style: const pw.TextStyle(
+                      fontSize: 7,
+                      color: PdfColors.grey700,
+                    ),
                   ),
-                ),
+                if (groupNotes.isNotEmpty) ...[
+                  pw.Padding(
+                    padding:
+                        const pw.EdgeInsets.only(top: 1, bottom: 1, right: 4),
+                    child: pw.Text(
+                      '* ملاحظة التحضير: ($groupNotes)',
+                      style: const pw.TextStyle(
+                        fontSize: 7,
+                        color: PdfColors.grey700,
+                      ),
+                    ),
+                  ),
+                ],
                 pw.Row(
                   children: [
                     pw.Expanded(flex: 5, child: pw.SizedBox()),
@@ -702,10 +889,16 @@ class ReceiptPdfService {
     }
 
     return items.map((it) {
-      final itemLabel = cfg.showItemDetails &&
-              (it.color.isNotEmpty || it.size.isNotEmpty)
+      final itemLabel = (!isHospitality &&
+              cfg.showItemDetails &&
+              (it.color.isNotEmpty || it.size.isNotEmpty))
           ? '${it.productName} (${it.color} - ${it.size})'
           : it.productName;
+      final noteText =
+          (it.kitchenNotes != null && it.kitchenNotes!.trim().isNotEmpty)
+              ? it.kitchenNotes!.trim()
+              : (it.modifiers.isNotEmpty ? it.modifiers.join(' - ') : null);
+
       return pw.Padding(
         padding: const pw.EdgeInsets.symmetric(vertical: 2),
         child: pw.Column(
@@ -715,6 +908,18 @@ class ReceiptPdfService {
               itemLabel,
               style: pw.TextStyle(fontSize: 8, font: boldFont),
             ),
+            if (noteText != null) ...[
+              pw.Padding(
+                padding: const pw.EdgeInsets.only(top: 1, bottom: 1, right: 4),
+                child: pw.Text(
+                  '* ملاحظة التحضير: ($noteText)',
+                  style: const pw.TextStyle(
+                    fontSize: 7,
+                    color: PdfColors.grey700,
+                  ),
+                ),
+              ),
+            ],
             pw.Row(
               children: [
                 pw.Expanded(flex: 5, child: pw.SizedBox()),

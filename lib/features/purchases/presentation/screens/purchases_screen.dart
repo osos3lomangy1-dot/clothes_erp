@@ -9,6 +9,8 @@ import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../../inventory/domain/entities/goods_receipt_entity.dart';
 import '../../../inventory/presentation/cubits/goods_receipt_cubit.dart';
 import '../../../inventory/presentation/cubits/goods_receipt_state.dart';
+import '../../../products/domain/entities/activity_type.dart';
+import '../../../settings/data/services/activity_settings_service.dart';
 import '../../data/datasources/purchases_local_data_source.dart';
 import '../../domain/entities/purchase_entity.dart';
 import '../../domain/entities/supplier_entity.dart';
@@ -58,10 +60,20 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
     );
   }
 
+  bool get _isHospitality {
+    if (getIt.isRegistered<ActivitySettingsService>()) {
+      return getIt<ActivitySettingsService>()
+          .cachedEnabledActivities
+          .contains(ActivityType.restaurantsCafes);
+    }
+    return false;
+  }
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    final tabCount = _isHospitality ? 3 : 4;
+    _tabController = TabController(length: tabCount, vsync: this);
   }
 
   @override
@@ -379,20 +391,21 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
             unselectedLabelColor: Colors.grey.shade600,
             indicatorColor: AppColors.primary,
             indicatorWeight: 3,
-            tabs: const [
-              Tab(
+            tabs: [
+              const Tab(
                 icon: Icon(Icons.receipt_long_rounded),
                 text: 'فواتير المشتريات',
               ),
-              Tab(
-                icon: Icon(Icons.pending_actions_rounded),
-                text: 'استلامات معلقة (Pending Receipts)',
-              ),
-              Tab(
+              if (!_isHospitality)
+                const Tab(
+                  icon: Icon(Icons.pending_actions_rounded),
+                  text: 'استلامات معلقة (Pending Receipts)',
+                ),
+              const Tab(
                 icon: Icon(Icons.business_rounded),
                 text: 'سجل الموردين والمديونيات',
               ),
-              Tab(
+              const Tab(
                 icon: Icon(Icons.assignment_return_rounded),
                 text: 'مرتجعات المشتريات',
               ),
@@ -409,7 +422,7 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
                 controller: _tabController,
                 children: [
                   _buildPurchasesTab(),
-                  _buildPendingReceiptsTab(),
+                  if (!_isHospitality) _buildPendingReceiptsTab(),
                   _buildSuppliersTab(),
                   _buildReturnsTab(),
                 ],

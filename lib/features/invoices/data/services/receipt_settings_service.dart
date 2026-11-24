@@ -19,6 +19,7 @@ class ReceiptSettingsService {
   static const String keyGroupVariantsOnReceipt = 'receipt.group_variants_on_receipt';
   static const String keyReturnPolicy = 'receipt.return_policy';
   static const String keyFooterGreeting = 'receipt.footer_greeting';
+  static const String keyWifiInfo = 'receipt.wifi_info';
 
   static final ValueNotifier<ReceiptConfig> notifier =
       ValueNotifier<ReceiptConfig>(ReceiptConfig.defaults);
@@ -42,6 +43,7 @@ class ReceiptSettingsService {
       final groupVariantsStr = await gate.getMeta(keyGroupVariantsOnReceipt);
       final returnPolicy = await gate.getMeta(keyReturnPolicy);
       final footerGreeting = await gate.getMeta(keyFooterGreeting);
+      final wifiInfo = await gate.getMeta(keyWifiInfo);
 
       final loaded = ReceiptConfig(
         storeName: (storeName != null && storeName.trim().isNotEmpty)
@@ -61,6 +63,7 @@ class ReceiptSettingsService {
         groupVariantsOnReceipt: groupVariantsStr == null ? true : groupVariantsStr == '1',
         returnPolicy: returnPolicy ?? ReceiptConfig.defaults.returnPolicy,
         footerGreeting: footerGreeting ?? ReceiptConfig.defaults.footerGreeting,
+        wifiInfo: wifiInfo ?? ReceiptConfig.defaults.wifiInfo,
       );
 
       notifier.value = loaded;
@@ -90,6 +93,7 @@ class ReceiptSettingsService {
     await gate.setMeta(keyGroupVariantsOnReceipt, config.groupVariantsOnReceipt ? '1' : '0', userId: userId);
     await gate.setMeta(keyReturnPolicy, config.returnPolicy, userId: userId);
     await gate.setMeta(keyFooterGreeting, config.footerGreeting, userId: userId);
+    await gate.setMeta(keyWifiInfo, config.wifiInfo, userId: userId);
 
     notifier.value = config;
   }

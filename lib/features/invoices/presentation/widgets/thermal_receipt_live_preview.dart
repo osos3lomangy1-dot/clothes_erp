@@ -16,6 +16,9 @@ class ThermalReceiptLivePreview extends StatelessWidget {
     final containerWidth = is58mm ? 270.0 : 330.0;
     final now = DateTime.now();
     final dateFormat = DateFormat('yyyy/MM/dd - hh:mm a');
+    final isHospitality = config.storeActivity.contains('مطاعم') ||
+        config.storeActivity.contains('كافيه') ||
+        config.returnPolicy.contains('الأطعمة والمشروبات');
 
     return Container(
       width: containerWidth,
@@ -87,6 +90,41 @@ class ThermalReceiptLivePreview extends StatelessWidget {
             ),
           ],
 
+          if (isHospitality) ...[
+            const SizedBox(height: 6),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.black87, width: 1.5),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Column(
+                children: [
+                  Text(
+                    'طلب رقم: #042',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: Colors.black87,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    '[ صالة - طاولة: رقم 4 ]',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10.5,
+                      color: Colors.black87,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           const SizedBox(height: 8),
           _dashedLine(),
           const SizedBox(height: 8),
@@ -153,21 +191,39 @@ class ThermalReceiptLivePreview extends StatelessWidget {
           const SizedBox(height: 4),
 
           // Sample Items
-          _sampleItem(
-            name: 'قميص كاجوال رجالي',
-            details: config.showItemDetails ? 'كحلي - L' : null,
-            qty: 1,
-            price: '280.00',
-            total: '280.00',
-          ),
-          const SizedBox(height: 4),
-          _sampleItem(
-            name: 'بنطلون جينز كلاسيك',
-            details: config.showItemDetails ? 'أزرق غامق - 34' : null,
-            qty: 1,
-            price: '350.00',
-            total: '350.00',
-          ),
+          if (isHospitality) ...[
+            _sampleItem(
+              name: 'وجبة برجر لحم مدخن',
+              note: 'بدون بصل - صوص زيادة',
+              qty: 1,
+              price: '140.00',
+              total: '140.00',
+            ),
+            const SizedBox(height: 4),
+            _sampleItem(
+              name: 'عصير برتقال فريش',
+              note: 'سكر قليل - ثلج زيادة',
+              qty: 2,
+              price: '40.00',
+              total: '80.00',
+            ),
+          ] else ...[
+            _sampleItem(
+              name: 'قميص كاجوال رجالي',
+              details: config.showItemDetails ? 'كحلي - L' : null,
+              qty: 1,
+              price: '280.00',
+              total: '280.00',
+            ),
+            const SizedBox(height: 4),
+            _sampleItem(
+              name: 'بنطلون جينز كلاسيك',
+              details: config.showItemDetails ? 'أزرق غامق - 34' : null,
+              qty: 1,
+              price: '350.00',
+              total: '350.00',
+            ),
+          ],
 
           const SizedBox(height: 8),
           _dashedLine(),
@@ -247,6 +303,22 @@ class ThermalReceiptLivePreview extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
           ],
+          if (isHospitality && config.wifiInfo.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              config.wifiInfo,
+              style: TextStyle(fontSize: 9, color: Colors.grey.shade700),
+              textAlign: TextAlign.center,
+            ),
+          ],
+          if (isHospitality && config.storePhone.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text(
+              'خدمة التوصيل والطلبات: ${config.storePhone}',
+              style: TextStyle(fontSize: 8.5, color: Colors.grey.shade700),
+              textAlign: TextAlign.center,
+            ),
+          ],
           const SizedBox(height: 4),
           Text(
             '[ مقاس الورق: ${config.paperWidthMm} مم ]',
@@ -315,6 +387,7 @@ class ThermalReceiptLivePreview extends StatelessWidget {
   Widget _sampleItem({
     required String name,
     String? details,
+    String? note,
     required int qty,
     required String price,
     required String total,
@@ -326,6 +399,19 @@ class ThermalReceiptLivePreview extends StatelessWidget {
           details != null ? '$name ($details)' : name,
           style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 10.5),
         ),
+        if (note != null && note.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.only(top: 1, bottom: 2, right: 4),
+            child: Text(
+              '* ملاحظة التحضير: ($note)',
+              style: TextStyle(
+                fontSize: 9,
+                color: Colors.grey.shade700,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+        ],
         Row(
           children: [
             const Expanded(flex: 5, child: SizedBox()),
