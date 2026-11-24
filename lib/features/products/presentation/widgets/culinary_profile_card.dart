@@ -495,17 +495,23 @@ class CulinaryProfileCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.account_tree_outlined, size: 16, color: AppColors.primary),
-                  const SizedBox(width: 6),
-                  const Text(
-                    'خامات ومقادير الوجبة (Recipe BOM):',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.onSurface),
-                  ),
-                ],
+              Expanded(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.account_tree_outlined, size: 16, color: AppColors.primary),
+                    const SizedBox(width: 6),
+                    const Flexible(
+                      child: Text(
+                        'خامات ومقادير الوجبة (Recipe BOM):',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.onSurface),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               TextButton.icon(
                 key: const Key('add_recipe_item_btn'),
                 onPressed: () => _showAddRecipeItemDialog(context),
@@ -633,10 +639,14 @@ class CulinaryProfileCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'خيارات الإضافات المدفوعة (Paid Modifiers):',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.onSurface),
+                const Expanded(
+                  child: Text(
+                    'خيارات الإضافات المدفوعة (Paid Modifiers):',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.onSurface),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
+                const SizedBox(width: 8),
                 TextButton.icon(
                   key: const Key('add_paid_modifier_btn'),
                   onPressed: () {

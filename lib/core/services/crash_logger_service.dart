@@ -136,7 +136,7 @@ class CrashLoggerService {
       }
 
       if (_masterFile != null) {
-        _masterFile!.writeAsString(logText, mode: FileMode.append);
+        _masterFile!.writeAsStringSync(logText, mode: FileMode.append, flush: true);
       }
 
       // Also write an individual dated file
@@ -144,7 +144,7 @@ class CrashLoggerService {
         final singleFile = File(
           '${_logsDir!.path}/crash_${now.millisecondsSinceEpoch}.log',
         );
-        singleFile.writeAsString(logText);
+        singleFile.writeAsStringSync(logText, flush: true);
       }
 
       Logging.error('تم تسجيل العطل بنجاح في ملفات النظام المحلية: $effectiveContext');
