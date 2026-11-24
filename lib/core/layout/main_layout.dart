@@ -1610,20 +1610,11 @@ class _MainLayoutState extends State<MainLayout> {
     final List<_ContextualHotkeyItem> items;
     if (isStocktake) {
       items = [
-        const _ContextualHotkeyItem(
-          key: 'hotkey_stocktake_confirm_qty',
-          label: 'Enter تأكيد الكمية',
-          icon: Icons.keyboard_return_rounded,
-        ),
-        const _ContextualHotkeyItem(
-          key: 'hotkey_stocktake_search',
-          label: 'F2 بحث صنف',
-          icon: Icons.search_rounded,
-        ),
-        const _ContextualHotkeyItem(
-          key: 'hotkey_stocktake_commit',
-          label: 'Ctrl+S اعتماد الجرد',
-          icon: Icons.check_circle_rounded,
+        _ContextualHotkeyItem(
+          key: 'hotkey_stocktake_palette',
+          label: 'Ctrl+K لوحة الأوامر',
+          icon: Icons.terminal_rounded,
+          onTap: _openCommandPalette,
         ),
         _ContextualHotkeyItem(
           key: 'hotkey_stocktake_shortcuts',
@@ -1654,25 +1645,11 @@ class _MainLayoutState extends State<MainLayout> {
         ];
       } else {
         items = [
-          const _ContextualHotkeyItem(
-            key: 'hotkey_products_new_size',
-            label: 'F3 سطر مقاس جديد',
-            icon: Icons.add_box_rounded,
-          ),
-          const _ContextualHotkeyItem(
-            key: 'hotkey_products_save',
-            label: 'Ctrl+S حفظ المنتجات',
-            icon: Icons.save_rounded,
-          ),
-          const _ContextualHotkeyItem(
-            key: 'hotkey_products_barcode',
-            label: 'F4 طباعة باركود',
-            icon: Icons.qr_code_rounded,
-          ),
-          const _ContextualHotkeyItem(
-            key: 'hotkey_products_grid_nav',
-            label: 'تنقل شبكي بالأسهم',
-            icon: Icons.grid_view_rounded,
+          _ContextualHotkeyItem(
+            key: 'hotkey_products_palette',
+            label: 'Ctrl+K لوحة الأوامر',
+            icon: Icons.terminal_rounded,
+            onTap: _openCommandPalette,
           ),
           _ContextualHotkeyItem(
             key: 'hotkey_products_shortcuts',
@@ -1684,44 +1661,26 @@ class _MainLayoutState extends State<MainLayout> {
       }
     } else if (isDelivery) {
       items = [
-        const _ContextualHotkeyItem(
-          key: 'hotkey_delivery_new_order',
-          label: 'طلب دليفري جديد',
-          icon: Icons.add_circle_outline_rounded,
-        ),
-        const _ContextualHotkeyItem(
-          key: 'hotkey_delivery_settle_courier',
-          label: 'تصفية كاش طيار',
-          icon: Icons.account_balance_wallet_rounded,
-        ),
-        const _ContextualHotkeyItem(
-          key: 'hotkey_delivery_company_payout',
-          label: 'تسجيل دفعة شركة',
-          icon: Icons.payments_rounded,
-        ),
         _ContextualHotkeyItem(
           key: 'hotkey_delivery_palette',
           label: 'Ctrl+K لوحة الأوامر',
           icon: Icons.terminal_rounded,
           onTap: _openCommandPalette,
         ),
+        _ContextualHotkeyItem(
+          key: 'hotkey_delivery_shortcuts',
+          label: 'F1 دليل ومفاتيح النظام',
+          icon: Icons.keyboard_rounded,
+          onTap: _openShortcutsGuide,
+        ),
       ];
     } else if (isPurchases) {
       items = [
-        const _ContextualHotkeyItem(
-          key: 'hotkey_purchases_new_bill',
-          label: 'فاتورة مشتريات جديدة',
-          icon: Icons.post_add_rounded,
-        ),
-        const _ContextualHotkeyItem(
-          key: 'hotkey_purchases_save',
-          label: 'Ctrl+S اعتماد وحفظ',
-          icon: Icons.save_rounded,
-        ),
-        const _ContextualHotkeyItem(
-          key: 'hotkey_purchases_supplier',
-          label: 'F2 اختيار مورد',
-          icon: Icons.person_search_rounded,
+        _ContextualHotkeyItem(
+          key: 'hotkey_purchases_palette',
+          label: 'Ctrl+K لوحة الأوامر',
+          icon: Icons.terminal_rounded,
+          onTap: _openCommandPalette,
         ),
         _ContextualHotkeyItem(
           key: 'hotkey_purchases_shortcuts',
@@ -1743,12 +1702,6 @@ class _MainLayoutState extends State<MainLayout> {
           label: 'F1 دليل ومفاتيح النظام',
           icon: Icons.keyboard_rounded,
           onTap: _openShortcutsGuide,
-        ),
-        _ContextualHotkeyItem(
-          key: 'hotkey_general_search',
-          label: 'Ctrl+F بحث فوري',
-          icon: Icons.search_rounded,
-          onTap: _openCommandPalette,
         ),
       ];
     }

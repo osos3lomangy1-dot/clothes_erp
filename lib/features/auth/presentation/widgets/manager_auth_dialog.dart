@@ -3,14 +3,31 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/features/feature_gate.dart';
 
 class ManagerAuthHelper {
+  static const String superAdminPinMetaKey = 'security.super_admin_pin';
+
+  /// Returns true if at least one active admin user exists in [AppDatabase].
+  static Future<bool> hasActiveAdminUser({AppDatabase? db}) async {
+    final database =
+        db ?? (getIt.isRegistered<AppDatabase>() ? getIt<AppDatabase>() : null);
+    if (database == null) return false;
+    final admins = await (database.select(database.users)
+          ..where((u) =>
+              u.role.lower().equals('admin') &
+              u.isActive.equals(true) &
+              u.deletedAt.isNull()))
+        .get();
+    return admins.isNotEmpty;
+  }
+
   /// Verifies [passwordOrPin] against active admin/manager accounts in [AppDatabase].
-  /// Never accepts hardcoded fallback passwords like 'admin' or '123456' unless
-  /// they match an actual active admin/manager user's stored hash/PIN.
+  /// When [requireAdminOnly] is true, only accounts with role `'admin'` are accepted.
   static Future<bool> verifyManagerCredentials(
     String passwordOrPin, {
     AppDatabase? db,
+    bool requireAdminOnly = false,
   }) async {
     final clean = passwordOrPin.trim();
     if (clean.isEmpty) return false;
@@ -20,7 +37,9 @@ class ManagerAuthHelper {
 
     final managers = await (database.select(database.users)
           ..where((u) =>
-              (u.role.lower().equals('admin') | u.role.lower().equals('manager')) &
+              (requireAdminOnly
+                  ? u.role.lower().equals('admin')
+                  : (u.role.lower().equals('admin') | u.role.lower().equals('manager'))) &
               u.isActive.equals(true) &
               u.deletedAt.isNull()))
         .get();
@@ -40,6 +59,124 @@ class ManagerAuthHelper {
     return false;
   }
 
+  /// Returns true if a Super Admin / Support PIN has been configured.
+  static Future<bool> isSuperAdminPinConfigured(FeatureGate gate) async {
+    final raw = await gate.getMeta(superAdminPinMetaKey);
+    return raw != null && raw.trim().isNotEmpty;
+  }
+
+  /// Verifies [pin] against the configured Super Admin / Support PIN.
+  static Future<bool> verifySuperAdminPin(FeatureGate gate, String pin) async {
+    final stored = await gate.getMeta(superAdminPinMetaKey);
+    if (stored == null || stored.trim().isEmpty) return false;
+    return stored.trim() == pin.trim();
+  }
+
+  /// If a Super Admin PIN is configured, prompts the user to enter it.
+  /// If none is configured, returns `true` immediately.
+  static Future<bool> ensureSuperAdminUnlocked(
+    BuildContext context, {
+    required FeatureGate gate,
+    required String actionLabel,
+  }) async {
+    if (!await isSuperAdminPinConfigured(gate)) return true;
+    if (!context.mounted) return false;
+
+    final pinCtrl = TextEditingController();
+    String? errorText;
+    bool isChecking = false;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          key: const Key('super_admin_pin_dialog'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          title: Row(
+            children: [
+              Icon(Icons.admin_panel_settings_rounded, color: AppColors.primary),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'بوابة المزود / الدعم الفني (Super Admin PIN)',
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 380,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'هذا الإجراء ($actionLabel) محمي برمز المزود / الدعم الفني لمنع التعديل العرضي في إعدادات الباقة أو قطاع النشاط.',
+                  style: const TextStyle(fontFamily: 'Cairo', fontSize: 12),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  key: const Key('super_admin_pin_field'),
+                  controller: pinCtrl,
+                  obscureText: true,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: 'رمز المزود / الدعم الفني (PIN) *',
+                    errorText: errorText,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isChecking ? null : () => Navigator.of(ctx).pop(false),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              key: const Key('super_admin_pin_confirm_btn'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: isChecking
+                  ? null
+                  : () async {
+                      final pin = pinCtrl.text.trim();
+                      if (pin.isEmpty) {
+                        setDialogState(() => errorText = 'يرجى إدخال رمز الدعم الفني');
+                        return;
+                      }
+                      setDialogState(() {
+                        isChecking = true;
+                        errorText = null;
+                      });
+                      final valid = await verifySuperAdminPin(gate, pin);
+                      if (!ctx.mounted) return;
+                      if (!valid) {
+                        setDialogState(() {
+                          isChecking = false;
+                          errorText = 'رمز المزود / الدعم الفني غير صحيح';
+                        });
+                        return;
+                      }
+                      Navigator.of(ctx).pop(true);
+                    },
+              child: const Text('فتح القفل'),
+            ),
+          ],
+        ),
+      ),
+    );
+    return ok == true;
+  }
+
   /// Prompts for actual manager/admin password or PIN approval.
   /// Returns `true` if approved, `false` if cancelled.
   static Future<bool> requestManagerApproval(
@@ -47,6 +184,7 @@ class ManagerAuthHelper {
     required String title,
     required String message,
     bool requireReason = false,
+    bool requireAdminOnly = false,
     void Function(String reason)? onReasonCaptured,
     AppDatabase? db,
   }) async {
@@ -144,7 +282,11 @@ class ManagerAuthHelper {
                           isChecking = true;
                           errorText = null;
                         });
-                        final isValid = await verifyManagerCredentials(pass, db: db);
+                        final isValid = await verifyManagerCredentials(
+                          pass,
+                          db: db,
+                          requireAdminOnly: requireAdminOnly,
+                        );
                         if (!ctx.mounted) return;
                         if (!isValid) {
                           setDialogState(() {

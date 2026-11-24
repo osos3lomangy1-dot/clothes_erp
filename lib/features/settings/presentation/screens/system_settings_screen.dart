@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/retail_sector.dart';
+import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/features/feature_gate.dart';
 import '../../../../core/services/crash_logger_service.dart';
@@ -18,6 +19,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../auth/domain/models/cashier_permissions_config.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
+import '../../../auth/presentation/widgets/manager_auth_dialog.dart';
 import '../../../auth/services/cashier_permissions_service.dart';
 import '../../../barcode_printing/domain/models/barcode_config.dart';
 import '../../../barcode_printing/presentation/screens/barcode_customizer_screen.dart';
@@ -1075,6 +1077,9 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
                           const SizedBox(height: 20),
                           _sectionTitle('صلاحيات الكاشير الموثوق'),
                           _CashierPermissionsSettingsCard(userId: userId),
+                          const SizedBox(height: 20),
+                          _sectionTitle('بوابة المزود / الدعم الفني (Super Admin PIN)'),
+                          _SuperAdminLockCard(userId: userId),
                         ],
 
                         // ─── 4. الخزينة والشركاء (Treasury) ───
@@ -1633,6 +1638,14 @@ class _SystemSettingsViewState extends State<_SystemSettingsView> {
     bool value,
     String userId,
   ) async {
+    if (getIt.isRegistered<FeatureGate>()) {
+      final unlocked = await ManagerAuthHelper.ensureSuperAdminUnlocked(
+        context,
+        gate: getIt<FeatureGate>(),
+        actionLabel: 'تعديل موديولات الباقة',
+      );
+      if (!unlocked || !context.mounted) return;
+    }
     final err = await context.read<SettingsCubit>().toggleFeature(
           key,
           value,
@@ -3110,6 +3123,33 @@ class _CashierPermissionsSettingsCardState
   }
 
   Future<void> _update(CashierPermissionsConfig newConfig) async {
+    try {
+      final authState = context.read<AuthCubit>().state;
+      if (authState is AuthAuthenticated &&
+          authState.user.role.toLowerCase() != 'admin') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: AppColors.error,
+            content: Text('تعديل صلاحيات الموظفين متاح لمدير النظام (Admin) فقط'),
+          ),
+        );
+        return;
+      }
+    } catch (_) {}
+
+    if (getIt.isRegistered<AppDatabase>() &&
+        await ManagerAuthHelper.hasActiveAdminUser()) {
+      if (!mounted) return;
+      final approved = await ManagerAuthHelper.requestManagerApproval(
+        context,
+        title: 'تأكيد تعديل صلاحيات الموظفين',
+        message:
+            'يرجى إدخال كلمة مرور مدير النظام (Admin) لحفظ تعديلات الصلاحيات.',
+        requireAdminOnly: true,
+      );
+      if (!approved || !mounted) return;
+    }
+
     setState(() => _config = newConfig);
     final gate = getIt<FeatureGate>();
     await CashierPermissionsService.save(
@@ -5214,9 +5254,16 @@ class _ActivitiesMasterSettingsCardState extends State<_ActivitiesMasterSettings
       key: Key('store_preset_${preset.code}'),
       onTap: () async {
         try {
+          final gate = getIt<FeatureGate>();
+          final unlocked = await ManagerAuthHelper.ensureSuperAdminUnlocked(
+            context,
+            gate: gate,
+            actionLabel: 'تبديل قطاع النشاط',
+          );
+          if (!unlocked || !mounted) return;
           await StorePresetsEngine.applyPreset(
             preset: preset,
-            featureGate: getIt<FeatureGate>(),
+            featureGate: gate,
             activityService: _activityService,
             userId: widget.userId,
           );
@@ -6436,6 +6483,184 @@ class _LicenseActivationCardState extends State<_LicenseActivationCard> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SuperAdminLockCard extends StatefulWidget {
+  final String userId;
+
+  const _SuperAdminLockCard({required this.userId});
+
+  @override
+  State<_SuperAdminLockCard> createState() => _SuperAdminLockCardState();
+}
+
+class _SuperAdminLockCardState extends State<_SuperAdminLockCard> {
+  bool _isLocked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLockState();
+  }
+
+  Future<void> _loadLockState() async {
+    if (!getIt.isRegistered<FeatureGate>()) return;
+    final configured = await ManagerAuthHelper.isSuperAdminPinConfigured(
+      getIt<FeatureGate>(),
+    );
+    if (mounted) {
+      setState(() => _isLocked = configured);
+    }
+  }
+
+  Future<void> _configureOrClearPin() async {
+    if (!getIt.isRegistered<FeatureGate>()) return;
+    final gate = getIt<FeatureGate>();
+
+    if (_isLocked) {
+      final unlocked = await ManagerAuthHelper.ensureSuperAdminUnlocked(
+        context,
+        gate: gate,
+        actionLabel: 'إلغاء قفل الدعم الفني',
+      );
+      if (!unlocked || !mounted) return;
+      await gate.setMeta(
+        ManagerAuthHelper.superAdminPinMetaKey,
+        '',
+        userId: widget.userId,
+      );
+      if (mounted) {
+        setState(() => _isLocked = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تم إلغاء قفل المزود / الدعم الفني'),
+          ),
+        );
+      }
+      return;
+    }
+
+    final pinCtrl = TextEditingController();
+    String? errorText;
+    final newPin = await showDialog<String>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          title: Row(
+            children: [
+              Icon(Icons.admin_panel_settings_rounded, color: AppColors.primary),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'تعيين رمز المزود / الدعم الفني (Super Admin PIN)',
+                  style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: TextField(
+            key: const Key('setup_super_admin_pin_field'),
+            controller: pinCtrl,
+            obscureText: true,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: 'رمز PIN الجديد (4 أرقام على الأقل) *',
+              errorText: errorText,
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              key: const Key('setup_super_admin_pin_save_btn'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                final val = pinCtrl.text.trim();
+                if (val.length < 4) {
+                  setDlgState(() => errorText = 'يجب أن لا يقل الرمز عن 4 أحرف/أرقام');
+                  return;
+                }
+                Navigator.pop(ctx, val);
+              },
+              child: const Text('تفعيل القفل'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (newPin != null && newPin.isNotEmpty && mounted) {
+      await gate.setMeta(
+        ManagerAuthHelper.superAdminPinMetaKey,
+        newPin,
+        userId: widget.userId,
+      );
+      if (mounted) {
+        setState(() => _isLocked = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.primary,
+            content: const Text('تم تفعيل قفل المزود / الدعم الفني بنجاح'),
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      key: const Key('super_admin_lock_card'),
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: AppColors.outlineVariant),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: (_isLocked ? AppColors.primary : AppColors.secondary)
+                .withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(
+            _isLocked ? Icons.lock_rounded : Icons.lock_open_rounded,
+            color: _isLocked ? AppColors.primary : AppColors.secondary,
+          ),
+        ),
+        title: const Text(
+          'حماية إعدادات الباقة وقطاع النشاط (Super Admin PIN)',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+        ),
+        subtitle: Text(
+          _isLocked
+              ? 'مفعّل: يتطلب رمز الدعم الفني لتبديل قطاع النشاط أو موديولات الباقة'
+              : 'غير مفعّل: يمكن تفعيله لمنع العبث العرضي في موديولات الباقة',
+          style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant),
+        ),
+        trailing: ElevatedButton(
+          key: const Key('super_admin_pin_toggle_btn'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _isLocked ? AppColors.error : AppColors.primary,
+            foregroundColor: Colors.white,
+          ),
+          onPressed: _configureOrClearPin,
+          child: Text(_isLocked ? 'إلغاء القفل' : 'تفعيل القفل'),
+        ),
       ),
     );
   }

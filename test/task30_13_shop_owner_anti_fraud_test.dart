@@ -3,6 +3,7 @@ import 'package:clothes_erp/core/database/branch_provider.dart';
 import 'package:clothes_erp/core/database/tx_writer.dart';
 import 'package:clothes_erp/core/errors/failures.dart';
 import 'package:clothes_erp/core/features/feature_gate.dart';
+import 'package:clothes_erp/core/services/local_backup_service.dart';
 import 'package:clothes_erp/features/auth/data/datasources/auth_local_data_source.dart';
 import 'package:clothes_erp/features/auth/data/models/user_model.dart';
 import 'package:clothes_erp/features/auth/presentation/cubits/auth_cubit.dart';
@@ -25,6 +26,10 @@ import 'package:clothes_erp/features/returns/domain/entities/return_item_entity.
 import 'package:clothes_erp/features/returns/presentation/cubits/returns_cubit.dart';
 import 'package:clothes_erp/features/returns/presentation/cubits/returns_state.dart';
 import 'package:clothes_erp/features/returns/presentation/screens/return_screen.dart';
+import 'package:clothes_erp/features/settings/data/services/activity_settings_service.dart';
+import 'package:clothes_erp/features/settings/presentation/cubits/settings_cubit.dart';
+import 'package:clothes_erp/features/settings/presentation/screens/system_settings_screen.dart';
+import 'package:clothes_erp/features/settings/presentation/widgets/local_backup_card.dart';
 import 'package:dartz/dartz.dart';
 import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
@@ -103,6 +108,22 @@ class _TestProductRepo implements ProductRepository {
   @override
   Future<Either<Failure, List<ProductEntity>>> getProducts() async =>
       const Right([]);
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeLocalBackupService implements LocalBackupService {
+  @override
+  Future<LocalBackupConfig> loadConfig() async => const LocalBackupConfig(
+        autoEnabled: false,
+        directoryPath: '',
+        retentionCount: 5,
+      );
+
+  @override
+  Future<List<BackupFileInfo>> listBackups({String? directoryPath}) async =>
+      const [];
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -488,6 +509,138 @@ void main() {
       expect(find.text('كوتشي أبيض'), findsWidgets);
       expect(find.text('سعر الشراء'), findsNothing);
       expect(find.byKey(const Key('edit_cost_price_btn_v1')), findsNothing);
+    });
+  });
+
+  group('Addendum 30.13 (Items 6 & 7): Super Admin PIN Gate & Restore Restriction', () {
+    testWidgets('Super Admin PIN locks StorePreset switching in SystemSettingsScreen until unlocked', (tester) async {
+      tester.view.physicalSize = const Size(1280, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final now = DateTime.now();
+      final authDs = _FakeAuthLocalDataSource();
+      await authDs.cacheUser(
+        UserModel(
+          id: 'u_admin',
+          name: 'المدير',
+          email: 'boss@test.com',
+          role: 'admin',
+          isActive: true,
+          createdAt: now,
+        ),
+      );
+      final featureGate = FeatureGate(db, authDs, tx, branchProvider);
+      final activityService = ActivitySettingsService(db, featureGate);
+      await featureGate.setMeta(
+        ManagerAuthHelper.superAdminPinMetaKey,
+        '9988',
+        userId: 'u_admin',
+      );
+
+      final sl = GetIt.instance;
+      await sl.reset();
+      sl.registerSingleton<AppDatabase>(db);
+      sl.registerSingleton<FeatureGate>(featureGate);
+      sl.registerSingleton<ActivitySettingsService>(activityService);
+      sl.registerFactory<SettingsCubit>(() => SettingsCubit(featureGate));
+      addTearDown(() async => sl.reset());
+
+      final adminAuth = _FakeAuthCubit(
+        UserModel(
+          id: 'u_admin',
+          name: 'المدير',
+          email: 'boss@test.com',
+          role: 'admin',
+          isActive: true,
+          createdAt: now,
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: BlocProvider<AuthCubit>.value(
+              value: adminAuth,
+              child: const SystemSettingsScreen(initialCategory: 'activities'),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('store_preset_electronics')));
+      await tester.pumpAndSettle();
+
+      // Super Admin PIN dialog must appear
+      expect(find.byKey(const Key('super_admin_pin_dialog')), findsOneWidget);
+
+      // Wrong PIN rejected
+      await tester.enterText(find.byKey(const Key('super_admin_pin_field')), '0000');
+      await tester.tap(find.byKey(const Key('super_admin_pin_confirm_btn')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('super_admin_pin_dialog')), findsOneWidget);
+
+      // Correct Super Admin PIN unlocks & applies preset
+      await tester.enterText(find.byKey(const Key('super_admin_pin_field')), '9988');
+      await tester.tap(find.byKey(const Key('super_admin_pin_confirm_btn')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('super_admin_pin_dialog')), findsNothing);
+      expect(find.text('تم تطبيق قالب معرض أجهزة وإلكترونيات بنجاح!'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(milliseconds: 100));
+    });
+
+    testWidgets('LocalBackupCard blocks restore for non-admin (cashier) role', (tester) async {
+      tester.view.physicalSize = const Size(1000, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final now = DateTime.now();
+      final sl = GetIt.instance;
+      await sl.reset();
+      sl.registerSingleton<AppDatabase>(db);
+      sl.registerSingleton<LocalBackupService>(_FakeLocalBackupService());
+      addTearDown(() async => sl.reset());
+
+      final cashierAuth = _FakeAuthCubit(
+        UserModel(
+          id: 'c1',
+          name: 'كاشير',
+          email: 'cashier@test.com',
+          role: 'cashier',
+          isActive: true,
+          createdAt: now,
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Scaffold(
+              body: BlocProvider<AuthCubit>.value(
+                value: cashierAuth,
+                child: const SingleChildScrollView(
+                  child: LocalBackupCard(userId: 'c1'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('backup_restore_btn')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('استعادة النسخة الاحتياطية متاحة لمدير النظام (Admin) فقط'),
+        findsOneWidget,
+      );
     });
   });
 }

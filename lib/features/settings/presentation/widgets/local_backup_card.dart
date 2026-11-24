@@ -2,11 +2,16 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/services/local_backup_service.dart';
+import '../../../auth/presentation/cubits/auth_cubit.dart';
+import '../../../auth/presentation/cubits/auth_state.dart';
+import '../../../auth/presentation/widgets/manager_auth_dialog.dart';
 
 class LocalBackupCard extends StatefulWidget {
   final String userId;
@@ -191,6 +196,20 @@ class _LocalBackupCardState extends State<LocalBackupCard> {
   }
 
   Future<void> _pickAndRestoreBackup({String? preselectedPath}) async {
+    try {
+      final authState = context.read<AuthCubit>().state;
+      if (authState is AuthAuthenticated &&
+          authState.user.role.toLowerCase() != 'admin') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: AppColors.error,
+            content: Text('استعادة النسخة الاحتياطية متاحة لمدير النظام (Admin) فقط'),
+          ),
+        );
+        return;
+      }
+    } catch (_) {}
+
     final svc = _service;
     if (svc == null) return;
 
@@ -310,6 +329,20 @@ class _LocalBackupCardState extends State<LocalBackupCard> {
     );
 
     if (confirmed != true || !mounted) return;
+
+    // Step 2b: Verify Admin Password before overwriting database
+    if (getIt.isRegistered<AppDatabase>() &&
+        await ManagerAuthHelper.hasActiveAdminUser()) {
+      if (!mounted) return;
+      final adminApproved = await ManagerAuthHelper.requestManagerApproval(
+        context,
+        title: 'تأكيد كلمة مرور المدير للاستعادة',
+        message:
+            'عملية استعادة النسخة الاحتياطية تستبدل البيانات الحالية بالكامل. يرجى إدخال كلمة مرور مدير النظام (Admin).',
+        requireAdminOnly: true,
+      );
+      if (!adminApproved || !mounted) return;
+    }
 
     setState(() {
       _busy = true;

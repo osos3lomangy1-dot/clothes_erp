@@ -505,10 +505,10 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
-      // Standard apparel hotkeys must be present
-      expect(find.text('F3 سطر مقاس جديد'), findsOneWidget);
-      expect(find.text('F4 طباعة باركود'), findsOneWidget);
-      expect(find.text('تنقل شبكي بالأسهم'), findsOneWidget);
+      // Only active working hotkeys must be present (dead F3/F4 purged in 30.13)
+      expect(find.text('F3 سطر مقاس جديد'), findsNothing);
+      expect(find.text('F4 طباعة باركود'), findsNothing);
+      expect(find.text('Ctrl+K لوحة الأوامر'), findsOneWidget);
       expect(find.text('F1 اختصارات'), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox());

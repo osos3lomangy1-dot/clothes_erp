@@ -598,10 +598,9 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byKey(const Key('contextual_hotkey_strip_stocktake')), findsOneWidget);
-        expect(find.byKey(const Key('hotkey_stocktake_confirm_qty')), findsOneWidget);
-        expect(find.byKey(const Key('hotkey_stocktake_search')), findsOneWidget);
-        expect(find.byKey(const Key('hotkey_stocktake_commit')), findsOneWidget);
+        expect(find.byKey(const Key('hotkey_stocktake_palette')), findsOneWidget);
         expect(find.byKey(const Key('hotkey_stocktake_shortcuts')), findsOneWidget);
+        expect(find.byKey(const Key('hotkey_stocktake_search')), findsNothing);
       }
 
       await tester.pumpWidget(const SizedBox.shrink());
