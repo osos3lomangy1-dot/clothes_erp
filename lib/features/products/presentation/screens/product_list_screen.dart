@@ -183,10 +183,15 @@ class _ProductsAndCategoriesViewState
   ]) async {
     final cubit = context.read<ProductCubit>();
     final isSingle = RetailSector.isSingleProductMode(_sectorMode);
+    // For hybrid mode: if editing an existing matrix-based product, use full matrix dialog
+    final useMatrix = !isSingle ||
+        (product != null &&
+            (product.activityTypeEnum.isMatrixBased ||
+                product.variants.length > 1));
     await showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => isSingle
+      builder: (_) => !useMatrix
           ? SimpleProductFormDialog(
               product: product,
               initialActivityType: _isHospitality

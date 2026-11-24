@@ -415,51 +415,44 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                     child: Icon(Icons.analytics_rounded, color: AppColors.primary, size: 24),
                                   ),
                                   const SizedBox(width: 10),
-                                  const Text(
-                                    'القسم الأول: تقرير الأرباح والخسائر (P&L)',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 18,
-                                      color: AppColors.onSurface,
+                                  const Expanded(
+                                    child: Text(
+                                      'القسم الأول: تقرير الأرباح والخسائر (P&L)',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 18,
+                                        color: AppColors.onSurface,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _ReportCard(
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final cards = [
+                                    _ReportCard(
                                       title: 'إجمالي المبيعات',
                                       value:
                                           '${Money(report.totalRevenue).toDisplay()} ج.م',
                                       icon: Icons.monetization_on_rounded,
                                       color: Colors.green.shade700,
                                     ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: _ReportCard(
+                                    _ReportCard(
                                       title: 'تكلفة البضاعة',
                                       value:
                                           '${Money(report.totalCost).toDisplay()} ج.م',
                                       icon: Icons.shopping_bag_outlined,
                                       color: Colors.orange.shade800,
                                     ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: _ReportCard(
+                                    _ReportCard(
                                       title: 'المصروفات',
                                       value:
                                           '${Money(report.totalExpenses).toDisplay()} ج.م',
                                       icon: Icons.outbox_rounded,
                                       color: AppColors.error,
                                     ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: _ReportCard(
+                                    _ReportCard(
                                       title: 'صافي الربح الفعلي',
                                       value:
                                           '${Money(report.netProfit).toDisplay()} ج.م',
@@ -468,18 +461,79 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                           ? AppColors.primary
                                           : AppColors.error,
                                     ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: _ReportCard(
+                                    _ReportCard(
                                       title: 'عدد الفواتير',
                                       value: '${report.totalTransactions}',
                                       icon: Icons.receipt_long_rounded,
                                       color: Colors.blue.shade700,
                                     ),
-                                  ),
-                                ],
+                                  ];
+                                  if (constraints.maxWidth < 700) {
+                                    return Wrap(
+                                      spacing: 10,
+                                      runSpacing: 10,
+                                      children: cards
+                                          .map(
+                                            (c) => SizedBox(
+                                              width: (constraints.maxWidth - 10) / 2,
+                                              child: c,
+                                            ),
+                                          )
+                                          .toList(),
+                                    );
+                                  }
+                                  return Row(
+                                    children: [
+                                      Expanded(child: cards[0]),
+                                      const SizedBox(width: 10),
+                                      Expanded(child: cards[1]),
+                                      const SizedBox(width: 10),
+                                      Expanded(child: cards[2]),
+                                      const SizedBox(width: 10),
+                                      Expanded(child: cards[3]),
+                                      const SizedBox(width: 10),
+                                      Expanded(child: cards[4]),
+                                    ],
+                                  );
+                                },
                               ),
+                              if (report.totalReturns > 0) ...[
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade50,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: AppColors.outlineVariant),
+                                  ),
+                                  child: Wrap(
+                                    spacing: 12,
+                                    runSpacing: 6,
+                                    alignment: WrapAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'إجمالي المرتجعات: ${Money(report.totalReturns).toDisplay()} ج.م',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.error,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                      Text(
+                                        'صافي المبيعات بعد المرتجعات: ${Money(report.netRevenue).toDisplay()} ج.م',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.primary,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                               const SizedBox(height: 20),
                               FinancialComparisonBarChart(
                                 totalRevenue: report.totalRevenue,
@@ -581,46 +635,62 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                      child: Icon(Icons.account_balance_wallet_rounded, color: Colors.teal.shade800, size: 24),
                                    ),
                                    const SizedBox(width: 10),
-                                   const Text(
-                                     'القسم الثاني: التدفقات النقدية والخزينة (Cash Flow)',
-                                     style: TextStyle(
-                                       fontWeight: FontWeight.bold,
-                                       fontSize: 18,
-                                       color: AppColors.onSurface,
+                                   const Expanded(
+                                     child: Text(
+                                       'القسم الثاني: التدفقات النقدية والخزينة (Cash Flow)',
+                                       style: TextStyle(
+                                         fontWeight: FontWeight.bold,
+                                         fontSize: 18,
+                                         color: AppColors.onSurface,
+                                       ),
                                      ),
                                    ),
                                  ],
                                ),
                                const SizedBox(height: 12),
-                               Row(
-                                 children: [
-                                   Expanded(
-                                     child: _ReportCard(
+                               LayoutBuilder(
+                                 builder: (context, constraints) {
+                                   final cashCards = [
+                                     _ReportCard(
                                        title: 'إجمالي المقبوضات (داخل الخزينة)',
                                        value: '${Money(report.cashFlowIn).toDisplay()} ج.م',
                                        icon: Icons.arrow_downward_rounded,
                                        color: Colors.green.shade700,
                                      ),
-                                   ),
-                                   const SizedBox(width: 10),
-                                   Expanded(
-                                     child: _ReportCard(
+                                     _ReportCard(
                                        title: 'إجمالي المدفوعات (خارج الخزينة)',
                                        value: '${Money(report.cashFlowOut).toDisplay()} ج.م',
                                        icon: Icons.arrow_upward_rounded,
                                        color: AppColors.error,
                                      ),
-                                   ),
-                                   const SizedBox(width: 10),
-                                   Expanded(
-                                     child: _ReportCard(
+                                     _ReportCard(
                                        title: 'صافي السيولة النقدية (Net Cash)',
                                        value: '${Money(report.netCashFlow).toDisplay()} ج.م',
                                        icon: Icons.account_balance_rounded,
                                        color: report.netCashFlow >= 0 ? Colors.teal.shade700 : AppColors.error,
                                      ),
-                                   ),
-                                 ],
+                                   ];
+                                   if (constraints.maxWidth < 500) {
+                                     return Column(
+                                       children: [
+                                         cashCards[0],
+                                         const SizedBox(height: 10),
+                                         cashCards[1],
+                                         const SizedBox(height: 10),
+                                         cashCards[2],
+                                       ],
+                                     );
+                                   }
+                                   return Row(
+                                     children: [
+                                       Expanded(child: cashCards[0]),
+                                       const SizedBox(width: 10),
+                                       Expanded(child: cashCards[1]),
+                                       const SizedBox(width: 10),
+                                       Expanded(child: cashCards[2]),
+                                     ],
+                                   );
+                                 },
                                ),
                                const SizedBox(height: 12),
                                Card(

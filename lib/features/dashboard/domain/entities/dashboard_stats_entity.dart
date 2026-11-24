@@ -80,4 +80,7 @@ class DashboardStatsEntity extends Equatable {
         todayPaymentBreakdown,
         todayTopProducts,
       ];
+
+  /// Net today sales after returns (computed, not stored to avoid breaking old tests)
+  int get netTodaySalesAfterReturns => (todaySales - todayReturnsTotal).clamp(0, 1 << 60);
 }

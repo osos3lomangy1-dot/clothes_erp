@@ -153,34 +153,41 @@ class PosLocalDataSource {
             lineTotal: lineTotal,
             createdAt: now,
           ));
+          final isReturn = (item['isReturn'] as bool?) ?? false;
+          int effectiveIntDelta = isReturn ? qty : -qty;
           if (decimalQty != null && decimalQty > 0) {
             final decimalStockKey = 'stock_decimal_${item['variantId']}';
             final metaRow = await (_db.select(_db.appMeta)
                   ..where((m) => m.key.equals(decimalStockKey)))
                 .getSingleOrNull();
-            double currentStock;
-            if (metaRow != null) {
-              currentStock = double.tryParse(metaRow.value) ?? 0.0;
-            } else {
-              final v = await (_db.select(_db.productVariants)
-                    ..where((pv) => pv.id.equals(item['variantId'] as String)))
-                  .getSingleOrNull();
-              currentStock = (v?.quantity ?? 0).toDouble();
+            final v = await (_db.select(_db.productVariants)
+                  ..where((pv) => pv.id.equals(item['variantId'] as String)))
+                .getSingleOrNull();
+            final double currentStock = metaRow != null
+                ? (double.tryParse(metaRow.value) ?? (v?.quantity ?? 0).toDouble())
+                : (v?.quantity ?? 0).toDouble();
+            final double newStock = isReturn
+                ? currentStock + decimalQty
+                : currentStock - decimalQty;
+            if (newStock < -0.0001) {
+              throw Exception('Insufficient stock');
             }
-            final newStock = currentStock - decimalQty;
+            final double clampedNewStock = newStock < 0 ? 0.0 : newStock;
             await _db.into(_db.appMeta).insertOnConflictUpdate(
               AppMetaCompanion.insert(
                 key: decimalStockKey,
-                value: newStock.toString(),
+                value: clampedNewStock.toStringAsFixed(3),
                 updatedAt: now,
               ),
             );
+            final currentIntQty = v?.quantity ?? 0;
+            final targetIntQty = clampedNewStock.floor();
+            effectiveIntDelta = targetIntQty - currentIntQty;
           }
 
-          final isReturn = (item['isReturn'] as bool?) ?? false;
           await _inventory.applyStockMovement(
             variantId: item['variantId'] as String,
-            qtyDelta: isReturn ? qty : -qty,
+            qtyDelta: effectiveIntDelta,
             type: isReturn ? StockMovementType.return_ : StockMovementType.sale,
             reason: isReturn ? 'استبدال صنف (مرتجع)' : 'sale',
             userId: cashierId,

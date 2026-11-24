@@ -29,6 +29,9 @@ class StorePresetsEngine {
       case StorePreset.pharmacy:
         sectorMode = RetailSector.houseware;
         break;
+      case StorePreset.homeTextiles:
+        sectorMode = RetailSector.houseware;
+        break;
       case StorePreset.fashion:
       case StorePreset.custom:
         sectorMode = RetailSector.apparel;

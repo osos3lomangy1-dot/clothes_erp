@@ -16,6 +16,8 @@ class InvoiceItemDetailsEntity extends Equatable {
   final int lineTotal; // in piasters
   final String? kitchenNotes;
   final List<String> modifiers;
+  final String? warrantyPeriod;
+  final String? brandOrModel;
 
   const InvoiceItemDetailsEntity({
     required this.id,
@@ -33,6 +35,8 @@ class InvoiceItemDetailsEntity extends Equatable {
     required this.lineTotal,
     this.kitchenNotes,
     this.modifiers = const [],
+    this.warrantyPeriod,
+    this.brandOrModel,
   });
 
   InvoiceItemDetailsEntity copyWith({
@@ -51,6 +55,8 @@ class InvoiceItemDetailsEntity extends Equatable {
     int? lineTotal,
     String? kitchenNotes,
     List<String>? modifiers,
+    String? warrantyPeriod,
+    String? brandOrModel,
   }) {
     return InvoiceItemDetailsEntity(
       id: id ?? this.id,
@@ -68,6 +74,8 @@ class InvoiceItemDetailsEntity extends Equatable {
       lineTotal: lineTotal ?? this.lineTotal,
       kitchenNotes: kitchenNotes ?? this.kitchenNotes,
       modifiers: modifiers ?? this.modifiers,
+      warrantyPeriod: warrantyPeriod ?? this.warrantyPeriod,
+      brandOrModel: brandOrModel ?? this.brandOrModel,
     );
   }
 
@@ -105,6 +113,8 @@ class InvoiceItemDetailsEntity extends Equatable {
         lineTotal,
         kitchenNotes,
         modifiers,
+        warrantyPeriod,
+        brandOrModel,
       ];
 }
 

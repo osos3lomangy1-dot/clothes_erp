@@ -20,6 +20,7 @@ import '../../../settings/data/services/activity_settings_service.dart';
 import '../../../../core/database/app_database.dart';
 import '../../domain/services/food_cost_calculator.dart';
 import 'culinary_profile_card.dart';
+import '../screens/product_form_screen.dart';
 
 class SimpleProductFormDialog extends StatelessWidget {
   final ProductEntity? product;
@@ -1061,6 +1062,35 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
                                     ],
                                   ),
                                 ),
+                                if (_activityType == ActivityType.textilesDecor) ...[
+                                  const SizedBox(height: 10),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: OutlinedButton.icon(
+                                      key: const Key('open_textiles_matrix_btn'),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppColors.primary,
+                                        side: BorderSide(color: AppColors.primary),
+                                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                      icon: const Icon(Icons.grid_view_rounded, size: 18),
+                                      label: const Text(
+                                        'إضافة بعدة مقاسات وألوان (مصفوفة المفروشات)',
+                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                      ),
+                                      onPressed: () {
+                                        final nav = Navigator.of(context);
+                                        nav.pop();
+                                        showDialog(
+                                          context: nav.context,
+                                          barrierDismissible: false,
+                                          builder: (_) => ProductFormDialog(product: widget.product),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
                               ],
                             ],
                           ),

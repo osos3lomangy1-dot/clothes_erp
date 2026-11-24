@@ -18,6 +18,9 @@ class SalesReportEntity extends Equatable {
   final Map<String, int> cashFlowInByMethod;
   final Map<String, int> cashFlowOutByMethod;
 
+  // Returns in period
+  final int totalReturns;
+
   const SalesReportEntity({
     required this.startDate,
     required this.endDate,
@@ -25,6 +28,7 @@ class SalesReportEntity extends Equatable {
     required this.totalCost,
     required this.totalProfit,
     this.totalExpenses = 0,
+    this.totalReturns = 0,
     required this.totalTransactions,
     required this.paymentMethodBreakdown,
     this.topSellingProducts = const [],
@@ -36,6 +40,7 @@ class SalesReportEntity extends Equatable {
 
   int get netProfit => totalProfit - totalExpenses;
   int get netCashFlow => cashFlowIn - cashFlowOut;
+  int get netRevenue => totalRevenue - totalReturns;
 
   @override
   List<Object?> get props => [
@@ -45,6 +50,7 @@ class SalesReportEntity extends Equatable {
         totalCost,
         totalProfit,
         totalExpenses,
+        totalReturns,
         totalTransactions,
         paymentMethodBreakdown,
         topSellingProducts,

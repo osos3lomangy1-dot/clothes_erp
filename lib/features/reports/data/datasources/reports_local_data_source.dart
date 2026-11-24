@@ -25,12 +25,13 @@ class ReportsLocalDataSourceImpl implements ReportsLocalDataSource {
     final start = DateTime(startDate.year, startDate.month, startDate.day, 0, 0, 0);
     final end = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59, 999);
 
-    // 1. Fetch sales within date range (excluding soft-deleted)
+    // 1. Fetch sales within date range (excluding soft-deleted and cancelled)
     final salesQuery = _db.select(_db.sales)
       ..where((s) =>
           s.date.isBiggerOrEqualValue(start) &
           s.date.isSmallerOrEqualValue(end) &
-          s.deletedAt.isNull())
+          s.deletedAt.isNull() &
+          s.status.isNotValue('cancelled'))
       ..orderBy([(s) => OrderingTerm.desc(s.date)]);
 
     final salesRows = await salesQuery.get();
@@ -110,7 +111,7 @@ class ReportsLocalDataSourceImpl implements ReportsLocalDataSource {
         final variant = r.readTable(_db.productVariants);
         final product = r.readTable(_db.products);
 
-        final revenue = item.priceSnapshot * item.qty;
+        final revenue = item.lineTotal;
         final existing = variantMap[variant.id];
         if (existing == null) {
           variantMap[variant.id] = (
@@ -151,6 +152,15 @@ class ReportsLocalDataSourceImpl implements ReportsLocalDataSource {
       );
     }
 
+    // 5. Total returns in period
+    final returnsQuery = _db.select(_db.returns)
+      ..where((r) =>
+          r.date.isBiggerOrEqualValue(start) &
+          r.date.isSmallerOrEqualValue(end) &
+          r.deletedAt.isNull());
+    final returnsRows = await returnsQuery.get();
+    final int totalReturns = returnsRows.fold<int>(0, (sum, r) => sum + r.refundAmount);
+
     // 5. Two-Section Financial Report: Cash Flow section from cash_movements
     final startSec = start.millisecondsSinceEpoch ~/ 1000;
     final endSec = end.millisecondsSinceEpoch ~/ 1000;
@@ -185,6 +195,7 @@ class ReportsLocalDataSourceImpl implements ReportsLocalDataSource {
       totalCost: totalCost,
       totalProfit: totalProfit,
       totalExpenses: totalExpenses,
+      totalReturns: totalReturns,
       totalTransactions: nonInstallmentSales.length,
       paymentMethodBreakdown: paymentBreakdown,
       topSellingProducts: topSellingProducts,

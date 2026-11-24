@@ -69,15 +69,20 @@ class InvoicesLocalDataSourceImpl implements InvoicesLocalDataSource {
 
     final saleIds = rows.map((r) => r.readTable(_db.sales).id).toList();
 
-    final itemsRows = await (_db.select(_db.saleItems)
-          ..where((i) => i.saleId.isIn(saleIds))
-          ..orderBy([(i) => OrderingTerm.asc(i.createdAt)]))
+    final itemsRows = await (_db.select(_db.saleItems).join([
+          leftOuterJoin(_db.productVariants, _db.productVariants.id.equalsExp(_db.saleItems.variantId)),
+          leftOuterJoin(_db.products, _db.products.id.equalsExp(_db.productVariants.productId)),
+        ])
+          ..where(_db.saleItems.saleId.isIn(saleIds))
+          ..orderBy([OrderingTerm.asc(_db.saleItems.createdAt)]))
         .get();
 
     final Map<String, List<InvoiceItemDetailsEntity>> itemsMap = {};
-    for (final it in itemsRows) {
+    for (final r in itemsRows) {
+      final it = r.readTable(_db.saleItems);
+      final prod = r.readTableOrNull(_db.products);
       final list = itemsMap.putIfAbsent(it.saleId, () => []);
-      list.add(_mapSaleItemToEntity(it));
+      list.add(_mapSaleItemToEntity(it, warrantyPeriod: prod?.warrantyPeriod, brandOrModel: prod?.brandOrModel));
     }
 
     return rows.map((r) {
@@ -120,12 +125,19 @@ class InvoicesLocalDataSourceImpl implements InvoicesLocalDataSource {
     final c = row.readTableOrNull(_db.customers);
     final u = row.readTableOrNull(_db.users);
 
-    final itemsRows = await (_db.select(_db.saleItems)
-          ..where((i) => i.saleId.equals(s.id))
-          ..orderBy([(i) => OrderingTerm.asc(i.createdAt)]))
+    final itemsRows = await (_db.select(_db.saleItems).join([
+          leftOuterJoin(_db.productVariants, _db.productVariants.id.equalsExp(_db.saleItems.variantId)),
+          leftOuterJoin(_db.products, _db.products.id.equalsExp(_db.productVariants.productId)),
+        ])
+          ..where(_db.saleItems.saleId.equals(s.id))
+          ..orderBy([OrderingTerm.asc(_db.saleItems.createdAt)]))
         .get();
 
-    final items = itemsRows.map(_mapSaleItemToEntity).toList();
+    final items = itemsRows.map((r) {
+      final it = r.readTable(_db.saleItems);
+      final prod = r.readTableOrNull(_db.products);
+      return _mapSaleItemToEntity(it, warrantyPeriod: prod?.warrantyPeriod, brandOrModel: prod?.brandOrModel);
+    }).toList();
 
     return InvoiceDetailsEntity(
       id: s.id,
@@ -160,12 +172,19 @@ class InvoicesLocalDataSourceImpl implements InvoicesLocalDataSource {
     final c = row.readTableOrNull(_db.customers);
     final u = row.readTableOrNull(_db.users);
 
-    final itemsRows = await (_db.select(_db.saleItems)
-          ..where((i) => i.saleId.equals(s.id))
-          ..orderBy([(i) => OrderingTerm.asc(i.createdAt)]))
+    final itemsRows = await (_db.select(_db.saleItems).join([
+          leftOuterJoin(_db.productVariants, _db.productVariants.id.equalsExp(_db.saleItems.variantId)),
+          leftOuterJoin(_db.products, _db.products.id.equalsExp(_db.productVariants.productId)),
+        ])
+          ..where(_db.saleItems.saleId.equals(s.id))
+          ..orderBy([OrderingTerm.asc(_db.saleItems.createdAt)]))
         .get();
 
-    final items = itemsRows.map(_mapSaleItemToEntity).toList();
+    final items = itemsRows.map((r) {
+      final it = r.readTable(_db.saleItems);
+      final prod = r.readTableOrNull(_db.products);
+      return _mapSaleItemToEntity(it, warrantyPeriod: prod?.warrantyPeriod, brandOrModel: prod?.brandOrModel);
+    }).toList();
 
     return InvoiceDetailsEntity(
       id: s.id,
@@ -186,7 +205,11 @@ class InvoicesLocalDataSourceImpl implements InvoicesLocalDataSource {
     );
   }
 
-  static InvoiceItemDetailsEntity _mapSaleItemToEntity(SaleItem it) {
+  static InvoiceItemDetailsEntity _mapSaleItemToEntity(
+    SaleItem it, {
+    String? warrantyPeriod,
+    String? brandOrModel,
+  }) {
     double? decimalQty;
     String? unit;
     String cleanSize = it.size;
@@ -199,7 +222,9 @@ class InvoicesLocalDataSourceImpl implements InvoicesLocalDataSource {
           it.size.replaceAll(RegExp(r'\s*\[ملاحظة:\s*.*?\]'), '').trim();
     }
 
-    final meterMatch = RegExp(r'([\d.]+)\s*م').firstMatch(cleanSize);
+    final meterMatch =
+        RegExp(r'•\s*([\d.]+)\s*م').firstMatch(cleanSize) ??
+        RegExp(r'([\d.]+)\s*م').allMatches(cleanSize).lastOrNull;
     if (meterMatch != null) {
       decimalQty = double.tryParse(meterMatch.group(1)!);
       unit = 'م';
@@ -222,6 +247,8 @@ class InvoicesLocalDataSourceImpl implements InvoicesLocalDataSource {
       modifiers: (kitchenNotes != null && kitchenNotes.isNotEmpty)
           ? [kitchenNotes]
           : const [],
+      warrantyPeriod: warrantyPeriod,
+      brandOrModel: brandOrModel,
     );
   }
 }

@@ -929,8 +929,7 @@ class ReceiptPdfService {
     ReceiptConfig cfg,
     pw.Font boldFont, {
     bool isHospitality = false,
-  }) {
-    if (cfg.groupVariantsOnReceipt) {
+  }) {    if (cfg.groupVariantsOnReceipt) {
       final Map<String, List<InvoiceItemDetailsEntity>> grouped = {};
       for (final it in items) {
         grouped.putIfAbsent(it.productName, () => []).add(it);
@@ -978,6 +977,28 @@ class ReceiptPdfService {
                     ),
                   ),
                 ],
+                if (!isHospitality) ...() {
+                  final parts = <String>[];
+                  final wp = it.warrantyPeriod;
+                  final bm = it.brandOrModel;
+                  if (bm != null && bm.isNotEmpty) parts.add('موديل: $bm');
+                  if (wp != null && wp.isNotEmpty) parts.add('ضمان: $wp');
+                  if (parts.isEmpty) return <pw.Widget>[];
+                  return [
+                    pw.SizedBox(height: 1),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.only(right: 4),
+                      child: pw.Text(
+                        parts.join(' - '),
+                        style: const pw.TextStyle(
+                          fontSize: 7.5,
+                          color: PdfColors.grey600,
+                        ),
+                        softWrap: true,
+                      ),
+                    ),
+                  ];
+                }(),
                 pw.SizedBox(height: 2),
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -1136,6 +1157,29 @@ class ReceiptPdfService {
                 ),
               ),
             ],
+            ...() {
+              if (isHospitality) return <pw.Widget>[];
+              final parts = <String>[];
+              final wp = it.warrantyPeriod;
+              final bm = it.brandOrModel;
+              if (bm != null && bm.isNotEmpty) parts.add('موديل: $bm');
+              if (wp != null && wp.isNotEmpty) parts.add('ضمان: $wp');
+              if (parts.isEmpty) return <pw.Widget>[];
+              return [
+                pw.SizedBox(height: 1),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.only(right: 4),
+                  child: pw.Text(
+                    parts.join(' - '),
+                    style: const pw.TextStyle(
+                      fontSize: 7.5,
+                      color: PdfColors.grey600,
+                    ),
+                    softWrap: true,
+                  ),
+                ),
+              ];
+            }(),
             pw.SizedBox(height: 2),
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,

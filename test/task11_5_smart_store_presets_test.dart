@@ -46,13 +46,14 @@ void main() {
   );
 
   group('Task 11.5 - Smart Store Presets Definition Tests', () {
-    test('StorePreset contains all 6 commercial presets', () {
-      expect(StorePreset.values.length, 6);
+    test('StorePreset contains all 7 commercial presets', () {
+      expect(StorePreset.values.length, 7);
       expect(StorePreset.fashion.code, 'fashion');
       expect(StorePreset.electronics.code, 'electronics');
       expect(StorePreset.grocery.code, 'grocery');
       expect(StorePreset.hospitality.code, 'hospitality');
       expect(StorePreset.pharmacy.code, 'pharmacy');
+      expect(StorePreset.homeTextiles.code, 'homeTextiles');
       expect(StorePreset.custom.code, 'custom');
     });
 

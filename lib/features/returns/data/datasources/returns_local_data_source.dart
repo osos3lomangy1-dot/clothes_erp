@@ -156,9 +156,43 @@ class ReturnsLocalDataSourceImpl implements ReturnsLocalDataSource {
           }
 
           // 3. Restores stock via applyStockMovement with type return_
+          int returnIntDelta = item.qty;
+          final si = saleItemsMap[item.saleItemId];
+          if (si != null) {
+            final meterMatch =
+                RegExp(r'•\s*([\d.]+)\s*م').firstMatch(si.size) ??
+                RegExp(r'([\d.]+)\s*م').allMatches(si.size).lastOrNull;
+            if (meterMatch != null) {
+              final soldMeters = double.tryParse(meterMatch.group(1)!) ?? 0.0;
+              if (soldMeters > 0) {
+                final returnedMeters = si.qty > 0
+                    ? (soldMeters * (item.qty / si.qty))
+                    : soldMeters;
+                final decimalStockKey = 'stock_decimal_${item.variantId}';
+                final metaRow = await (_db.select(_db.appMeta)
+                      ..where((m) => m.key.equals(decimalStockKey)))
+                    .getSingleOrNull();
+                final v = await (_db.select(_db.productVariants)
+                      ..where((pv) => pv.id.equals(item.variantId)))
+                    .getSingleOrNull();
+                final currentStock = metaRow != null
+                    ? (double.tryParse(metaRow.value) ?? (v?.quantity ?? 0).toDouble())
+                    : (v?.quantity ?? 0).toDouble();
+                final newStock = currentStock + returnedMeters;
+                await _db.into(_db.appMeta).insertOnConflictUpdate(
+                  AppMetaCompanion.insert(
+                    key: decimalStockKey,
+                    value: newStock.toStringAsFixed(3),
+                    updatedAt: now,
+                  ),
+                );
+                returnIntDelta = newStock.floor() - (v?.quantity ?? 0);
+              }
+            }
+          }
           await _inventory.applyStockMovement(
             variantId: item.variantId,
-            qtyDelta: item.qty,
+            qtyDelta: returnIntDelta,
             type: StockMovementType.return_,
             reason: reason,
             userId: userId,

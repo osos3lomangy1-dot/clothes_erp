@@ -26,12 +26,13 @@ class DashboardLocalDataSourceImpl implements DashboardLocalDataSource {
     final startOfDay = DateTime(now.year, now.month, now.day);
     final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
 
-    // 1. Today's sales from Drift
+    // 1. Today's sales from Drift (excluding cancelled invoices)
     final todaySalesRows = await (_db.select(_db.sales)
           ..where((s) =>
               s.date.isBiggerOrEqualValue(startOfDay) &
               s.date.isSmallerOrEqualValue(endOfDay) &
-              s.deletedAt.isNull()))
+              s.deletedAt.isNull() &
+              s.status.isNotValue('cancelled')))
         .get();
 
     final int todaySales = todaySalesRows.fold<int>(0, (sum, s) => sum + s.total);
@@ -67,6 +68,7 @@ class DashboardLocalDataSourceImpl implements DashboardLocalDataSource {
 
     final todayExpensesRows = await (_db.select(_db.expenses)
           ..where((e) =>
+              e.kind.equals('operating') &
               e.expenseDate.isBiggerOrEqualValue(startOfDay) &
               e.expenseDate.isSmallerOrEqualValue(endOfDay) &
               e.deletedAt.isNull()))
@@ -110,13 +112,14 @@ class DashboardLocalDataSourceImpl implements DashboardLocalDataSource {
       );
     }).toList();
 
-    // 5. Last 7 Days Sales Trend
+    // 5. Last 7 Days Sales Trend (excluding cancelled invoices)
     final sevenDaysAgo = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 6));
     final weekSalesRows = await (_db.select(_db.sales)
           ..where((s) =>
               s.date.isBiggerOrEqualValue(sevenDaysAgo) &
               s.date.isSmallerOrEqualValue(endOfDay) &
-              s.deletedAt.isNull()))
+              s.deletedAt.isNull() &
+              s.status.isNotValue('cancelled')))
         .get();
 
     final Map<String, ({int total, int count})> dayTotals = {};
@@ -181,7 +184,7 @@ class DashboardLocalDataSourceImpl implements DashboardLocalDataSource {
         final variant = r.readTable(_db.productVariants);
         final product = r.readTable(_db.products);
 
-        final revenue = item.priceSnapshot * item.qty;
+        final revenue = item.lineTotal;
         final existing = variantMap[variant.id];
         if (existing == null) {
           variantMap[variant.id] = (

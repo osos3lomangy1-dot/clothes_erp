@@ -344,7 +344,9 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
       value: '${Money(stats.todaySales).toDisplay()} ج.م',
       icon: Icons.monetization_on_rounded,
       color: Colors.green.shade700,
-      subtitle: '${stats.todayTransactions} فاتورة صادرة',
+      subtitle: stats.todayReturnsTotal > 0
+          ? '${stats.todayTransactions} فاتورة - صافي: ${Money(stats.netTodaySalesAfterReturns).toDisplay()} ج.م'
+          : '${stats.todayTransactions} فاتورة صادرة',
     );
 
     final cardNetProfit = _KpiCard(

@@ -316,6 +316,14 @@ enum StorePreset {
     'أدوية ومستحضرات وأطفال',
     false,
   ),
+  homeTextiles(
+    'homeTextiles',
+    'أدوات منزلية ومفروشات وستائر',
+    Icons.king_bed_outlined,
+    {ActivityType.homeLiving, ActivityType.textilesDecor},
+    'أجهزة وأطقم منزلية وملايات وسجاد بالمتر وتقسيط',
+    true,
+  ),
   custom(
     'custom',
     'تخصيص يدوي حر',
@@ -360,13 +368,14 @@ enum StorePreset {
     this.enableInstallments,
   );
 
-  /// القوالب الستة الأساسية لمعالج الإعداد والتهيئة الأول
+  /// القوالب السبعة الأساسية لمعالج الإعداد والتهيئة الأول
   static const List<StorePreset> onboardingPresets = [
     StorePreset.fashion,
     StorePreset.electronics,
     StorePreset.grocery,
     StorePreset.hospitality,
     StorePreset.pharmacy,
+    StorePreset.homeTextiles,
     StorePreset.custom,
   ];
 
