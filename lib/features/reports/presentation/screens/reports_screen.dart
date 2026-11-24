@@ -345,12 +345,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   ),
                   const SizedBox(height: 12),
                   // Smart Inventory Reports Banner
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
+                  Material(
+                    color: Colors.white,
+                    shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.8)),
+                      side: BorderSide(
+                        color: AppColors.outlineVariant.withValues(alpha: 0.8),
+                      ),
                     ),
+                    clipBehavior: Clip.antiAlias,
                     child: ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       leading: Container(

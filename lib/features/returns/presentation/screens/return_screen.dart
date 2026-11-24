@@ -339,12 +339,13 @@ class _ReturnScreenState extends State<ReturnScreen> {
                   ? '${sale.customerName}${sale.customerPhone != null && sale.customerPhone!.isNotEmpty ? ' (${sale.customerPhone})' : ''}'
                   : 'عميل نقدي';
 
-              return Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
+              return Material(
+                color: Colors.white,
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade200),
+                  side: BorderSide(color: Colors.grey.shade200),
                 ),
+                clipBehavior: Clip.antiAlias,
                 child: ListTile(
                   leading: Container(
                     padding: const EdgeInsets.all(8),

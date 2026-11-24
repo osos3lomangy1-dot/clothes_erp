@@ -950,18 +950,20 @@ class _ProductsAndCategoriesViewState
     VoidCallback? onEdit,
     VoidCallback? onDelete,
   }) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 2),
-      decoration: BoxDecoration(
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Material(
         color: isSelected ? AppColors.surfaceContainer : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: isSelected
-              ? AppColors.primary.withValues(alpha: 0.3)
-              : Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(
+            color: isSelected
+                ? AppColors.primary.withValues(alpha: 0.3)
+                : Colors.transparent,
+          ),
         ),
-      ),
-      child: ListTile(
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
         dense: true,
         contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
         onTap: onTap,
@@ -1060,6 +1062,7 @@ class _ProductsAndCategoriesViewState
             ],
           ],
         ),
+      ),
       ),
     );
   }

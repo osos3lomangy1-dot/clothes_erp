@@ -103,12 +103,13 @@ class CategoryListScreen extends StatelessWidget {
                     separatorBuilder: (_, index) => const SizedBox(height: 10),
                     itemBuilder: (context, index) {
                       final category = state.categories[index];
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
+                      return Material(
+                        color: Colors.white,
+                        shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade200),
+                          side: BorderSide(color: Colors.grey.shade200),
                         ),
+                        clipBehavior: Clip.antiAlias,
                         child: ListTile(
                           leading: Container(
                             width: 42,
