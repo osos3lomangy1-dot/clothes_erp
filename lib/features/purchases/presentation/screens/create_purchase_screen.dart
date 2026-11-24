@@ -1253,108 +1253,136 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                         ),
                       ),
                       const SizedBox(height: 16),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            flex: 3,
-                            child: BlocBuilder<SuppliersCubit, SuppliersState>(
-                              builder: (context, state) {
-                                return Row(
-                                  children: [
-                                    Expanded(
-                                      child: DropdownButtonFormField<String>(
-                                        initialValue: _selectedSupplierId,
-                                        decoration: InputDecoration(
-                                          labelText: 'المورد *',
-                                          prefixIcon: const Icon(
-                                            Icons.business_rounded,
-                                          ),
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              10,
-                                            ),
-                                          ),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final supplierWidget = BlocBuilder<SuppliersCubit, SuppliersState>(
+                            builder: (context, state) {
+                              return Row(
+                                children: [
+                                  Expanded(
+                                    child: DropdownButtonFormField<String>(
+                                      initialValue: _selectedSupplierId,
+                                      decoration: InputDecoration(
+                                        labelText: 'المورد *',
+                                        prefixIcon: const Icon(
+                                          Icons.business_rounded,
                                         ),
-                                        items: state.suppliers.map((s) {
-                                          return DropdownMenuItem(
-                                            value: s.id,
-                                            child: Text(
-                                              '${s.name} ${s.companyName != null ? '(${s.companyName})' : ''}',
-                                            ),
-                                          );
-                                        }).toList(),
-                                        onChanged: (val) => setState(
-                                          () => _selectedSupplierId = val,
-                                        ),
-                                        validator: (v) => v == null
-                                            ? 'يرجى اختيار المورد'
-                                            : null,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    IconButton(
-                                      tooltip: 'إضافة مورد جديد',
-                                      style: IconButton.styleFrom(
-                                        backgroundColor: AppColors.primary
-                                            .withValues(alpha: 0.1),
-                                        shape: RoundedRectangleBorder(
+                                        border: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(
-                                            8,
+                                            10,
                                           ),
                                         ),
                                       ),
-                                      icon: Icon(
-                                        Icons.person_add_rounded,
-                                        color: AppColors.primary,
+                                      items: state.suppliers.map((s) {
+                                        return DropdownMenuItem(
+                                          value: s.id,
+                                          child: Text(
+                                            '${s.name} ${s.companyName != null ? '(${s.companyName})' : ''}',
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        );
+                                      }).toList(),
+                                      onChanged: (val) => setState(
+                                        () => _selectedSupplierId = val,
                                       ),
-                                      onPressed: _showAddSupplierDialog,
+                                      validator: (v) => v == null
+                                          ? 'يرجى اختيار المورد'
+                                          : null,
                                     ),
-                                  ],
-                                );
-                              },
+                                  ),
+                                  const SizedBox(width: 8),
+                                  IconButton(
+                                    tooltip: 'إضافة مورد جديد',
+                                    style: IconButton.styleFrom(
+                                      backgroundColor: AppColors.primary
+                                          .withValues(alpha: 0.1),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          8,
+                                        ),
+                                      ),
+                                    ),
+                                    icon: Icon(
+                                      Icons.person_add_rounded,
+                                      color: AppColors.primary,
+                                    ),
+                                    onPressed: _showAddSupplierDialog,
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+
+                          final invoiceNumWidget = TextFormField(
+                            controller: _invoiceNumController,
+                            decoration: InputDecoration(
+                              labelText: 'رقم الفاتورة الورقية (اختياري)',
+                              prefixIcon: const Icon(Icons.receipt_rounded),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            flex: 2,
-                            child: TextFormField(
-                              controller: _invoiceNumController,
+                          );
+
+                          final datePickerWidget = InkWell(
+                            borderRadius: BorderRadius.circular(10),
+                            onTap: _pickDate,
+                            child: InputDecorator(
                               decoration: InputDecoration(
-                                labelText: 'رقم الفاتورة الورقية (اختياري)',
-                                prefixIcon: const Icon(Icons.receipt_rounded),
+                                labelText: 'تاريخ الفاتورة',
+                                prefixIcon: const Icon(
+                                  Icons.calendar_month_rounded,
+                                ),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            flex: 2,
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(10),
-                              onTap: _pickDate,
-                              child: InputDecorator(
-                                decoration: InputDecoration(
-                                  labelText: 'تاريخ الفاتورة',
-                                  prefixIcon: const Icon(
-                                    Icons.calendar_month_rounded,
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                                child: Text(
-                                  '${_purchaseDate.year}/${_purchaseDate.month.toString().padLeft(2, '0')}/${_purchaseDate.day.toString().padLeft(2, '0')}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                              child: Text(
+                                '${_purchaseDate.year}/${_purchaseDate.month.toString().padLeft(2, '0')}/${_purchaseDate.day.toString().padLeft(2, '0')}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
-                          ),
-                        ],
+                          );
+
+                          if (constraints.maxWidth < 750) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                supplierWidget,
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Expanded(child: invoiceNumWidget),
+                                    const SizedBox(width: 14),
+                                    Expanded(child: datePickerWidget),
+                                  ],
+                                ),
+                              ],
+                            );
+                          }
+
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                flex: 3,
+                                child: supplierWidget,
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                flex: 2,
+                                child: invoiceNumWidget,
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                flex: 2,
+                                child: datePickerWidget,
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -1672,105 +1700,122 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                         ),
                       ),
                       const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.shade50,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.blue.shade200),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'إجمالي قيمة الفاتورة:',
-                                    style: TextStyle(fontSize: 12),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${_totalInvoicePounds.toStringAsFixed(2)} ج.م',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 20,
-                                      color: Colors.blue.shade900,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isCompact = constraints.maxWidth < 650;
+                          final card1 = Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade50,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.blue.shade200),
                             ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: Colors.green.shade50,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: Colors.green.shade200,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'إجمالي قيمة الفاتورة:',
+                                  style: TextStyle(fontSize: 12),
                                 ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'المبلغ المدفوع مقدماً:',
-                                    style: TextStyle(fontSize: 12),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${_totalInvoicePounds.toStringAsFixed(2)} ج.م',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 20,
+                                    color: Colors.blue.shade900,
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${_paidPounds.toStringAsFixed(2)} ج.م',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 20,
-                                      color: Colors.green.shade900,
-                                    ),
-                                  ),
-                                ],
+                                ),
+                              ],
+                            ),
+                          );
+
+                          final card2 = Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade50,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: Colors.green.shade200,
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'المبلغ المدفوع مقدماً:',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${_paidPounds.toStringAsFixed(2)} ج.م',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 20,
+                                    color: Colors.green.shade900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+
+                          final card3 = Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: _remainingPounds > 0
+                                  ? Colors.red.shade50
+                                  : Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
                                 color: _remainingPounds > 0
-                                    ? Colors.red.shade50
-                                    : Colors.grey.shade100,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: _remainingPounds > 0
-                                      ? Colors.red.shade200
-                                      : Colors.grey.shade300,
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'المتبقي آجل (يضاف لمديونية المورد):',
-                                    style: TextStyle(fontSize: 12),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${_remainingPounds.toStringAsFixed(2)} ج.م',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 20,
-                                      color: _remainingPounds > 0
-                                          ? Colors.red.shade900
-                                          : Colors.black87,
-                                    ),
-                                  ),
-                                ],
+                                    ? Colors.red.shade200
+                                    : Colors.grey.shade300,
                               ),
                             ),
-                          ),
-                        ],
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'المتبقي آجل (يضاف لمديونية المورد):',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${_remainingPounds.toStringAsFixed(2)} ج.م',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 20,
+                                    color: _remainingPounds > 0
+                                        ? Colors.red.shade900
+                                        : Colors.black87,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+
+                          if (isCompact) {
+                            return Column(
+                              children: [
+                                card1,
+                                const SizedBox(height: 10),
+                                card2,
+                                const SizedBox(height: 10),
+                                card3,
+                              ],
+                            );
+                          }
+
+                          return Row(
+                            children: [
+                              Expanded(child: card1),
+                              const SizedBox(width: 14),
+                              Expanded(child: card2),
+                              const SizedBox(width: 14),
+                              Expanded(child: card3),
+                            ],
+                          );
+                        },
                       ),
                       const SizedBox(height: 18),
                       Row(

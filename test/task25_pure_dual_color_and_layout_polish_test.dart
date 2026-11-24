@@ -631,6 +631,36 @@ void main() {
       expect(find.textContaining('فيزا'), findsOneWidget);
     });
 
+    testWidgets('PaymentMethodPieChart renders cleanly without overflow on narrow width (350px)', (tester) async {
+      tester.view.physicalSize = const Size(350, 700);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Scaffold(
+              body: SizedBox(
+                width: 350,
+                child: PaymentMethodPieChart(
+                  breakdown: const {'cash': 6000, 'card': 3000, 'instapay': 1000},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('توزيع طرق الدفع'), findsOneWidget);
+      expect(find.textContaining('نقدي'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('FinancialComparisonBarChart renders financial comparison without text overflow', (tester) async {
       await tester.pumpWidget(
         MaterialApp(

@@ -110,100 +110,123 @@ class _PaymentMethodPieChartState extends State<PaymentMethodPieChart> {
                 ),
               )
             else
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 190,
-                    height: 190,
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isCompact = constraints.maxWidth < 460;
+                  final chartWidget = SizedBox(
+                    width: isCompact ? 160 : 180,
+                    height: isCompact ? 160 : 180,
                     child: PieChart(
-                        PieChartData(
-                          pieTouchData: PieTouchData(
-                            touchCallback: (event, pieTouchResponse) {
-                              setState(() {
-                                if (!event.isInterestedForInteractions ||
-                                    pieTouchResponse == null ||
-                                    pieTouchResponse.touchedSection == null) {
-                                  _touchedIndex = -1;
-                                  return;
-                                }
-                                _touchedIndex =
-                                    pieTouchResponse.touchedSection!.touchedSectionIndex;
-                              });
-                            },
-                          ),
-                          borderData: FlBorderData(show: false),
-                          sectionsSpace: 3,
-                          centerSpaceRadius: 42,
-                          sections: List.generate(validEntries.length, (i) {
-                            final isTouched = i == _touchedIndex;
-                            final e = validEntries[i];
-                            final percent = (e.value / total) * 100.0;
-                            final radius = isTouched ? 48.0 : 40.0;
-                            final color = _getColorForMethod(e.key, i);
-
-                            return PieChartSectionData(
-                              color: color,
-                              value: e.value.toDouble(),
-                              title: percent >= 8 ? '${percent.toStringAsFixed(0)}%' : '',
-                              radius: radius,
-                              titleStyle: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            );
-                          }),
+                      PieChartData(
+                        pieTouchData: PieTouchData(
+                          touchCallback: (event, pieTouchResponse) {
+                            setState(() {
+                              if (!event.isInterestedForInteractions ||
+                                  pieTouchResponse == null ||
+                                  pieTouchResponse.touchedSection == null) {
+                                _touchedIndex = -1;
+                                return;
+                              }
+                              _touchedIndex =
+                                  pieTouchResponse.touchedSection!.touchedSectionIndex;
+                            });
+                          },
                         ),
+                        borderData: FlBorderData(show: false),
+                        sectionsSpace: 3,
+                        centerSpaceRadius: isCompact ? 36 : 40,
+                        sections: List.generate(validEntries.length, (i) {
+                          final isTouched = i == _touchedIndex;
+                          final e = validEntries[i];
+                          final percent = (e.value / total) * 100.0;
+                          final radius = isTouched ? (isCompact ? 42.0 : 46.0) : (isCompact ? 36.0 : 40.0);
+                          final color = _getColorForMethod(e.key, i);
+
+                          return PieChartSectionData(
+                            color: color,
+                            value: e.value.toDouble(),
+                            title: percent >= 8 ? '${percent.toStringAsFixed(0)}%' : '',
+                            radius: radius,
+                            titleStyle: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          );
+                        }),
                       ),
                     ),
-                  const SizedBox(width: 24),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: List.generate(validEntries.length, (i) {
-                        final e = validEntries[i];
-                        final color = _getColorForMethod(e.key, i);
-                        final percent = (e.value / total) * 100.0;
+                  );
 
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4.0),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 12,
-                                height: 12,
-                                decoration: BoxDecoration(
-                                  color: color,
-                                  shape: BoxShape.circle,
-                                ),
+                  final legendList = Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: List.generate(validEntries.length, (i) {
+                      final e = validEntries[i];
+                      final color = _getColorForMethod(e.key, i);
+                      final percent = (e.value / total) * 100.0;
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4.0),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  _formatName(e.key),
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _formatName(e.key),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
                                 ),
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              Text(
+                            ),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              fit: FlexFit.loose,
+                              child: Text(
                                 '${percent.toStringAsFixed(1)}% (${Money(e.value).toDisplay()} ج.م)',
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.grey.shade700,
                                 ),
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ],
-                          ),
-                        );
-                      }),
-                    ),
-                  ),
-                ],
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  );
+
+                  if (isCompact) {
+                    return Column(
+                      children: [
+                        Center(child: chartWidget),
+                        const SizedBox(height: 16),
+                        legendList,
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      chartWidget,
+                      const SizedBox(width: 20),
+                      Expanded(child: legendList),
+                    ],
+                  );
+                },
               ),
           ],
         ),
