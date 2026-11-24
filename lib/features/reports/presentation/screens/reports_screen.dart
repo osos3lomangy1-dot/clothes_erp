@@ -8,8 +8,14 @@ import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
 import '../cubits/reports_cubit.dart';
 import '../cubits/reports_state.dart';
+import '../../../dashboard/presentation/widgets/hourly_sales_chart.dart';
+import '../../domain/services/date_range_presets.dart';
+import '../widgets/category_breakdown_donut_chart.dart';
+import '../widgets/daily_trend_line_chart.dart';
 import '../widgets/financial_comparison_bar_chart.dart';
+import '../widgets/most_profitable_products_widget.dart';
 import '../widgets/payment_method_pie_chart.dart';
+import '../widgets/quick_date_range_bar.dart';
 import '../widgets/top_selling_products_widget.dart';
 import '../widgets/installments_report_section.dart';
 import '../widgets/promotions_report_section.dart';
@@ -24,15 +30,12 @@ class ReportsScreen extends StatefulWidget {
 
 class _ReportsScreenState extends State<ReportsScreen> {
   DateTimeRange? _dateRange;
+  QuickDatePreset _selectedPreset = QuickDatePreset.thisMonth;
 
   @override
   void initState() {
     super.initState();
-    final now = DateTime.now();
-    _dateRange = DateTimeRange(
-      start: DateTime(now.year, now.month, 1),
-      end: now,
-    );
+    _dateRange = DateRangeEngine.resolveRange(QuickDatePreset.thisMonth);
   }
 
   String _formatPaymentMethod(String method) {
@@ -241,6 +244,40 @@ class _ReportsScreenState extends State<ReportsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  QuickDateRangeBar(
+                    selectedPreset: _selectedPreset,
+                    onPresetSelected: (preset) async {
+                      if (preset == QuickDatePreset.custom) {
+                        final picked = await showDateRangePicker(
+                          context: context,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now(),
+                          initialDateRange: _dateRange,
+                        );
+                        if (picked != null && context.mounted) {
+                          setState(() {
+                            _selectedPreset = QuickDatePreset.custom;
+                            _dateRange = picked;
+                          });
+                          context.read<ReportsCubit>().loadReport(
+                                picked.start,
+                                picked.end,
+                              );
+                        }
+                        return;
+                      }
+                      final resolved = DateRangeEngine.resolveRange(preset);
+                      setState(() {
+                        _selectedPreset = preset;
+                        _dateRange = resolved;
+                      });
+                      context.read<ReportsCubit>().loadReport(
+                            resolved.start,
+                            resolved.end,
+                          );
+                    },
+                  ),
+                  const SizedBox(height: 10),
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -436,36 +473,45 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                       value:
                                           '${Money(report.totalRevenue).toDisplay()} ج.م',
                                       icon: Icons.monetization_on_rounded,
-                                      color: Colors.green.shade700,
+                                      color: const Color(0xFF0A2E5C),
+                                      growthPercent: report.revenueGrowthPercent,
+                                      subtitle: '${report.totalTransactions} فاتورة',
                                     ),
                                     _ReportCard(
-                                      title: 'تكلفة البضاعة',
-                                      value:
-                                          '${Money(report.totalCost).toDisplay()} ج.م',
-                                      icon: Icons.shopping_bag_outlined,
-                                      color: Colors.orange.shade800,
-                                    ),
-                                    _ReportCard(
-                                      title: 'المصروفات',
-                                      value:
-                                          '${Money(report.totalExpenses).toDisplay()} ج.م',
-                                      icon: Icons.outbox_rounded,
-                                      color: AppColors.error,
-                                    ),
-                                    _ReportCard(
-                                      title: 'صافي الربح الفعلي',
+                                      title: 'صافي الربح الحقيقي',
                                       value:
                                           '${Money(report.netProfit).toDisplay()} ج.م',
                                       icon: Icons.trending_up_rounded,
                                       color: report.netProfit >= 0
-                                          ? AppColors.primary
+                                          ? const Color(0xFF1FB5A8)
                                           : AppColors.error,
+                                      growthPercent: report.netProfitGrowthPercent,
+                                      subtitle:
+                                          'تكلفة: ${Money(report.totalCost).toDisplay()} | مصروف: ${Money(report.totalExpenses).toDisplay()}',
                                     ),
                                     _ReportCard(
-                                      title: 'عدد الفواتير',
-                                      value: '${report.totalTransactions}',
+                                      title: 'هامش الربح الصافي %',
+                                      value:
+                                          '${report.profitMarginPercent.toStringAsFixed(1)}%',
+                                      icon: Icons.percent_rounded,
+                                      color: const Color(0xFF0A2E5C),
+                                      subtitle: 'من صافي الإيرادات',
+                                    ),
+                                    _ReportCard(
+                                      title: 'متوسط قيمة الفاتورة (AOV)',
+                                      value:
+                                          '${Money(report.averageOrderValuePiasters).toDisplay()} ج.م',
                                       icon: Icons.receipt_long_rounded,
-                                      color: Colors.blue.shade700,
+                                      color: const Color(0xFF1FB5A8),
+                                      subtitle: 'متوسط سلة العميل',
+                                    ),
+                                    _ReportCard(
+                                      title: 'قيمة المخزون بالتكلفة',
+                                      value:
+                                          '${Money(report.inventoryCostCapitalPiasters).toDisplay()} ج.م',
+                                      icon: Icons.inventory_2_outlined,
+                                      color: const Color(0xFF0A2E5C),
+                                      subtitle: 'رأس المال بالمخزن',
                                     ),
                                   ];
                                   if (constraints.maxWidth < 700) {
@@ -548,6 +594,22 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               const SizedBox(height: 20),
                               TopSellingProductsWidget(
                                 products: report.topSellingProducts,
+                              ),
+                              const SizedBox(height: 20),
+                              DailyTrendLineChart(
+                                points: report.dailySalesTrend,
+                              ),
+                              const SizedBox(height: 20),
+                              HourlySalesChart(
+                                hourlyPoints: report.hourlySalesDistribution,
+                              ),
+                              const SizedBox(height: 20),
+                              CategoryBreakdownDonutChart(
+                                categoryBreakdown: report.categoryRevenueBreakdown,
+                              ),
+                              const SizedBox(height: 20),
+                              MostProfitableProductsWidget(
+                                products: report.mostProfitableProducts,
                               ),
                               const SizedBox(height: 24),
                               const Text(
@@ -767,21 +829,26 @@ class _ReportCard extends StatelessWidget {
   final String value;
   final IconData icon;
   final Color color;
+  final double? growthPercent;
+  final String? subtitle;
 
   const _ReportCard({
     required this.title,
     required this.value,
     required this.icon,
     required this.color,
+    this.growthPercent,
+    this.subtitle,
   });
 
   @override
   Widget build(BuildContext context) {
+    final g = growthPercent;
     return Card(
       elevation: 1,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: Padding(
-        padding: const EdgeInsets.all(18.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
             Container(
@@ -790,23 +857,66 @@ class _ReportCard extends StatelessWidget {
                 color: color.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: color, size: 26),
+              child: Icon(icon, color: color, size: 24),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Text(
               value,
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 17,
                 fontWeight: FontWeight.bold,
                 color: color,
               ),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 4),
             Text(
               title,
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w600),
               textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
             ),
+            if (g != null) ...[
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: g >= 0
+                      ? const Color(0xFF1FB5A8).withValues(alpha: 0.12)
+                      : AppColors.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      g >= 0 ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                      size: 13,
+                      color: g >= 0 ? const Color(0xFF168A80) : AppColors.error,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${g >= 0 ? '+' : ''}${g.toStringAsFixed(1)}%',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: g >= 0 ? const Color(0xFF168A80) : AppColors.error,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (subtitle != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                subtitle!,
+                style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600),
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ],
         ),
       ),

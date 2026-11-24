@@ -313,6 +313,57 @@ class DashboardLocalDataSourceImpl implements DashboardLocalDataSource {
     final netCreditDebt = totalCreditSales - totalCustPayments - totalCreditReturns;
     final int totalCustomerCreditDebts = netCreditDebt < 0 ? 0 : netCreditDebt;
 
+    // 12. Yesterday comparison & Inventory cost capital (Tasks 31 & 32)
+    final yesterdayStart = startOfDay.subtract(const Duration(days: 1));
+    final yesterdayEnd = endOfDay.subtract(const Duration(days: 1));
+    final yesterdaySalesRows = await (_db.select(_db.sales)
+          ..where((s) =>
+              s.date.isBiggerOrEqualValue(yesterdayStart) &
+              s.date.isSmallerOrEqualValue(yesterdayEnd) &
+              s.deletedAt.isNull() &
+              s.status.isNotValue('cancelled')))
+        .get();
+    final int yesterdaySales =
+        yesterdaySalesRows.fold<int>(0, (sum, s) => sum + s.total);
+    final yesterdaySaleIds = yesterdaySalesRows.map((s) => s.id).toList();
+    int yesterdayCost = 0;
+    if (yesterdaySaleIds.isNotEmpty) {
+      final yItemsRows = await (_db.select(_db.saleItems).join([
+        innerJoin(
+          _db.productVariants,
+          _db.productVariants.id.equalsExp(_db.saleItems.variantId),
+        ),
+      ])..where(_db.saleItems.saleId.isIn(yesterdaySaleIds))).get();
+      for (final r in yItemsRows) {
+        final item = r.readTable(_db.saleItems);
+        final variant = r.readTable(_db.productVariants);
+        final unitCost = variant.costPrice > 0 ? variant.costPrice : item.costSnapshot;
+        yesterdayCost += unitCost * item.qty;
+      }
+    }
+    final yesterdayExpensesRows = await (_db.select(_db.expenses)
+          ..where((e) =>
+              e.kind.equals('operating') &
+              e.expenseDate.isBiggerOrEqualValue(yesterdayStart) &
+              e.expenseDate.isSmallerOrEqualValue(yesterdayEnd) &
+              e.deletedAt.isNull()))
+        .get();
+    final int yesterdayExpenses =
+        yesterdayExpensesRows.fold<int>(0, (sum, e) => sum + e.amount);
+    final int yesterdayNetProfit = yesterdaySales - yesterdayCost - yesterdayExpenses;
+
+    final stockRows = await (_db.select(_db.productVariants).join([
+      innerJoin(_db.products, _db.products.id.equalsExp(_db.productVariants.productId)),
+    ])..where(_db.productVariants.deletedAt.isNull() & _db.products.deletedAt.isNull()))
+        .get();
+    int inventoryCostCapitalPiasters = 0;
+    for (final r in stockRows) {
+      final v = r.readTable(_db.productVariants);
+      if (v.quantity > 0 && v.costPrice > 0) {
+        inventoryCostCapitalPiasters += v.quantity * v.costPrice;
+      }
+    }
+
     return DashboardStatsEntity(
       todaySales: todaySales,
       todayTransactions: todayTransactions,
@@ -335,6 +386,9 @@ class DashboardLocalDataSourceImpl implements DashboardLocalDataSource {
       todayHourlySales: todayHourlySales,
       todayPaymentBreakdown: todayPaymentBreakdown,
       todayTopProducts: todayTopProducts,
+      yesterdaySales: yesterdaySales,
+      yesterdayNetProfit: yesterdayNetProfit,
+      inventoryCostCapitalPiasters: inventoryCostCapitalPiasters,
     );
   }
 

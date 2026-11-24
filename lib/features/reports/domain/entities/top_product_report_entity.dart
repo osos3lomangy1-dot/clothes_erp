@@ -8,6 +8,7 @@ class TopProductReportEntity extends Equatable {
   final String size;
   final int quantitySold;
   final int totalRevenue; // in piasters
+  final int netProfitPiasters; // in piasters
 
   const TopProductReportEntity({
     required this.variantId,
@@ -17,6 +18,7 @@ class TopProductReportEntity extends Equatable {
     required this.size,
     required this.quantitySold,
     required this.totalRevenue,
+    this.netProfitPiasters = 0,
   });
 
   @override
@@ -28,6 +30,7 @@ class TopProductReportEntity extends Equatable {
         size,
         quantitySold,
         totalRevenue,
+        netProfitPiasters,
       ];
 }
 

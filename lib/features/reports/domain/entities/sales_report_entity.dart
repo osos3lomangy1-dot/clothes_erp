@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../../dashboard/domain/entities/sales_chart_point_entity.dart';
 import 'top_product_report_entity.dart';
 
 class SalesReportEntity extends Equatable {
@@ -21,6 +22,18 @@ class SalesReportEntity extends Equatable {
   // Returns in period
   final int totalReturns;
 
+  // Task 31: Period-over-Period & Executive KPIs
+  final int previousTotalRevenue;
+  final int previousNetProfit;
+  final int previousTotalTransactions;
+  final int inventoryCostCapitalPiasters;
+
+  // Task 32: Advanced Visual Analytics
+  final List<DailySalesPointEntity> dailySalesTrend;
+  final List<HourlySalesPointEntity> hourlySalesDistribution;
+  final Map<String, int> categoryRevenueBreakdown;
+  final List<TopProductReportEntity> mostProfitableProducts;
+
   const SalesReportEntity({
     required this.startDate,
     required this.endDate,
@@ -36,11 +49,35 @@ class SalesReportEntity extends Equatable {
     this.cashFlowOut = 0,
     this.cashFlowInByMethod = const {},
     this.cashFlowOutByMethod = const {},
+    this.previousTotalRevenue = 0,
+    this.previousNetProfit = 0,
+    this.previousTotalTransactions = 0,
+    this.inventoryCostCapitalPiasters = 0,
+    this.dailySalesTrend = const [],
+    this.hourlySalesDistribution = const [],
+    this.categoryRevenueBreakdown = const {},
+    this.mostProfitableProducts = const [],
   });
 
   int get netProfit => totalProfit - totalExpenses;
   int get netCashFlow => cashFlowIn - cashFlowOut;
   int get netRevenue => totalRevenue - totalReturns;
+
+  double get profitMarginPercent =>
+      netRevenue > 0 ? (netProfit / netRevenue) * 100 : 0.0;
+
+  int get averageOrderValuePiasters =>
+      totalTransactions > 0 ? netRevenue ~/ totalTransactions : 0;
+
+  double? get revenueGrowthPercent {
+    if (previousTotalRevenue <= 0) return null;
+    return ((totalRevenue - previousTotalRevenue) / previousTotalRevenue) * 100;
+  }
+
+  double? get netProfitGrowthPercent {
+    if (previousNetProfit == 0) return null;
+    return ((netProfit - previousNetProfit) / previousNetProfit.abs()) * 100;
+  }
 
   @override
   List<Object?> get props => [
@@ -58,5 +95,13 @@ class SalesReportEntity extends Equatable {
         cashFlowOut,
         cashFlowInByMethod,
         cashFlowOutByMethod,
+        previousTotalRevenue,
+        previousNetProfit,
+        previousTotalTransactions,
+        inventoryCostCapitalPiasters,
+        dailySalesTrend,
+        hourlySalesDistribution,
+        categoryRevenueBreakdown,
+        mostProfitableProducts,
       ];
 }

@@ -343,7 +343,8 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
       title: 'مبيعات اليوم',
       value: '${Money(stats.todaySales).toDisplay()} ج.م',
       icon: Icons.monetization_on_rounded,
-      color: Colors.green.shade700,
+      color: const Color(0xFF0A2E5C),
+      growthPercent: stats.todaySalesGrowthPercent,
       subtitle: stats.todayReturnsTotal > 0
           ? '${stats.todayTransactions} فاتورة - صافي: ${Money(stats.netTodaySalesAfterReturns).toDisplay()} ج.م'
           : '${stats.todayTransactions} فاتورة صادرة',
@@ -354,9 +355,11 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
       value: '${Money(stats.todayEstimatedNetProfit).toDisplay()} ج.م',
       icon: Icons.trending_up_rounded,
       color: stats.todayEstimatedNetProfit >= 0
-          ? AppColors.primary
+          ? const Color(0xFF1FB5A8)
           : AppColors.error,
-      subtitle: 'تكلفة البضاعة: ${Money(stats.todayCost).toDisplay()} ج.م',
+      growthPercent: stats.todayNetProfitGrowthPercent,
+      subtitle:
+          'هامش الربح: ${stats.todayProfitMarginPercent.toStringAsFixed(1)}% | التكلفة: ${Money(stats.todayCost).toDisplay()} ج.م',
       isHighlighted: true,
     );
 
@@ -378,9 +381,17 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
       subtitle: 'المصروفات: ${Money(stats.todayExpenses).toDisplay()} ج.م',
     );
 
+    final cardInventoryCapital = _KpiCard(
+      title: 'قيمة المخزون بالتكلفة',
+      value: '${Money(stats.inventoryCostCapitalPiasters).toDisplay()} ج.م',
+      icon: Icons.inventory_2_rounded,
+      color: const Color(0xFF0A2E5C),
+      subtitle: 'إجمالي رأس المال بالمخزن',
+    );
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth < 1050) {
+        if (constraints.maxWidth < 1150) {
           return Column(
             children: [
               Row(
@@ -398,6 +409,8 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
                   Expanded(child: cardAvgTicket),
                 ],
               ),
+              const SizedBox(height: 12),
+              cardInventoryCapital,
             ],
           );
         }
@@ -410,6 +423,8 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
             Expanded(child: cardLiveCash),
             const SizedBox(width: 12),
             Expanded(child: cardAvgTicket),
+            const SizedBox(width: 12),
+            Expanded(child: cardInventoryCapital),
           ],
         );
       },
@@ -659,6 +674,7 @@ class _KpiCard extends StatelessWidget {
   final Color color;
   final String? subtitle;
   final bool isHighlighted;
+  final double? growthPercent;
 
   const _KpiCard({
     required this.title,
@@ -667,10 +683,12 @@ class _KpiCard extends StatelessWidget {
     required this.color,
     this.subtitle,
     this.isHighlighted = false,
+    this.growthPercent,
   });
 
   @override
   Widget build(BuildContext context) {
+    final g = growthPercent;
     return Card(
       elevation: isHighlighted ? 2 : 1,
       shape: RoundedRectangleBorder(
@@ -709,14 +727,38 @@ class _KpiCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: isHighlighted ? color : AppColors.onSurface,
-              ),
-              overflow: TextOverflow.ellipsis,
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: isHighlighted ? color : AppColors.onSurface,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (g != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: g >= 0
+                          ? const Color(0xFF1FB5A8).withValues(alpha: 0.12)
+                          : AppColors.error.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '${g >= 0 ? '+' : ''}${g.toStringAsFixed(1)}%',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.bold,
+                        color: g >= 0 ? const Color(0xFF168A80) : AppColors.error,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             if (subtitle != null) ...[
               const SizedBox(height: 4),

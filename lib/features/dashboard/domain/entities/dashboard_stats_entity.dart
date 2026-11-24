@@ -32,6 +32,11 @@ class DashboardStatsEntity extends Equatable {
   final Map<String, int> todayPaymentBreakdown;
   final List<TopProductReportEntity> todayTopProducts;
 
+  // Task 31/32: Yesterday comparison & Inventory Cost Capital
+  final int yesterdaySales; // in piasters
+  final int yesterdayNetProfit; // in piasters
+  final int inventoryCostCapitalPiasters; // in piasters
+
   const DashboardStatsEntity({
     this.todaySales = 0,
     this.todayTransactions = 0,
@@ -54,6 +59,9 @@ class DashboardStatsEntity extends Equatable {
     this.todayHourlySales = const [],
     this.todayPaymentBreakdown = const {},
     this.todayTopProducts = const [],
+    this.yesterdaySales = 0,
+    this.yesterdayNetProfit = 0,
+    this.inventoryCostCapitalPiasters = 0,
   });
 
   @override
@@ -79,8 +87,24 @@ class DashboardStatsEntity extends Equatable {
         todayHourlySales,
         todayPaymentBreakdown,
         todayTopProducts,
+        yesterdaySales,
+        yesterdayNetProfit,
+        inventoryCostCapitalPiasters,
       ];
 
   /// Net today sales after returns (computed, not stored to avoid breaking old tests)
   int get netTodaySalesAfterReturns => (todaySales - todayReturnsTotal).clamp(0, 1 << 60);
+
+  double get todayProfitMarginPercent =>
+      netTodaySalesAfterReturns > 0 ? (todayEstimatedNetProfit / netTodaySalesAfterReturns) * 100 : 0.0;
+
+  double? get todaySalesGrowthPercent {
+    if (yesterdaySales <= 0) return null;
+    return ((todaySales - yesterdaySales) / yesterdaySales) * 100;
+  }
+
+  double? get todayNetProfitGrowthPercent {
+    if (yesterdayNetProfit == 0) return null;
+    return ((todayEstimatedNetProfit - yesterdayNetProfit) / yesterdayNetProfit.abs()) * 100;
+  }
 }
