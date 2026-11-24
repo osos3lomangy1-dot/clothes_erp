@@ -26,6 +26,7 @@ import 'package:clothes_erp/features/invoices/domain/repositories/invoices_repos
 import 'package:clothes_erp/features/pos/presentation/cubits/pos_cubit.dart';
 import 'package:clothes_erp/features/pos/presentation/screens/pos_screen.dart';
 import 'package:clothes_erp/features/product_variants/domain/entities/variant_entity.dart';
+import 'package:clothes_erp/features/products/domain/entities/product_entity.dart';
 import 'package:clothes_erp/features/reports/presentation/widgets/financial_comparison_bar_chart.dart';
 import 'package:clothes_erp/features/reports/presentation/widgets/payment_method_pie_chart.dart';
 import 'package:clothes_erp/features/settings/data/services/activity_settings_service.dart';
@@ -156,6 +157,8 @@ class _FakePosCubit extends Cubit<PosState> implements PosCubit {
   Future<void> init() async {}
   @override
   String getProductName(String productId) => 'قميص أكسفورد كلاسيك';
+  @override
+  ProductEntity? getProduct(String productId) => null;
   @override
   String? getProductCategoryId(String productId) => 'cat-1';
   @override

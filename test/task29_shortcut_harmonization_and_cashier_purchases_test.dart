@@ -303,9 +303,12 @@ void main() {
     });
 
     testWidgets('SystemSettingsScreen allows toggling hotkey strip via switch', (tester) async {
-      tester.view.physicalSize = const Size(1280, 1200);
+      tester.view.physicalSize = const Size(1280, 2400);
       tester.view.devicePixelRatio = 1.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
 
       HotkeyStripService.isVisible.value = true;
 
@@ -335,6 +338,8 @@ void main() {
 
       // Find switch
       final switchFinder = find.byKey(const Key('setting_show_hotkey_strip'));
+      await tester.ensureVisible(switchFinder);
+      await tester.pumpAndSettle();
       expect(switchFinder, findsOneWidget);
 
       // Verify initial value is true

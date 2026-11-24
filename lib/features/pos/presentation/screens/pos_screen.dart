@@ -1915,11 +1915,19 @@ class _ProductPanelState extends State<_ProductPanel> {
             List<VariantEntity> allVariants = [];
             try {
               allVariants = posCubit.allVariants.where((v) {
-                final p = posCubit.getProduct(v.productId);
-                return !(p?.isRestaurantRawMaterial ?? false);
+                try {
+                  final p = posCubit.getProduct(v.productId);
+                  return !(p?.isRestaurantRawMaterial ?? false);
+                } catch (_) {
+                  return true;
+                }
               }).toList();
             } catch (_) {
-              allVariants = [];
+              try {
+                allVariants = posCubit.allVariants;
+              } catch (_) {
+                allVariants = [];
+              }
             }
 
             return StreamBuilder<bool>(
@@ -2103,13 +2111,21 @@ class _ProductPanelState extends State<_ProductPanel> {
                 final isHospitalityMode = (getIt.isRegistered<ActivitySettingsService>() &&
                     getIt<ActivitySettingsService>().cachedEnabledActivities.contains(ActivityType.restaurantsCafes)) ||
                     state.filteredVariants.any((v) {
-                      final p = posCubit.getProduct(v.productId);
-                      return p?.activityTypeEnum == ActivityType.restaurantsCafes;
+                      try {
+                        final p = posCubit.getProduct(v.productId);
+                        return p?.activityTypeEnum == ActivityType.restaurantsCafes;
+                      } catch (_) {
+                        return false;
+                      }
                     });
                 final displayedVariants = isHospitalityMode
                     ? state.filteredVariants.where((v) {
-                        final p = posCubit.getProduct(v.productId);
-                        return !(p?.isRestaurantRawMaterial ?? false);
+                        try {
+                          final p = posCubit.getProduct(v.productId);
+                          return !(p?.isRestaurantRawMaterial ?? false);
+                        } catch (_) {
+                          return true;
+                        }
                       }).toList()
                     : state.filteredVariants;
 
