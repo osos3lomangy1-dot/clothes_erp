@@ -134,17 +134,42 @@ class ActivitySettingsService {
     });
   }
 
-  /// Sets activity status with safety validation (must keep at least 1 product activity active).
+  /// Sets activity status with safety validation (must keep at least 1 product activity active,
+  /// and prevents mixing hospitality with retail activities in the same store).
   Future<void> setActivityEnabled(
     ActivityType type,
     bool enabled, {
     required String userId,
+    bool allowSectorSwitch = false,
   }) async {
+    final explicitRows = await (_db.select(
+      _db.appMeta,
+    )..where((t) => t.key.like('$_metaPrefix%'))).get();
+    final hasExplicitRetailConfig = explicitRows.any(
+      (r) =>
+          r.value == '1' &&
+          r.key != '$_metaPrefix${ActivityType.restaurantsCafes.code}',
+    );
+    final currentEnabled = await getEnabledActivities();
     if (!enabled) {
-      final currentEnabled = await getEnabledActivities();
       if (currentEnabled.length <= 1 && currentEnabled.contains(type)) {
         throw Exception(
           'يجب الإبقاء على نشاط تجاري واحد مفعل على الأقل للمحل.',
+        );
+      }
+    } else if (!allowSectorSwitch) {
+      if (type == ActivityType.restaurantsCafes &&
+          hasExplicitRetailConfig &&
+          currentEnabled.any((a) => a != ActivityType.restaurantsCafes)) {
+        throw Exception(
+          'لا يمكن خلط نشاط المطاعم والكافيهات مع أنشطة التجزئة في نفس المتجر. استخدم "تبديل المتجر / إضافة نشاط جديد" لإنشاء متجر مستقل.',
+        );
+      }
+      if (type != ActivityType.restaurantsCafes &&
+          currentEnabled.length == 1 &&
+          currentEnabled.contains(ActivityType.restaurantsCafes)) {
+        throw Exception(
+          'لا يمكن خلط نشاط المطاعم والكافيهات مع أنشطة التجزئة في نفس المتجر. استخدم "تبديل المتجر / إضافة نشاط جديد" لإنشاء متجر مستقل.',
         );
       }
     }

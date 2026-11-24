@@ -54,14 +54,42 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
   StreamSubscription<String?>? _sectorSub;
   StreamSubscription<List<ActivityType>>? _activitySub;
 
+  List<ActivityType> get _enabledActivities =>
+      getIt.isRegistered<ActivitySettingsService>()
+          ? getIt<ActivitySettingsService>().cachedEnabledActivities
+          : const <ActivityType>[];
+
   bool get _isHospitality {
-    final enabled = getIt.isRegistered<ActivitySettingsService>()
-        ? getIt<ActivitySettingsService>().cachedEnabledActivities
-        : const <ActivityType>[];
     return ActivitySettingsService.isHospitalityResolved(
       sectorMode: _sectorMode,
-      enabledActivities: enabled,
+      enabledActivities: _enabledActivities,
     );
+  }
+
+  String _getSloganHintExample() {
+    if (_isHospitality) {
+      return 'مطعم وكافيه - مأكولات ومشروبات';
+    }
+    if (_sectorMode == RetailSector.houseware) {
+      return 'أجود الأدوات المنزلية والمفروشات العصرية';
+    }
+    if (_sectorMode == RetailSector.supermarket) {
+      return 'أجود المواد الغذائية والتموينية';
+    }
+    if (_enabledActivities.contains(ActivityType.electronicsMobiles) &&
+        !_enabledActivities.contains(ActivityType.clothing)) {
+      return 'أحدث الأجهزة والإلكترونيات المعتمدة';
+    }
+    if ((_enabledActivities.contains(ActivityType.homeLiving) ||
+            _enabledActivities.contains(ActivityType.textilesDecor)) &&
+        !_enabledActivities.contains(ActivityType.clothing)) {
+      return 'أجود الأدوات المنزلية والمفروشات العصرية';
+    }
+    if (_enabledActivities.contains(ActivityType.supermarketGroceries) &&
+        !_enabledActivities.contains(ActivityType.clothing)) {
+      return 'أجود المواد الغذائية والتموينية';
+    }
+    return 'أحدث صيحات الملابس الجاهزة';
   }
 
   @override
@@ -358,20 +386,22 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
           ],
         ),
         actions: [
-          OutlinedButton.icon(
-            key: const Key('apply_hospitality_template_btn'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.primary,
-              side: BorderSide(color: AppColors.outlineVariant),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+          if (_isHospitality) ...[
+            OutlinedButton.icon(
+              key: const Key('apply_hospitality_template_btn'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: BorderSide(color: AppColors.outlineVariant),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
+              onPressed: _applyHospitalityTemplate,
+              icon: const Icon(Icons.restaurant_rounded, size: 18),
+              label: const Text('قالب المطاعم والكافيهات'),
             ),
-            onPressed: _applyHospitalityTemplate,
-            icon: const Icon(Icons.restaurant_rounded, size: 18),
-            label: const Text('قالب المطاعم والكافيهات'),
-          ),
-          const SizedBox(width: 8),
+            const SizedBox(width: 8),
+          ],
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.primary,
@@ -482,6 +512,8 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
                     child: Center(
                       child: ThermalReceiptLivePreview(
                         config: _currentConfig,
+                        sectorMode: _sectorMode,
+                        enabledActivities: _enabledActivities,
                       ),
                     ),
                   ),
@@ -527,6 +559,8 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
                   child: Center(
                     child: ThermalReceiptLivePreview(
                       config: _currentConfig,
+                      sectorMode: _sectorMode,
+                      enabledActivities: _enabledActivities,
                     ),
                   ),
                 ),
@@ -574,7 +608,7 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
             TextFormField(
               controller: _storeActivityCtrl,
               decoration: InputDecoration(
-                labelText: 'نشاط المحل أو السلوجان (مثال: أحدث صيحات الملابس الجاهزة)',
+                labelText: 'نشاط المحل أو السلوجان (مثال: ${_getSloganHintExample()})',
                 prefixIcon: const Icon(Icons.loyalty_outlined, size: 20),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
               ),

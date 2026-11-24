@@ -634,18 +634,6 @@ class _MainLayoutState extends State<MainLayout> {
                                                     const InventoryLogsScreen(),
                                                     isSubItem: true,
                                                   ),
-                                                if (!isHospitality &&
-                                                    isAdmin &&
-                                                    _featureEnabled(
-                                                      features,
-                                                      FeatureKeys.inventory,
-                                                    ))
-                                                  _navItem(
-                                                    Icons.qr_code_2_rounded,
-                                                    'طباعة الباركود والملصقات',
-                                                    const BarcodeCustomizerScreen(),
-                                                    isSubItem: true,
-                                                  ),
                                               ],
                                             ),
 

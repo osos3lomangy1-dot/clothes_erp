@@ -364,10 +364,10 @@ void main() {
       expect(find.text('نقطة البيع (الكاشير)'), findsOneWidget);
       expect(find.text('كاشير المطعم والصالة'), findsNothing);
 
-      // 2. Apparel items are visible
+      // 2. Apparel items are visible (barcode printing moved to Products & Settings in Task 34)
       expect(find.text('التقسيط'), findsOneWidget);
       expect(find.text('الحجز المسبق والعربونات'), findsOneWidget);
-      expect(find.text('طباعة الباركود والملصقات'), findsOneWidget);
+      expect(find.text('طباعة الباركود والملصقات'), findsNothing);
 
       // 3. Open Command Palette and verify items are present
       final cmdPaletteBtn = find.byKey(const Key('command_palette_trigger_btn'));

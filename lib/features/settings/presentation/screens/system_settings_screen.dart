@@ -4524,12 +4524,18 @@ class _SectorModeSettingsCard extends StatelessWidget {
         : (mode == RetailSector.houseware
             ? ActivityType.general
             : ActivityType.clothing);
-    await activityService.setActivityEnabled(targetActivity, true, userId: userId);
+    await activityService.setActivityEnabled(
+      targetActivity,
+      true,
+      userId: userId,
+      allowSectorSwitch: true,
+    );
     if (mode == RetailSector.houseware) {
       await activityService.setActivityEnabled(
         ActivityType.homeLiving,
         true,
         userId: userId,
+        allowSectorSwitch: true,
       );
     }
     await activityService.setActivityEnabled(
@@ -4908,6 +4914,7 @@ class _PureHospitalityIsolationCard extends StatelessWidget {
                           ActivityType.clothing,
                           true,
                           userId: userId,
+                          allowSectorSwitch: true,
                         );
                         await activityService.setActivityEnabled(
                           ActivityType.restaurantsCafes,

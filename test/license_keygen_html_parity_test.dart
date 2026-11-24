@@ -89,7 +89,7 @@ $jsBody
 const key = window.Bay3ahKeygen.generateLicenseKey("WIN-PARITY-777", "annual", "pro", 365);
 const pin1 = window.Bay3ahKeygen.computeMasterRescuePin("RESCUE-1A2B-3C4D");
 const pin2 = window.Bay3ahKeygen.computeMasterRescuePin("RESCUE-FFFF-0001");
-const dartKey = process.argv[1];
+const dartKey = process.argv[2];
 const verifiedDartKey = window.Bay3ahKeygen.verifyLicenseKey(dartKey, "WIN-PARITY-777");
 console.log(JSON.stringify({ key, pin1, pin2, verifiedValid: verifiedDartKey.valid }));
 ''';

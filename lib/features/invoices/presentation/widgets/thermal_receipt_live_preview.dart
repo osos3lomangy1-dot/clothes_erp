@@ -1,11 +1,68 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/constants/retail_sector.dart';
+import '../../../products/domain/entities/activity_type.dart';
 import '../../domain/entities/receipt_config.dart';
 
 class ThermalReceiptLivePreview extends StatelessWidget {
   final ReceiptConfig config;
+  final String? sectorMode;
+  final List<ActivityType>? enabledActivities;
 
-  const ThermalReceiptLivePreview({super.key, required this.config});
+  const ThermalReceiptLivePreview({
+    super.key,
+    required this.config,
+    this.sectorMode,
+    this.enabledActivities,
+  });
+
+  String _resolvePreviewSector() {
+    if (sectorMode == RetailSector.hospitality ||
+        config.storeActivity.contains('مطاعم') ||
+        config.storeActivity.contains('كافيه') ||
+        config.returnPolicy.contains('الأطعمة والمشروبات')) {
+      return 'hospitality';
+    }
+    if (enabledActivities != null &&
+        enabledActivities!.length == 1 &&
+        enabledActivities!.first == ActivityType.restaurantsCafes) {
+      return 'hospitality';
+    }
+    if (sectorMode == RetailSector.houseware ||
+        config.storeActivity.contains('أدوات منزلية') ||
+        config.storeActivity.contains('مفروشات')) {
+      return 'houseware';
+    }
+    if (sectorMode == RetailSector.supermarket ||
+        config.storeActivity.contains('سوبر ماركت') ||
+        config.storeActivity.contains('بقالة')) {
+      return 'supermarket';
+    }
+    final hasClothing = enabledActivities?.contains(ActivityType.clothing) ?? false;
+    final hasElectronics = (enabledActivities?.contains(ActivityType.electronicsMobiles) ?? false) && !hasClothing;
+    if (hasElectronics ||
+        config.storeActivity.contains('إلكترونيات') ||
+        config.storeActivity.contains('موبايل')) {
+      return 'electronics';
+    }
+    final hasHouseware = (enabledActivities?.any(
+              (a) => a == ActivityType.homeLiving || a == ActivityType.textilesDecor,
+            ) ??
+            false) &&
+        !hasClothing;
+    if (hasHouseware) {
+      return 'houseware';
+    }
+    final hasSupermarket = (enabledActivities?.any(
+              (a) => a == ActivityType.supermarketGroceries || a == ActivityType.spicesNuts,
+            ) ??
+            false) &&
+        !hasClothing;
+    if (hasSupermarket) {
+      return 'supermarket';
+    }
+    return 'apparel';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,10 +70,8 @@ class ThermalReceiptLivePreview extends StatelessWidget {
     final containerWidth = is58mm ? 270.0 : 330.0;
     final now = DateTime.now();
     final dateFormat = DateFormat('yyyy/MM/dd - hh:mm a');
-    final isHospitality =
-        config.storeActivity.contains('مطاعم') ||
-        config.storeActivity.contains('كافيه') ||
-        config.returnPolicy.contains('الأطعمة والمشروبات');
+    final previewSector = _resolvePreviewSector();
+    final isHospitality = previewSector == 'hospitality';
 
     return Container(
       width: containerWidth,
@@ -173,7 +228,7 @@ class ThermalReceiptLivePreview extends StatelessWidget {
           const SizedBox(height: 4),
 
           // Sample Items
-          if (isHospitality) ...[
+          if (previewSector == 'hospitality') ...[
             _sampleItem(
               name: 'وجبة برجر لحم مدخن',
               note: 'بدون بصل - صوص زيادة',
@@ -188,6 +243,54 @@ class ThermalReceiptLivePreview extends StatelessWidget {
               qty: 2,
               price: '40.00',
               total: '80.00',
+            ),
+          ] else if (previewSector == 'houseware') ...[
+            _sampleItem(
+              name: 'طقم حلل جرانيت تركي',
+              details: config.showItemDetails ? 'ضمان سنتين - موديل 2026' : null,
+              qty: 1,
+              price: '3200.00',
+              total: '3200.00',
+            ),
+            const SizedBox(height: 4),
+            _sampleItem(
+              name: 'مفرش سرير قطن',
+              details: config.showItemDetails ? 'طقم 6 قطع فاخر' : null,
+              qty: 1,
+              price: '850.00',
+              total: '850.00',
+            ),
+          ] else if (previewSector == 'electronics') ...[
+            _sampleItem(
+              name: 'هاتف ذكي برو 256 جيجا',
+              details: config.showItemDetails ? 'SN: EL-904821 | ضمان 12 شهر' : null,
+              qty: 1,
+              price: '14500.00',
+              total: '14500.00',
+            ),
+            const SizedBox(height: 4),
+            _sampleItem(
+              name: 'سماعة لاسلكية أصلية',
+              details: config.showItemDetails ? 'ضمان الوكيل 6 أشهر' : null,
+              qty: 1,
+              price: '1200.00',
+              total: '1200.00',
+            ),
+          ] else if (previewSector == 'supermarket') ...[
+            _sampleItem(
+              name: 'أرز مصري 1 كجم',
+              details: config.showItemDetails ? 'الوزن الصافي: 1.000 كجم' : null,
+              qty: 2,
+              price: '35.00',
+              total: '70.00',
+            ),
+            const SizedBox(height: 4),
+            _sampleItem(
+              name: 'بن محوج 250 جم',
+              details: config.showItemDetails ? 'الوزن الصافي: 0.250 كجم' : null,
+              qty: 1,
+              price: '145.00',
+              total: '145.00',
             ),
           ] else ...[
             _sampleItem(

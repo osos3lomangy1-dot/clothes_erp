@@ -607,7 +607,9 @@ class _ProductsAndCategoriesViewState
             Text(
               _isHospitality
                   ? 'إدارة أقسام المنيو والوجبات والمشروبات وجداول الأسعار'
-                  : 'إدارة الأقسام والأصناف والمقاسات وجداول الأسعار في مكان واحد',
+                  : (RetailSector.isSingleProductMode(_sectorMode)
+                      ? 'إدارة الأقسام والأصناف والأسعار والمخزون في مكان واحد'
+                      : 'إدارة الأقسام والأصناف والمقاسات وجداول الأسعار في مكان واحد'),
               style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ],
@@ -1340,7 +1342,7 @@ class _ProductsAndCategoriesViewState
                         gridDelegate:
                             const SliverGridDelegateWithMaxCrossAxisExtent(
                               maxCrossAxisExtent: 460,
-                              mainAxisExtent: 160,
+                              mainAxisExtent: 185,
                               crossAxisSpacing: 14,
                               mainAxisSpacing: 14,
                             ),
@@ -1579,22 +1581,24 @@ class _ProductsAndCategoriesViewState
           const Divider(height: 12),
           Row(
             children: [
-              OutlinedButton.icon(
-                icon: Icon(
-                  RetailSector.isSingleProductMode(_sectorMode)
-                      ? Icons.edit_note_rounded
-                      : Icons.style_outlined,
-                  size: 15,
-                ),
-                label: Text(
-                  RetailSector.isSingleProductMode(_sectorMode)
-                      ? 'تعديل الصنف والباركود'
-                      : 'المقاسات والألوان',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
+              Flexible(
+                child: OutlinedButton.icon(
+                  icon: Icon(
+                    RetailSector.isSingleProductMode(_sectorMode)
+                        ? Icons.edit_note_rounded
+                        : Icons.style_outlined,
+                    size: 15,
                   ),
-                ),
+                  label: Text(
+                    RetailSector.isSingleProductMode(_sectorMode)
+                        ? 'الأنواع / الموديلات'
+                        : 'المقاسات والألوان',
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.primary,
                   side: BorderSide(color: AppColors.primary, width: 1.2),
@@ -1621,8 +1625,9 @@ class _ProductsAndCategoriesViewState
                     }
                   }
                 },
+                ),
               ),
-              const Spacer(),
+              const SizedBox(width: 4),
               IconButton(
                 icon: const Icon(
                   Icons.qr_code_2_rounded,
@@ -1636,9 +1641,11 @@ class _ProductsAndCategoriesViewState
                   if (!context.mounted) return;
                   if (variants.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
+                      SnackBar(
                         content: Text(
-                          'لا توجد مقاسات مسجلة لهذا المنتج للطباعة',
+                          RetailSector.isSingleProductMode(_sectorMode)
+                              ? 'لا توجد أصناف أو باركود مسجل لهذا المنتج للطباعة'
+                              : 'لا توجد مقاسات مسجلة لهذا المنتج للطباعة',
                         ),
                       ),
                     );
@@ -2067,13 +2074,24 @@ class _ExcelImportOptionsDialogState extends State<_ExcelImportOptionsDialog> {
                                       fontSize: 13,
                                     ),
                                   ),
-                                  Text(
-                                    'المقاس: ${row.size} | اللون: ${row.color}',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey.shade600,
+                                  if ((row.size.trim().isNotEmpty &&
+                                          row.size.trim() != '-') ||
+                                      (row.color.trim().isNotEmpty &&
+                                          row.color.trim() != '-'))
+                                    Text(
+                                      [
+                                        if (row.size.trim().isNotEmpty &&
+                                            row.size.trim() != '-')
+                                          'المقاس: ${row.size}',
+                                        if (row.color.trim().isNotEmpty &&
+                                            row.color.trim() != '-')
+                                          'اللون: ${row.color}',
+                                      ].join(' | '),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey.shade600,
+                                      ),
                                     ),
-                                  ),
                                 ],
                               ),
                             ),

@@ -324,6 +324,12 @@ void main() {
         tester.view.resetDevicePixelRatio();
       });
 
+      await sl<FeatureGate>().setMeta(
+        RetailSector.metaKey,
+        RetailSector.hospitality,
+        userId: 'system',
+      );
+
       await tester.pumpWidget(
         MaterialApp(
           home: BlocProvider<AuthCubit>(
