@@ -10,7 +10,8 @@ import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../../barcode_printing/domain/models/barcode_label_item.dart';
 import '../../../barcode_printing/presentation/dialogs/barcode_print_dialog.dart';
 import '../../../product_variants/domain/entities/variant_entity.dart';
-import '../../../products/domain/entities/activity_type.dart';
+import '../../../products/domain/entities/product_entity.dart';
+import '../../../products/domain/repositories/product_repository.dart';
 import '../../../settings/data/services/activity_settings_service.dart';
 import '../cubits/inventory_cubit.dart';
 import '../cubits/inventory_state.dart';
@@ -37,6 +38,40 @@ class _InventoryScreenState extends State<InventoryScreen> {
   String? _selectedCategory; // null = all categories
   _InventorySort _sort = _InventorySort.lowestQty;
   bool _exporting = false;
+  Map<String, ProductEntity> _productsById = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProductsIfHospitality();
+  }
+
+  Future<void> _loadProductsIfHospitality() async {
+    if (!_isHospitality) return;
+    try {
+      if (getIt.isRegistered<ProductRepository>()) {
+        final res = await getIt<ProductRepository>().getProducts();
+        res.fold((_) {}, (prods) {
+          if (mounted) {
+            setState(() {
+              _productsById = {for (final p in prods) p.id: p};
+            });
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
+  String _formatItemQuantity(VariantEntity item) {
+    if (_isHospitality) {
+      final prod = _productsById[item.productId];
+      if (prod != null &&
+          (prod.isRestaurantRawMaterial || prod.restaurantBaseUnit != null)) {
+        return prod.formatDualQuantity(item.quantity);
+      }
+    }
+    return '${item.quantity} قطعة';
+  }
 
   @override
   void dispose() {
@@ -896,7 +931,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                             size: 16, color: AppColors.error),
                       ),
                     Text(
-                      '${item.quantity} قطعة',
+                      _formatItemQuantity(item),
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,

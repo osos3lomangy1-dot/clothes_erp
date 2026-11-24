@@ -9,7 +9,7 @@ class RecipeItemData extends Equatable {
   final String rawMaterialName;
   final double quantityNeeded;
   final double yieldLossPercentage; // نسبة الفاقد الطبيعي بالطهي %
-  final String unit; // كجم، لتر، حبة، علبة
+  final String unit; // كجم، لتر، حبة، علبة، جرام، مل
 
   const RecipeItemData({
     required this.rawMaterialId,
@@ -18,6 +18,16 @@ class RecipeItemData extends Equatable {
     this.yieldLossPercentage = 0.0,
     required this.unit,
   });
+
+  /// Calculates consumed quantity including yield/cooking loss shrinkage.
+  double effectiveQuantityNeeded([int mealCount = 1]) {
+    return quantityNeeded * (1.0 + (yieldLossPercentage / 100.0)) * mealCount;
+  }
+
+  /// Calculates cost of this ingredient for a single meal given cost per base unit.
+  double calculateIngredientCost(double costPerBaseUnit) {
+    return effectiveQuantityNeeded(1) * costPerBaseUnit;
+  }
 
   Map<String, dynamic> toJson() => {
         'rawMaterialId': rawMaterialId,
@@ -56,6 +66,9 @@ class RestaurantCulinaryData extends Equatable {
   final String? imagePath;
   final bool isRawMaterial;
   final String? purchaseUnit;
+  final String? baseUnit;
+  final double? conversionFactor;
+  final int? packagingCostPiasters;
   final List<RecipeItemData> recipeItems;
 
   const RestaurantCulinaryData({
@@ -68,8 +81,82 @@ class RestaurantCulinaryData extends Equatable {
     this.imagePath,
     this.isRawMaterial = false,
     this.purchaseUnit,
+    this.baseUnit,
+    this.conversionFactor,
+    this.packagingCostPiasters,
     this.recipeItems = const [],
   });
+
+  /// Cost per base unit in piasters: purchase price / conversion factor.
+  double costPerBaseUnit(int purchasePricePiasters) {
+    final factor = conversionFactor ?? 1.0;
+    if (factor <= 0) return purchasePricePiasters.toDouble();
+    return purchasePricePiasters / factor;
+  }
+
+  /// Formats raw material stock in dual smart display (e.g. "14,250 جم (يعادل 14.25 كجم)").
+  String formatDualQuantity(num quantityInBaseUnits) {
+    final qty = quantityInBaseUnits.toDouble();
+    final bUnit = (baseUnit != null && baseUnit!.trim().isNotEmpty)
+        ? baseUnit!.trim()
+        : 'قطعة';
+    final pUnit = purchaseUnit?.trim();
+    final factor = (conversionFactor != null && conversionFactor! > 0)
+        ? conversionFactor!
+        : 1.0;
+
+    if (pUnit != null && pUnit.isNotEmpty && factor > 1.0) {
+      if (bUnit.contains('جرام') || bUnit.contains('جم')) {
+        final kg = qty / 1000.0;
+        final kgStr = kg.toStringAsFixed(kg.truncateToDouble() == kg ? 0 : 2);
+        return '${_formatNumber(qty)} $bUnit (يعادل $kgStr كجم)';
+      }
+      if (bUnit.contains('مل')) {
+        final liters = qty / 1000.0;
+        final literStr = liters
+            .toStringAsFixed(liters.truncateToDouble() == liters ? 0 : 2);
+        return '${_formatNumber(qty)} $bUnit (يعادل $literStr لتر)';
+      }
+      final packages = qty / factor;
+      final pkgStr = packages
+          .toStringAsFixed(packages.truncateToDouble() == packages ? 0 : 1);
+      return '${_formatNumber(qty)} $bUnit (يعادل $pkgStr $pUnit)';
+    }
+
+    if (bUnit.contains('جرام') || bUnit.contains('جم')) {
+      if (qty >= 1000) {
+        final kg = qty / 1000.0;
+        final kgStr = kg.toStringAsFixed(kg.truncateToDouble() == kg ? 0 : 2);
+        return '${_formatNumber(qty)} $bUnit (يعادل $kgStr كجم)';
+      }
+    } else if (bUnit.contains('مل')) {
+      if (qty >= 1000) {
+        final liters = qty / 1000.0;
+        final literStr = liters
+            .toStringAsFixed(liters.truncateToDouble() == liters ? 0 : 2);
+        return '${_formatNumber(qty)} $bUnit (يعادل $literStr لتر)';
+      }
+    }
+
+    return '${_formatNumber(qty)} $bUnit';
+  }
+
+  static String _formatNumber(num n) {
+    final isInt = n.truncateToDouble() == n;
+    final intVal = isInt ? n.toInt() : null;
+    if (intVal != null) {
+      final s = intVal.toString();
+      final reg = RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))');
+      return s.replaceAllMapped(reg, (m) => '${m[1]},');
+    }
+    final fixed = n.toStringAsFixed(2);
+    final parts = fixed.split('.');
+    final whole = parts[0].replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (m) => '${m[1]},',
+    );
+    return '$whole.${parts[1]}';
+  }
 
   bool get isEmpty =>
       (ingredients == null || ingredients!.trim().isEmpty) &&
@@ -81,6 +168,9 @@ class RestaurantCulinaryData extends Equatable {
       (imagePath == null || imagePath!.trim().isEmpty) &&
       !isRawMaterial &&
       (purchaseUnit == null || purchaseUnit!.trim().isEmpty) &&
+      (baseUnit == null || baseUnit!.trim().isEmpty) &&
+      conversionFactor == null &&
+      packagingCostPiasters == null &&
       recipeItems.isEmpty;
 
   bool get hasCulinaryInfo =>
@@ -92,6 +182,9 @@ class RestaurantCulinaryData extends Equatable {
       (imagePath != null && imagePath!.trim().isNotEmpty) ||
       isRawMaterial ||
       (purchaseUnit != null && purchaseUnit!.trim().isNotEmpty) ||
+      (baseUnit != null && baseUnit!.trim().isNotEmpty) ||
+      conversionFactor != null ||
+      packagingCostPiasters != null ||
       recipeItems.isNotEmpty;
 
   Map<String, dynamic> toJson() => {
@@ -109,6 +202,11 @@ class RestaurantCulinaryData extends Equatable {
         if (isRawMaterial) 'isRawMaterial': true,
         if (purchaseUnit != null && purchaseUnit!.trim().isNotEmpty)
           'purchaseUnit': purchaseUnit!.trim(),
+        if (baseUnit != null && baseUnit!.trim().isNotEmpty)
+          'baseUnit': baseUnit!.trim(),
+        if (conversionFactor != null) 'conversionFactor': conversionFactor,
+        if (packagingCostPiasters != null)
+          'packagingCostPiasters': packagingCostPiasters,
         if (recipeItems.isNotEmpty)
           'recipeItems': recipeItems.map((e) => e.toJson()).toList(),
       };
@@ -132,6 +230,11 @@ class RestaurantCulinaryData extends Equatable {
       imagePath: json['imagePath'] as String?,
       isRawMaterial: json['isRawMaterial'] as bool? ?? false,
       purchaseUnit: json['purchaseUnit'] as String?,
+      baseUnit: json['baseUnit'] as String?,
+      conversionFactor: (json['conversionFactor'] as num?)?.toDouble(),
+      packagingCostPiasters: json['packagingCostPiasters'] is num
+          ? (json['packagingCostPiasters'] as num).toInt()
+          : int.tryParse(json['packagingCostPiasters']?.toString() ?? ''),
       recipeItems: (json['recipeItems'] as List<dynamic>?)
               ?.map((e) => RecipeItemData.fromJson(e as Map<String, dynamic>))
               .toList() ??
@@ -149,6 +252,9 @@ class RestaurantCulinaryData extends Equatable {
     String? imagePath,
     bool? isRawMaterial,
     String? purchaseUnit,
+    String? baseUnit,
+    double? conversionFactor,
+    int? packagingCostPiasters,
     List<RecipeItemData>? recipeItems,
   }) {
     return RestaurantCulinaryData(
@@ -161,6 +267,10 @@ class RestaurantCulinaryData extends Equatable {
       imagePath: imagePath ?? this.imagePath,
       isRawMaterial: isRawMaterial ?? this.isRawMaterial,
       purchaseUnit: purchaseUnit ?? this.purchaseUnit,
+      baseUnit: baseUnit ?? this.baseUnit,
+      conversionFactor: conversionFactor ?? this.conversionFactor,
+      packagingCostPiasters:
+          packagingCostPiasters ?? this.packagingCostPiasters,
       recipeItems: recipeItems ?? this.recipeItems,
     );
   }
@@ -215,6 +325,9 @@ class RestaurantCulinaryData extends Equatable {
         imagePath,
         isRawMaterial,
         purchaseUnit,
+        baseUnit,
+        conversionFactor,
+        packagingCostPiasters,
         recipeItems,
       ];
 }
@@ -294,6 +407,15 @@ class ProductEntity extends Equatable {
   String? get foodImagePath => culinaryData.imagePath;
   bool get isRestaurantRawMaterial => culinaryData.isRawMaterial;
   String? get restaurantPurchaseUnit => culinaryData.purchaseUnit;
+  String? get restaurantBaseUnit => culinaryData.baseUnit;
+  double get restaurantConversionFactor =>
+      culinaryData.conversionFactor ?? 1.0;
+  int? get restaurantPackagingCostPiasters =>
+      culinaryData.packagingCostPiasters;
+  double costPerBaseUnit(int purchasePricePiasters) =>
+      culinaryData.costPerBaseUnit(purchasePricePiasters);
+  String formatDualQuantity(num quantityInBaseUnits) =>
+      culinaryData.formatDualQuantity(quantityInBaseUnits);
   List<RecipeItemData> get restaurantRecipeItems => culinaryData.recipeItems;
   String get cleanDescription {
     final parsed = culinaryData;

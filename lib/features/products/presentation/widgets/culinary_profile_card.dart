@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../domain/entities/product_entity.dart';
+import '../../domain/services/food_cost_calculator.dart';
 
 class CulinaryProfileCard extends StatelessWidget {
   final TextEditingController ingredientsController;
@@ -14,6 +16,10 @@ class CulinaryProfileCard extends StatelessWidget {
   final ValueChanged<int>? onPrepTimeSelected;
   final String? imagePath;
   final ValueChanged<String?>? onImagePathChanged;
+  final List<RecipeItemData>? recipeItems;
+  final Map<String, double>? rawMaterialUnitCosts;
+  final int? salePricePiasters;
+  final int? packagingCostPiasters;
 
   static const List<String> defaultAllergens = [
     'جلوتين / قمح',
@@ -46,6 +52,10 @@ class CulinaryProfileCard extends StatelessWidget {
     this.onPrepTimeSelected,
     this.imagePath,
     this.onImagePathChanged,
+    this.recipeItems,
+    this.rawMaterialUnitCosts,
+    this.salePricePiasters,
+    this.packagingCostPiasters,
   });
 
   @override
@@ -341,6 +351,58 @@ class CulinaryProfileCard extends StatelessWidget {
                 onSelected: (selected) => onAllergenToggled(allergen, selected),
               );
             }).toList(),
+          ),
+
+          // 5. Live Food Cost & Profitability Badge
+          if (recipeItems != null &&
+              recipeItems!.isNotEmpty &&
+              salePricePiasters != null &&
+              salePricePiasters! > 0) ...[
+            const SizedBox(height: 14),
+            _buildFoodCostBadge(
+              FoodCostCalculator.calculate(
+                recipeItems: recipeItems!,
+                rawMaterialUnitCostsPiasters: rawMaterialUnitCosts ?? const {},
+                salePricePiasters: salePricePiasters!,
+                packagingCostPiasters: packagingCostPiasters ?? 0,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFoodCostBadge(FoodCostAnalysis analysis) {
+    return Container(
+      key: const Key('food_cost_analysis_badge'),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: analysis.badgeColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: analysis.badgeTextColor.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            analysis.rating == FoodCostRating.high
+                ? Icons.warning_amber_rounded
+                : Icons.pie_chart_outline_rounded,
+            size: 18,
+            color: analysis.badgeTextColor,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '[ ${analysis.summaryText} ]',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: analysis.badgeTextColor,
+              ),
+            ),
           ),
         ],
       ),

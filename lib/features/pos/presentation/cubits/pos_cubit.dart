@@ -846,11 +846,10 @@ class PosCubit extends Cubit<PosState> {
       if (product == null || product.restaurantRecipeItems.isEmpty) continue;
 
       for (final recipeItem in product.restaurantRecipeItems) {
-        final needed = recipeItem.quantityNeeded;
-        final yieldLoss = recipeItem.yieldLossPercentage;
         // Formula: consumed = quantityNeeded * (1 + yieldLossPercentage / 100) * soldMealCount
-        final totalConsumed = needed * (1.0 + (yieldLoss / 100.0)) * item.quantity;
-        final int deductQty = totalConsumed.ceil();
+        // Calculated accurately in base units (grams, ml, pieces) with round() to prevent stock depletion discrepancies
+        final totalConsumed = recipeItem.effectiveQuantityNeeded(item.quantity);
+        final int deductQty = totalConsumed.round();
         if (deductQty <= 0) continue;
 
         await _deductRawMaterialStock(

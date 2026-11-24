@@ -585,7 +585,7 @@ void main() {
       );
 
       // Recipe: each burger needs 2 kg with 10% cooking loss
-      // Formula: 2 * (1 + 0.10) * 2 meals = 4.4 -> ceil = 5 kg
+      // Addendum 30.9 accurate formula: 2 * (1 + 0.10) * 2 meals = 4.4 -> round = 4 kg (100 - 4 = 96)
       final mealCulinary = RestaurantCulinaryData(
         recipeItems: const [
           RecipeItemData(
@@ -645,11 +645,11 @@ void main() {
       final saleSuccess = await cubit.completeSale();
       expect(saleSuccess, isTrue);
 
-      // Verify that raw material stock in DB was deducted by 5 (100 - 5 = 95)
+      // Verify that raw material stock in DB was deducted by 4 (100 - 4 = 96)
       final rawVariantRow = await (db.select(db.productVariants)
             ..where((t) => t.id.equals('var_raw_beef_1')))
           .getSingle();
-      expect(rawVariantRow.quantity, 95);
+      expect(rawVariantRow.quantity, 96);
     });
   });
 }
