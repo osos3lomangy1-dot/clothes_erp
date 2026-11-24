@@ -163,7 +163,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       messenger.showSnackBar(
                         SnackBar(
                           content: Text('تم تصدير ملف الإكسيل بنجاح:\n$path'),
-                          backgroundColor: Colors.green,
+                          backgroundColor: AppColors.success,
                         ),
                       );
                     }
@@ -198,13 +198,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     ),
                   ),
                   const PopupMenuDivider(),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'all',
                     child: Row(
                       children: [
-                        Icon(Icons.auto_graph_rounded, color: Colors.teal, size: 20),
-                        SizedBox(width: 8),
-                        Text('تصدير تقرير مالي شامل (.xlsx)', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Icon(Icons.auto_graph_rounded, color: AppColors.secondary, size: 20),
+                        const SizedBox(width: 8),
+                        const Text('تصدير تقرير مالي شامل (.xlsx)', style: TextStyle(fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
@@ -212,24 +212,24 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.green.shade50,
+                    color: AppColors.successContainer,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.green.shade300),
+                    border: Border.all(color: AppColors.success.withValues(alpha: 0.4)),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.table_view_rounded, color: Colors.green, size: 18),
+                      const Icon(Icons.table_view_rounded, color: AppColors.success, size: 18),
                       const SizedBox(width: 6),
-                      Text(
+                      const Text(
                         'تصدير إكسيل',
                         style: TextStyle(
-                          color: Colors.green.shade800,
+                          color: AppColors.success,
                           fontWeight: FontWeight.bold,
                           fontSize: 13,
                         ),
                       ),
                       const SizedBox(width: 4),
-                      Icon(Icons.arrow_drop_down, color: Colors.green.shade800, size: 18),
+                      const Icon(Icons.arrow_drop_down, color: AppColors.success, size: 18),
                     ],
                   ),
                 ),
@@ -473,7 +473,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                       value:
                                           '${Money(report.totalRevenue).toDisplay()} ج.م',
                                       icon: Icons.monetization_on_rounded,
-                                      color: const Color(0xFF0A2E5C),
+                                      color: AppColors.primary,
                                       growthPercent: report.revenueGrowthPercent,
                                       subtitle: '${report.totalTransactions} فاتورة',
                                     ),
@@ -483,7 +483,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                           '${Money(report.netProfit).toDisplay()} ج.م',
                                       icon: Icons.trending_up_rounded,
                                       color: report.netProfit >= 0
-                                          ? const Color(0xFF1FB5A8)
+                                          ? AppColors.secondary
                                           : AppColors.error,
                                       growthPercent: report.netProfitGrowthPercent,
                                       subtitle:
@@ -494,7 +494,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                       value:
                                           '${report.profitMarginPercent.toStringAsFixed(1)}%',
                                       icon: Icons.percent_rounded,
-                                      color: const Color(0xFF0A2E5C),
+                                      color: AppColors.primary,
                                       subtitle: 'من صافي الإيرادات',
                                     ),
                                     _ReportCard(
@@ -502,7 +502,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                       value:
                                           '${Money(report.averageOrderValuePiasters).toDisplay()} ج.م',
                                       icon: Icons.receipt_long_rounded,
-                                      color: const Color(0xFF1FB5A8),
+                                      color: AppColors.secondary,
                                       subtitle: 'متوسط سلة العميل',
                                     ),
                                     _ReportCard(
@@ -510,7 +510,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                       value:
                                           '${Money(report.inventoryCostCapitalPiasters).toDisplay()} ج.م',
                                       icon: Icons.inventory_2_outlined,
-                                      color: const Color(0xFF0A2E5C),
+                                      color: AppColors.primary,
                                       subtitle: 'رأس المال بالمخزن',
                                     ),
                                   ];
@@ -691,10 +691,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                    Container(
                                      padding: const EdgeInsets.all(8),
                                      decoration: BoxDecoration(
-                                       color: Colors.teal.shade50,
+                                       color: AppColors.secondary.withValues(alpha: 0.12),
                                        borderRadius: BorderRadius.circular(10),
                                      ),
-                                     child: Icon(Icons.account_balance_wallet_rounded, color: Colors.teal.shade800, size: 24),
+                                     child: Icon(Icons.account_balance_wallet_rounded, color: AppColors.secondary, size: 24),
                                    ),
                                    const SizedBox(width: 10),
                                    const Expanded(
@@ -717,7 +717,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                        title: 'إجمالي المقبوضات (داخل الخزينة)',
                                        value: '${Money(report.cashFlowIn).toDisplay()} ج.م',
                                        icon: Icons.arrow_downward_rounded,
-                                       color: Colors.green.shade700,
+                                       color: AppColors.success,
                                      ),
                                      _ReportCard(
                                        title: 'إجمالي المدفوعات (خارج الخزينة)',
@@ -729,7 +729,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                        title: 'صافي السيولة النقدية (Net Cash)',
                                        value: '${Money(report.netCashFlow).toDisplay()} ج.م',
                                        icon: Icons.account_balance_rounded,
-                                       color: report.netCashFlow >= 0 ? Colors.teal.shade700 : AppColors.error,
+                                       color: report.netCashFlow >= 0 ? AppColors.primary : AppColors.error,
                                      ),
                                    ];
                                    if (constraints.maxWidth < 500) {
@@ -782,7 +782,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                                ),
                                                Expanded(
                                                  flex: 3,
-                                                 child: Text('داخل: +${Money(mIn).toDisplay()} ج.م', style: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.bold)),
+                                                 child: Text('داخل: +${Money(mIn).toDisplay()} ج.م', style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.bold)),
                                                ),
                                                Expanded(
                                                  flex: 3,
@@ -883,8 +883,8 @@ class _ReportCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: g >= 0
-                      ? const Color(0xFF1FB5A8).withValues(alpha: 0.12)
-                      : AppColors.error.withValues(alpha: 0.1),
+                      ? AppColors.successContainer
+                      : AppColors.errorContainer,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -893,7 +893,7 @@ class _ReportCard extends StatelessWidget {
                     Icon(
                       g >= 0 ? Icons.trending_up_rounded : Icons.trending_down_rounded,
                       size: 13,
-                      color: g >= 0 ? const Color(0xFF168A80) : AppColors.error,
+                      color: g >= 0 ? AppColors.success : AppColors.error,
                     ),
                     const SizedBox(width: 4),
                     Text(
@@ -901,7 +901,7 @@ class _ReportCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        color: g >= 0 ? const Color(0xFF168A80) : AppColors.error,
+                        color: g >= 0 ? AppColors.success : AppColors.error,
                       ),
                     ),
                   ],

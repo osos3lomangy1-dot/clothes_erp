@@ -42,10 +42,10 @@ class HourlySalesChart extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
+                    color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(Icons.access_time_filled_rounded, color: Colors.blue.shade700, size: 22),
+                  child: Icon(Icons.access_time_filled_rounded, color: AppColors.primary, size: 22),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

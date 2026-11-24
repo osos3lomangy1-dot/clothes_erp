@@ -96,12 +96,12 @@ class _PromotionsReportViewState extends State<_PromotionsReportView> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.purple.shade50,
+                        color: AppColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
                         Icons.local_offer_rounded,
-                        color: Colors.purple.shade700,
+                        color: AppColors.primary,
                         size: 22,
                       ),
                     ),
@@ -123,7 +123,7 @@ class _PromotionsReportViewState extends State<_PromotionsReportView> {
                       child: _MetricCard(
                         title: 'إجمالي خصومات العروض',
                         value: '${Money(report.totalDiscountPiasters).toDisplay()} ج.م',
-                        color: Colors.purple.shade700,
+                        color: AppColors.primary,
                         icon: Icons.savings_rounded,
                       ),
                     ),
@@ -132,7 +132,7 @@ class _PromotionsReportViewState extends State<_PromotionsReportView> {
                       child: _MetricCard(
                         title: 'فواتير استفادت من العروض',
                         value: '${report.totalSalesWithPromotions}',
-                        color: Colors.blue.shade700,
+                        color: AppColors.secondary,
                         icon: Icons.receipt_rounded,
                       ),
                     ),
@@ -141,7 +141,7 @@ class _PromotionsReportViewState extends State<_PromotionsReportView> {
                       child: _MetricCard(
                         title: 'مرات تطبيق العروض',
                         value: '${report.totalApplications}',
-                        color: Colors.teal.shade700,
+                        color: AppColors.success,
                         icon: Icons.check_circle_outline_rounded,
                       ),
                     ),
@@ -249,7 +249,7 @@ class _PromotionsReportViewState extends State<_PromotionsReportView> {
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.purple.shade700,
+                                      color: AppColors.primary,
                                     ),
                                   ),
                                 ),

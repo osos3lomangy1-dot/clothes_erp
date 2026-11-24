@@ -20,14 +20,14 @@ class _CategoryBreakdownDonutChartState
     extends State<CategoryBreakdownDonutChart> {
   int _touchedIndex = -1;
 
-  static const List<Color> _palette = [
-    Color(0xFF0A2E5C), // Royal Navy
-    Color(0xFF1FB5A8), // Calm Teal
-    Color(0xFF2B5B84), // Slate Navy
-    Color(0xFF168A80), // Deep Teal
-    Color(0xFF4F6D8A), // Cool Slate
-    Color(0xFF64748B), // Neutral Slate
-  ];
+  List<Color> get _palette => [
+        AppColors.primary,
+        AppColors.secondary,
+        AppColors.primary.withValues(alpha: 0.72),
+        AppColors.secondary.withValues(alpha: 0.72),
+        AppColors.onSurfaceVariant,
+        AppColors.primary.withValues(alpha: 0.45),
+      ];
 
   @override
   Widget build(BuildContext context) {
@@ -50,12 +50,12 @@ class _CategoryBreakdownDonutChartState
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1FB5A8).withValues(alpha: 0.12),
+                    color: AppColors.secondary.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.donut_large_rounded,
-                    color: Color(0xFF1FB5A8),
+                    color: AppColors.secondary,
                     size: 22,
                   ),
                 ),

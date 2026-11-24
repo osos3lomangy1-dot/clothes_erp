@@ -79,13 +79,13 @@ class MostProfitableProductsWidget extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: rank == 1
-                        ? const Color(0xFF1FB5A8).withValues(alpha: 0.08)
-                        : Colors.grey.shade50,
+                        ? AppColors.secondary.withValues(alpha: 0.08)
+                        : AppColors.surfaceContainer,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: rank == 1
-                          ? const Color(0xFF1FB5A8).withValues(alpha: 0.35)
-                          : Colors.grey.shade200,
+                          ? AppColors.secondary.withValues(alpha: 0.35)
+                          : AppColors.outlineVariant,
                     ),
                   ),
                   child: Row(
@@ -93,8 +93,8 @@ class MostProfitableProductsWidget extends StatelessWidget {
                       CircleAvatar(
                         radius: 14,
                         backgroundColor: rank == 1
-                            ? const Color(0xFF0A2E5C)
-                            : const Color(0xFF1FB5A8),
+                            ? AppColors.primary
+                            : AppColors.secondary,
                         child: Text(
                           '$rank',
                           style: const TextStyle(
@@ -134,17 +134,17 @@ class MostProfitableProductsWidget extends StatelessWidget {
                         children: [
                           Text(
                             '+${Money(p.netProfitPiasters).toDisplay()} ج.م',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 13.5,
-                              color: Color(0xFF0A2E5C),
+                              color: AppColors.primary,
                             ),
                           ),
-                          const Text(
+                          Text(
                             'صافي الربح',
                             style: TextStyle(
                               fontSize: 10,
-                              color: Color(0xFF1FB5A8),
+                              color: AppColors.secondary,
                               fontWeight: FontWeight.bold,
                             ),
                           ),

@@ -343,7 +343,7 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
       title: 'مبيعات اليوم',
       value: '${Money(stats.todaySales).toDisplay()} ج.م',
       icon: Icons.monetization_on_rounded,
-      color: const Color(0xFF0A2E5C),
+      color: AppColors.primary,
       growthPercent: stats.todaySalesGrowthPercent,
       subtitle: stats.todayReturnsTotal > 0
           ? '${stats.todayTransactions} فاتورة - صافي: ${Money(stats.netTodaySalesAfterReturns).toDisplay()} ج.م'
@@ -355,7 +355,7 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
       value: '${Money(stats.todayEstimatedNetProfit).toDisplay()} ج.م',
       icon: Icons.trending_up_rounded,
       color: stats.todayEstimatedNetProfit >= 0
-          ? const Color(0xFF1FB5A8)
+          ? AppColors.secondary
           : AppColors.error,
       growthPercent: stats.todayNetProfitGrowthPercent,
       subtitle:
@@ -367,7 +367,7 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
       title: 'السيولة الحالية بالدرج',
       value: '${Money(stats.liveDrawerCash).toDisplay()} ج.م',
       icon: Icons.point_of_sale_rounded,
-      color: Colors.blue.shade700,
+      color: AppColors.primary,
       subtitle: stats.hasActiveShift
           ? 'الوردية نشطة (${stats.activeCashierName ?? ""})'
           : 'لا توجد وردية مفتوحة حالياً',
@@ -377,7 +377,7 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
       title: 'متوسط الفاتورة اليوم',
       value: '${Money(avgTicket).toDisplay()} ج.م',
       icon: Icons.receipt_long_rounded,
-      color: Colors.purple.shade700,
+      color: AppColors.secondary,
       subtitle: 'المصروفات: ${Money(stats.todayExpenses).toDisplay()} ج.م',
     );
 
@@ -385,7 +385,7 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
       title: 'قيمة المخزون بالتكلفة',
       value: '${Money(stats.inventoryCostCapitalPiasters).toDisplay()} ج.م',
       icon: Icons.inventory_2_rounded,
-      color: const Color(0xFF0A2E5C),
+      color: AppColors.primary,
       subtitle: 'إجمالي رأس المال بالمخزن',
     );
 
@@ -443,11 +443,11 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
           subtext: 'وصل لحد الأمان',
           icon: Icons.warning_amber_rounded,
           color: stats.lowStockCount > 0
-              ? Colors.orange.shade800
-              : Colors.grey.shade600,
+              ? AppColors.warning
+              : AppColors.onSurfaceVariant,
           bgColor: stats.lowStockCount > 0
-              ? Colors.orange.shade50
-              : Colors.grey.shade50,
+              ? AppColors.warningContainer
+              : AppColors.surfaceContainer,
         );
 
         final showInstallments =
@@ -462,10 +462,10 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
           icon: Icons.payments_rounded,
           color: stats.overdueInstallmentsCount > 0
               ? AppColors.error
-              : Colors.grey.shade600,
+              : AppColors.onSurfaceVariant,
           bgColor: stats.overdueInstallmentsCount > 0
-              ? Colors.red.shade50
-              : Colors.grey.shade50,
+              ? AppColors.errorContainer
+              : AppColors.surfaceContainer,
         );
 
         final showSuppliers = _suppliersEnabled || stats.totalSupplierDebts > 0;
@@ -474,8 +474,8 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
           countText: '${Money(stats.totalSupplierDebts).toDisplay()} ج.م',
           subtext: 'مستحقات على المحل',
           icon: Icons.local_shipping_rounded,
-          color: Colors.blueGrey.shade800,
-          bgColor: Colors.blueGrey.shade50,
+          color: AppColors.onSurfaceVariant,
+          bgColor: AppColors.surfaceContainer,
         );
 
         final showCustomerCredit =
@@ -486,11 +486,11 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
           subtext: 'مستحقات على الحساب الآجل',
           icon: Icons.account_balance_wallet_rounded,
           color: stats.totalCustomerCreditDebts > 0
-              ? Colors.purple.shade800
-              : Colors.grey.shade600,
+              ? AppColors.primary
+              : AppColors.onSurfaceVariant,
           bgColor: stats.totalCustomerCreditDebts > 0
-              ? Colors.purple.shade50
-              : Colors.grey.shade50,
+              ? AppColors.primary.withValues(alpha: 0.08)
+              : AppColors.surfaceContainer,
         );
 
         final alertReturns = _MiniAlertCard(
@@ -499,11 +499,11 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
           subtext: '${stats.todayReturnsCount} عملية مرتجع',
           icon: Icons.assignment_return_rounded,
           color: stats.todayReturnsCount > 0
-              ? Colors.indigo.shade800
-              : Colors.grey.shade600,
+              ? AppColors.secondary
+              : AppColors.onSurfaceVariant,
           bgColor: stats.todayReturnsCount > 0
-              ? Colors.indigo.shade50
-              : Colors.grey.shade50,
+              ? AppColors.secondary.withValues(alpha: 0.08)
+              : AppColors.surfaceContainer,
         );
 
         final visibleCards = <Widget>[
@@ -583,7 +583,7 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
           children: [
             const Icon(
               Icons.notification_important_rounded,
-              color: Colors.orange,
+              color: AppColors.warning,
               size: 22,
             ),
             const SizedBox(width: 8),
@@ -602,16 +602,16 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.orange.shade50,
+                color: AppColors.warningContainer,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.orange.shade200),
+                border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
               ),
               child: Text(
                 '${stats.lowStockVariants.length} أصناف تحتاج للتوريد',
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: Colors.orange.shade800,
+                  color: AppColors.warning,
                 ),
               ),
             ),
@@ -627,12 +627,12 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
+                  color: AppColors.warningContainer,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
                   Icons.warning_amber_rounded,
-                  color: Colors.orange,
+                  color: AppColors.warning,
                 ),
               ),
               title: Text(
@@ -745,8 +745,8 @@ class _KpiCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: g >= 0
-                          ? const Color(0xFF1FB5A8).withValues(alpha: 0.12)
-                          : AppColors.error.withValues(alpha: 0.1),
+                          ? AppColors.successContainer
+                          : AppColors.errorContainer,
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -754,7 +754,7 @@ class _KpiCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 10.5,
                         fontWeight: FontWeight.bold,
-                        color: g >= 0 ? const Color(0xFF168A80) : AppColors.error,
+                        color: g >= 0 ? AppColors.success : AppColors.error,
                       ),
                     ),
                   ),

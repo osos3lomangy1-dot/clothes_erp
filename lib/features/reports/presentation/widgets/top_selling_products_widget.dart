@@ -25,10 +25,10 @@ class TopSellingProductsWidget extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.amber.shade50,
+                    color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(Icons.emoji_events_rounded, color: Colors.amber.shade800, size: 22),
+                  child: Icon(Icons.emoji_events_rounded, color: AppColors.primary, size: 22),
                 ),
                 const SizedBox(width: 12),
                 const Expanded(
@@ -91,13 +91,13 @@ class TopSellingProductsWidget extends StatelessWidget {
                   final ratio = (p.quantitySold / maxQty).clamp(0.0, 1.0);
                   Color rankColor;
                   if (idx == 0) {
-                    rankColor = Colors.amber.shade700;
+                    rankColor = AppColors.primary;
                   } else if (idx == 1) {
-                    rankColor = Colors.blueGrey.shade400;
+                    rankColor = AppColors.secondary;
                   } else if (idx == 2) {
-                    rankColor = Colors.brown.shade400;
+                    rankColor = AppColors.onSurfaceVariant;
                   } else {
-                    rankColor = Colors.grey.shade600;
+                    rankColor = AppColors.outline;
                   }
 
                   return Column(

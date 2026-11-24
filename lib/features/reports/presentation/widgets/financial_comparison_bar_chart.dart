@@ -26,13 +26,13 @@ class FinancialComparisonBarChart extends StatelessWidget {
       (
         label: 'المبيعات',
         amount: totalRevenue,
-        color: Colors.green.shade700,
+        color: AppColors.success,
         icon: Icons.monetization_on_rounded,
       ),
       (
         label: 'تكلفة البضاعة',
         amount: totalCost,
-        color: Colors.orange.shade800,
+        color: AppColors.secondary,
         icon: Icons.shopping_bag_outlined,
       ),
       (

@@ -18,19 +18,19 @@ class _PaymentMethodPieChartState extends State<PaymentMethodPieChart> {
   Color _getColorForMethod(String method, int index) {
     final lower = method.toLowerCase();
     if (lower.contains('cash') || lower.contains('نقدي') || lower.contains('كاش')) {
-      return Colors.green.shade600;
+      return AppColors.success;
     }
     if (lower.contains('card') || lower.contains('visa') || lower.contains('فيزا') || lower.contains('بطاقة')) {
       return AppColors.primary;
     }
     if (lower.contains('insta') || lower.contains('انستا') || lower.contains('محفظة') || lower.contains('فودافون')) {
-      return Colors.teal.shade600;
+      return AppColors.secondary;
     }
     final palette = [
-      Colors.indigo.shade600,
-      Colors.amber.shade700,
-      Colors.purple.shade600,
-      Colors.cyan.shade700,
+      AppColors.primary.withValues(alpha: 0.72),
+      AppColors.secondary.withValues(alpha: 0.72),
+      AppColors.onSurfaceVariant,
+      AppColors.primary.withValues(alpha: 0.45),
     ];
     return palette[index % palette.length];
   }
@@ -62,10 +62,10 @@ class _PaymentMethodPieChartState extends State<PaymentMethodPieChart> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.green.shade50,
+                    color: AppColors.successContainer,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(Icons.pie_chart_rounded, color: Colors.green.shade700, size: 22),
+                  child: const Icon(Icons.pie_chart_rounded, color: AppColors.success, size: 22),
                 ),
                 const SizedBox(width: 12),
                 const Expanded(

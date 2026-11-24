@@ -180,12 +180,12 @@ class DailyTrendLineChart extends StatelessWidget {
                       LineChartBarData(
                         isCurved: true,
                         preventCurveOverShooting: true,
-                        color: const Color(0xFF0A2E5C),
+                        color: AppColors.primary,
                         barWidth: 3,
                         dotData: FlDotData(show: points.length <= 15),
                         belowBarData: BarAreaData(
                           show: true,
-                          color: const Color(0xFF1FB5A8).withValues(alpha: 0.16),
+                          color: AppColors.secondary.withValues(alpha: 0.16),
                         ),
                         spots: [
                           for (int i = 0; i < points.length; i++)
