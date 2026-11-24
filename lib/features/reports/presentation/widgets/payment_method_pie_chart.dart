@@ -112,10 +112,10 @@ class _PaymentMethodPieChartState extends State<PaymentMethodPieChart> {
             else
               LayoutBuilder(
                 builder: (context, constraints) {
-                  final isCompact = constraints.maxWidth < 460;
+                  final isCompact = constraints.maxWidth < 520;
                   final chartWidget = SizedBox(
-                    width: isCompact ? 160 : 180,
-                    height: isCompact ? 160 : 180,
+                    width: isCompact ? 150 : 170,
+                    height: isCompact ? 150 : 170,
                     child: PieChart(
                       PieChartData(
                         pieTouchData: PieTouchData(
@@ -134,12 +134,12 @@ class _PaymentMethodPieChartState extends State<PaymentMethodPieChart> {
                         ),
                         borderData: FlBorderData(show: false),
                         sectionsSpace: 3,
-                        centerSpaceRadius: isCompact ? 36 : 40,
+                        centerSpaceRadius: isCompact ? 32 : 38,
                         sections: List.generate(validEntries.length, (i) {
                           final isTouched = i == _touchedIndex;
                           final e = validEntries[i];
                           final percent = (e.value / total) * 100.0;
-                          final radius = isTouched ? (isCompact ? 42.0 : 46.0) : (isCompact ? 36.0 : 40.0);
+                          final radius = isTouched ? (isCompact ? 38.0 : 44.0) : (isCompact ? 32.0 : 38.0);
                           final color = _getColorForMethod(e.key, i);
 
                           return PieChartSectionData(
@@ -148,7 +148,7 @@ class _PaymentMethodPieChartState extends State<PaymentMethodPieChart> {
                             title: percent >= 8 ? '${percent.toStringAsFixed(0)}%' : '',
                             radius: radius,
                             titleStyle: const TextStyle(
-                              fontSize: 12,
+                              fontSize: 11,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
@@ -190,16 +190,20 @@ class _PaymentMethodPieChartState extends State<PaymentMethodPieChart> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Flexible(
-                              fit: FlexFit.loose,
-                              child: Text(
-                                '${percent.toStringAsFixed(1)}% (${Money(e.value).toDisplay()} ج.م)',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.grey.shade700,
-                                ),
-                                overflow: TextOverflow.ellipsis,
+                            Text(
+                              '${percent.toStringAsFixed(0)}%',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '(${Money(e.value).toDisplay()} ج.م)',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade700,
                               ),
                             ),
                           ],
@@ -222,7 +226,7 @@ class _PaymentMethodPieChartState extends State<PaymentMethodPieChart> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       chartWidget,
-                      const SizedBox(width: 20),
+                      const SizedBox(width: 16),
                       Expanded(child: legendList),
                     ],
                   );

@@ -11,6 +11,7 @@ class KitchenOrderTicketService {
     String? cashierName,
     Map<String, ProductEntity>? productMap,
     Map<String, RestaurantCulinaryData>? culinaryMap,
+    bool isRush = false,
   }) {
     final buffer = StringBuffer();
     final typeLabel = switch (orderType) {
@@ -46,6 +47,11 @@ class KitchenOrderTicketService {
     buffer.writeln('================================');
     buffer.writeln('      بون تحضير المطبخ (KOT)     ');
     buffer.writeln('================================');
+    if (isRush) {
+      buffer.writeln('********************************');
+      buffer.writeln('  [ أوردر مستعجل - أولوية أولى للتحضير فـوراً ]');
+      buffer.writeln('********************************');
+    }
     buffer.writeln('نوع الطلب : $typeLabel');
     buffer.writeln('رقم الطلب : $invoiceNumber');
     buffer.writeln('التاريخ   : ${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}');

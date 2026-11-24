@@ -31,6 +31,8 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
   late TextEditingController _returnPolicyCtrl;
   late TextEditingController _footerGreetingCtrl;
   late TextEditingController _wifiInfoCtrl;
+  late TextEditingController _taxRateCtrl;
+  late TextEditingController _dineInServiceChargeRateCtrl;
 
   late int _paperWidthMm;
   late bool _showCashierName;
@@ -39,6 +41,9 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
   late bool _showBarcode;
   late bool _showItemDetails;
   late bool _groupVariantsOnReceipt;
+  late bool _taxEnabled;
+  late bool _taxInclusive;
+  late bool _dineInServiceChargeEnabled;
 
   bool _isSaving = false;
 
@@ -55,6 +60,8 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
     _returnPolicyCtrl = TextEditingController(text: cfg.returnPolicy);
     _footerGreetingCtrl = TextEditingController(text: cfg.footerGreeting);
     _wifiInfoCtrl = TextEditingController(text: cfg.wifiInfo);
+    _taxRateCtrl = TextEditingController(text: cfg.taxRate.toString());
+    _dineInServiceChargeRateCtrl = TextEditingController(text: cfg.dineInServiceChargeRate.toString());
 
     _paperWidthMm = cfg.paperWidthMm;
     _showCashierName = cfg.showCashierName;
@@ -63,6 +70,9 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
     _showBarcode = cfg.showBarcode;
     _showItemDetails = cfg.showItemDetails;
     _groupVariantsOnReceipt = cfg.groupVariantsOnReceipt;
+    _taxEnabled = cfg.taxEnabled;
+    _taxInclusive = cfg.taxInclusive;
+    _dineInServiceChargeEnabled = cfg.dineInServiceChargeEnabled;
   }
 
   @override
@@ -76,6 +86,8 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
     _returnPolicyCtrl.dispose();
     _footerGreetingCtrl.dispose();
     _wifiInfoCtrl.dispose();
+    _taxRateCtrl.dispose();
+    _dineInServiceChargeRateCtrl.dispose();
     super.dispose();
   }
 
@@ -96,6 +108,11 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
         returnPolicy: _returnPolicyCtrl.text.trim(),
         footerGreeting: _footerGreetingCtrl.text.trim(),
         wifiInfo: _wifiInfoCtrl.text.trim(),
+        taxEnabled: _taxEnabled,
+        taxRate: double.tryParse(_taxRateCtrl.text.trim()) ?? 14.0,
+        taxInclusive: _taxInclusive,
+        dineInServiceChargeEnabled: _dineInServiceChargeEnabled,
+        dineInServiceChargeRate: double.tryParse(_dineInServiceChargeRateCtrl.text.trim()) ?? 12.0,
       );
 
   String _getUserId(BuildContext context) {
@@ -171,6 +188,11 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
                 _showBarcode = def.showBarcode;
                 _showItemDetails = def.showItemDetails;
                 _groupVariantsOnReceipt = def.groupVariantsOnReceipt;
+                _taxEnabled = def.taxEnabled;
+                _taxRateCtrl.text = def.taxRate.toString();
+                _taxInclusive = def.taxInclusive;
+                _dineInServiceChargeEnabled = def.dineInServiceChargeEnabled;
+                _dineInServiceChargeRateCtrl.text = def.dineInServiceChargeRate.toString();
               });
             },
             child: const Text('استعادة'),
@@ -188,6 +210,11 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
       _footerGreetingCtrl.text = hosp.footerGreeting;
       _showItemDetails = hosp.showItemDetails; // false
       _wifiInfoCtrl.text = hosp.wifiInfo;
+      _taxEnabled = hosp.taxEnabled;
+      _taxRateCtrl.text = hosp.taxRate.toString();
+      _taxInclusive = hosp.taxInclusive;
+      _dineInServiceChargeEnabled = hosp.dineInServiceChargeEnabled;
+      _dineInServiceChargeRateCtrl.text = hosp.dineInServiceChargeRate.toString();
     });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -375,6 +402,8 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
               const SizedBox(height: 14),
               _buildLayoutOptionsCard(),
               const SizedBox(height: 14),
+              _buildTaxAndServiceCard(),
+              const SizedBox(height: 14),
               _buildFooterPoliciesCard(),
             ],
           ),
@@ -450,6 +479,8 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
                     _buildStoreHeaderCard(),
                     const SizedBox(height: 14),
                     _buildLayoutOptionsCard(),
+                    const SizedBox(height: 14),
+                    _buildTaxAndServiceCard(),
                     const SizedBox(height: 14),
                     _buildFooterPoliciesCard(),
                   ],
@@ -669,6 +700,100 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
               value: _groupVariantsOnReceipt,
               onChanged: (v) => setState(() => _groupVariantsOnReceipt = v),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTaxAndServiceCard() {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Colors.black12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.percent_rounded, color: AppColors.primary, size: 20),
+                const SizedBox(width: 8),
+                const Text(
+                  'التحكم في الضريبة وخدمة الصالة للمطاعم والكافيهات',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            // 1. Tax Switch
+            SwitchListTile(
+              key: const Key('receipt_tax_enabled_switch'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text('تفعيل ضريبة القيمة المضافة (VAT)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              subtitle: const Text('إظهار سطر الضريبة في الفاتورة واحتسابه ضمن الإجمالي', style: TextStyle(fontSize: 11, color: Colors.grey)),
+              value: _taxEnabled,
+              onChanged: (v) => setState(() => _taxEnabled = v),
+            ),
+            if (_taxEnabled) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      key: const Key('receipt_tax_rate_field'),
+                      controller: _taxRateCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: 'نسبة الضريبة % (افتراضي: 14%)',
+                        prefixIcon: const Icon(Icons.calculate_outlined, size: 20),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                key: const Key('receipt_tax_inclusive_switch'),
+                contentPadding: EdgeInsets.zero,
+                title: const Text('الأسعار شاملة الضريبة (قيمة الضريبة ضمن السعر)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
+                subtitle: const Text('عند التفعيل لا تضاف الضريبة على إجمالي الفاتورة بل يطبع إشعار بالشمول', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                value: _taxInclusive,
+                onChanged: (v) => setState(() => _taxInclusive = v),
+              ),
+            ],
+
+            const Divider(height: 24),
+
+            // 2. Dine-In Service Charge Switch
+            SwitchListTile(
+              key: const Key('receipt_service_charge_enabled_switch'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text('تفعيل خدمة الصالة لطلبات الأكل بالمكان (Dine-In Service Charge)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              subtitle: const Text('تطبق حصرياً وتلقائياً على فواتير الصالة فقط، وتستثني التيك أواي والدليفري بنسبة 0%', style: TextStyle(fontSize: 11, color: Colors.grey)),
+              value: _dineInServiceChargeEnabled,
+              onChanged: (v) => setState(() => _dineInServiceChargeEnabled = v),
+            ),
+            if (_dineInServiceChargeEnabled) ...[
+              const SizedBox(height: 8),
+              TextFormField(
+                key: const Key('receipt_service_charge_rate_field'),
+                controller: _dineInServiceChargeRateCtrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  labelText: 'نسبة خدمة الصالة % (افتراضي: 12%)',
+                  prefixIcon: const Icon(Icons.room_service_outlined, size: 20),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ],
           ],
         ),
       ),

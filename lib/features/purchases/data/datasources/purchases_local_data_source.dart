@@ -3,6 +3,7 @@ import 'package:injectable/injectable.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/database/branch_provider.dart';
+import '../../../products/domain/entities/product_entity.dart';
 import '../../domain/entities/purchase_entity.dart';
 import '../../domain/entities/purchase_item_entity.dart';
 import '../../domain/entities/purchase_return_entity.dart';
@@ -406,16 +407,33 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
         if (variant != null) {
           final shouldIncreaseStock =
               (goodsReceiptId == null || goodsReceiptId.trim().isEmpty);
-          final newQty = shouldIncreaseStock
-              ? (variant.quantity + it.qty)
+
+          // Check if this variant belongs to a product that is raw material with a conversionFactor (packSize)
+          final product = await (_db.select(_db.products)
+                ..where((p) => p.id.equals(variant.productId)))
+              .getSingleOrNull();
+          final cul = RestaurantCulinaryData.parse(product?.description);
+          final int factor = (cul.isRawMaterial &&
+                  cul.conversionFactor != null &&
+                  cul.conversionFactor! > 1)
+              ? cul.conversionFactor!.round()
+              : 1;
+
+          final int effectiveQtyToAdd = (it.qty * factor).round();
+          final int newQty = shouldIncreaseStock
+              ? (variant.quantity + effectiveQtyToAdd)
               : variant.quantity;
+
+          final int effectiveUnitCost = factor > 1
+              ? (it.costPrice / factor).round()
+              : it.costPrice;
 
           await (_db.update(
             _db.productVariants,
           )..where((v) => v.id.equals(it.variantId))).write(
             ProductVariantsCompanion(
               quantity: Value(newQty),
-              costPrice: Value(it.costPrice),
+              costPrice: Value(effectiveUnitCost),
               updatedAt: Value(now),
             ),
           );
@@ -430,7 +448,7 @@ class PurchasesLocalDataSourceImpl implements PurchasesLocalDataSource {
                     branchId: branchId,
                     variantId: it.variantId,
                     type: 'in',
-                    qtyDelta: it.qty,
+                    qtyDelta: effectiveQtyToAdd,
                     refType: 'purchase',
                     refId: Value(purchaseId),
                     reason: Value('فاتورة مشتريات #${invoiceNumber ?? ''}'),

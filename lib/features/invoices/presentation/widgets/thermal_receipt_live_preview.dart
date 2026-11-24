@@ -225,6 +225,20 @@ class ThermalReceiptLivePreview extends StatelessWidget {
           _summaryRow('المجموع الفرعي:', '630.00 ج.م'),
           const SizedBox(height: 2),
           _summaryRow('خصم:', '-30.00 ج.م', isDiscount: true),
+          if (isHospitality && config.dineInServiceChargeEnabled) ...[
+            const SizedBox(height: 2),
+            _summaryRow('خدمة صالة (${config.dineInServiceChargeRate}%):', '+72.00 ج.م'),
+          ],
+          if (config.taxEnabled) ...[
+            const SizedBox(height: 2),
+            if (config.taxInclusive)
+              Text(
+                '* الأسعار شاملة ضريبة القيمة المضافة ${config.taxRate}%',
+                style: const TextStyle(fontSize: 8.5, color: Colors.grey),
+              )
+            else
+              _summaryRow('ضريبة القيمة المضافة (${config.taxRate}%):', '+84.00 ج.م'),
+          ],
           const SizedBox(height: 4),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),

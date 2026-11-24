@@ -246,7 +246,7 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
                   // 3. Middle Section: Weekly Trend & Payment Methods
                   LayoutBuilder(
                     builder: (context, constraints) {
-                      if (constraints.maxWidth >= 900) {
+                      if (constraints.maxWidth >= 1050) {
                         return Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -283,7 +283,7 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
                   // 4. Lower Section: Hourly Today Activity & Best Sellers
                   LayoutBuilder(
                     builder: (context, constraints) {
-                      if (constraints.maxWidth >= 900) {
+                      if (constraints.maxWidth >= 1050) {
                         return Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [

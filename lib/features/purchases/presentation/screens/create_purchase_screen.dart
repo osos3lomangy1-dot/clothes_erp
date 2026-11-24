@@ -490,6 +490,7 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
     final nameCtrl = TextEditingController();
     final costCtrl = TextEditingController(text: '50.00');
     final qtyCtrl = TextEditingController(text: '1');
+    final packSizeCtrl = TextEditingController(text: '500');
     String selectedUnit = kitchenSupplyUnits.first;
 
     if (!mounted) return;
@@ -528,6 +529,7 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
+                      isExpanded: true,
                       key: const Key('raw_material_unit_dropdown'),
                       initialValue: selectedUnit,
                       decoration: const InputDecoration(
@@ -541,6 +543,48 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                         if (val != null) setDialogState(() => selectedUnit = val);
                       },
                     ),
+                    Builder(builder: (ctx) {
+                      final isBulk = selectedUnit.contains('كرتونة') ||
+                          selectedUnit.contains('باكت') ||
+                          selectedUnit.contains('شيكارة') ||
+                          selectedUnit.contains('جركن') ||
+                          selectedUnit.contains('لتر');
+
+                      if (!isBulk) return const SizedBox.shrink();
+
+                      final costVal = double.tryParse(costCtrl.text.trim()) ?? 0.0;
+                      final packSizeVal = int.tryParse(packSizeCtrl.text.trim()) ?? 1;
+                      final unitCost = packSizeVal > 0 ? (costVal / packSizeVal) : costVal;
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            key: const Key('raw_material_pack_size_field'),
+                            controller: packSizeCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'عدد الحبات / القطع داخل الوحدة (حجم العبوة) *',
+                              hintText: 'مثال: 500 أو 24 أو 25000',
+                              border: OutlineInputBorder(),
+                            ),
+                            onChanged: (_) => setDialogState(() {}),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4, bottom: 2),
+                            child: Text(
+                              'تكلفة الحبة الواحدة: ${unitCost.toStringAsFixed(2)} ج.م',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue.shade800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    }),
                     const SizedBox(height: 12),
                     Row(
                       children: [
@@ -553,6 +597,7 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                               labelText: 'سعر شراء الوحدة (ج.م) *',
                               border: OutlineInputBorder(),
                             ),
+                            onChanged: (_) => setDialogState(() {}),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -599,6 +644,18 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                     return;
                   }
 
+                  final isBulkUnit = selectedUnit.contains('كرتونة') ||
+                      selectedUnit.contains('باكت') ||
+                      selectedUnit.contains('شيكارة') ||
+                      selectedUnit.contains('جركن') ||
+                      selectedUnit.contains('لتر');
+                  final packSize = isBulkUnit ? (int.tryParse(packSizeCtrl.text.trim()) ?? 1) : 1;
+                  final baseUnitStr = selectedUnit.contains('شيكارة')
+                      ? 'جم'
+                      : (selectedUnit.contains('جركن') || selectedUnit.contains('لتر')
+                          ? 'مل'
+                          : 'حبة');
+
                   final branchId = getIt.isRegistered<BranchProvider>()
                       ? await getIt<BranchProvider>().getBranchId()
                       : 'branch_main';
@@ -618,6 +675,8 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                   final culinary = RestaurantCulinaryData(
                     isRawMaterial: true,
                     purchaseUnit: selectedUnit,
+                    baseUnit: isBulkUnit ? baseUnitStr : selectedUnit,
+                    conversionFactor: isBulkUnit ? packSize.toDouble() : 1.0,
                   );
 
                   final now = DateTime.now();
@@ -721,6 +780,7 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     DropdownButtonFormField<Product>(
+                      isExpanded: true,
                       key: const Key('select_existing_product_dropdown'),
                       initialValue: selectedProduct,
                       decoration: InputDecoration(
@@ -737,6 +797,7 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                     const SizedBox(height: 12),
                     if (_isHospitality) ...[
                       DropdownButtonFormField<String>(
+                        isExpanded: true,
                         key: const Key('new_variant_supply_unit_dropdown'),
                         initialValue: kitchenSupplyUnits.contains(sizeCtrl.text)
                             ? sizeCtrl.text
@@ -1261,6 +1322,7 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                                 children: [
                                   Expanded(
                                     child: DropdownButtonFormField<String>(
+                                      isExpanded: true,
                                       initialValue: _selectedSupplierId,
                                       decoration: InputDecoration(
                                         labelText: 'المورد *',
@@ -1346,19 +1408,25 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                             ),
                           );
 
-                          if (constraints.maxWidth < 750) {
+                          if (constraints.maxWidth < 920) {
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 supplierWidget,
                                 const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    Expanded(child: invoiceNumWidget),
-                                    const SizedBox(width: 14),
-                                    Expanded(child: datePickerWidget),
-                                  ],
-                                ),
+                                if (constraints.maxWidth < 550) ...[
+                                  invoiceNumWidget,
+                                  const SizedBox(height: 12),
+                                  datePickerWidget,
+                                ] else ...[
+                                  Row(
+                                    children: [
+                                      Expanded(child: invoiceNumWidget),
+                                      const SizedBox(width: 14),
+                                      Expanded(child: datePickerWidget),
+                                    ],
+                                  ),
+                                ],
                               ],
                             );
                           }

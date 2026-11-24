@@ -435,15 +435,18 @@ class PosCubit extends Cubit<PosState> {
     int quantity = 1,
     String? kitchenNotes,
     List<String> modifiers = const [],
+    int extraUnitPrice = 0,
   ]) {
     if (quantity <= 0) return;
     final state = this.state;
     final cleanNotes = (kitchenNotes != null && kitchenNotes.trim().isNotEmpty)
         ? kitchenNotes.trim()
         : null;
+    final targetPrice = variant.salePrice + extraUnitPrice;
     final existingIndex = state.cart.indexWhere((item) =>
         item.variantId == variant.id &&
         !item.isReturn &&
+        item.price == targetPrice &&
         (item.kitchenNotes ?? '') == (cleanNotes ?? '') &&
         _modifiersEqual(item.modifiers, modifiers));
     List<SaleItemEntity> newCart;
@@ -460,7 +463,7 @@ class PosCubit extends Cubit<PosState> {
         productName: variant.productName,
         size: variant.size,
         color: variant.color,
-        price: variant.salePrice,
+        price: targetPrice,
         quantity: quantity,
         kitchenNotes: cleanNotes,
         modifiers: modifiers,

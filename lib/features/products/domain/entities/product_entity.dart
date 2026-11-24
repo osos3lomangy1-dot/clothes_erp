@@ -56,6 +56,59 @@ class RecipeItemData extends Equatable {
       ];
 }
 
+class PaidModifierData extends Equatable {
+  final String name;
+  final int pricePiasters;
+  final String? rawMaterialId;
+  final double? quantityNeeded;
+
+  const PaidModifierData({
+    required this.name,
+    required this.pricePiasters,
+    this.rawMaterialId,
+    this.quantityNeeded,
+  });
+
+  double get pricePounds => pricePiasters / 100.0;
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'pricePiasters': pricePiasters,
+        if (rawMaterialId != null) 'rawMaterialId': rawMaterialId,
+        if (quantityNeeded != null) 'quantityNeeded': quantityNeeded,
+      };
+
+  factory PaidModifierData.fromJson(Map<String, dynamic> json) =>
+      PaidModifierData(
+        name: json['name'] as String? ?? '',
+        pricePiasters: (json['pricePiasters'] as num?)?.toInt() ?? 0,
+        rawMaterialId: json['rawMaterialId'] as String?,
+        quantityNeeded: (json['quantityNeeded'] as num?)?.toDouble(),
+      );
+
+  PaidModifierData copyWith({
+    String? name,
+    int? pricePiasters,
+    String? rawMaterialId,
+    double? quantityNeeded,
+  }) {
+    return PaidModifierData(
+      name: name ?? this.name,
+      pricePiasters: pricePiasters ?? this.pricePiasters,
+      rawMaterialId: rawMaterialId ?? this.rawMaterialId,
+      quantityNeeded: quantityNeeded ?? this.quantityNeeded,
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+        name,
+        pricePiasters,
+        rawMaterialId,
+        quantityNeeded,
+      ];
+}
+
 class RestaurantCulinaryData extends Equatable {
   final String? ingredients;
   final int? calories;
@@ -70,6 +123,9 @@ class RestaurantCulinaryData extends Equatable {
   final double? conversionFactor;
   final int? packagingCostPiasters;
   final List<RecipeItemData> recipeItems;
+  final String mealStockMode; // 'onDemand' or 'dailyBatch'
+  final int? dailyBatchCount;
+  final List<PaidModifierData> paidModifiers;
 
   const RestaurantCulinaryData({
     this.ingredients,
@@ -85,6 +141,9 @@ class RestaurantCulinaryData extends Equatable {
     this.conversionFactor,
     this.packagingCostPiasters,
     this.recipeItems = const [],
+    this.mealStockMode = 'onDemand',
+    this.dailyBatchCount,
+    this.paidModifiers = const [],
   });
 
   /// Cost per base unit in piasters: purchase price / conversion factor.
@@ -171,7 +230,10 @@ class RestaurantCulinaryData extends Equatable {
       (baseUnit == null || baseUnit!.trim().isEmpty) &&
       conversionFactor == null &&
       packagingCostPiasters == null &&
-      recipeItems.isEmpty;
+      recipeItems.isEmpty &&
+      mealStockMode == 'onDemand' &&
+      dailyBatchCount == null &&
+      paidModifiers.isEmpty;
 
   bool get hasCulinaryInfo =>
       (ingredients != null && ingredients!.trim().isNotEmpty) ||
@@ -185,7 +247,10 @@ class RestaurantCulinaryData extends Equatable {
       (baseUnit != null && baseUnit!.trim().isNotEmpty) ||
       conversionFactor != null ||
       packagingCostPiasters != null ||
-      recipeItems.isNotEmpty;
+      recipeItems.isNotEmpty ||
+      mealStockMode != 'onDemand' ||
+      dailyBatchCount != null ||
+      paidModifiers.isNotEmpty;
 
   Map<String, dynamic> toJson() => {
         if (ingredients != null && ingredients!.trim().isNotEmpty)
@@ -209,6 +274,10 @@ class RestaurantCulinaryData extends Equatable {
           'packagingCostPiasters': packagingCostPiasters,
         if (recipeItems.isNotEmpty)
           'recipeItems': recipeItems.map((e) => e.toJson()).toList(),
+        if (mealStockMode != 'onDemand') 'mealStockMode': mealStockMode,
+        if (dailyBatchCount != null) 'dailyBatchCount': dailyBatchCount,
+        if (paidModifiers.isNotEmpty)
+          'paidModifiers': paidModifiers.map((e) => e.toJson()).toList(),
       };
 
   factory RestaurantCulinaryData.fromJson(Map<String, dynamic> json) {
@@ -239,6 +308,14 @@ class RestaurantCulinaryData extends Equatable {
               ?.map((e) => RecipeItemData.fromJson(e as Map<String, dynamic>))
               .toList() ??
           const [],
+      mealStockMode: json['mealStockMode'] as String? ?? 'onDemand',
+      dailyBatchCount: json['dailyBatchCount'] is num
+          ? (json['dailyBatchCount'] as num).toInt()
+          : int.tryParse(json['dailyBatchCount']?.toString() ?? ''),
+      paidModifiers: (json['paidModifiers'] as List<dynamic>?)
+              ?.map((e) => PaidModifierData.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
     );
   }
 
@@ -256,6 +333,9 @@ class RestaurantCulinaryData extends Equatable {
     double? conversionFactor,
     int? packagingCostPiasters,
     List<RecipeItemData>? recipeItems,
+    String? mealStockMode,
+    int? dailyBatchCount,
+    List<PaidModifierData>? paidModifiers,
   }) {
     return RestaurantCulinaryData(
       ingredients: ingredients ?? this.ingredients,
@@ -272,6 +352,9 @@ class RestaurantCulinaryData extends Equatable {
       packagingCostPiasters:
           packagingCostPiasters ?? this.packagingCostPiasters,
       recipeItems: recipeItems ?? this.recipeItems,
+      mealStockMode: mealStockMode ?? this.mealStockMode,
+      dailyBatchCount: dailyBatchCount ?? this.dailyBatchCount,
+      paidModifiers: paidModifiers ?? this.paidModifiers,
     );
   }
 
@@ -329,6 +412,9 @@ class RestaurantCulinaryData extends Equatable {
         conversionFactor,
         packagingCostPiasters,
         recipeItems,
+        mealStockMode,
+        dailyBatchCount,
+        paidModifiers,
       ];
 }
 
@@ -417,6 +503,10 @@ class ProductEntity extends Equatable {
   String formatDualQuantity(num quantityInBaseUnits) =>
       culinaryData.formatDualQuantity(quantityInBaseUnits);
   List<RecipeItemData> get restaurantRecipeItems => culinaryData.recipeItems;
+  String get mealStockMode => culinaryData.mealStockMode;
+  int? get dailyBatchCount => culinaryData.dailyBatchCount;
+  bool get isDailyBatch => mealStockMode == 'dailyBatch';
+  List<PaidModifierData> get paidModifiers => culinaryData.paidModifiers;
   String get cleanDescription {
     final parsed = culinaryData;
     if (parsed.hasCulinaryInfo) {

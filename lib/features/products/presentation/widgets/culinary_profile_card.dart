@@ -20,6 +20,11 @@ class CulinaryProfileCard extends StatelessWidget {
   final Map<String, double>? rawMaterialUnitCosts;
   final int? salePricePiasters;
   final int? packagingCostPiasters;
+  final String mealStockMode;
+  final ValueChanged<String>? onMealStockModeChanged;
+  final TextEditingController? dailyBatchCountController;
+  final List<PaidModifierData>? paidModifiers;
+  final ValueChanged<List<PaidModifierData>>? onPaidModifiersChanged;
 
   static const List<String> defaultAllergens = [
     'جلوتين / قمح',
@@ -56,6 +61,11 @@ class CulinaryProfileCard extends StatelessWidget {
     this.rawMaterialUnitCosts,
     this.salePricePiasters,
     this.packagingCostPiasters,
+    this.mealStockMode = 'onDemand',
+    this.onMealStockModeChanged,
+    this.dailyBatchCountController,
+    this.paidModifiers,
+    this.onPaidModifiersChanged,
   });
 
   @override
@@ -353,7 +363,204 @@ class CulinaryProfileCard extends StatelessWidget {
             }).toList(),
           ),
 
-          // 5. Live Food Cost & Profitability Badge
+          // 5. Meal Stock Mode (On-Demand vs Daily Batch)
+          const SizedBox(height: 14),
+          const Text(
+            'نمط رصيد الوجبة بالمطعم:',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.onSurface),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  key: const Key('stock_mode_ondemand_chip'),
+                  onTap: () => onMealStockModeChanged?.call('onDemand'),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: mealStockMode == 'onDemand'
+                          ? AppColors.primary.withValues(alpha: 0.12)
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: mealStockMode == 'onDemand'
+                            ? AppColors.primary
+                            : AppColors.outlineVariant,
+                        width: mealStockMode == 'onDemand' ? 1.5 : 1.0,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.kitchen_rounded,
+                          size: 16,
+                          color: mealStockMode == 'onDemand'
+                              ? AppColors.primary
+                              : Colors.grey.shade600,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'تحضير فوري حسب الخامات',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: mealStockMode == 'onDemand'
+                                ? AppColors.primary
+                                : Colors.grey.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: InkWell(
+                  key: const Key('stock_mode_dailybatch_chip'),
+                  onTap: () => onMealStockModeChanged?.call('dailyBatch'),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: mealStockMode == 'dailyBatch'
+                          ? AppColors.secondary.withValues(alpha: 0.15)
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: mealStockMode == 'dailyBatch'
+                            ? AppColors.secondary
+                            : AppColors.outlineVariant,
+                        width: mealStockMode == 'dailyBatch' ? 1.5 : 1.0,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.inventory_2_rounded,
+                          size: 16,
+                          color: mealStockMode == 'dailyBatch'
+                              ? AppColors.secondary
+                              : Colors.grey.shade600,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'كمية مجهزة لليوم (Batch)',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: mealStockMode == 'dailyBatch'
+                                ? AppColors.secondary
+                                : Colors.grey.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (mealStockMode == 'dailyBatch' && dailyBatchCountController != null) ...[
+            const SizedBox(height: 8),
+            TextFormField(
+              key: const Key('culinary_daily_batch_field'),
+              controller: dailyBatchCountController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'عدد الوجبات المجهزة في بداية اليوم *',
+                hintText: 'مثال: 20',
+                prefixIcon: const Icon(Icons.pin_outlined),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                filled: true,
+                fillColor: Colors.white,
+              ),
+            ),
+          ],
+
+          // 6. Paid Modifiers Section
+          if (paidModifiers != null && onPaidModifiersChanged != null) ...[
+            const SizedBox(height: 14),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'خيارات الإضافات المدفوعة (Paid Modifiers):',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.onSurface),
+                ),
+                TextButton.icon(
+                  key: const Key('add_paid_modifier_btn'),
+                  onPressed: () {
+                    final nameCtrl = TextEditingController();
+                    final priceCtrl = TextEditingController(text: '15');
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('إضافة خيار أو إضافة مدفوعة', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            TextField(
+                              key: const Key('paid_modifier_name_input'),
+                              controller: nameCtrl,
+                              decoration: const InputDecoration(labelText: 'اسم الإضافة (مثال: جبنة شيدر إضافية)'),
+                            ),
+                            const SizedBox(height: 10),
+                            TextField(
+                              key: const Key('paid_modifier_price_input'),
+                              controller: priceCtrl,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              decoration: const InputDecoration(labelText: 'السعر الإضافي (ج.م)'),
+                            ),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+                          ElevatedButton(
+                            key: const Key('confirm_paid_modifier_btn'),
+                            onPressed: () {
+                              final name = nameCtrl.text.trim();
+                              final price = double.tryParse(priceCtrl.text.trim()) ?? 0.0;
+                              if (name.isNotEmpty) {
+                                final updated = List<PaidModifierData>.from(paidModifiers!)
+                                  ..add(PaidModifierData(name: name, pricePiasters: (price * 100).round()));
+                                onPaidModifiersChanged!(updated);
+                              }
+                              Navigator.pop(ctx);
+                            },
+                            child: const Text('إضافة'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('إضافة خيار مدفوع', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            if (paidModifiers!.isNotEmpty)
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: paidModifiers!.map((mod) {
+                  return Chip(
+                    label: Text('${mod.name} (+${mod.pricePounds.toStringAsFixed(0)} ج)'),
+                    deleteIcon: const Icon(Icons.close, size: 14),
+                    onDeleted: () {
+                      final updated = List<PaidModifierData>.from(paidModifiers!)..remove(mod);
+                      onPaidModifiersChanged!(updated);
+                    },
+                  );
+                }).toList(),
+              ),
+          ],
+
+          // 7. Live Food Cost & Profitability Badge
           if (recipeItems != null &&
               recipeItems!.isNotEmpty &&
               salePricePiasters != null &&

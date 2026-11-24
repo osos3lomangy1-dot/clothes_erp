@@ -20,6 +20,11 @@ class ReceiptSettingsService {
   static const String keyReturnPolicy = 'receipt.return_policy';
   static const String keyFooterGreeting = 'receipt.footer_greeting';
   static const String keyWifiInfo = 'receipt.wifi_info';
+  static const String keyTaxEnabled = 'receipt.tax_enabled';
+  static const String keyTaxRate = 'receipt.tax_rate';
+  static const String keyTaxInclusive = 'receipt.tax_inclusive';
+  static const String keyDineInServiceChargeEnabled = 'receipt.dine_in_service_charge_enabled';
+  static const String keyDineInServiceChargeRate = 'receipt.dine_in_service_charge_rate';
 
   static final ValueNotifier<ReceiptConfig> notifier =
       ValueNotifier<ReceiptConfig>(ReceiptConfig.defaults);
@@ -44,6 +49,11 @@ class ReceiptSettingsService {
       final returnPolicy = await gate.getMeta(keyReturnPolicy);
       final footerGreeting = await gate.getMeta(keyFooterGreeting);
       final wifiInfo = await gate.getMeta(keyWifiInfo);
+      final taxEnabledStr = await gate.getMeta(keyTaxEnabled);
+      final taxRateStr = await gate.getMeta(keyTaxRate);
+      final taxInclusiveStr = await gate.getMeta(keyTaxInclusive);
+      final serviceEnabledStr = await gate.getMeta(keyDineInServiceChargeEnabled);
+      final serviceRateStr = await gate.getMeta(keyDineInServiceChargeRate);
 
       final loaded = ReceiptConfig(
         storeName: (storeName != null && storeName.trim().isNotEmpty)
@@ -64,6 +74,14 @@ class ReceiptSettingsService {
         returnPolicy: returnPolicy ?? ReceiptConfig.defaults.returnPolicy,
         footerGreeting: footerGreeting ?? ReceiptConfig.defaults.footerGreeting,
         wifiInfo: wifiInfo ?? ReceiptConfig.defaults.wifiInfo,
+        taxEnabled: taxEnabledStr == '1',
+        taxRate: double.tryParse(taxRateStr ?? '') ?? ReceiptConfig.defaults.taxRate,
+        taxInclusive: taxInclusiveStr == '1',
+        dineInServiceChargeEnabled: serviceEnabledStr == null
+            ? ReceiptConfig.defaults.dineInServiceChargeEnabled
+            : serviceEnabledStr == '1',
+        dineInServiceChargeRate: double.tryParse(serviceRateStr ?? '') ??
+            ReceiptConfig.defaults.dineInServiceChargeRate,
       );
 
       notifier.value = loaded;
@@ -94,6 +112,13 @@ class ReceiptSettingsService {
     await gate.setMeta(keyReturnPolicy, config.returnPolicy, userId: userId);
     await gate.setMeta(keyFooterGreeting, config.footerGreeting, userId: userId);
     await gate.setMeta(keyWifiInfo, config.wifiInfo, userId: userId);
+    await gate.setMeta(keyTaxEnabled, config.taxEnabled ? '1' : '0', userId: userId);
+    await gate.setMeta(keyTaxRate, config.taxRate.toString(), userId: userId);
+    await gate.setMeta(keyTaxInclusive, config.taxInclusive ? '1' : '0', userId: userId);
+    await gate.setMeta(keyDineInServiceChargeEnabled,
+        config.dineInServiceChargeEnabled ? '1' : '0', userId: userId);
+    await gate.setMeta(keyDineInServiceChargeRate,
+        config.dineInServiceChargeRate.toString(), userId: userId);
 
     notifier.value = config;
   }

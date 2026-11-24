@@ -17,6 +17,11 @@ class ReceiptConfig extends Equatable {
   final String returnPolicy;
   final String footerGreeting;
   final String wifiInfo;
+  final bool taxEnabled;
+  final double taxRate;
+  final bool taxInclusive;
+  final bool dineInServiceChargeEnabled;
+  final double dineInServiceChargeRate;
 
   const ReceiptConfig({
     required this.storeName,
@@ -35,6 +40,11 @@ class ReceiptConfig extends Equatable {
     this.returnPolicy = 'الاستبدال والاسترجاع خلال 14 يوماً مع وجود الفاتورة وأصل التكت بحالته',
     this.footerGreeting = 'شكراً لزيارتكم ونتمنى لكم يوماً سعيداً',
     this.wifiInfo = '',
+    this.taxEnabled = false,
+    this.taxRate = 14.0,
+    this.taxInclusive = false,
+    this.dineInServiceChargeEnabled = false,
+    this.dineInServiceChargeRate = 12.0,
   });
 
   static const ReceiptConfig defaults = ReceiptConfig(
@@ -54,6 +64,11 @@ class ReceiptConfig extends Equatable {
     returnPolicy: 'الاستبدال والاسترجاع خلال 14 يوماً مع وجود الفاتورة وأصل التكت بحالته',
     footerGreeting: 'شكراً لزيارتكم ونتمنى لكم يوماً سعيداً',
     wifiInfo: '',
+    taxEnabled: false,
+    taxRate: 14.0,
+    taxInclusive: false,
+    dineInServiceChargeEnabled: false,
+    dineInServiceChargeRate: 12.0,
   );
 
   static const ReceiptConfig hospitalityDefaults = ReceiptConfig(
@@ -74,6 +89,11 @@ class ReceiptConfig extends Equatable {
         'الأطعمة والمشروبات الطازجة غير قابلة للاسترجاع بعد مغادرة الطاولة أو استلام الأوردر لسلامة الغذاء.',
     footerGreeting: 'شكراً لزيارتكم ونتمنى لكم وجبة شهية!',
     wifiInfo: 'WiFi: Restaurant-Guest',
+    taxEnabled: false,
+    taxRate: 14.0,
+    taxInclusive: false,
+    dineInServiceChargeEnabled: true,
+    dineInServiceChargeRate: 12.0,
   );
 
   ReceiptConfig copyWith({
@@ -93,6 +113,11 @@ class ReceiptConfig extends Equatable {
     String? returnPolicy,
     String? footerGreeting,
     String? wifiInfo,
+    bool? taxEnabled,
+    double? taxRate,
+    bool? taxInclusive,
+    bool? dineInServiceChargeEnabled,
+    double? dineInServiceChargeRate,
   }) {
     return ReceiptConfig(
       storeName: storeName ?? this.storeName,
@@ -111,6 +136,13 @@ class ReceiptConfig extends Equatable {
       returnPolicy: returnPolicy ?? this.returnPolicy,
       footerGreeting: footerGreeting ?? this.footerGreeting,
       wifiInfo: wifiInfo ?? this.wifiInfo,
+      taxEnabled: taxEnabled ?? this.taxEnabled,
+      taxRate: taxRate ?? this.taxRate,
+      taxInclusive: taxInclusive ?? this.taxInclusive,
+      dineInServiceChargeEnabled:
+          dineInServiceChargeEnabled ?? this.dineInServiceChargeEnabled,
+      dineInServiceChargeRate:
+          dineInServiceChargeRate ?? this.dineInServiceChargeRate,
     );
   }
 
@@ -132,6 +164,11 @@ class ReceiptConfig extends Equatable {
         returnPolicy,
         footerGreeting,
         wifiInfo,
+        taxEnabled,
+        taxRate,
+        taxInclusive,
+        dineInServiceChargeEnabled,
+        dineInServiceChargeRate,
       ];
 }
 

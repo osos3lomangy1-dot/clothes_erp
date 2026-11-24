@@ -273,10 +273,12 @@ class ReceiptPdfService {
                     child: pw.Column(
                       children: [
                         pw.Text(
-                          'طلب رقم: #$effectiveOrderNumber',
+                          (effectiveOrderType == 'dineIn' || effectiveOrderType == 'dine_in')
+                              ? 'طلب رقم: #$effectiveOrderNumber'
+                              : '#$effectiveOrderNumber',
                           style: pw.TextStyle(
                             font: boldFont,
-                            fontSize: 15,
+                            fontSize: (effectiveOrderType == 'dineIn' || effectiveOrderType == 'dine_in') ? 16 : 22,
                             fontWeight: pw.FontWeight.bold,
                           ),
                           textAlign: pw.TextAlign.center,
@@ -482,6 +484,46 @@ class ReceiptPdfService {
                       ),
                     ],
                   ),
+                ],
+                if (isHospitalityMode) ...[
+                  if ((effectiveOrderType == 'dineIn' || effectiveOrderType == 'dine_in') && cfg.dineInServiceChargeEnabled) ...[
+                    pw.SizedBox(height: 2),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text(
+                          'خدمة صالة (${cfg.dineInServiceChargeRate}%):',
+                          style: const pw.TextStyle(fontSize: 8.5),
+                        ),
+                        pw.Text(
+                          '+${Money((invoice.subtotal * (cfg.dineInServiceChargeRate / 100)).round()).toDisplay()} ج.م',
+                          style: const pw.TextStyle(fontSize: 8.5),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (cfg.taxEnabled) ...[
+                    pw.SizedBox(height: 2),
+                    if (cfg.taxInclusive)
+                      pw.Text(
+                        '* الأسعار شاملة ضريبة القيمة المضافة ${cfg.taxRate}%',
+                        style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey700),
+                      )
+                    else
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text(
+                            'ضريبة القيمة المضافة (${cfg.taxRate}%):',
+                            style: const pw.TextStyle(fontSize: 8.5),
+                          ),
+                          pw.Text(
+                            '+${Money((invoice.subtotal * (cfg.taxRate / 100)).round()).toDisplay()} ج.م',
+                            style: const pw.TextStyle(fontSize: 8.5),
+                          ),
+                        ],
+                      ),
+                  ],
                 ],
                 pw.SizedBox(height: 4),
                 pw.Container(
