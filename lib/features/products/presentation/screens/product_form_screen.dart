@@ -153,6 +153,10 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
   String? _kitchenStation;
   final Set<String> _selectedAllergens = {};
   String? _foodImagePath;
+  List<RecipeItemData> _recipeItems = [];
+  String _mealStockMode = 'onDemand';
+  final TextEditingController _dailyBatchCountCtrl = TextEditingController();
+  List<PaidModifierData> _paidModifiers = [];
 
   String? _validationError;
 
@@ -184,6 +188,14 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
     _foodImagePath = widget.product?.foodImagePath;
     if (cul != null && cul.allergens.isNotEmpty) {
       _selectedAllergens.addAll(cul.allergens);
+    }
+    if (cul != null) {
+      _recipeItems = List.from(cul.recipeItems);
+      _mealStockMode = cul.mealStockMode;
+      if (cul.dailyBatchCount != null) {
+        _dailyBatchCountCtrl.text = cul.dailyBatchCount.toString();
+      }
+      _paidModifiers = List.from(cul.paidModifiers);
     }
 
     if (widget.product == null) {
@@ -232,6 +244,7 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
     _imeiCtrl.dispose();
     _expiryCtrl.dispose();
     _rollWidthCtrl.dispose();
+    _dailyBatchCountCtrl.dispose();
     super.dispose();
   }
 
@@ -564,6 +577,10 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
         kitchenStation: _kitchenStation,
         userDescription: state.description.isEmpty ? null : state.description,
         imagePath: _foodImagePath,
+        recipeItems: _recipeItems,
+        mealStockMode: _mealStockMode,
+        dailyBatchCount: int.tryParse(_dailyBatchCountCtrl.text.trim()),
+        paidModifiers: _paidModifiers,
       );
       cubit.onDescriptionChanged(cul.toEncodedString());
     }
@@ -1164,6 +1181,19 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                   selectedAllergens: _selectedAllergens,
                                   selectedKitchenStation: _kitchenStation,
                                   imagePath: _foodImagePath,
+                                  recipeItems: _recipeItems,
+                                  onRecipeItemsChanged: (items) =>
+                                      setState(() => _recipeItems = items),
+                                  availableRawMaterials: state.existingProducts
+                                      .where((p) => p.culinaryData.isRawMaterial)
+                                      .toList(),
+                                  mealStockMode: _mealStockMode,
+                                  onMealStockModeChanged: (mode) =>
+                                      setState(() => _mealStockMode = mode),
+                                  dailyBatchCountController: _dailyBatchCountCtrl,
+                                  paidModifiers: _paidModifiers,
+                                  onPaidModifiersChanged: (mods) =>
+                                      setState(() => _paidModifiers = mods),
                                   onImagePathChanged: (val) =>
                                       setState(() => _foodImagePath = val),
                                   onKitchenStationChanged: (val) =>

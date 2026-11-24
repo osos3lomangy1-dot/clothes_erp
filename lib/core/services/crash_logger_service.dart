@@ -95,6 +95,11 @@ class CrashLoggerService {
     String? context,
   }) {
     try {
+      final errStr = error?.toString() ?? '';
+      if (errStr.contains('overflowed by')) {
+        // Layout overflows during resizing should not spam synchronous disk writes
+        return;
+      }
       final now = DateTime.now();
       final dateStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
       final effectiveContext = context ?? _lastKnownContext;
@@ -113,7 +118,7 @@ class CrashLoggerService {
         ..writeln('المسار وسجل التنقلات الأخيرة (Breadcrumbs):')
         ..writeln(breadcrumbsSummary)
         ..writeln('تفاصيل الخطأ:')
-        ..writeln(error?.toString() ?? 'خطأ غير معروف')
+        ..writeln(errStr.isEmpty ? 'خطأ غير معروف' : errStr)
         ..writeln('تتبع الكومة (Stack Trace):')
         ..writeln(stack?.toString() ?? 'لا يوجد Stack Trace متاح')
         ..writeln(_delimiter)
@@ -131,7 +136,7 @@ class CrashLoggerService {
       }
 
       if (_masterFile != null) {
-        _masterFile!.writeAsStringSync(logText, mode: FileMode.append, flush: true);
+        _masterFile!.writeAsString(logText, mode: FileMode.append);
       }
 
       // Also write an individual dated file
@@ -139,7 +144,7 @@ class CrashLoggerService {
         final singleFile = File(
           '${_logsDir!.path}/crash_${now.millisecondsSinceEpoch}.log',
         );
-        singleFile.writeAsStringSync(logText, flush: true);
+        singleFile.writeAsString(logText);
       }
 
       Logging.error('تم تسجيل العطل بنجاح في ملفات النظام المحلية: $effectiveContext');

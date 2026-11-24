@@ -112,10 +112,10 @@ class _PaymentMethodPieChartState extends State<PaymentMethodPieChart> {
             else
               LayoutBuilder(
                 builder: (context, constraints) {
-                  final isCompact = constraints.maxWidth < 520;
+                  final isCompact = constraints.maxWidth < 620;
                   final chartWidget = SizedBox(
-                    width: isCompact ? 150 : 170,
-                    height: isCompact ? 150 : 170,
+                    width: isCompact ? 140 : 160,
+                    height: isCompact ? 140 : 160,
                     child: PieChart(
                       PieChartData(
                         pieTouchData: PieTouchData(
@@ -134,12 +134,12 @@ class _PaymentMethodPieChartState extends State<PaymentMethodPieChart> {
                         ),
                         borderData: FlBorderData(show: false),
                         sectionsSpace: 3,
-                        centerSpaceRadius: isCompact ? 32 : 38,
+                        centerSpaceRadius: isCompact ? 30 : 36,
                         sections: List.generate(validEntries.length, (i) {
                           final isTouched = i == _touchedIndex;
                           final e = validEntries[i];
                           final percent = (e.value / total) * 100.0;
-                          final radius = isTouched ? (isCompact ? 38.0 : 44.0) : (isCompact ? 32.0 : 38.0);
+                          final radius = isTouched ? (isCompact ? 36.0 : 42.0) : (isCompact ? 30.0 : 36.0);
                           final color = _getColorForMethod(e.key, i);
 
                           return PieChartSectionData(
@@ -190,20 +190,31 @@ class _PaymentMethodPieChartState extends State<PaymentMethodPieChart> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              '${percent.toStringAsFixed(0)}%',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '(${Money(e.value).toDisplay()} ج.م)',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey.shade700,
+                            Flexible(
+                              fit: FlexFit.loose,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      '${percent.toStringAsFixed(0)}%',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '(${Money(e.value).toDisplay()} ج.م)',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.grey.shade700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ],

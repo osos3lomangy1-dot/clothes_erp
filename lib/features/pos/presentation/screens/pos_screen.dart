@@ -2386,26 +2386,33 @@ class _ProductCard extends StatelessWidget {
             }
           } else if (culinary != null && culinary.recipeItems.isNotEmpty) {
             int minMeals = 999999;
+            String? bottleneckName;
+            bool hasDepleted = false;
+            String? depletedName;
+
             for (final ri in culinary.recipeItems) {
-              final rawVariant = posCubit.state.filteredVariants.cast<VariantEntity?>().firstWhere(
-                (v) => v?.id == ri.rawMaterialId || v?.productId == ri.rawMaterialId,
-                orElse: () => null,
-              );
-              if (rawVariant != null) {
-                final meals = ri.quantityNeeded > 0
-                    ? (rawVariant.quantity / ri.quantityNeeded).floor()
-                    : 0;
-                if (meals < minMeals) minMeals = meals;
-              } else {
-                minMeals = 0;
+              final rawStock = posCubit.getRawMaterialStock(ri.rawMaterialId);
+              final double consumption = ri.effectiveQuantityNeeded(1);
+              final int meals = consumption > 0
+                  ? (rawStock / consumption).floor()
+                  : 0;
+
+              if (rawStock <= 0 || meals <= 0) {
+                hasDepleted = true;
+                depletedName ??= ri.rawMaterialName;
+              }
+
+              if (meals < minMeals) {
+                minMeals = meals;
+                bottleneckName = ri.rawMaterialName;
               }
             }
-            if (minMeals == 999999) minMeals = variant.quantity;
-            if (minMeals <= 0) {
+
+            if (hasDepleted || minMeals <= 0) {
               effectiveOut = true;
-              hospitalityBadgeText = 'نفدت الخامات';
+              hospitalityBadgeText = 'نفدت الخامات (${depletedName ?? bottleneckName ?? ""})';
             } else {
-              hospitalityBadgeText = 'متوفر خامات تكفي $minMeals وجبة';
+              hospitalityBadgeText = 'متوفر خامات تكفي: $minMeals وجبة (المحدد: ${bottleneckName ?? ""})';
             }
           }
         }

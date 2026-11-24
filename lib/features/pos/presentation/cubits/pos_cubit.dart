@@ -358,6 +358,20 @@ class PosCubit extends Cubit<PosState> {
   List<VariantEntity> getVariantsForProduct(String productId) =>
       _allVariants.where((v) => v.productId == productId).toList();
 
+  int getRawMaterialStock(String rawMaterialId) {
+    final matches = _allVariants.where(
+      (v) => v.id == rawMaterialId || v.productId == rawMaterialId,
+    );
+    if (matches.isNotEmpty) {
+      return matches.fold<int>(0, (sum, v) => sum + v.quantity);
+    }
+    final prod = _productMap[rawMaterialId];
+    if (prod != null && prod.variants.isNotEmpty) {
+      return prod.variants.fold<int>(0, (sum, v) => sum + v.quantity);
+    }
+    return 0;
+  }
+
   void searchProducts(String query) {
     _currentSearchQuery = query;
     _applyFilters();

@@ -345,13 +345,24 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
               db.products.deletedAt.isNull(),
         );
 
-    final rows = await query.get();
+    final allRows = await query.get();
+    final rows = allRows.where((r) {
+      final p = r.readTable(db.products);
+      final cul = RestaurantCulinaryData.parse(p.description);
+      if (_isHospitality) {
+        return cul.isRawMaterial == true;
+      } else {
+        return cul.isRawMaterial != true;
+      }
+    }).toList();
 
     if (!mounted) return;
 
     if (rows.isEmpty) {
       _showToast(
-        'لا توجد أصناف مسجلة بالنظام. يرجى إضافة منتجات وتصنيفات أولاً.',
+        _isHospitality
+            ? 'لا توجد خامات أو مستلزمات مسجلة بالنظام. يرجى إضافة خامات ومستلزمات أولاً.'
+            : 'لا توجد أصناف مسجلة بالنظام. يرجى إضافة منتجات وتصنيفات أولاً.',
         isError: true,
       );
       return;
@@ -737,10 +748,19 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
 
   Future<void> _showAddNewVariantDialog() async {
     final db = getIt<AppDatabase>();
-    final products = await (db.select(db.products)
+    final allProducts = await (db.select(db.products)
           ..where((p) => p.deletedAt.isNull())
           ..orderBy([(p) => OrderingTerm.asc(p.name)]))
         .get();
+
+    final products = allProducts.where((p) {
+      final cul = RestaurantCulinaryData.parse(p.description);
+      if (_isHospitality) {
+        return cul.isRawMaterial == true;
+      } else {
+        return cul.isRawMaterial != true;
+      }
+    }).toList();
 
     if (!mounted) return;
     if (products.isEmpty) {
@@ -1408,13 +1428,13 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                             ),
                           );
 
-                          if (constraints.maxWidth < 920) {
+                          if (constraints.maxWidth < 1150) {
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 supplierWidget,
                                 const SizedBox(height: 12),
-                                if (constraints.maxWidth < 550) ...[
+                                if (constraints.maxWidth < 600) ...[
                                   invoiceNumWidget,
                                   const SizedBox(height: 12),
                                   datePickerWidget,
@@ -1435,17 +1455,17 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(
-                                flex: 3,
+                                flex: 4,
                                 child: supplierWidget,
                               ),
                               const SizedBox(width: 14),
                               Expanded(
-                                flex: 2,
+                                flex: 3,
                                 child: invoiceNumWidget,
                               ),
                               const SizedBox(width: 14),
                               Expanded(
-                                flex: 2,
+                                flex: 3,
                                 child: datePickerWidget,
                               ),
                             ],

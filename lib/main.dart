@@ -36,12 +36,16 @@ void main() async {
 
   // 1. Global Flutter framework error handling
   FlutterError.onError = (FlutterErrorDetails details) {
-    CrashLoggerService.logCrash(
-      details.exception,
-      details.stack,
-      context: 'Flutter Framework: ${details.context?.toDescription() ?? "General"}',
-    );
-    Logging.error('FlutterError: ${details.exceptionAsString()}\n${details.stack}');
+    final errStr = details.exceptionAsString();
+    final isOverflow = errStr.contains('overflowed by');
+    if (!isOverflow) {
+      CrashLoggerService.logCrash(
+        details.exception,
+        details.stack,
+        context: 'Flutter Framework: ${details.context?.toDescription() ?? "General"}',
+      );
+    }
+    Logging.error('FlutterError: $errStr\n${details.stack}');
   };
 
   // 2. Global asynchronous unhandled error handling

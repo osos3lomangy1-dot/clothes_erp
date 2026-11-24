@@ -2,7 +2,11 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/database/app_database.dart';
+import '../../../../core/di/injection.dart';
+import '../../../../core/utils/money.dart';
 import '../../domain/entities/product_entity.dart';
+import '../../domain/repositories/product_repository.dart';
 import '../../domain/services/food_cost_calculator.dart';
 
 class CulinaryProfileCard extends StatelessWidget {
@@ -17,6 +21,8 @@ class CulinaryProfileCard extends StatelessWidget {
   final String? imagePath;
   final ValueChanged<String?>? onImagePathChanged;
   final List<RecipeItemData>? recipeItems;
+  final ValueChanged<List<RecipeItemData>>? onRecipeItemsChanged;
+  final List<ProductEntity>? availableRawMaterials;
   final Map<String, double>? rawMaterialUnitCosts;
   final int? salePricePiasters;
   final int? packagingCostPiasters;
@@ -58,6 +64,8 @@ class CulinaryProfileCard extends StatelessWidget {
     this.imagePath,
     this.onImagePathChanged,
     this.recipeItems,
+    this.onRecipeItemsChanged,
+    this.availableRawMaterials,
     this.rawMaterialUnitCosts,
     this.salePricePiasters,
     this.packagingCostPiasters,
@@ -482,7 +490,144 @@ class CulinaryProfileCard extends StatelessWidget {
             ),
           ],
 
-          // 6. Paid Modifiers Section
+          // 6. Recipe BOM Builder Section (Addendum 30.10.1)
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.account_tree_outlined, size: 16, color: AppColors.primary),
+                  const SizedBox(width: 6),
+                  const Text(
+                    'خامات ومقادير الوجبة (Recipe BOM):',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.onSurface),
+                  ),
+                ],
+              ),
+              TextButton.icon(
+                key: const Key('add_recipe_item_btn'),
+                onPressed: () => _showAddRecipeItemDialog(context),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('إضافة خامة للوجبة', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          if (recipeItems == null || recipeItems!.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.outlineVariant),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, size: 16, color: Colors.grey.shade500),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'لم يتم ربط مقادير خامات بهذه الوجبة. أضف الخامات لتتبع الاستهلاك الدقيق وحساب تكلفة الأغذية وهامش الربح.',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else ...[
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.outlineVariant),
+              ),
+              child: Column(
+                children: List.generate(recipeItems!.length, (idx) {
+                  final item = recipeItems![idx];
+                  final unitCost = rawMaterialUnitCosts?[item.rawMaterialId] ?? 0.0;
+                  final costPiasters = (item.calculateIngredientCost(unitCost)).round();
+                  final qtyDisplay = item.quantityNeeded.toStringAsFixed(
+                    item.quantityNeeded.truncateToDouble() == item.quantityNeeded ? 0 : 2,
+                  );
+
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      border: idx < recipeItems!.length - 1
+                          ? Border(bottom: BorderSide(color: Colors.grey.shade200))
+                          : null,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: Text(
+                            item.rawMaterialName,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            '$qtyDisplay ${item.unit}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                        if (item.yieldLossPercentage > 0) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade50,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'فاقد: ${item.yieldLossPercentage.toStringAsFixed(0)}%',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange.shade800,
+                              ),
+                            ),
+                          ),
+                        ],
+                        if (costPiasters > 0) ...[
+                          const SizedBox(width: 6),
+                          Text(
+                            '(${Money(costPiasters).toDisplay()} ج.م)',
+                            style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+                          ),
+                        ],
+                        const Spacer(),
+                        IconButton(
+                          key: Key('delete_recipe_item_${item.rawMaterialId}'),
+                          icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 18),
+                          tooltip: 'حذف الخامة',
+                          onPressed: () {
+                            final updated = List<RecipeItemData>.from(recipeItems!)..removeAt(idx);
+                            onRecipeItemsChanged?.call(updated);
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ),
+            ),
+          ],
+
+          // 7. Paid Modifiers Section
           if (paidModifiers != null && onPaidModifiersChanged != null) ...[
             const SizedBox(height: 14),
             Row(
@@ -612,6 +757,175 @@ class CulinaryProfileCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<List<ProductEntity>> _fetchRawMaterials() async {
+    if (availableRawMaterials != null && availableRawMaterials!.isNotEmpty) {
+      return availableRawMaterials!;
+    }
+    try {
+      if (getIt.isRegistered<ProductRepository>()) {
+        final res = await getIt<ProductRepository>().getProducts();
+        final list = res.getOrElse(() => []);
+        final raw = list.where((p) => p.culinaryData.isRawMaterial).toList();
+        if (raw.isNotEmpty) return raw;
+      }
+    } catch (_) {}
+    try {
+      if (getIt.isRegistered<AppDatabase>()) {
+        final db = getIt<AppDatabase>();
+        final prods = await (db.select(db.products)..where((p) => p.deletedAt.isNull())).get();
+        final raw = prods
+            .where((p) => RestaurantCulinaryData.parse(p.description).isRawMaterial)
+            .map((p) => ProductEntity(
+                  id: p.id,
+                  name: p.name,
+                  description: p.description ?? '',
+                  categoryId: p.categoryId,
+                  categoryName: '',
+                  createdAt: p.createdAt,
+                ))
+            .toList();
+        if (raw.isNotEmpty) return raw;
+      }
+    } catch (_) {}
+    return availableRawMaterials ?? const [];
+  }
+
+  Future<void> _showAddRecipeItemDialog(BuildContext context) async {
+    final rawMaterials = await _fetchRawMaterials();
+    if (!context.mounted) return;
+
+    if (rawMaterials.isEmpty) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('لا توجد خامات مسجلة', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+          content: const Text(
+            'لم يتم العثور على خامات أو مستلزمات مسجلة بالمخزن.\nيرجى تسجيل المواد الخام أولاً في شاشة المنتجات أو المشتريات.',
+            style: TextStyle(fontSize: 12),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('حسناً'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    ProductEntity selectedRawMaterial = rawMaterials.first;
+    final qtyCtrl = TextEditingController(text: '100');
+    final yieldCtrl = TextEditingController(text: '0');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final unit = selectedRawMaterial.culinaryData.baseUnit?.trim().isNotEmpty == true
+              ? selectedRawMaterial.culinaryData.baseUnit!.trim()
+              : 'جرام';
+
+          return AlertDialog(
+            key: const Key('add_recipe_item_dialog'),
+            title: const Text(
+              'إضافة خامة لمقادير الوجبة (BOM)',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            ),
+            content: SizedBox(
+              width: 440,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  DropdownButtonFormField<ProductEntity>(
+                    key: const Key('select_recipe_raw_material_dropdown'),
+                    isExpanded: true,
+                    initialValue: selectedRawMaterial,
+                    decoration: const InputDecoration(
+                      labelText: 'اختر الخامة أو المستلزم *',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: rawMaterials.map((rm) {
+                      final bUnit = rm.culinaryData.baseUnit?.trim().isNotEmpty == true
+                          ? rm.culinaryData.baseUnit!.trim()
+                          : 'جرام';
+                      return DropdownMenuItem<ProductEntity>(
+                        value: rm,
+                        child: Text('${rm.name} (الوحدة الأساسية: $bUnit)'),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setDialogState(() {
+                          selectedRawMaterial = val;
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    key: const Key('recipe_item_qty_field'),
+                    controller: qtyCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(
+                      labelText: 'الكمية المطلوبة بالوجبة *',
+                      suffixText: unit,
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    key: const Key('recipe_item_yield_loss_field'),
+                    controller: yieldCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                      labelText: 'نسبة فاقد الطهي % (انكماش/هدر طبيعي)',
+                      hintText: '0.0',
+                      suffixText: '%',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton(
+                key: const Key('confirm_add_recipe_item_btn'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () {
+                  final qty = double.tryParse(qtyCtrl.text.trim()) ?? 0.0;
+                  final yieldLoss = double.tryParse(yieldCtrl.text.trim()) ?? 0.0;
+                  if (qty <= 0) return;
+
+                  final item = RecipeItemData(
+                    rawMaterialId: selectedRawMaterial.id,
+                    rawMaterialName: selectedRawMaterial.name,
+                    quantityNeeded: qty,
+                    yieldLossPercentage: yieldLoss,
+                    unit: unit,
+                  );
+
+                  final updated = List<RecipeItemData>.from(recipeItems ?? [])..add(item);
+                  onRecipeItemsChanged?.call(updated);
+                  Navigator.pop(ctx);
+                },
+                child: const Text('إضافة الخامة'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
