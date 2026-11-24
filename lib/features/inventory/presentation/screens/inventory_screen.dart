@@ -19,8 +19,11 @@ import '../widgets/inventory_action_dialogs.dart';
 import '../widgets/kitchen_waste_dialog.dart';
 import 'blind_receive_screen.dart';
 import '../../../reports/presentation/screens/smart_inventory_reports_screen.dart';
+import '../../../products/presentation/widgets/add_raw_material_dialog.dart';
 
 enum _InventoryStatusFilter { all, inStock, lowStock, outOfStock }
+
+enum _InventoryCulinaryFilter { all, meals, rawMaterials }
 
 enum _InventorySort { lowestQty, highestQty, highestValue, nameAsc }
 
@@ -35,6 +38,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   _InventoryStatusFilter _statusFilter = _InventoryStatusFilter.all;
+  _InventoryCulinaryFilter _culinaryFilter = _InventoryCulinaryFilter.all;
   String? _selectedCategory; // null = all categories
   _InventorySort _sort = _InventorySort.lowestQty;
   bool _exporting = false;
@@ -159,6 +163,16 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   List<VariantEntity> _filterAndSort(List<VariantEntity> raw) {
     var list = raw.where((item) {
+      if (_isHospitality) {
+        final prod = _productsById[item.productId];
+        final isRaw = prod?.isRestaurantRawMaterial ?? false;
+        if (_culinaryFilter == _InventoryCulinaryFilter.meals && isRaw) {
+          return false;
+        }
+        if (_culinaryFilter == _InventoryCulinaryFilter.rawMaterials && !isRaw) {
+          return false;
+        }
+      }
       if (_searchQuery.isNotEmpty) {
         final name = item.productName.toLowerCase();
         final code = item.productCode.toLowerCase();
@@ -299,6 +313,42 @@ class _InventoryScreenState extends State<InventoryScreen> {
                             )
                           : const Icon(Icons.table_view_rounded, size: 18),
                       label: const Text('تصدير إكسيل'),
+                    ),
+                  ),
+                if (_isHospitality)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: 8,
+                    ),
+                    child: ElevatedButton.icon(
+                      key: const Key('inventory_add_raw_material_btn'),
+                      icon: const Icon(
+                        Icons.kitchen_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                      label: const Text(
+                        '+ إضافة مادة خام / مستلزم',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: () async {
+                        final invCubit = context.read<InventoryCubit>();
+                        final res = await AddRawMaterialDialog.show(context);
+                        if (res == true && mounted) {
+                          invCubit.loadInventory();
+                          _loadProductsIfHospitality();
+                        }
+                      },
                     ),
                   ),
                 if (!_isHospitality)
@@ -644,6 +694,38 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                   );
                                 },
                               ),
+                              if (_isHospitality) ...[
+                                const SizedBox(height: 10),
+                                SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    children: [
+                                      _buildCulinaryFilterChip(
+                                        key: const Key('inventory_tab_all'),
+                                        label: 'الكل',
+                                        isSelected: _culinaryFilter == _InventoryCulinaryFilter.all,
+                                        onTap: () => setState(() => _culinaryFilter = _InventoryCulinaryFilter.all),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _buildCulinaryFilterChip(
+                                        key: const Key('inventory_tab_meals'),
+                                        icon: Icons.restaurant_menu_rounded,
+                                        label: 'وجبات ومنيو',
+                                        isSelected: _culinaryFilter == _InventoryCulinaryFilter.meals,
+                                        onTap: () => setState(() => _culinaryFilter = _InventoryCulinaryFilter.meals),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _buildCulinaryFilterChip(
+                                        key: const Key('inventory_tab_raw_materials'),
+                                        icon: Icons.kitchen_rounded,
+                                        label: 'خامات ومستلزمات المطبخ',
+                                        isSelected: _culinaryFilter == _InventoryCulinaryFilter.rawMaterials,
+                                        onTap: () => setState(() => _culinaryFilter = _InventoryCulinaryFilter.rawMaterials),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                               const SizedBox(height: 10),
                               Row(
                                 children: [
@@ -1109,6 +1191,52 @@ class _InventoryScreenState extends State<InventoryScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCulinaryFilterChip({
+    required Key key,
+    IconData? icon,
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      key: key,
+      borderRadius: BorderRadius.circular(8),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : AppColors.surfaceContainer,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.outlineVariant,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(
+                icon,
+                size: 14,
+                color: isSelected ? Colors.white : AppColors.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? Colors.white : AppColors.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

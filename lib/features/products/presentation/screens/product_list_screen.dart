@@ -25,6 +25,8 @@ import '../cubits/product_cubit.dart';
 import '../cubits/product_state.dart';
 import '../widgets/rapid_barcode_intake_dialog.dart';
 import '../widgets/simple_product_form_dialog.dart';
+import '../widgets/add_raw_material_dialog.dart';
+import '../widgets/culinary_starter_pack_dialog.dart';
 import 'product_form_screen.dart';
 import '../../../settings/data/services/activity_settings_service.dart';
 
@@ -51,12 +53,15 @@ class _ProductsAndCategoriesView extends StatefulWidget {
       _ProductsAndCategoriesViewState();
 }
 
+enum CulinaryFilterTab { all, meals, rawMaterials }
+
 class _ProductsAndCategoriesViewState
     extends State<_ProductsAndCategoriesView> {
   final TextEditingController _searchCtrl = TextEditingController();
   String _searchQuery = '';
   String? _selectedCategoryId;
   String? _selectedCategoryName;
+  CulinaryFilterTab _culinaryTab = CulinaryFilterTab.all;
 
   StreamSubscription<String?>? _sectorSub;
   StreamSubscription<List<ActivityType>>? _activitySub;
@@ -504,8 +509,62 @@ class _ProductsAndCategoriesViewState
       if (_selectedCategoryId != null && _selectedCategoryId!.isNotEmpty) {
         if (p.categoryId != _selectedCategoryId) return false;
       }
+      if (_isHospitality) {
+        if (_culinaryTab == CulinaryFilterTab.meals && p.culinaryData.isRawMaterial) {
+          return false;
+        }
+        if (_culinaryTab == CulinaryFilterTab.rawMaterials && !p.culinaryData.isRawMaterial) {
+          return false;
+        }
+      }
       return ProductSearchFilter.matches(p, _searchQuery);
     }).toList();
+  }
+
+  Widget _buildCulinaryFilterChip({
+    required Key key,
+    IconData? icon,
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      key: key,
+      borderRadius: BorderRadius.circular(8),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : AppColors.surfaceContainer,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.outlineVariant,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(
+                icon,
+                size: 14,
+                color: isSelected ? Colors.white : AppColors.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? Colors.white : AppColors.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -587,6 +646,51 @@ class _ProductsAndCategoriesViewState
                   ),
                 ),
                 onPressed: () => _openRapidScanDialog(context),
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+          if (_isHospitality) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: OutlinedButton.icon(
+                key: const Key('open_starter_packs_btn'),
+                icon: Icon(Icons.bolt_rounded, size: 18, color: AppColors.secondary),
+                label: Text(
+                  'باقة جاهزة',
+                  style: TextStyle(
+                    color: AppColors.secondary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: AppColors.secondary),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () => CulinaryStarterPackDialog.show(context),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: OutlinedButton.icon(
+                key: const Key('add_raw_material_top_btn'),
+                icon: const Icon(Icons.kitchen_rounded, size: 18),
+                label: const Text(
+                  '+ مادة خام / مستلزم',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () => AddRawMaterialDialog.show(context),
               ),
             ),
             const SizedBox(width: 8),
@@ -1074,67 +1178,104 @@ class _ProductsAndCategoriesViewState
         Container(
           color: Colors.white,
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: TextField(
-                  controller: _searchCtrl,
-                  onChanged: (val) => setState(() => _searchQuery = val),
-                  decoration: InputDecoration(
-                    hintText: _selectedCategoryName != null
-                        ? 'البحث داخل قسم "$_selectedCategoryName"...'
-                        : 'ابحث بالاسم أو الكود أو الباركود...',
-                    prefixIcon: Icon(Icons.search, color: AppColors.primary),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear, size: 18),
-                            onPressed: () {
-                              _searchCtrl.clear();
-                              setState(() => _searchQuery = '');
-                            },
-                          )
-                        : null,
-                    contentPadding: const EdgeInsets.symmetric(
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchCtrl,
+                      onChanged: (val) => setState(() => _searchQuery = val),
+                      decoration: InputDecoration(
+                        hintText: _selectedCategoryName != null
+                            ? 'البحث داخل قسم "$_selectedCategoryName"...'
+                            : 'ابحث بالاسم أو الكود أو الباركود...',
+                        prefixIcon: Icon(Icons.search, color: AppColors.primary),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 18),
+                                onPressed: () {
+                                  _searchCtrl.clear();
+                                  setState(() => _searchQuery = '');
+                                },
+                              )
+                            : null,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        filled: true,
+                        fillColor: AppColors.surfaceContainer,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
                       horizontal: 14,
                       vertical: 10,
                     ),
-                    filled: true,
-                    fillColor: AppColors.surfaceContainer,
-                    border: OutlineInputBorder(
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainer,
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.inventory_2_outlined,
+                          size: 18,
+                          color: AppColors.primary,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'المعروض: ${filtered.length}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceContainer,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.inventory_2_outlined,
-                      size: 18,
-                      color: AppColors.primary,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'المعروض: ${filtered.length}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
+              if (_isHospitality) ...[
+                const SizedBox(height: 10),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildCulinaryFilterChip(
+                        key: const Key('culinary_tab_all'),
+                        label: 'الكل',
+                        isSelected: _culinaryTab == CulinaryFilterTab.all,
+                        onTap: () => setState(() => _culinaryTab = CulinaryFilterTab.all),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      _buildCulinaryFilterChip(
+                        key: const Key('culinary_tab_meals'),
+                        icon: Icons.restaurant_menu_rounded,
+                        label: 'وجبات ومنيو',
+                        isSelected: _culinaryTab == CulinaryFilterTab.meals,
+                        onTap: () => setState(() => _culinaryTab = CulinaryFilterTab.meals),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildCulinaryFilterChip(
+                        key: const Key('culinary_tab_raw_materials'),
+                        icon: Icons.kitchen_rounded,
+                        label: 'خامات ومستلزمات المطبخ',
+                        isSelected: _culinaryTab == CulinaryFilterTab.rawMaterials,
+                        onTap: () => setState(() => _culinaryTab = CulinaryFilterTab.rawMaterials),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
