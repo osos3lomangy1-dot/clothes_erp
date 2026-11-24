@@ -1,6 +1,6 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -20,48 +20,44 @@ import '../../domain/entities/receipt_config.dart';
 import '../../../delivery/domain/entities/delivery_order_entity.dart';
 
 class ReceiptPdfService {
-  static Future<pw.Font> _loadArabicFont() async {
-    // 1. Try local project asset Cairo (works 100% offline everywhere: Windows, Linux CI, macOS)
+  static pw.Font? _cairoRegular;
+  static pw.Font? _cairoBold;
+
+  static Future<void> _loadFonts() async {
+    if (_cairoRegular != null && _cairoBold != null) return;
+    try {
+      final regData = await rootBundle.load('assets/fonts/static/Cairo-Regular.ttf');
+      _cairoRegular = pw.Font.ttf(regData);
+
+      final boldData = await rootBundle.load('assets/fonts/static/Cairo-Bold.ttf');
+      _cairoBold = pw.Font.ttf(boldData);
+      return;
+    } catch (_) {}
+
     try {
       final localFont = File('assets/fonts/static/Cairo-Regular.ttf');
-      if (await localFont.exists()) {
-        final bytes = await localFont.readAsBytes();
-        return pw.Font.ttf(bytes.buffer.asByteData());
+      final localBold = File('assets/fonts/static/Cairo-Bold.ttf');
+      if (await localFont.exists() && await localBold.exists()) {
+        final regBytes = await localFont.readAsBytes();
+        final boldBytes = await localBold.readAsBytes();
+        _cairoRegular = pw.Font.ttf(regBytes.buffer.asByteData());
+        _cairoBold = pw.Font.ttf(boldBytes.buffer.asByteData());
+        return;
       }
     } catch (_) {}
 
-    // 2. Try Windows system font (instant offline fallback)
-    try {
-      final winArial = File('C:\\Windows\\Fonts\\arial.ttf');
-      if (await winArial.exists()) {
-        final bytes = await winArial.readAsBytes();
-        return pw.Font.ttf(bytes.buffer.asByteData());
-      }
-    } catch (_) {}
+    _cairoRegular = pw.Font.helvetica();
+    _cairoBold = pw.Font.helveticaBold();
+  }
 
-    return pw.Font.helvetica();
+  static Future<pw.Font> _loadArabicFont() async {
+    await _loadFonts();
+    return _cairoRegular!;
   }
 
   static Future<pw.Font> _loadArabicBoldFont() async {
-    // 1. Try local project asset Cairo Bold
-    try {
-      final localFont = File('assets/fonts/static/Cairo-Bold.ttf');
-      if (await localFont.exists()) {
-        final bytes = await localFont.readAsBytes();
-        return pw.Font.ttf(bytes.buffer.asByteData());
-      }
-    } catch (_) {}
-
-    // 2. Try Windows system font
-    try {
-      final winArialBd = File('C:\\Windows\\Fonts\\arialbd.ttf');
-      if (await winArialBd.exists()) {
-        final bytes = await winArialBd.readAsBytes();
-        return pw.Font.ttf(bytes.buffer.asByteData());
-      }
-    } catch (_) {}
-
-    return pw.Font.helveticaBold();
+    await _loadFonts();
+    return _cairoBold!;
   }
 
   static Future<Uint8List> generateReceiptPdf(
@@ -77,6 +73,8 @@ class ReceiptPdfService {
     String? tableNumber,
     String? orderNumber,
     String? wifiInfo,
+    int? paidAmount,
+    int? changeAmount,
   }) async {
     final cfg = config ?? ReceiptSettingsService.current;
     final effectiveStoreName =
@@ -154,14 +152,24 @@ class ReceiptPdfService {
       }
     }
 
+    final bool isCash = invoice.paymentMethod.contains('نقد') ||
+        invoice.paymentMethod.toLowerCase().contains('cash');
+    final effectivePaidAmount = paidAmount ??
+        invoice.paidAmount ??
+        (isCash ? invoice.total : null);
+    final effectiveChangeAmount = changeAmount ??
+        invoice.changeAmount ??
+        (isCash ? 0 : null);
+
     final doc = pw.Document();
     final font = await _loadArabicFont();
     final boldFont = await _loadArabicBoldFont();
 
+    final bool is58mm = cfg.paperWidthMm == 58;
     final rollFormat = PdfPageFormat(
-      (cfg.paperWidthMm == 58 ? 58 : 80) * PdfPageFormat.mm,
+      (is58mm ? 48 : 72) * PdfPageFormat.mm,
       double.infinity,
-      marginAll: (cfg.paperWidthMm == 58 ? 2 : 4) * PdfPageFormat.mm,
+      marginAll: (is58mm ? 1.0 : 1.5) * PdfPageFormat.mm,
     );
 
     final dateFormat = DateFormat('yyyy/MM/dd - hh:mm a');
@@ -372,52 +380,40 @@ class ReceiptPdfService {
                 _dashedLine(),
                 pw.SizedBox(height: 6),
 
-                // Table Header
+                // Table Header (2-Tier Layout)
                 pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Expanded(
-                      flex: 5,
-                      child: pw.Text(
-                        'الصنف',
-                        style: pw.TextStyle(font: boldFont, fontSize: 8),
-                      ),
+                    pw.Text(
+                      'الصنف',
+                      style: pw.TextStyle(font: boldFont, fontSize: 8.5),
                     ),
-                    pw.Expanded(
-                      flex: 2,
-                      child: pw.Text(
-                        'ك',
-                        textAlign: pw.TextAlign.center,
-                        style: pw.TextStyle(font: boldFont, fontSize: 8),
-                      ),
-                    ),
-                    pw.Expanded(
-                      flex: 3,
-                      child: pw.Text(
-                        'السعر',
-                        textAlign: pw.TextAlign.center,
-                        style: pw.TextStyle(font: boldFont, fontSize: 8),
-                      ),
-                    ),
-                    pw.Expanded(
-                      flex: 3,
-                      child: pw.Text(
-                        'الإجمالي',
-                        textAlign: pw.TextAlign.left,
-                        style: pw.TextStyle(font: boldFont, fontSize: 8),
-                      ),
+                    pw.Text(
+                      'الكمية × السعر / الإجمالي',
+                      style: pw.TextStyle(font: boldFont, fontSize: 8.5),
                     ),
                   ],
                 ),
-                pw.SizedBox(height: 4),
+                pw.SizedBox(height: 3),
                 _dottedLine(),
-                pw.SizedBox(height: 4),
+                pw.SizedBox(height: 3),
 
                 // Items Rows
                 ..._buildReceiptItemRows(invoice.items, cfg, boldFont, isHospitality: isHospitalityMode),
 
-                pw.SizedBox(height: 6),
+                pw.SizedBox(height: 4),
                 _dashedLine(),
-                pw.SizedBox(height: 6),
+                pw.SizedBox(height: 3),
+
+                // Total items and pieces count (Addendum 30.7)
+                pw.Text(
+                  'عدد الأصناف: ${invoice.items.length}  |  إجمالي القطع: ${invoice.totalQuantity}',
+                  style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey800),
+                  textAlign: pw.TextAlign.center,
+                ),
+                pw.SizedBox(height: 3),
+                _dashedLine(),
+                pw.SizedBox(height: 4),
 
                 // Financial Summary
                 pw.Row(
@@ -425,11 +421,11 @@ class ReceiptPdfService {
                   children: [
                     pw.Text(
                       'المجموع الفرعي:',
-                      style: const pw.TextStyle(fontSize: 9),
+                      style: const pw.TextStyle(fontSize: 8.5),
                     ),
                     pw.Text(
                       '${Money(invoice.subtotal).toDisplay()} ج.م',
-                      style: const pw.TextStyle(fontSize: 9),
+                      style: const pw.TextStyle(fontSize: 8.5),
                     ),
                   ],
                 ),
@@ -441,14 +437,14 @@ class ReceiptPdfService {
                       pw.Text(
                         'خصم العروض:',
                         style: const pw.TextStyle(
-                          fontSize: 9,
+                          fontSize: 8.5,
                           color: PdfColors.green700,
                         ),
                       ),
                       pw.Text(
                         '-${Money(invoice.totalPromotionDiscount).toDisplay()} ج.م',
                         style: const pw.TextStyle(
-                          fontSize: 9,
+                          fontSize: 8.5,
                           color: PdfColors.green700,
                         ),
                       ),
@@ -461,16 +457,16 @@ class ReceiptPdfService {
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
                       pw.Text(
-                        'خصم:',
+                        'خصم إضافي:',
                         style: const pw.TextStyle(
-                          fontSize: 9,
+                          fontSize: 8.5,
                           color: PdfColors.red700,
                         ),
                       ),
                       pw.Text(
                         '-${Money(invoice.discountAmount).toDisplay()} ج.م',
                         style: const pw.TextStyle(
-                          fontSize: 9,
+                          fontSize: 8.5,
                           color: PdfColors.red700,
                         ),
                       ),
@@ -491,7 +487,7 @@ class ReceiptPdfService {
                         'الإجمالي المطلوب:',
                         style: pw.TextStyle(
                           font: boldFont,
-                          fontSize: 11,
+                          fontSize: 10.5,
                           fontWeight: pw.FontWeight.bold,
                         ),
                       ),
@@ -499,7 +495,7 @@ class ReceiptPdfService {
                         '${Money(invoice.total).toDisplay()} ج.م',
                         style: pw.TextStyle(
                           font: boldFont,
-                          fontSize: 12,
+                          fontSize: 11.5,
                           fontWeight: pw.FontWeight.bold,
                         ),
                       ),
@@ -507,20 +503,63 @@ class ReceiptPdfService {
                   ),
                 ),
 
+                if (effectivePaidAmount != null && effectivePaidAmount > 0) ...[
+                  pw.SizedBox(height: 3),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text(
+                        'المبلغ المدفوع (نقداً):',
+                        style: const pw.TextStyle(fontSize: 8.5),
+                      ),
+                      pw.Text(
+                        '${Money(effectivePaidAmount).toDisplay()} ج.م',
+                        style: const pw.TextStyle(fontSize: 8.5),
+                      ),
+                    ],
+                  ),
+                ],
+                if (effectiveChangeAmount != null) ...[
+                  pw.SizedBox(height: 2),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text(
+                        'الباقي المسترد للعميل:',
+                        style: pw.TextStyle(
+                          font: boldFont,
+                          fontSize: 8.5,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                      pw.Text(
+                        '${Money(effectiveChangeAmount).toDisplay()} ج.م',
+                        style: pw.TextStyle(
+                          font: boldFont,
+                          fontSize: 8.5,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+
                 if (cfg.showBarcode) ...[
-                  pw.SizedBox(height: 10),
-                  pw.Container(
-                    height: 35,
+                  pw.SizedBox(height: 8),
+                  pw.Center(
                     child: pw.BarcodeWidget(
+                      barcode: pw.Barcode.qrCode(),
                       data: invoice.shortRef,
-                      barcode: pw.Barcode.code128(),
+                      width: 45,
+                      height: 45,
                       drawText: false,
                     ),
                   ),
                   pw.SizedBox(height: 2),
                   pw.Text(
-                    invoice.shortRef,
-                    style: const pw.TextStyle(fontSize: 7),
+                    '#${invoice.shortRef}',
+                    style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey700),
+                    textAlign: pw.TextAlign.center,
                   ),
                 ],
 
@@ -694,18 +733,18 @@ class ReceiptPdfService {
   }
 
   static pw.Widget _dashedLine() {
-    return pw.Text(
-      '------------------------------------------------',
-      style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey500),
-      maxLines: 1,
+    return pw.Divider(
+      borderStyle: pw.BorderStyle.dashed,
+      color: PdfColors.grey500,
+      thickness: 0.8,
     );
   }
 
   static pw.Widget _dottedLine() {
-    return pw.Text(
-      '- - - - - - - - - - - - - - - - - - - - - - - - -',
-      style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey400),
-      maxLines: 1,
+    return pw.Divider(
+      borderStyle: pw.BorderStyle.dotted,
+      color: PdfColors.grey400,
+      thickness: 0.8,
     );
   }
 
@@ -745,52 +784,50 @@ class ReceiptPdfService {
               : (it.modifiers.isNotEmpty ? it.modifiers.join(' - ') : null);
 
           return pw.Padding(
-            padding: const pw.EdgeInsets.symmetric(vertical: 2),
+            padding: const pw.EdgeInsets.symmetric(vertical: 2.5),
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 pw.Text(
                   itemLabel,
-                  style: pw.TextStyle(fontSize: 8, font: boldFont),
+                  style: pw.TextStyle(
+                    fontSize: 8.5,
+                    font: boldFont,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                  softWrap: true,
                 ),
                 if (noteText != null) ...[
+                  pw.SizedBox(height: 1),
                   pw.Padding(
-                    padding:
-                        const pw.EdgeInsets.only(top: 1, bottom: 1, right: 4),
+                    padding: const pw.EdgeInsets.only(right: 4),
                     child: pw.Text(
-                      '* ملاحظة التحضير: ($noteText)',
+                      '* ملاحظة: ($noteText)',
                       style: const pw.TextStyle(
-                        fontSize: 7,
+                        fontSize: 7.5,
                         color: PdfColors.grey700,
                       ),
+                      softWrap: true,
                     ),
                   ),
                 ],
+                pw.SizedBox(height: 2),
                 pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Expanded(flex: 5, child: pw.SizedBox()),
-                    pw.Expanded(
-                      flex: 2,
-                      child: pw.Text(
-                        _formatItemQty(it),
-                        textAlign: pw.TextAlign.center,
-                        style: const pw.TextStyle(fontSize: 8),
+                    pw.Text(
+                      '${_formatItemQty(it)} × ${Money(it.price).toDisplay()} ج.م',
+                      style: const pw.TextStyle(
+                        fontSize: 8,
+                        color: PdfColors.grey800,
                       ),
                     ),
-                    pw.Expanded(
-                      flex: 3,
-                      child: pw.Text(
-                        Money(it.price).toDisplay(),
-                        textAlign: pw.TextAlign.center,
-                        style: const pw.TextStyle(fontSize: 8),
-                      ),
-                    ),
-                    pw.Expanded(
-                      flex: 3,
-                      child: pw.Text(
-                        Money(it.lineTotal).toDisplay(),
-                        textAlign: pw.TextAlign.left,
-                        style: const pw.TextStyle(fontSize: 8),
+                    pw.Text(
+                      '${Money(it.lineTotal).toDisplay()} ج.م',
+                      style: pw.TextStyle(
+                        fontSize: 8.5,
+                        font: boldFont,
+                        fontWeight: pw.FontWeight.bold,
                       ),
                     ),
                   ],
@@ -823,60 +860,61 @@ class ReceiptPdfService {
           }).join('، ');
 
           return pw.Padding(
-            padding: const pw.EdgeInsets.symmetric(vertical: 2),
+            padding: const pw.EdgeInsets.symmetric(vertical: 2.5),
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 pw.Text(
                   first.productName,
-                  style: pw.TextStyle(fontSize: 8, font: boldFont),
+                  style: pw.TextStyle(
+                    fontSize: 8.5,
+                    font: boldFont,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                  softWrap: true,
                 ),
-                if (!isHospitality)
+                if (!isHospitality) ...[
+                  pw.SizedBox(height: 1),
                   pw.Text(
                     '($variantsSummary)',
                     style: const pw.TextStyle(
-                      fontSize: 7,
+                      fontSize: 7.5,
                       color: PdfColors.grey700,
                     ),
+                    softWrap: true,
                   ),
+                ],
                 if (groupNotes.isNotEmpty) ...[
+                  pw.SizedBox(height: 1),
                   pw.Padding(
-                    padding:
-                        const pw.EdgeInsets.only(top: 1, bottom: 1, right: 4),
+                    padding: const pw.EdgeInsets.only(right: 4),
                     child: pw.Text(
-                      '* ملاحظة التحضير: ($groupNotes)',
+                      '* ملاحظة: ($groupNotes)',
                       style: const pw.TextStyle(
-                        fontSize: 7,
+                        fontSize: 7.5,
                         color: PdfColors.grey700,
                       ),
+                      softWrap: true,
                     ),
                   ),
                 ],
+                pw.SizedBox(height: 2),
                 pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Expanded(flex: 5, child: pw.SizedBox()),
-                    pw.Expanded(
-                      flex: 2,
-                      child: pw.Text(
-                        '$totalQty',
-                        textAlign: pw.TextAlign.center,
-                        style: const pw.TextStyle(fontSize: 8),
+                    pw.Text(
+                      '$totalQty قطع',
+                      style: const pw.TextStyle(
+                        fontSize: 8,
+                        color: PdfColors.grey800,
                       ),
                     ),
-                    pw.Expanded(
-                      flex: 3,
-                      child: pw.Text(
-                        '-',
-                        textAlign: pw.TextAlign.center,
-                        style: const pw.TextStyle(fontSize: 8),
-                      ),
-                    ),
-                    pw.Expanded(
-                      flex: 3,
-                      child: pw.Text(
-                        Money(totalLine).toDisplay(),
-                        textAlign: pw.TextAlign.left,
-                        style: const pw.TextStyle(fontSize: 8),
+                    pw.Text(
+                      '${Money(totalLine).toDisplay()} ج.م',
+                      style: pw.TextStyle(
+                        fontSize: 8.5,
+                        font: boldFont,
+                        fontWeight: pw.FontWeight.bold,
                       ),
                     ),
                   ],
@@ -900,51 +938,50 @@ class ReceiptPdfService {
               : (it.modifiers.isNotEmpty ? it.modifiers.join(' - ') : null);
 
       return pw.Padding(
-        padding: const pw.EdgeInsets.symmetric(vertical: 2),
+        padding: const pw.EdgeInsets.symmetric(vertical: 2.5),
         child: pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
             pw.Text(
               itemLabel,
-              style: pw.TextStyle(fontSize: 8, font: boldFont),
+              style: pw.TextStyle(
+                fontSize: 8.5,
+                font: boldFont,
+                fontWeight: pw.FontWeight.bold,
+              ),
+              softWrap: true,
             ),
             if (noteText != null) ...[
+              pw.SizedBox(height: 1),
               pw.Padding(
-                padding: const pw.EdgeInsets.only(top: 1, bottom: 1, right: 4),
+                padding: const pw.EdgeInsets.only(right: 4),
                 child: pw.Text(
-                  '* ملاحظة التحضير: ($noteText)',
+                  '* ملاحظة: ($noteText)',
                   style: const pw.TextStyle(
-                    fontSize: 7,
+                    fontSize: 7.5,
                     color: PdfColors.grey700,
                   ),
+                  softWrap: true,
                 ),
               ),
             ],
+            pw.SizedBox(height: 2),
             pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Expanded(flex: 5, child: pw.SizedBox()),
-                pw.Expanded(
-                  flex: 2,
-                  child: pw.Text(
-                    _formatItemQty(it),
-                    textAlign: pw.TextAlign.center,
-                    style: const pw.TextStyle(fontSize: 8),
+                pw.Text(
+                  '${_formatItemQty(it)} × ${Money(it.price).toDisplay()} ج.م',
+                  style: const pw.TextStyle(
+                    fontSize: 8,
+                    color: PdfColors.grey800,
                   ),
                 ),
-                pw.Expanded(
-                  flex: 3,
-                  child: pw.Text(
-                    Money(it.price).toDisplay(),
-                    textAlign: pw.TextAlign.center,
-                    style: const pw.TextStyle(fontSize: 8),
-                  ),
-                ),
-                pw.Expanded(
-                  flex: 3,
-                  child: pw.Text(
-                    Money(it.lineTotal).toDisplay(),
-                    textAlign: pw.TextAlign.left,
-                    style: const pw.TextStyle(fontSize: 8),
+                pw.Text(
+                  '${Money(it.lineTotal).toDisplay()} ج.م',
+                  style: pw.TextStyle(
+                    fontSize: 8.5,
+                    font: boldFont,
+                    fontWeight: pw.FontWeight.bold,
                   ),
                 ),
               ],
@@ -1131,10 +1168,11 @@ class ReceiptPdfService {
     final font = await _loadArabicFont();
     final boldFont = await _loadArabicBoldFont();
 
+    final bool is58mm = cfg.paperWidthMm == 58;
     final rollFormat = PdfPageFormat(
-      (cfg.paperWidthMm == 58 ? 58 : 80) * PdfPageFormat.mm,
+      (is58mm ? 48 : 72) * PdfPageFormat.mm,
       double.infinity,
-      marginAll: (cfg.paperWidthMm == 58 ? 2 : 4) * PdfPageFormat.mm,
+      marginAll: (is58mm ? 1.0 : 1.5) * PdfPageFormat.mm,
     );
 
     final dateFormat = DateFormat('yyyy/MM/dd - hh:mm a');

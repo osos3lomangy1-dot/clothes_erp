@@ -23,6 +23,8 @@ class InvoiceDetailsEntity extends Equatable {
   final String? tableNumber;
   final String? orderNumber;
   final String? wifiInfo;
+  final int? paidAmount; // in piasters
+  final int? changeAmount; // in piasters
 
   const InvoiceDetailsEntity({
     required this.id,
@@ -44,6 +46,8 @@ class InvoiceDetailsEntity extends Equatable {
     this.tableNumber,
     this.orderNumber,
     this.wifiInfo,
+    this.paidAmount,
+    this.changeAmount,
   });
 
   InvoiceDetailsEntity copyWith({
@@ -66,6 +70,8 @@ class InvoiceDetailsEntity extends Equatable {
     String? tableNumber,
     String? orderNumber,
     String? wifiInfo,
+    int? paidAmount,
+    int? changeAmount,
   }) {
     return InvoiceDetailsEntity(
       id: id ?? this.id,
@@ -87,10 +93,13 @@ class InvoiceDetailsEntity extends Equatable {
       tableNumber: tableNumber ?? this.tableNumber,
       orderNumber: orderNumber ?? this.orderNumber,
       wifiInfo: wifiInfo ?? this.wifiInfo,
+      paidAmount: paidAmount ?? this.paidAmount,
+      changeAmount: changeAmount ?? this.changeAmount,
     );
   }
 
   int get totalItemsCount => items.fold<int>(0, (sum, i) => sum + i.qty);
+  int get totalQuantity => totalItemsCount;
   int get totalPromotionDiscount =>
       items.fold<int>(0, (sum, i) => sum + i.promotionDiscount);
   int get totalProfitPiasters =>
@@ -119,6 +128,8 @@ class InvoiceDetailsEntity extends Equatable {
         tableNumber,
         orderNumber,
         wifiInfo,
+        paidAmount,
+        changeAmount,
       ];
 }
 

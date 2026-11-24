@@ -5,10 +5,7 @@ import '../../domain/entities/receipt_config.dart';
 class ThermalReceiptLivePreview extends StatelessWidget {
   final ReceiptConfig config;
 
-  const ThermalReceiptLivePreview({
-    super.key,
-    required this.config,
-  });
+  const ThermalReceiptLivePreview({super.key, required this.config});
 
   @override
   Widget build(BuildContext context) {
@@ -16,7 +13,8 @@ class ThermalReceiptLivePreview extends StatelessWidget {
     final containerWidth = is58mm ? 270.0 : 330.0;
     final now = DateTime.now();
     final dateFormat = DateFormat('yyyy/MM/dd - hh:mm a');
-    final isHospitality = config.storeActivity.contains('مطاعم') ||
+    final isHospitality =
+        config.storeActivity.contains('مطاعم') ||
         config.storeActivity.contains('كافيه') ||
         config.returnPolicy.contains('الأطعمة والمشروبات');
 
@@ -150,38 +148,22 @@ class ThermalReceiptLivePreview extends StatelessWidget {
           _dashedLine(),
           const SizedBox(height: 8),
 
-          // Table Header
+          // Table Header (2-Tier Layout)
           Row(
             children: const [
               Expanded(
-                flex: 5,
+                flex: 4,
                 child: Text(
                   'الصنف',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 9.5),
                 ),
               ),
               Expanded(
-                flex: 2,
+                flex: 6,
                 child: Text(
-                  'ك',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
-                ),
-              ),
-              Expanded(
-                flex: 3,
-                child: Text(
-                  'السعر',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
-                ),
-              ),
-              Expanded(
-                flex: 3,
-                child: Text(
-                  'الإجمالي',
+                  'الكمية × السعر / الإجمالي',
                   textAlign: TextAlign.left,
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 9.5),
                 ),
               ),
             ],
@@ -225,9 +207,19 @@ class ThermalReceiptLivePreview extends StatelessWidget {
             ),
           ],
 
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           _dashedLine(),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
+
+          // Total items and pieces (Addendum 30.7)
+          const Text(
+            'عدد الأصناف: 2  |  إجمالي القطع: 3',
+            style: TextStyle(fontSize: 10, color: Colors.black87),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          _dashedLine(),
+          const SizedBox(height: 6),
 
           // Financial Summary
           _summaryRow('المجموع الفرعي:', '630.00 ج.م'),
@@ -257,29 +249,32 @@ class ThermalReceiptLivePreview extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 4),
+          _summaryRow('المبلغ المدفوع (نقداً):', '650.00 ج.م'),
+          const SizedBox(height: 2),
+          _summaryRow('الباقي المسترد للعميل:', '50.00 ج.م'),
 
-          // Barcode Simulation
+          // Barcode Simulation (QR Code - Addendum 30.7)
           if (config.showBarcode) ...[
-            const SizedBox(height: 12),
-            Container(
-              height: 38,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  36,
-                  (index) => Container(
-                    width: (index % 4 == 0) ? 3 : ((index % 3 == 0) ? 2 : 1),
-                    margin: const EdgeInsets.symmetric(horizontal: 1.2),
-                    color: (index % 5 == 1) ? Colors.transparent : Colors.black87,
-                  ),
+            const SizedBox(height: 10),
+            Center(
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.black87, width: 1.5),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Center(
+                  child: Icon(Icons.qr_code_2_rounded, size: 40, color: Colors.black87),
                 ),
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 3),
             const Text(
               '#INV-9824',
-              style: TextStyle(fontSize: 10, letterSpacing: 1),
+              style: TextStyle(fontSize: 9.5, letterSpacing: 0.5, color: Colors.grey),
+              textAlign: TextAlign.center,
             ),
           ],
 
@@ -299,7 +294,10 @@ class ThermalReceiptLivePreview extends StatelessWidget {
           if (config.footerGreeting.isNotEmpty) ...[
             Text(
               config.footerGreeting,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 10.5,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -331,23 +329,25 @@ class ThermalReceiptLivePreview extends StatelessWidget {
 
   Widget _metaRow(String label, String value, {bool isBold = false}) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           label,
           style: TextStyle(
-            fontSize: 10.5,
+            fontSize: 9.5,
             color: Colors.grey.shade700,
             fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
           ),
         ),
-        const SizedBox(width: 8),
-        Expanded(
+        const SizedBox(width: 4),
+        Flexible(
           child: Text(
             value,
             textAlign: TextAlign.left,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
             style: TextStyle(
-              fontSize: 10.5,
+              fontSize: 9.5,
               fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
               color: Colors.black87,
             ),
@@ -359,25 +359,27 @@ class ThermalReceiptLivePreview extends StatelessWidget {
 
   Widget _summaryRow(String label, String value, {bool isDiscount = false}) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            color: isDiscount ? Colors.red.shade700 : Colors.black87,
-          ),
-        ),
-        const SizedBox(width: 8),
         Expanded(
           child: Text(
-            value,
-            textAlign: TextAlign.left,
+            label,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
             style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
+              fontSize: 9.5,
               color: isDiscount ? Colors.red.shade700 : Colors.black87,
             ),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          value,
+          textAlign: TextAlign.left,
+          style: TextStyle(
+            fontSize: 9.5,
+            fontWeight: FontWeight.w600,
+            color: isDiscount ? Colors.red.shade700 : Colors.black87,
           ),
         ),
       ],
@@ -397,7 +399,7 @@ class ThermalReceiptLivePreview extends StatelessWidget {
       children: [
         Text(
           details != null ? '$name ($details)' : name,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 10.5),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
         ),
         if (note != null && note.isNotEmpty) ...[
           Padding(
@@ -405,39 +407,24 @@ class ThermalReceiptLivePreview extends StatelessWidget {
             child: Text(
               '* ملاحظة التحضير: ($note)',
               style: TextStyle(
-                fontSize: 9,
+                fontSize: 9.5,
                 color: Colors.grey.shade700,
-                fontStyle: FontStyle.italic,
               ),
             ),
           ),
         ],
+        const SizedBox(height: 2),
         Row(
           children: [
-            const Expanded(flex: 5, child: SizedBox()),
             Expanded(
-              flex: 2,
               child: Text(
-                '$qty',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 10.5),
+                '$qty × $price ج.م',
+                style: TextStyle(fontSize: 9.5, color: Colors.grey.shade800),
               ),
             ),
-            Expanded(
-              flex: 3,
-              child: Text(
-                price,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 10.5),
-              ),
-            ),
-            Expanded(
-              flex: 3,
-              child: Text(
-                total,
-                textAlign: TextAlign.left,
-                style: const TextStyle(fontSize: 10.5),
-              ),
+            Text(
+              '$total ج.م',
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -446,20 +433,18 @@ class ThermalReceiptLivePreview extends StatelessWidget {
   }
 
   Widget _dashedLine() {
-    return Text(
-      '------------------------------------------------',
-      style: TextStyle(fontSize: 9, color: Colors.grey.shade400),
-      maxLines: 1,
-      overflow: TextOverflow.clip,
+    return const Divider(
+      height: 1,
+      thickness: 0.8,
+      color: Color(0xFFBDBDBD),
     );
   }
 
   Widget _dottedLine() {
-    return Text(
-      '- - - - - - - - - - - - - - - - - - - - - - - -',
-      style: TextStyle(fontSize: 9, color: Colors.grey.shade400),
-      maxLines: 1,
-      overflow: TextOverflow.clip,
+    return const Divider(
+      height: 1,
+      thickness: 0.8,
+      color: Color(0xFFE0E0E0),
     );
   }
 }
