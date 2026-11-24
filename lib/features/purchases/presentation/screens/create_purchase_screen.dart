@@ -1374,8 +1374,11 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 12,
+                        runSpacing: 8,
                         children: [
                           Text(
                             _isHospitality
@@ -1388,6 +1391,7 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                           ),
                           Wrap(
                             spacing: 8,
+                            runSpacing: 6,
                             children: [
                               if (_isHospitality)
                                 ElevatedButton.icon(

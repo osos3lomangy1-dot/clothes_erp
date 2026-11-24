@@ -234,20 +234,36 @@ class _CrashLogsScreenState extends State<CrashLogsScreen> {
             icon: const Icon(Icons.refresh_rounded),
             onPressed: _loadLogs,
           ),
-          ElevatedButton.icon(
-            key: const Key('export_diagnostic_report_button'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            onPressed: _exportDiagnosticReport,
-            icon: const Icon(Icons.file_download_outlined, size: 16),
-            label: const Text(
-              'تصدير تقرير الدعم الفني',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-            ),
+          Builder(
+            builder: (ctx) {
+              final isCompact = MediaQuery.sizeOf(ctx).width < 800;
+              if (isCompact) {
+                return IconButton(
+                  key: const Key('export_diagnostic_report_button'),
+                  tooltip: 'تصدير تقرير الدعم الفني',
+                  icon: const Icon(Icons.file_download_outlined),
+                  onPressed: _exportDiagnosticReport,
+                );
+              }
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: ElevatedButton.icon(
+                  key: const Key('export_diagnostic_report_button'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: _exportDiagnosticReport,
+                  icon: const Icon(Icons.file_download_outlined, size: 16),
+                  label: const Text(
+                    'تصدير تقرير الدعم الفني',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
+                ),
+              );
+            },
           ),
           const SizedBox(width: 8),
           if (_logs.isNotEmpty) ...[

@@ -112,7 +112,7 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
             Builder(
               builder: (innerCtx) {
                 final screenWidth = MediaQuery.sizeOf(innerCtx).width;
-                final isCompact = screenWidth < 720;
+                final isCompact = screenWidth < 850;
                 if (isCompact) {
                   return IconButton(
                     tooltip: 'التقرير المالي الشامل',
@@ -378,7 +378,7 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth < 900) {
+        if (constraints.maxWidth < 1050) {
           return Column(
             children: [
               Row(
@@ -570,15 +570,18 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
               size: 22,
             ),
             const SizedBox(width: 8),
-            const Text(
-              'تنبيهات الأصناف منخفضة المخزون',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.onSurface,
+            const Expanded(
+              child: Text(
+                'تنبيهات الأصناف منخفضة المخزون',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.onSurface,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-            const Spacer(),
+            const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(

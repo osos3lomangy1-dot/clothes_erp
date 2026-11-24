@@ -365,25 +365,67 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.onSurface),
           ),
           actions: [
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              icon: const Icon(Icons.add_shopping_cart_rounded, color: Colors.white, size: 18),
-              label: const Text('فاتورة شراء جديدة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              onPressed: _openCreatePurchase,
+            Builder(
+              builder: (ctx) {
+                final isCompact = MediaQuery.sizeOf(ctx).width < 900;
+                if (isCompact) {
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: 'فاتورة شراء جديدة',
+                        icon: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.add_shopping_cart_rounded, color: Colors.white, size: 18),
+                        ),
+                        onPressed: _openCreatePurchase,
+                      ),
+                      IconButton(
+                        tooltip: 'إضافة مورد',
+                        icon: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: AppColors.primary),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(Icons.person_add_rounded, color: AppColors.primary, size: 18),
+                        ),
+                        onPressed: _openAddSupplierDialog,
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                  );
+                }
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      icon: const Icon(Icons.add_shopping_cart_rounded, color: Colors.white, size: 18),
+                      label: const Text('فاتورة شراء جديدة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      onPressed: _openCreatePurchase,
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      icon: Icon(Icons.person_add_rounded, color: AppColors.primary, size: 18),
+                      label: const Text('إضافة مورد', style: TextStyle(fontWeight: FontWeight.bold)),
+                      onPressed: _openAddSupplierDialog,
+                    ),
+                    const SizedBox(width: 16),
+                  ],
+                );
+              },
             ),
-            const SizedBox(width: 8),
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              icon: Icon(Icons.person_add_rounded, color: AppColors.primary, size: 18),
-              label: const Text('إضافة مورد', style: TextStyle(fontWeight: FontWeight.bold)),
-              onPressed: _openAddSupplierDialog,
-            ),
-            const SizedBox(width: 16),
           ],
           bottom: TabBar(
             controller: _tabController,
@@ -445,41 +487,64 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
 
             return Container(
               margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _summaryCard(
-                      title: 'إجمالي المشتريات',
-                      value: '${totalPurchases.toStringAsFixed(2)} ج.م',
-                      icon: Icons.shopping_bag_outlined,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _summaryCard(
-                      title: 'المبالغ المسددة',
-                      value: '${totalPaid.toStringAsFixed(2)} ج.م',
-                      icon: Icons.check_circle_outline_rounded,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _summaryCard(
-                      title: 'إجمالي ديون الموردين',
-                      value: '${totalDebt.toStringAsFixed(2)} ج.م',
-                      icon: Icons.warning_amber_rounded,
-                      isDebt: totalDebt > 0,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _summaryCard(
-                      title: 'إجمالي المرتجعات',
-                      value: '${totalReturns.toStringAsFixed(2)} ج.م',
-                      icon: Icons.assignment_return_rounded,
-                    ),
-                  ),
-                ],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final card1 = _summaryCard(
+                    title: 'إجمالي المشتريات',
+                    value: '${totalPurchases.toStringAsFixed(2)} ج.م',
+                    icon: Icons.shopping_bag_outlined,
+                  );
+                  final card2 = _summaryCard(
+                    title: 'المبالغ المسددة',
+                    value: '${totalPaid.toStringAsFixed(2)} ج.م',
+                    icon: Icons.check_circle_outline_rounded,
+                  );
+                  final card3 = _summaryCard(
+                    title: 'إجمالي ديون الموردين',
+                    value: '${totalDebt.toStringAsFixed(2)} ج.م',
+                    icon: Icons.warning_amber_rounded,
+                    isDebt: totalDebt > 0,
+                  );
+                  final card4 = _summaryCard(
+                    title: 'إجمالي المرتجعات',
+                    value: '${totalReturns.toStringAsFixed(2)} ج.م',
+                    icon: Icons.assignment_return_rounded,
+                  );
+
+                  if (constraints.maxWidth < 950) {
+                    return Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(child: card1),
+                            const SizedBox(width: 12),
+                            Expanded(child: card2),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(child: card3),
+                            const SizedBox(width: 12),
+                            Expanded(child: card4),
+                          ],
+                        ),
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    children: [
+                      Expanded(child: card1),
+                      const SizedBox(width: 12),
+                      Expanded(child: card2),
+                      const SizedBox(width: 12),
+                      Expanded(child: card3),
+                      const SizedBox(width: 12),
+                      Expanded(child: card4),
+                    ],
+                  );
+                },
               ),
             );
           },
@@ -805,13 +870,16 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
         ),
         title: Row(
           children: [
-            Text(
-              p.invoiceNumber != null && p.invoiceNumber!.isNotEmpty
-                  ? 'فاتورة #${p.invoiceNumber}'
-                  : 'فاتورة شراء #${p.id.substring(0, 8)}',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.onSurface),
+            Expanded(
+              child: Text(
+                p.invoiceNumber != null && p.invoiceNumber!.isNotEmpty
+                    ? 'فاتورة #${p.invoiceNumber}'
+                    : 'فاتورة شراء #${p.id.substring(0, 8)}',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.onSurface),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
@@ -823,7 +891,7 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
                 style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 11),
               ),
             ),
-            const Spacer(),
+            const SizedBox(width: 8),
             Text(
               p.formattedTotalAmount,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.onSurface),
@@ -832,19 +900,33 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 6),
-          child: Row(
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 4,
+            alignment: WrapAlignment.spaceBetween,
             children: [
-              Icon(Icons.person_outline_rounded, size: 16, color: Colors.grey.shade600),
-              const SizedBox(width: 4),
-              Text(p.supplierName ?? 'مورد غير محدد', style: TextStyle(color: Colors.grey.shade800)),
-              const SizedBox(width: 16),
-              Icon(Icons.calendar_today_rounded, size: 14, color: Colors.grey.shade600),
-              const SizedBox(width: 4),
-              Text(
-                '${p.purchaseDate.year}/${p.purchaseDate.month.toString().padLeft(2, '0')}/${p.purchaseDate.day.toString().padLeft(2, '0')}',
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.person_outline_rounded, size: 16, color: Colors.grey.shade600),
+                  const SizedBox(width: 4),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 160),
+                    child: Text(
+                      p.supplierName ?? 'مورد غير محدد',
+                      style: TextStyle(color: Colors.grey.shade800),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Icon(Icons.calendar_today_rounded, size: 14, color: Colors.grey.shade600),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${p.purchaseDate.year}/${p.purchaseDate.month.toString().padLeft(2, '0')}/${p.purchaseDate.day.toString().padLeft(2, '0')}',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  ),
+                ],
               ),
-              const Spacer(),
               Text(
                 'المدفوع: ${p.formattedPaidAmount} | المتبقي: ${p.formattedRemainingAmount}',
                 style: TextStyle(fontSize: 12, color: p.remainingAmount > 0 ? Colors.red.shade700 : Colors.green),
@@ -1003,115 +1085,225 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
       elevation: 1,
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: hasDebt ? Colors.red.shade50 : Colors.green.shade50,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                Icons.business_rounded,
-                color: hasDebt ? Colors.red.shade700 : Colors.green.shade700,
-                size: 26,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 650;
+            if (isNarrow) {
+              return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    s.name,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  if (s.companyName != null && s.companyName!.isNotEmpty)
-                    Text(
-                      s.companyName!,
-                      style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
-                    ),
-                  const SizedBox(height: 4),
                   Row(
                     children: [
-                      if (s.phone != null) ...[
-                        Icon(Icons.phone_rounded, size: 14, color: Colors.grey.shade600),
-                        const SizedBox(width: 4),
-                        Text(s.phone!, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-                        const SizedBox(width: 14),
-                      ],
-                      if (s.address != null) ...[
-                        Icon(Icons.location_on_outlined, size: 14, color: Colors.grey.shade600),
-                        const SizedBox(width: 4),
-                        Text(s.address!, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-                      ],
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: hasDebt ? Colors.red.shade50 : Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.business_rounded,
+                          color: hasDebt ? Colors.red.shade700 : Colors.green.shade700,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              s.name,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (s.companyName != null && s.companyName!.isNotEmpty)
+                              Text(
+                                s.companyName!,
+                                style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('المديونية المستحقة:', style: TextStyle(fontSize: 11)),
+                          Text(
+                            s.formattedBalance,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: hasDebt ? Colors.red.shade700 : Colors.green.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (hasDebt)
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green.shade700,
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                              icon: const Icon(Icons.payments_outlined, size: 15, color: Colors.white),
+                              label: const Text('سداد دفعة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
+                              onPressed: () => _openPaymentDialog(s),
+                            ),
+                          const SizedBox(width: 4),
+                          IconButton(
+                            tooltip: 'تعديل',
+                            icon: Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
+                            onPressed: () => _openEditSupplierDialog(s),
+                          ),
+                          IconButton(
+                            tooltip: 'حذف',
+                            icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red),
+                            onPressed: () => _handleDeleteSupplier(s),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+              );
+            }
+
+            return Row(
               children: [
-                const Text('المديونية المستحقة:', style: TextStyle(fontSize: 11)),
-                const SizedBox(height: 2),
-                Text(
-                  s.formattedBalance,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: hasDebt ? Colors.red.shade50 : Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.business_rounded,
                     color: hasDebt ? Colors.red.shade700 : Colors.green.shade700,
+                    size: 26,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(width: 16),
-            Row(
-              children: [
-                if (hasDebt)
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green.shade700,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        s.name,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (s.companyName != null && s.companyName!.isNotEmpty)
+                        Text(
+                          s.companyName!,
+                          style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          if (s.phone != null) ...[
+                            Icon(Icons.phone_rounded, size: 14, color: Colors.grey.shade600),
+                            const SizedBox(width: 4),
+                            Text(s.phone!, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                            const SizedBox(width: 14),
+                          ],
+                          if (s.address != null) ...[
+                            Icon(Icons.location_on_outlined, size: 14, color: Colors.grey.shade600),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                s.address!,
+                                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const Text('المديونية المستحقة:', style: TextStyle(fontSize: 11)),
+                    const SizedBox(height: 2),
+                    Text(
+                      s.formattedBalance,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: hasDebt ? Colors.red.shade700 : Colors.green.shade700,
+                      ),
                     ),
-                    icon: const Icon(Icons.payments_outlined, size: 16, color: Colors.white),
-                    label: const Text('سداد دفعة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-                    onPressed: () => _openPaymentDialog(s),
-                  ),
-                const SizedBox(width: 6),
-                IconButton(
-                  tooltip: 'تعديل',
-                  icon: Icon(Icons.edit_outlined, size: 20, color: AppColors.primary),
-                  onPressed: () => _openEditSupplierDialog(s),
+                  ],
                 ),
-                IconButton(
-                  tooltip: 'حذف',
-                  icon: const Icon(Icons.delete_outline_rounded, size: 20, color: Colors.red),
-                  onPressed: () async {
-                    final confirm = await AppFeedback.confirmDelete(
-                      context: context,
-                      title: 'تأكيد حذف المورد',
-                      content: 'هل تريد حذف المورد "${s.name}"؟ سيتم الاحتفاظ بسجل فواتيره السابقة لأغراض الأرشفة.',
-                    );
-                    if (confirm && mounted) {
-                      final success = await context.read<SuppliersCubit>().deleteSupplier(s.id);
-                      if (mounted) {
-                        if (success) {
-                          AppFeedback.showSuccess(context, 'تم حذف المورد "${s.name}" بنجاح');
-                        } else {
-                          AppFeedback.showError(context, 'تعذر حذف المورد');
-                        }
-                      }
-                    }
-                  },
+                const SizedBox(width: 16),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (hasDebt)
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.shade700,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        icon: const Icon(Icons.payments_outlined, size: 16, color: Colors.white),
+                        label: const Text('سداد دفعة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                        onPressed: () => _openPaymentDialog(s),
+                      ),
+                    const SizedBox(width: 6),
+                    IconButton(
+                      tooltip: 'تعديل',
+                      icon: Icon(Icons.edit_outlined, size: 20, color: AppColors.primary),
+                      onPressed: () => _openEditSupplierDialog(s),
+                    ),
+                    IconButton(
+                      tooltip: 'حذف',
+                      icon: const Icon(Icons.delete_outline_rounded, size: 20, color: Colors.red),
+                      onPressed: () => _handleDeleteSupplier(s),
+                    ),
+                  ],
                 ),
               ],
-            ),
-          ],
+            );
+          },
         ),
       ),
     );
+  }
+
+  Future<void> _handleDeleteSupplier(SupplierEntity s) async {
+    final confirm = await AppFeedback.confirmDelete(
+      context: context,
+      title: 'تأكيد حذف المورد',
+      content: 'هل تريد حذف المورد "${s.name}"؟ سيتم الاحتفاظ بسجل فواتيره السابقة لأغراض الأرشفة.',
+    );
+    if (confirm && mounted) {
+      final success = await context.read<SuppliersCubit>().deleteSupplier(s.id);
+      if (mounted) {
+        if (success) {
+          AppFeedback.showSuccess(context, 'تم حذف المورد "${s.name}" بنجاح');
+        } else {
+          AppFeedback.showError(context, 'تعذر حذف المورد');
+        }
+      }
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
