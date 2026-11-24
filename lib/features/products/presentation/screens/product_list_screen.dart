@@ -1521,6 +1521,50 @@ class _ProductsAndCategoriesViewState
               style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
             ),
           ],
+          if (_isHospitality &&
+              !product.culinaryData.isRawMaterial &&
+              product.restaurantRecipeItems.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Container(
+              key: Key('product_recipe_summary_${product.id}'),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.15),
+                  width: 0.8,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.account_tree_outlined,
+                    size: 13,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: Text(
+                      'المقادير: ${product.restaurantRecipeItems.map((item) {
+                        final qtyStr = item.quantityNeeded.toStringAsFixed(
+                          item.quantityNeeded.truncateToDouble() == item.quantityNeeded ? 0 : 1,
+                        );
+                        return '${item.rawMaterialName} ($qtyStr ${item.unit})';
+                      }).join(' • ')}',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const Spacer(),
           const Divider(height: 12),
           Row(

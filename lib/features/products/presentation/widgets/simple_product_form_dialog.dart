@@ -17,6 +17,8 @@ import '../../domain/repositories/product_repository.dart';
 import '../cubits/product_form_cubit.dart';
 import '../cubits/product_form_state.dart';
 import '../../../settings/data/services/activity_settings_service.dart';
+import '../../../../core/database/app_database.dart';
+import '../../domain/services/food_cost_calculator.dart';
 import 'culinary_profile_card.dart';
 
 class SimpleProductFormDialog extends StatelessWidget {
@@ -101,6 +103,13 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
   final Set<String> _selectedAllergens = {};
   String? _foodImagePath;
 
+  List<RecipeItemData> _recipeItems = [];
+  List<ProductEntity> _availableRawMaterials = [];
+  Map<String, double> _rawMaterialUnitCosts = {};
+  String _mealStockMode = 'onDemand';
+  final TextEditingController _dailyBatchCountCtrl = TextEditingController();
+  List<PaidModifierData> _paidModifiers = [];
+
   @override
   void initState() {
     super.initState();
@@ -147,6 +156,17 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
     if (cul != null && cul.allergens.isNotEmpty) {
       _selectedAllergens.addAll(cul.allergens);
     }
+    if (p != null) {
+      _recipeItems = List<RecipeItemData>.from(p.restaurantRecipeItems);
+      _mealStockMode = p.mealStockMode;
+      if (p.dailyBatchCount != null) {
+        _dailyBatchCountCtrl.text = '${p.dailyBatchCount}';
+      }
+      _paidModifiers = List<PaidModifierData>.from(p.paidModifiers);
+    }
+    _sellCtrl.addListener(() {
+      if (mounted) setState(() {});
+    });
     _descCtrl = TextEditingController(text: p?.cleanDescription ?? '');
     _warrantyCtrl = TextEditingController(text: p?.warrantyPeriod ?? '');
     _brandOrModelCtrl = TextEditingController(text: p?.brandOrModel ?? '');
@@ -154,6 +174,8 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
     _expiryCtrl = TextEditingController();
     _isInstallmentEligible = p?.isInstallmentEligible ?? true;
     _selectedCategoryId = p?.categoryId;
+
+    _loadRawMaterials();
 
     if (p != null) {
       _loadExistingVariant(p.id);
@@ -243,7 +265,63 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
     _imeiCtrl.dispose();
     _expiryCtrl.dispose();
     _rollWidthCtrl.dispose();
+    _dailyBatchCountCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadRawMaterials() async {
+    try {
+      List<ProductEntity> rawMaterials = [];
+      final Map<String, double> unitCosts = {};
+
+      if (getIt.isRegistered<ProductRepository>()) {
+        final res = await getIt<ProductRepository>().getProducts();
+        final list = res.getOrElse(() => []);
+        rawMaterials = list.where((p) => p.culinaryData.isRawMaterial).toList();
+      }
+
+      if (rawMaterials.isEmpty && getIt.isRegistered<AppDatabase>()) {
+        final db = getIt<AppDatabase>();
+        final prods = await (db.select(db.products)..where((p) => p.deletedAt.isNull())).get();
+        rawMaterials = prods
+            .where((p) => RestaurantCulinaryData.parse(p.description).isRawMaterial)
+            .map((p) => ProductEntity(
+                  id: p.id,
+                  name: p.name,
+                  description: p.description ?? '',
+                  categoryId: p.categoryId,
+                  categoryName: '',
+                  createdAt: p.createdAt,
+                  activityType: p.activityType,
+                ))
+            .toList();
+      }
+
+      if (getIt.isRegistered<AppDatabase>()) {
+        final db = getIt<AppDatabase>();
+        final rawIds = rawMaterials.map((r) => r.id).toSet();
+        if (rawIds.isNotEmpty) {
+          final allVariants = await (db.select(db.productVariants)
+                ..where((v) => v.productId.isIn(rawIds))
+                ..where((v) => v.deletedAt.isNull()))
+              .get();
+          for (final raw in rawMaterials) {
+            final matches = allVariants.where((v) => v.productId == raw.id);
+            if (matches.isNotEmpty) {
+              final purchaseCostPiasters = matches.first.costPrice;
+              unitCosts[raw.id] = raw.costPerBaseUnit(purchaseCostPiasters);
+            }
+          }
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _availableRawMaterials = rawMaterials;
+          _rawMaterialUnitCosts = unitCosts;
+        });
+      }
+    } catch (_) {}
   }
 
   int _parsePiasters(String text) {
@@ -294,6 +372,10 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
         kitchenStation: _kitchenStation,
         userDescription: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
         imagePath: _foodImagePath,
+        recipeItems: _recipeItems,
+        mealStockMode: _mealStockMode,
+        dailyBatchCount: int.tryParse(_dailyBatchCountCtrl.text.trim()),
+        paidModifiers: _paidModifiers,
       );
       finalDesc = cul.toEncodedString();
     } else {
@@ -753,6 +835,17 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
                           selectedAllergens: _selectedAllergens,
                           selectedKitchenStation: _kitchenStation,
                           imagePath: _foodImagePath,
+                          recipeItems: _recipeItems,
+                          availableRawMaterials: _availableRawMaterials,
+                          rawMaterialUnitCosts: _rawMaterialUnitCosts,
+                          salePricePiasters: _parsePiasters(_sellCtrl.text),
+                          mealStockMode: _mealStockMode,
+                          onMealStockModeChanged: (mode) =>
+                              setState(() => _mealStockMode = mode),
+                          dailyBatchCountController: _dailyBatchCountCtrl,
+                          paidModifiers: _paidModifiers,
+                          onPaidModifiersChanged: (mods) =>
+                              setState(() => _paidModifiers = mods),
                           onImagePathChanged: (val) =>
                               setState(() => _foodImagePath = val),
                           onKitchenStationChanged: (val) =>
@@ -763,6 +856,21 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
                                 _selectedAllergens.add(allergen);
                               } else {
                                 _selectedAllergens.remove(allergen);
+                              }
+                            });
+                          },
+                          onRecipeItemsChanged: (items) {
+                            setState(() {
+                              _recipeItems = items;
+                              // تحديث سعر التكلفة التلقائي للوجبة بناء على مقاديرها:
+                              final totalCost =
+                                  FoodCostCalculator.calculateTotalRecipeCostPiasters(
+                                recipeItems: items,
+                                rawMaterialUnitCostsPiasters: _rawMaterialUnitCosts,
+                              );
+                              if (totalCost > 0) {
+                                _costCtrl.text =
+                                    (totalCost / 100.0).toStringAsFixed(2);
                               }
                             });
                           },

@@ -57,17 +57,29 @@ class FoodCostAnalysis {
 class FoodCostCalculator {
   const FoodCostCalculator._();
 
+  static double calculateTotalRecipeCostPiasters({
+    required List<RecipeItemData> recipeItems,
+    required Map<String, dynamic> rawMaterialUnitCostsPiasters,
+  }) {
+    double totalRecipeCost = 0.0;
+    for (final item in recipeItems) {
+      final val = rawMaterialUnitCostsPiasters[item.rawMaterialId];
+      final double unitCost = (val is num) ? val.toDouble() : 0.0;
+      totalRecipeCost += item.calculateIngredientCost(unitCost);
+    }
+    return totalRecipeCost;
+  }
+
   static FoodCostAnalysis calculate({
     required List<RecipeItemData> recipeItems,
     required Map<String, double> rawMaterialUnitCostsPiasters,
     required int salePricePiasters,
     int packagingCostPiasters = 0,
   }) {
-    double totalRecipeCost = 0.0;
-    for (final item in recipeItems) {
-      final unitCost = rawMaterialUnitCostsPiasters[item.rawMaterialId] ?? 0.0;
-      totalRecipeCost += item.calculateIngredientCost(unitCost);
-    }
+    final double totalRecipeCost = calculateTotalRecipeCostPiasters(
+      recipeItems: recipeItems,
+      rawMaterialUnitCostsPiasters: rawMaterialUnitCostsPiasters,
+    );
 
     final totalCost = totalRecipeCost + packagingCostPiasters;
     final double rawPercentage = salePricePiasters > 0
