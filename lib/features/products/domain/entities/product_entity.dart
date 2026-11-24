@@ -4,6 +4,48 @@ import 'activity_type.dart';
 
 export 'activity_type.dart';
 
+class RecipeItemData extends Equatable {
+  final String rawMaterialId;
+  final String rawMaterialName;
+  final double quantityNeeded;
+  final double yieldLossPercentage; // نسبة الفاقد الطبيعي بالطهي %
+  final String unit; // كجم، لتر، حبة، علبة
+
+  const RecipeItemData({
+    required this.rawMaterialId,
+    required this.rawMaterialName,
+    required this.quantityNeeded,
+    this.yieldLossPercentage = 0.0,
+    required this.unit,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'rawMaterialId': rawMaterialId,
+        'rawMaterialName': rawMaterialName,
+        'quantityNeeded': quantityNeeded,
+        'yieldLossPercentage': yieldLossPercentage,
+        'unit': unit,
+      };
+
+  factory RecipeItemData.fromJson(Map<String, dynamic> json) => RecipeItemData(
+        rawMaterialId: json['rawMaterialId'] as String? ?? '',
+        rawMaterialName: json['rawMaterialName'] as String? ?? '',
+        quantityNeeded: (json['quantityNeeded'] as num?)?.toDouble() ?? 0.0,
+        yieldLossPercentage:
+            (json['yieldLossPercentage'] as num?)?.toDouble() ?? 0.0,
+        unit: json['unit'] as String? ?? 'حبة',
+      );
+
+  @override
+  List<Object?> get props => [
+        rawMaterialId,
+        rawMaterialName,
+        quantityNeeded,
+        yieldLossPercentage,
+        unit,
+      ];
+}
+
 class RestaurantCulinaryData extends Equatable {
   final String? ingredients;
   final int? calories;
@@ -12,6 +54,9 @@ class RestaurantCulinaryData extends Equatable {
   final String? kitchenStation;
   final String? userDescription;
   final String? imagePath;
+  final bool isRawMaterial;
+  final String? purchaseUnit;
+  final List<RecipeItemData> recipeItems;
 
   const RestaurantCulinaryData({
     this.ingredients,
@@ -21,6 +66,9 @@ class RestaurantCulinaryData extends Equatable {
     this.kitchenStation,
     this.userDescription,
     this.imagePath,
+    this.isRawMaterial = false,
+    this.purchaseUnit,
+    this.recipeItems = const [],
   });
 
   bool get isEmpty =>
@@ -30,7 +78,10 @@ class RestaurantCulinaryData extends Equatable {
       prepTimeMinutes == null &&
       (kitchenStation == null || kitchenStation!.trim().isEmpty) &&
       (userDescription == null || userDescription!.trim().isEmpty) &&
-      (imagePath == null || imagePath!.trim().isEmpty);
+      (imagePath == null || imagePath!.trim().isEmpty) &&
+      !isRawMaterial &&
+      (purchaseUnit == null || purchaseUnit!.trim().isEmpty) &&
+      recipeItems.isEmpty;
 
   bool get hasCulinaryInfo =>
       (ingredients != null && ingredients!.trim().isNotEmpty) ||
@@ -38,7 +89,10 @@ class RestaurantCulinaryData extends Equatable {
       allergens.isNotEmpty ||
       prepTimeMinutes != null ||
       (kitchenStation != null && kitchenStation!.trim().isNotEmpty) ||
-      (imagePath != null && imagePath!.trim().isNotEmpty);
+      (imagePath != null && imagePath!.trim().isNotEmpty) ||
+      isRawMaterial ||
+      (purchaseUnit != null && purchaseUnit!.trim().isNotEmpty) ||
+      recipeItems.isNotEmpty;
 
   Map<String, dynamic> toJson() => {
         if (ingredients != null && ingredients!.trim().isNotEmpty)
@@ -52,6 +106,11 @@ class RestaurantCulinaryData extends Equatable {
           'userDescription': userDescription!.trim(),
         if (imagePath != null && imagePath!.trim().isNotEmpty)
           'imagePath': imagePath!.trim(),
+        if (isRawMaterial) 'isRawMaterial': true,
+        if (purchaseUnit != null && purchaseUnit!.trim().isNotEmpty)
+          'purchaseUnit': purchaseUnit!.trim(),
+        if (recipeItems.isNotEmpty)
+          'recipeItems': recipeItems.map((e) => e.toJson()).toList(),
       };
 
   factory RestaurantCulinaryData.fromJson(Map<String, dynamic> json) {
@@ -71,6 +130,12 @@ class RestaurantCulinaryData extends Equatable {
       kitchenStation: json['kitchenStation'] as String?,
       userDescription: json['userDescription'] as String?,
       imagePath: json['imagePath'] as String?,
+      isRawMaterial: json['isRawMaterial'] as bool? ?? false,
+      purchaseUnit: json['purchaseUnit'] as String?,
+      recipeItems: (json['recipeItems'] as List<dynamic>?)
+              ?.map((e) => RecipeItemData.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
     );
   }
 
@@ -82,6 +147,9 @@ class RestaurantCulinaryData extends Equatable {
     String? kitchenStation,
     String? userDescription,
     String? imagePath,
+    bool? isRawMaterial,
+    String? purchaseUnit,
+    List<RecipeItemData>? recipeItems,
   }) {
     return RestaurantCulinaryData(
       ingredients: ingredients ?? this.ingredients,
@@ -91,6 +159,9 @@ class RestaurantCulinaryData extends Equatable {
       kitchenStation: kitchenStation ?? this.kitchenStation,
       userDescription: userDescription ?? this.userDescription,
       imagePath: imagePath ?? this.imagePath,
+      isRawMaterial: isRawMaterial ?? this.isRawMaterial,
+      purchaseUnit: purchaseUnit ?? this.purchaseUnit,
+      recipeItems: recipeItems ?? this.recipeItems,
     );
   }
 
@@ -142,6 +213,9 @@ class RestaurantCulinaryData extends Equatable {
         kitchenStation,
         userDescription,
         imagePath,
+        isRawMaterial,
+        purchaseUnit,
+        recipeItems,
       ];
 }
 
@@ -218,6 +292,9 @@ class ProductEntity extends Equatable {
   int? get prepTimeMinutes => culinaryData.prepTimeMinutes;
   String? get kitchenStation => culinaryData.kitchenStation;
   String? get foodImagePath => culinaryData.imagePath;
+  bool get isRestaurantRawMaterial => culinaryData.isRawMaterial;
+  String? get restaurantPurchaseUnit => culinaryData.purchaseUnit;
+  List<RecipeItemData> get restaurantRecipeItems => culinaryData.recipeItems;
   String get cleanDescription {
     final parsed = culinaryData;
     if (parsed.hasCulinaryInfo) {

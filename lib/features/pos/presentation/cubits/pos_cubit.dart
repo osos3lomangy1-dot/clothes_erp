@@ -16,6 +16,9 @@ import '../../../promotions/domain/entities/promotion.dart';
 import '../../../promotions/domain/repositories/promotions_repository.dart';
 import '../../../promotions/domain/services/promotion_engine.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/database/app_database.dart' hide Promotion;
+import 'package:drift/drift.dart' show Value;
+import '../../../inventory/data/datasources/inventory_local_data_source.dart';
 import '../../../products/domain/entities/product_entity.dart';
 import '../../../settings/data/services/activity_settings_service.dart';
 
@@ -371,6 +374,12 @@ class PosCubit extends Cubit<PosState> {
           .where((v) => _currentEnabledActivities.contains(_productActivityTypeMap[v.productId] ?? 'clothing'))
           .toList();
     }
+
+    // Exclude hospitality raw materials from POS grid
+    result = result.where((v) {
+      final p = _productMap[v.productId];
+      return !(p?.isRestaurantRawMaterial ?? false);
+    }).toList();
 
     // 2. Filter by selected activity tab
     if (_currentSelectedActivity != 'all') {
@@ -789,6 +798,9 @@ class PosCubit extends Cubit<PosState> {
         final createdSale = result.getOrElse(() => sale);
         onSaleCreated?.call(createdSale);
 
+        // Auto-deduct recipe raw materials from inventory for hospitality meals
+        await _autoDeductRecipeRawMaterials(sale.items);
+
         emit(PosLoaded(
           filteredVariants: state.filteredVariants,
           categories: state.categories,
@@ -809,6 +821,130 @@ class PosCubit extends Cubit<PosState> {
       emit(state.copyWith(isProcessing: false));
       return false;
     }
+  }
+
+  Future<bool> completeSale({
+    String? cashierId,
+    List<PaymentSplit>? splits,
+    String paymentMethod = 'cash',
+    void Function(SaleEntity sale)? onSaleCreated,
+  }) => checkout(
+    cashierId: cashierId,
+    splits: splits,
+    paymentMethod: paymentMethod,
+    onSaleCreated: onSaleCreated,
+  );
+
+  Future<void> _autoDeductRecipeRawMaterials(List<SaleItemEntity> items) async {
+    for (final item in items) {
+      final variant = _allVariants.cast<VariantEntity?>().firstWhere(
+        (v) => v?.id == item.variantId,
+        orElse: () => null,
+      );
+      final productId = variant?.productId ?? _findProductIdForVariant(item.variantId);
+      final product = productId != null ? getProduct(productId) : null;
+      if (product == null || product.restaurantRecipeItems.isEmpty) continue;
+
+      for (final recipeItem in product.restaurantRecipeItems) {
+        final needed = recipeItem.quantityNeeded;
+        final yieldLoss = recipeItem.yieldLossPercentage;
+        // Formula: consumed = quantityNeeded * (1 + yieldLossPercentage / 100) * soldMealCount
+        final totalConsumed = needed * (1.0 + (yieldLoss / 100.0)) * item.quantity;
+        final int deductQty = totalConsumed.ceil();
+        if (deductQty <= 0) continue;
+
+        await _deductRawMaterialStock(
+          recipeItem.rawMaterialId,
+          deductQty,
+          item.productName,
+        );
+      }
+    }
+  }
+
+  Future<void> _deductRawMaterialStock(
+    String rawMaterialId,
+    int deductQty,
+    String parentMealName,
+  ) async {
+    VariantEntity? targetVariant = _allVariants.cast<VariantEntity?>().firstWhere(
+      (v) => v?.id == rawMaterialId,
+      orElse: () => _allVariants.cast<VariantEntity?>().firstWhere(
+        (v) => v?.productId == rawMaterialId,
+        orElse: () => null,
+      ),
+    );
+
+    String effectiveVariantId = targetVariant?.id ?? rawMaterialId;
+
+    if (getIt.isRegistered<AppDatabase>()) {
+      final db = getIt<AppDatabase>();
+      if (targetVariant == null) {
+        final row = await (db.select(db.productVariants)
+              ..where((t) => t.id.equals(rawMaterialId))
+              ..limit(1))
+            .getSingleOrNull() ??
+            await (db.select(db.productVariants)
+              ..where((t) => t.productId.equals(rawMaterialId))
+              ..limit(1))
+            .getSingleOrNull();
+        if (row != null) {
+          effectiveVariantId = row.id;
+        }
+      }
+
+      if (getIt.isRegistered<InventoryLocalDataSource>()) {
+        try {
+          await getIt<InventoryLocalDataSource>().applyStockMovement(
+            variantId: effectiveVariantId,
+            qtyDelta: -deductQty,
+            type: StockMovementType.adjustment,
+            reason: 'استهلاك تلقائي لوصفة طهي (BOM): $parentMealName',
+            userId: 'pos_cashier',
+            refType: 'recipe_bom',
+          );
+        } catch (_) {
+          await _directDeductVariantQuantity(db, effectiveVariantId, deductQty);
+        }
+      } else {
+        await _directDeductVariantQuantity(db, effectiveVariantId, deductQty);
+      }
+    }
+
+    final idx = _allVariants.indexWhere((v) => v.id == effectiveVariantId);
+    if (idx != -1) {
+      final old = _allVariants[idx];
+      _allVariants[idx] = old.copyWith(
+        quantity: (old.quantity - deductQty).clamp(0, 999999),
+      );
+    }
+  }
+
+  Future<void> _directDeductVariantQuantity(
+    AppDatabase db,
+    String variantId,
+    int deductQty,
+  ) async {
+    final row = await (db.select(db.productVariants)
+          ..where((t) => t.id.equals(variantId)))
+        .getSingleOrNull();
+    if (row != null) {
+      final newQty = (row.quantity - deductQty).clamp(0, 999999);
+      await (db.update(db.productVariants)..where((t) => t.id.equals(variantId)))
+          .write(
+        ProductVariantsCompanion(
+          quantity: Value(newQty),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+    }
+  }
+
+  String? _findProductIdForVariant(String variantId) {
+    for (final v in _allVariants) {
+      if (v.id == variantId) return v.productId;
+    }
+    return null;
   }
 
   void _updateCart(PosState state, List<SaleItemEntity> newCart) {

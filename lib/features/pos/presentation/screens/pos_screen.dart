@@ -48,6 +48,7 @@ import '../../../products/presentation/widgets/simple_product_form_dialog.dart';
 import '../../../delivery/domain/entities/delivery_order_entity.dart';
 import '../../../delivery/domain/repositories/delivery_repository.dart';
 import '../../../delivery/presentation/screens/delivery_orders_screen.dart';
+import '../../../inventory/presentation/widgets/kitchen_waste_dialog.dart';
 import '../../../delivery/presentation/widgets/delivery_checkout_dialog.dart';
 import '../../../pre_orders/presentation/screens/pre_orders_screen.dart';
 import '../../../auth/services/cashier_permissions_service.dart';
@@ -1354,6 +1355,34 @@ class _PosViewState extends State<_PosView> {
 
                 const SizedBox(width: 8),
 
+                // Kitchen Waste Dialog [Key('kitchen_waste_btn')]
+                OutlinedButton.icon(
+                  key: const Key('kitchen_waste_btn'),
+                  onPressed: () => KitchenWasteDialog.show(context),
+                  icon: const Icon(Icons.delete_sweep_rounded, size: 16),
+                  label: const Text(
+                    'إذن هالك [مطبخ]',
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.error,
+                    side: BorderSide(
+                      color: AppColors.error.withValues(alpha: 0.5),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    minimumSize: const Size(0, 36),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 8),
+
                 // Re-Print Last Invoice [F9]
                 OutlinedButton.icon(
                   key: const Key('pos_reprint_last_invoice_button'),
@@ -1885,7 +1914,10 @@ class _ProductPanelState extends State<_ProductPanel> {
             final posCubit = context.read<PosCubit>();
             List<VariantEntity> allVariants = [];
             try {
-              allVariants = posCubit.allVariants;
+              allVariants = posCubit.allVariants.where((v) {
+                final p = posCubit.getProduct(v.productId);
+                return !(p?.isRestaurantRawMaterial ?? false);
+              }).toList();
             } catch (_) {
               allVariants = [];
             }
@@ -2067,7 +2099,21 @@ class _ProductPanelState extends State<_ProductPanel> {
                     ),
                   );
                 }
-                if (state.filteredVariants.isEmpty) {
+                final posCubit = context.read<PosCubit>();
+                final isHospitalityMode = (getIt.isRegistered<ActivitySettingsService>() &&
+                    getIt<ActivitySettingsService>().cachedEnabledActivities.contains(ActivityType.restaurantsCafes)) ||
+                    state.filteredVariants.any((v) {
+                      final p = posCubit.getProduct(v.productId);
+                      return p?.activityTypeEnum == ActivityType.restaurantsCafes;
+                    });
+                final displayedVariants = isHospitalityMode
+                    ? state.filteredVariants.where((v) {
+                        final p = posCubit.getProduct(v.productId);
+                        return !(p?.isRestaurantRawMaterial ?? false);
+                      }).toList()
+                    : state.filteredVariants;
+
+                if (displayedVariants.isEmpty) {
                   final query = widget.searchQuery.trim();
                   return Center(
                     child: Column(
@@ -2116,13 +2162,6 @@ class _ProductPanelState extends State<_ProductPanel> {
                     ),
                   );
                 }
-                final posCubit = context.read<PosCubit>();
-                final isHospitalityMode = (getIt.isRegistered<ActivitySettingsService>() &&
-                    getIt<ActivitySettingsService>().cachedEnabledActivities.contains(ActivityType.restaurantsCafes)) ||
-                    state.filteredVariants.any((v) {
-                      final p = posCubit.getProduct(v.productId);
-                      return p?.activityTypeEnum == ActivityType.restaurantsCafes;
-                    });
                 return GridView.builder(
                   controller: widget.gridScrollController,
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
@@ -2132,9 +2171,9 @@ class _ProductPanelState extends State<_ProductPanel> {
                     crossAxisSpacing: 8,
                     mainAxisExtent: isHospitalityMode ? 172 : 118,
                   ),
-                  itemCount: state.filteredVariants.length,
+                  itemCount: displayedVariants.length,
                   itemBuilder: (context, index) {
-                    final variant = state.filteredVariants[index];
+                    final variant = displayedVariants[index];
                     final catId = posCubit.getProductCategoryId(
                       variant.productId,
                     );

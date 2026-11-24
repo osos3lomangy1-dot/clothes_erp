@@ -1,14 +1,20 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/retail_sector.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/features/feature_gate.dart';
 import '../../../../core/utils/barcode_helper.dart';
 import 'package:drift/drift.dart' hide Column, Table;
+import '../../../../core/database/branch_provider.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../../inventory/domain/entities/goods_receipt_entity.dart';
+import '../../../products/domain/entities/product_entity.dart';
+import '../../../settings/data/services/activity_settings_service.dart';
 import '../../data/datasources/purchases_local_data_source.dart';
 
 import '../cubits/purchases_cubit.dart';
@@ -138,6 +144,29 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
   final _paidController = TextEditingController(text: '0');
   final _notesController = TextEditingController();
 
+  static const List<String> kitchenSupplyUnits = [
+    'بالعدد / حبة',
+    'كيلوجرام',
+    'شيكارة 25ك',
+    'لتر / جركن',
+    'كرتونة / باكت',
+  ];
+
+  StreamSubscription<String?>? _sectorSub;
+  StreamSubscription<List<ActivityType>>? _activitySub;
+  String _sectorMode = RetailSector.apparel;
+
+  bool get _isHospitality {
+    if (RetailSector.isHospitalityMode(_sectorMode)) return true;
+    final enabled = getIt.isRegistered<ActivitySettingsService>()
+        ? getIt<ActivitySettingsService>().cachedEnabledActivities
+        : <ActivityType>[];
+    if (enabled.length == 1 && enabled.contains(ActivityType.restaurantsCafes)) {
+      return true;
+    }
+    return false;
+  }
+
   String? _selectedSupplierId;
   DateTime _purchaseDate = DateTime.now();
   final List<_InvoiceItemRow> _items = [];
@@ -158,6 +187,22 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
   void initState() {
     super.initState();
     context.read<SuppliersCubit>().loadSuppliers();
+
+    if (getIt.isRegistered<FeatureGate>()) {
+      getIt<FeatureGate>().getMeta(RetailSector.metaKey).then((mode) {
+        if (mounted && mode != null) {
+          setState(() => _sectorMode = mode);
+        }
+      });
+      _sectorSub = getIt<FeatureGate>().watchMeta(RetailSector.metaKey).listen((mode) {
+        if (mounted) setState(() => _sectorMode = mode ?? RetailSector.apparel);
+      });
+    }
+    if (getIt.isRegistered<ActivitySettingsService>()) {
+      _activitySub = getIt<ActivitySettingsService>().watchEnabledActivities().listen((_) {
+        if (mounted) setState(() {});
+      });
+    }
 
     if (widget.initialItems != null && widget.initialItems!.isNotEmpty) {
       if (widget.initialGoodsReceipt != null) {
@@ -225,6 +270,8 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
 
   @override
   void dispose() {
+    _sectorSub?.cancel();
+    _activitySub?.cancel();
     _invoiceNumController.dispose();
     _paidController.dispose();
     _notesController.dispose();
@@ -332,10 +379,12 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
               ),
               title: Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'اختيار صنف للفاتورة',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      _isHospitality
+                          ? 'اختيار خامة / مستلزم للفاتورة'
+                          : 'اختيار صنف للفاتورة',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
                   OutlinedButton.icon(
@@ -345,7 +394,12 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     ),
                     icon: const Icon(Icons.add, size: 16),
-                    label: const Text('إضافة مقاس جديد لصنف مسجل', style: TextStyle(fontSize: 12)),
+                    label: Text(
+                      _isHospitality
+                          ? 'إضافة وحدة توريد لخامة مسجلة'
+                          : 'إضافة مقاس جديد لصنف مسجل',
+                      style: const TextStyle(fontSize: 12),
+                    ),
                     onPressed: () {
                       Navigator.pop(ctx);
                       _showAddNewVariantDialog();
@@ -360,8 +414,9 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                   children: [
                     TextField(
                       decoration: InputDecoration(
-                        hintText:
-                            'ابحث باسم الموديل، كود الصنف، أو اللون...',
+                        hintText: _isHospitality
+                            ? 'ابحث باسم الخامة، المستلزم، أو كود التوريد...'
+                            : 'ابحث باسم الموديل، كود الصنف، أو اللون...',
                         prefixIcon: const Icon(Icons.search_rounded),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
@@ -377,7 +432,7 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                           : ListView.separated(
                               itemCount: filtered.length,
                               separatorBuilder: (context, index) =>
-                                  const Divider(height: 1),
+                                   const Divider(height: 1),
                               itemBuilder: (context, idx) {
                                 final row = filtered[idx];
                                 final v = row.readTable(db.productVariants);
@@ -387,13 +442,17 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
 
                                 return ListTile(
                                   title: Text(
-                                    '${p.name} (${v.color} - مقاس ${v.size})',
+                                    _isHospitality
+                                        ? '${p.name} (${v.size})'
+                                        : '${p.name} (${v.color} - مقاس ${v.size})',
                                     style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                   subtitle: Text(
-                                    'كود: ${v.sku} | الرصيد الحالي: ${v.quantity} قطعة',
+                                    _isHospitality
+                                        ? 'كود: ${v.sku} | الرصيد الحالي: ${v.quantity} ${v.size}'
+                                        : 'كود: ${v.sku} | الرصيد الحالي: ${v.quantity} قطعة',
                                   ),
                                   trailing: Text(
                                     'تكلفة سابقة: ${currentCostPounds.toStringAsFixed(2)} ج.م',
@@ -426,6 +485,197 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
     );
   }
 
+  Future<void> _showAddQuickRawMaterialDialog() async {
+    final db = getIt<AppDatabase>();
+    final nameCtrl = TextEditingController();
+    final costCtrl = TextEditingController(text: '50.00');
+    final qtyCtrl = TextEditingController(text: '1');
+    String selectedUnit = kitchenSupplyUnits.first;
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                Icon(Icons.kitchen_rounded, color: AppColors.primary, size: 22),
+                const SizedBox(width: 8),
+                const Text(
+                  'إضافة خامة أو مستلزم تشغيل سريع',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 480,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      key: const Key('raw_material_name_field'),
+                      controller: nameCtrl,
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        labelText: 'اسم الخامة أو المستلزم *',
+                        hintText: 'مثال: أرز بسمتي، صدور دجاج، زيت قلي، مناديل...',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      key: const Key('raw_material_unit_dropdown'),
+                      initialValue: selectedUnit,
+                      decoration: const InputDecoration(
+                        labelText: 'وحدة التوريد للمطبخ *',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: kitchenSupplyUnits
+                          .map((u) => DropdownMenuItem(value: u, child: Text(u)))
+                          .toList(),
+                      onChanged: (val) {
+                        if (val != null) setDialogState(() => selectedUnit = val);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            key: const Key('raw_material_cost_field'),
+                            controller: costCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(
+                              labelText: 'سعر شراء الوحدة (ج.م) *',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            key: const Key('raw_material_qty_field'),
+                            controller: qtyCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'الكمية الموردة *',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton.icon(
+                key: const Key('confirm_add_raw_material_btn'),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                icon: const Icon(Icons.check, color: Colors.white, size: 18),
+                label: const Text(
+                  'حفظ وإدراج بالفاتورة',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                onPressed: () async {
+                  final name = nameCtrl.text.trim();
+                  if (name.isEmpty) {
+                    _showToast('يرجى كتابة اسم الخامة', isError: true);
+                    return;
+                  }
+                  final cost = double.tryParse(costCtrl.text.trim()) ?? 0.0;
+                  final qty = int.tryParse(qtyCtrl.text.trim()) ?? 0;
+                  if (qty <= 0) {
+                    _showToast('يرجى تحديد كمية صحيحة أكبر من صفر', isError: true);
+                    return;
+                  }
+
+                  final branchId = getIt.isRegistered<BranchProvider>()
+                      ? await getIt<BranchProvider>().getBranchId()
+                      : 'branch_main';
+
+                  final categories = await (db.select(db.categories)
+                    ..where((c) => c.deletedAt.isNull())).get();
+                  String categoryId = categories.isNotEmpty ? categories.first.id : 'cat_raw';
+                  final foundCat = categories.where((c) =>
+                    c.name.contains('خام') || c.name.contains('مستلزم') || c.name.contains('مطبخ')).firstOrNull;
+                  if (foundCat != null) {
+                    categoryId = foundCat.id;
+                  }
+
+                  final newProductId = const Uuid().v4();
+                  final newVariantId = const Uuid().v4();
+                  final sku = BarcodeHelper.generateSku(size: selectedUnit);
+                  final culinary = RestaurantCulinaryData(
+                    isRawMaterial: true,
+                    purchaseUnit: selectedUnit,
+                  );
+
+                  final now = DateTime.now();
+                  await db.into(db.products).insert(
+                    ProductsCompanion.insert(
+                      id: newProductId,
+                      branchId: branchId,
+                      categoryId: categoryId,
+                      name: name,
+                      description: Value(culinary.toEncodedString()),
+                      activityType: const Value('restaurantsCafes'),
+                      createdAt: now,
+                      updatedAt: now,
+                    ),
+                  );
+
+                  await db.into(db.productVariants).insert(
+                    ProductVariantsCompanion.insert(
+                      id: newVariantId,
+                      branchId: branchId,
+                      productId: newProductId,
+                      sku: sku,
+                      size: selectedUnit,
+                      color: 'خامة',
+                      costPrice: (cost * 100).round(),
+                      sellPrice: 0,
+                      quantity: const Value(0),
+                      createdAt: now,
+                      updatedAt: now,
+                    ),
+                  );
+
+                  if (!mounted) return;
+                  setState(() {
+                    _items.add(_InvoiceItemRow(
+                      variantId: newVariantId,
+                      productName: name,
+                      sku: sku,
+                      color: 'خامة',
+                      size: selectedUnit,
+                      qty: qty,
+                      costPricePounds: cost,
+                    ));
+                  });
+
+                  if (dialogCtx.mounted) {
+                    Navigator.pop(dialogCtx);
+                  }
+                  _showToast('تمت إضافة الخامة وإدراجها بالفاتورة بنجاح');
+                },
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   Future<void> _showAddNewVariantDialog() async {
     final db = getIt<AppDatabase>();
     final products = await (db.select(db.products)
@@ -435,15 +685,20 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
 
     if (!mounted) return;
     if (products.isEmpty) {
-      _showToast('لا توجد منتجات مسجلة لإضافة مقاس لها', isError: true);
+      _showToast(
+        _isHospitality
+            ? 'لا توجد خامات مسجلة لإضافة وحدة توريد لها'
+            : 'لا توجد منتجات مسجلة لإضافة مقاس لها',
+        isError: true,
+      );
       return;
     }
 
     Product selectedProduct = products.first;
-    final sizeCtrl = TextEditingController(text: 'L');
-    final colorCtrl = TextEditingController(text: 'افتراضي');
+    final sizeCtrl = TextEditingController(text: _isHospitality ? kitchenSupplyUnits.first : 'L');
+    final colorCtrl = TextEditingController(text: _isHospitality ? 'خامة' : 'افتراضي');
     final costCtrl = TextEditingController(text: '100.00');
-    final sellCtrl = TextEditingController(text: '150.00');
+    final sellCtrl = TextEditingController(text: _isHospitality ? '0.00' : '150.00');
     final qtyCtrl = TextEditingController(text: '10');
 
     if (!mounted) return;
@@ -453,7 +708,12 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
         builder: (dialogCtx, setDialogState) {
           return AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: const Text('إضافة مقاس جديد لموديل مسجل', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            title: Text(
+              _isHospitality
+                  ? 'إضافة وحدة توريد جديدة لخامة مسجلة'
+                  : 'إضافة مقاس جديد لموديل مسجل',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
             content: SizedBox(
               width: 480,
               child: SingleChildScrollView(
@@ -463,9 +723,11 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                     DropdownButtonFormField<Product>(
                       key: const Key('select_existing_product_dropdown'),
                       initialValue: selectedProduct,
-                      decoration: const InputDecoration(
-                        labelText: 'اختر الموديل / المنتج المسجل *',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: _isHospitality
+                            ? 'اختر الخامة / المستلزم المسجل *'
+                            : 'اختر الموديل / المنتج المسجل *',
+                        border: const OutlineInputBorder(),
                       ),
                       items: products.map((p) => DropdownMenuItem(value: p, child: Text(p.name))).toList(),
                       onChanged: (val) {
@@ -473,32 +735,55 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                       },
                     ),
                     const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            key: const Key('new_variant_size_field'),
-                            controller: sizeCtrl,
-                            decoration: const InputDecoration(
-                              labelText: 'المقاس / البعد *',
-                              hintText: 'مثال: 2×3 م أو 42 أو XL',
-                              border: OutlineInputBorder(),
+                    if (_isHospitality) ...[
+                      DropdownButtonFormField<String>(
+                        key: const Key('new_variant_supply_unit_dropdown'),
+                        initialValue: kitchenSupplyUnits.contains(sizeCtrl.text)
+                            ? sizeCtrl.text
+                            : kitchenSupplyUnits.first,
+                        decoration: const InputDecoration(
+                          labelText: 'وحدة التوريد للمطبخ *',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: kitchenSupplyUnits
+                            .map((u) => DropdownMenuItem(value: u, child: Text(u)))
+                            .toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setDialogState(() {
+                              sizeCtrl.text = val;
+                            });
+                          }
+                        },
+                      ),
+                    ] else ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              key: const Key('new_variant_size_field'),
+                              controller: sizeCtrl,
+                              decoration: const InputDecoration(
+                                labelText: 'المقاس / البعد *',
+                                hintText: 'مثال: 2×3 م أو 42 أو XL',
+                                border: OutlineInputBorder(),
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: TextField(
-                            key: const Key('new_variant_color_field'),
-                            controller: colorCtrl,
-                            decoration: const InputDecoration(
-                              labelText: 'اللون',
-                              border: OutlineInputBorder(),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              key: const Key('new_variant_color_field'),
+                              controller: colorCtrl,
+                              decoration: const InputDecoration(
+                                labelText: 'اللون',
+                                border: OutlineInputBorder(),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     Row(
                       children: [
@@ -507,24 +792,28 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                             key: const Key('new_variant_cost_field'),
                             controller: costCtrl,
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            decoration: const InputDecoration(
-                              labelText: 'سعر الشراء (ج.م) *',
-                              border: OutlineInputBorder(),
+                            decoration: InputDecoration(
+                              labelText: _isHospitality
+                                  ? 'سعر الشراء للوحدة (ج.م) *'
+                                  : 'سعر الشراء (ج.م) *',
+                              border: const OutlineInputBorder(),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: TextField(
-                            key: const Key('new_variant_sell_field'),
-                            controller: sellCtrl,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            decoration: const InputDecoration(
-                              labelText: 'سعر البيع (ج.م) *',
-                              border: OutlineInputBorder(),
+                        if (!_isHospitality) ...[
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              key: const Key('new_variant_sell_field'),
+                              controller: sellCtrl,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              decoration: const InputDecoration(
+                                labelText: 'سعر البيع (ج.م) *',
+                                border: OutlineInputBorder(),
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -554,7 +843,10 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                 onPressed: () async {
                   final size = sizeCtrl.text.trim();
                   if (size.isEmpty) {
-                    _showToast('يرجى تحديد المقاس أو البعد', isError: true);
+                    _showToast(
+                      _isHospitality ? 'يرجى اختيار وحدة التوريد' : 'يرجى تحديد المقاس أو البعد',
+                      isError: true,
+                    );
                     return;
                   }
                   final costPounds = double.tryParse(costCtrl.text.trim()) ?? 0.0;
@@ -566,7 +858,9 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                   }
                   final newVariantId = const Uuid().v4();
                   final cleanSku = BarcodeHelper.generateSku(size: size);
-                  final color = colorCtrl.text.trim().isEmpty ? 'افتراضي' : colorCtrl.text.trim();
+                  final color = _isHospitality
+                      ? 'خامة'
+                      : (colorCtrl.text.trim().isEmpty ? 'افتراضي' : colorCtrl.text.trim());
 
                   await db.into(db.productVariants).insert(
                     ProductVariantsCompanion.insert(
@@ -1084,32 +1378,64 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'الأصناف المشتراة (${_items.length})',
+                            _isHospitality
+                                ? 'الخامات والمستلزمات المشتراة (${_items.length})'
+                                : 'الأصناف المشتراة (${_items.length})',
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
                             ),
                           ),
-                          ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green.shade700,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
+                          Wrap(
+                            spacing: 8,
+                            children: [
+                              if (_isHospitality)
+                                ElevatedButton.icon(
+                                  key: const Key('add_raw_material_btn'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  icon: const Icon(
+                                    Icons.add_circle_outline_rounded,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                  label: const Text(
+                                    '+ خامة أو مستلزم جديد',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  onPressed: _showAddQuickRawMaterialDialog,
+                                ),
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green.shade700,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                icon: const Icon(
+                                  Icons.add_rounded,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                                label: Text(
+                                  _isHospitality
+                                      ? 'إضافة خامة مسجلة'
+                                      : 'إضافة صنف للفاتورة',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                onPressed: _showAddVariantDialog,
                               ),
-                            ),
-                            icon: const Icon(
-                              Icons.add_rounded,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                            label: const Text(
-                              'إضافة صنف للفاتورة',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            onPressed: _showAddVariantDialog,
+                            ],
                           ),
                         ],
                       ),
@@ -1127,7 +1453,9 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                               ),
                               const SizedBox(height: 10),
                               Text(
-                                'لم تتم إضافة أي أصناف بعد. اضغط على "إضافة صنف للفاتورة"',
+                                _isHospitality
+                                    ? 'لم تتم إضافة أي خامات بعد. اضغط على "+ خامة أو مستلزم جديد"'
+                                    : 'لم تتم إضافة أي أصناف بعد. اضغط على "إضافة صنف للفاتورة"',
                                 style: TextStyle(
                                   color: Colors.grey.shade600,
                                   fontWeight: FontWeight.bold,
@@ -1155,35 +1483,41 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                               decoration: BoxDecoration(
                                 color: Colors.grey.shade100,
                               ),
-                              children: const [
+                              children: [
                                 Padding(
-                                  padding: EdgeInsets.all(12),
+                                  padding: const EdgeInsets.all(12),
                                   child: Text(
-                                    'الصنف / المقاس / اللون',
-                                    style: TextStyle(
+                                    _isHospitality
+                                        ? 'الخامة / المستلزم / الوحدة'
+                                        : 'الصنف / المقاس / اللون',
+                                    style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ),
                                 Padding(
-                                  padding: EdgeInsets.all(12),
+                                  padding: const EdgeInsets.all(12),
                                   child: Text(
-                                    'الكمية (قطعة)',
-                                    style: TextStyle(
+                                    _isHospitality
+                                        ? 'الكمية الموردة'
+                                        : 'الكمية (قطعة)',
+                                    style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ),
                                 Padding(
-                                  padding: EdgeInsets.all(12),
+                                  padding: const EdgeInsets.all(12),
                                   child: Text(
-                                    'سعر الشراء للقطعة',
-                                    style: TextStyle(
+                                    _isHospitality
+                                        ? 'سعر شراء الوحدة'
+                                        : 'سعر الشراء للقطعة',
+                                    style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ),
-                                Padding(
+                                const Padding(
                                   padding: EdgeInsets.all(12),
                                   child: Text(
                                     'الإجمالي',
@@ -1192,7 +1526,7 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                                     ),
                                   ),
                                 ),
-                                Padding(
+                                const Padding(
                                   padding: EdgeInsets.all(12),
                                   child: Text(
                                     'إجراء',
@@ -1222,7 +1556,9 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                                           ),
                                         ),
                                         Text(
-                                          'كود: ${it.sku} | لون: ${it.color} | مقاس: ${it.size}',
+                                          _isHospitality
+                                              ? 'كود: ${it.sku} | الوحدة: ${it.size}'
+                                              : 'كود: ${it.sku} | لون: ${it.color} | مقاس: ${it.size}',
                                           style: TextStyle(
                                             fontSize: 12,
                                             color: Colors.grey.shade600,
@@ -1234,7 +1570,9 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                                   Padding(
                                     padding: const EdgeInsets.all(12),
                                     child: Text(
-                                      '${it.qty} قطعة',
+                                      _isHospitality
+                                          ? '${it.qty} ${it.size}'
+                                          : '${it.qty} قطعة',
                                       style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                       ),

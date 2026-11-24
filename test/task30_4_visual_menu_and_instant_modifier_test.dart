@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:clothes_erp/core/database/app_database.dart';
 import 'package:clothes_erp/core/database/branch_provider.dart';
 import 'package:clothes_erp/core/database/tx_writer.dart';
@@ -15,7 +14,6 @@ import 'package:clothes_erp/features/auth/presentation/cubits/auth_state.dart';
 import 'package:clothes_erp/features/auth/services/cashier_permissions_service.dart';
 import 'package:clothes_erp/features/categories/data/datasources/category_local_data_source.dart';
 import 'package:clothes_erp/features/categories/data/repositories/category_repository_impl.dart';
-import 'package:clothes_erp/features/categories/domain/entities/category_entity.dart';
 import 'package:clothes_erp/features/categories/domain/repositories/category_repository.dart';
 import 'package:clothes_erp/features/categories/domain/usecases/get_categories_usecase.dart';
 import 'package:clothes_erp/features/pos/domain/repositories/pos_repository.dart';

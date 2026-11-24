@@ -13,6 +13,7 @@ import '../../../product_variants/domain/entities/variant_entity.dart';
 import '../cubits/inventory_cubit.dart';
 import '../cubits/inventory_state.dart';
 import '../widgets/inventory_action_dialogs.dart';
+import '../widgets/kitchen_waste_dialog.dart';
 import 'blind_receive_screen.dart';
 import '../../../reports/presentation/screens/smart_inventory_reports_screen.dart';
 
@@ -214,6 +215,24 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       ),
                     );
                   },
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 4,
+                  ),
+                  child: OutlinedButton.icon(
+                    key: const Key('kitchen_waste_btn'),
+                    onPressed: () async {
+                      final cubit = context.read<InventoryCubit>();
+                      final res = await KitchenWasteDialog.show(context);
+                      if (res == true && mounted) {
+                        cubit.loadInventory();
+                      }
+                    },
+                    icon: const Icon(Icons.delete_sweep_rounded, size: 18, color: AppColors.error),
+                    label: const Text('إذن هالك [مطبخ]', style: TextStyle(color: AppColors.error)),
+                  ),
                 ),
                 if (isAdmin)
                   Padding(
