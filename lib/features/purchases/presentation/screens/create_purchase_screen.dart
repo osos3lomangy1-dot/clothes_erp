@@ -1274,37 +1274,68 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
         backgroundColor: Colors.white,
         elevation: 0,
         actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              onPressed: _isSaving ? null : _submitInvoice,
-              icon: _isSaving
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
+          Builder(
+            builder: (ctx) {
+              final screenWidth = MediaQuery.sizeOf(ctx).width;
+              final isCompact = screenWidth < 650;
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: isCompact
+                    ? IconButton(
+                        tooltip: 'حفظ واعتماد الفاتورة',
+                        style: IconButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onPressed: _isSaving ? null : _submitInvoice,
+                        icon: _isSaving
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.check_circle_outline_rounded,
+                                size: 20,
+                              ),
+                      )
+                    : ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onPressed: _isSaving ? null : _submitInvoice,
+                        icon: _isSaving
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.check_circle_outline_rounded,
+                                color: Colors.white,
+                              ),
+                        label: Text(
+                          _isSaving ? 'جارِ الحفظ...' : 'حفظ واعتماد الفاتورة',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                    )
-                  : const Icon(
-                      Icons.check_circle_outline_rounded,
-                      color: Colors.white,
-                    ),
-              label: Text(
-                _isSaving ? 'جارِ الحفظ...' : 'حفظ واعتماد الفاتورة',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
+              );
+            },
           ),
         ],
       ),
@@ -1434,7 +1465,7 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                               children: [
                                 supplierWidget,
                                 const SizedBox(height: 12),
-                                if (constraints.maxWidth < 600) ...[
+                                if (constraints.maxWidth < 650) ...[
                                   invoiceNumWidget,
                                   const SizedBox(height: 12),
                                   datePickerWidget,
@@ -1906,52 +1937,66 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                         },
                       ),
                       const SizedBox(height: 18),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _paidController,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  ),
-                              decoration: InputDecoration(
-                                labelText: 'المبلغ المدفوع الآن نقدياً (ج.م)',
-                                prefixIcon: const Icon(Icons.payments_outlined),
-                                helperText:
-                                    'ادخل 0 إذا كانت الفاتورة آجلة بالكامل، أو ادخل كامل المبلغ إذا كانت مسددة',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final paidWidget = TextFormField(
+                            controller: _paidController,
+                            keyboardType:
+                                const TextInputType.numberWithOptions(
+                                  decimal: true,
                                 ),
-                              ),
-                              onChanged: (_) => setState(() {}),
-                              validator: (v) {
-                                final val = double.tryParse(v ?? '') ?? 0;
-                                if (val < 0) {
-                                  return 'المبلغ لا يمكن أن يكون سالباً';
-                                }
-                                if (val > _totalInvoicePounds &&
-                                    _totalInvoicePounds > 0) {
-                                  return 'المبلغ المدفوع أكبر من إجمالي الفاتورة';
-                                }
-                                return null;
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _notesController,
-                              decoration: InputDecoration(
-                                labelText: 'ملاحظات الفاتورة',
-                                prefixIcon: const Icon(Icons.notes_rounded),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
+                            decoration: InputDecoration(
+                              labelText: 'المبلغ المدفوع الآن نقدياً (ج.م)',
+                              prefixIcon: const Icon(Icons.payments_outlined),
+                              helperText:
+                                  'ادخل 0 إذا كانت الفاتورة آجلة بالكامل، أو ادخل كامل المبلغ إذا كانت مسددة',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
                               ),
                             ),
-                          ),
-                        ],
+                            onChanged: (_) => setState(() {}),
+                            validator: (v) {
+                              final val = double.tryParse(v ?? '') ?? 0;
+                              if (val < 0) {
+                                return 'المبلغ لا يمكن أن يكون سالباً';
+                              }
+                              if (val > _totalInvoicePounds &&
+                                  _totalInvoicePounds > 0) {
+                                return 'المبلغ المدفوع أكبر من إجمالي الفاتورة';
+                              }
+                              return null;
+                            },
+                          );
+
+                          final notesWidget = TextFormField(
+                            controller: _notesController,
+                            decoration: InputDecoration(
+                              labelText: 'ملاحظات الفاتورة',
+                              prefixIcon: const Icon(Icons.notes_rounded),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                          );
+
+                          if (constraints.maxWidth < 650) {
+                            return Column(
+                              children: [
+                                paidWidget,
+                                const SizedBox(height: 12),
+                                notesWidget,
+                              ],
+                            );
+                          }
+
+                          return Row(
+                            children: [
+                              Expanded(child: paidWidget),
+                              const SizedBox(width: 14),
+                              Expanded(child: notesWidget),
+                            ],
+                          );
+                        },
                       ),
                     ],
                   ),
