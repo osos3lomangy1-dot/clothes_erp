@@ -1,11 +1,11 @@
 import 'dart:io';
 
-import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 import '../database/app_database.dart';
 import '../features/feature_gate.dart';
 import '../utils/logging.dart';
+import 'store_profile_service.dart';
 
 class BackupMetaKeys {
   static const String autoEnabled = 'backup.auto_enabled';
@@ -90,21 +90,14 @@ class LocalBackupService {
     if (_defaultBackupDirProvider != null) {
       return _defaultBackupDirProvider();
     }
-    try {
-      final docs = await getApplicationDocumentsDirectory();
-      return Directory('${docs.path}${Platform.pathSeparator}SalesSystemBackups');
-    } catch (_) {
-      final support = await getApplicationSupportDirectory();
-      return Directory('${support.path}${Platform.pathSeparator}backups');
-    }
+    return StoreProfileService.instance.activeBackupDirectory();
   }
 
   Future<File> resolveLiveDbFile() async {
     if (_liveDbFileProvider != null) {
       return _liveDbFileProvider();
     }
-    final supportDir = await getApplicationSupportDirectory();
-    return File('${supportDir.path}${Platform.pathSeparator}clothes_erp.sqlite');
+    return StoreProfileService.instance.activeDbFile();
   }
 
   Future<LocalBackupConfig> loadConfig() async {

@@ -4,6 +4,7 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/common.dart';
+import '../services/store_profile_service.dart';
 import '../utils/logging.dart';
 import 'tables/promotions.dart';
 import 'tables/promotion_targets.dart';
@@ -671,17 +672,17 @@ void _setupSqlite(CommonDatabase rawDb) {
 
 QueryExecutor _openConnection() {
   return driftDatabase(
-    name: 'clothes_erp',
+    name: StoreProfileService.instance.activeDbBaseName,
     native: DriftNativeOptions(
       shareAcrossIsolates: true,
       setup: _setupSqlite,
       databaseDirectory: () async {
-        final supportDir = await getApplicationSupportDirectory();
+        final targetFile = await StoreProfileService.instance.activeDbFile();
+        final targetDir = targetFile.parent;
         try {
-          if (!supportDir.existsSync()) {
-            await supportDir.create(recursive: true);
+          if (!targetDir.existsSync()) {
+            await targetDir.create(recursive: true);
           }
-          final targetFile = File('${supportDir.path}/clothes_erp.sqlite');
           // Apply any staged backup restore atomically BEFORE SQLite opens the DB
           final pendingRestore = File('${targetFile.path}.pending_restore');
           if (pendingRestore.existsSync()) {
@@ -716,7 +717,7 @@ QueryExecutor _openConnection() {
                 await Process.run('attrib', ['-r', targetFile.path]);
               } catch (_) {}
             }
-          } else {
+          } else if (StoreProfileService.instance.activeProfile.isDefault) {
             // Migrate existing database from previous app identity (com.example\clothes_erp)
             // or legacy Documents path so upgrading to Bay3ah preserves all user data!
             final candidates = <File>[];
@@ -742,7 +743,7 @@ QueryExecutor _openConnection() {
             }
           }
         } catch (_) {}
-        return supportDir;
+        return targetDir;
       },
     ),
   );

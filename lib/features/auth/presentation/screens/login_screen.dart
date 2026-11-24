@@ -6,6 +6,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/services/license_activation_service.dart';
+import '../../../../core/services/store_profile_service.dart';
 import '../../../../core/theme/app_branding.dart';
 import '../cubits/auth_cubit.dart';
 import '../cubits/auth_state.dart';
@@ -440,6 +441,295 @@ class _LoginViewState extends State<_LoginView> {
     );
   }
 
+  Future<void> _showStoreProfilesDialog(BuildContext context) async {
+    final profileService = StoreProfileService.instance;
+    await showDialog(
+      context: context,
+      builder: (dlgCtx) => StatefulBuilder(
+        builder: (dlgCtx, setDlgState) {
+          final profiles = profileService.profiles;
+          final activeId = profileService.activeProfileId;
+          return AlertDialog(
+            key: const Key('store_profiles_dialog'),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
+              children: [
+                Icon(Icons.workspaces_rounded, color: AppColors.primary),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'إدارة المتاجر والأنشطة المستقلة',
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 420,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'كل متجر أو نشاط يمتلك قاعدة بيانات ونسخ احتياطي وحسابات وإعدادات معزولة تماماً.',
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 12,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 260),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: profiles.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 8),
+                      itemBuilder: (ctx, idx) {
+                        final p = profiles[idx];
+                        final isActive = p.id == activeId;
+                        return InkWell(
+                          key: Key('store_profile_item_${p.id}'),
+                          borderRadius: BorderRadius.circular(10),
+                          onTap: isActive
+                              ? null
+                              : () async {
+                                  Navigator.of(dlgCtx).pop();
+                                  if (StoreProfileService
+                                          .onSwitchProfileRequested !=
+                                      null) {
+                                    await StoreProfileService
+                                        .onSwitchProfileRequested!(p.id);
+                                  } else {
+                                    await profileService.setActiveProfile(p.id);
+                                    if (mounted) setState(() {});
+                                  }
+                                },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isActive
+                                  ? AppColors.primary.withValues(alpha: 0.08)
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isActive
+                                    ? AppColors.primary
+                                    : AppColors.outlineVariant,
+                                width: isActive ? 1.5 : 1,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  isActive
+                                      ? Icons.check_circle_rounded
+                                      : Icons.storefront_rounded,
+                                  color: isActive
+                                      ? AppColors.primary
+                                      : AppColors.secondary,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        p.name,
+                                        style: TextStyle(
+                                          fontFamily: 'Cairo',
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13.5,
+                                          color: isActive
+                                              ? AppColors.primary
+                                              : AppColors.onSurface,
+                                        ),
+                                      ),
+                                      if (p.activityLabel.isNotEmpty)
+                                        Text(
+                                          p.activityLabel,
+                                          style: const TextStyle(
+                                            fontFamily: 'Cairo',
+                                            fontSize: 11,
+                                            color: AppColors.onSurfaceVariant,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                                if (isActive)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.secondary,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Text(
+                                      'نشط',
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dlgCtx).pop(),
+                child: const Text('إغلاق', style: TextStyle(fontFamily: 'Cairo')),
+              ),
+              ElevatedButton.icon(
+                key: const Key('add_new_store_profile_btn'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
+                icon: const Icon(Icons.add_business_rounded, size: 18),
+                label: const Text(
+                  'إضافة نشاط / متجر جديد',
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                onPressed: () async {
+                  Navigator.of(dlgCtx).pop();
+                  await _showCreateStoreProfileDialog(context);
+                },
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _showCreateStoreProfileDialog(BuildContext context) async {
+    final nameCtrl = TextEditingController();
+    final activityCtrl = TextEditingController();
+    String? errorText;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => AlertDialog(
+          key: const Key('create_store_profile_dialog'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.add_business_rounded, color: AppColors.secondary),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'إنشاء متجر / نشاط مستقل جديد',
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 380,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  key: const Key('new_store_name_field'),
+                  controller: nameCtrl,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: 'اسم المتجر / النشاط *',
+                    hintText: 'مثال: مطعم البركة أو فرع الملابس',
+                    errorText: errorText,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  key: const Key('new_store_activity_field'),
+                  controller: activityCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'وصف النشاط (اختياري)',
+                    hintText: 'مثال: مطاعم وكافيهات / أدوات منزلية',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
+            ),
+            ElevatedButton(
+              key: const Key('confirm_create_store_btn'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.secondary,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                final name = nameCtrl.text.trim();
+                if (name.isEmpty) {
+                  setDlgState(() => errorText = 'يرجى إدخال اسم المتجر');
+                  return;
+                }
+                final created = await StoreProfileService.instance.createProfile(
+                  name: name,
+                  activityLabel: activityCtrl.text.trim(),
+                );
+                if (!ctx.mounted) return;
+                Navigator.of(ctx).pop();
+                if (StoreProfileService.onSwitchProfileRequested != null) {
+                  await StoreProfileService.onSwitchProfileRequested!(created.id);
+                } else {
+                  await StoreProfileService.instance.setActiveProfile(created.id);
+                  if (mounted) setState(() {});
+                }
+              },
+              child: const Text(
+                'إنشاء والبدء الآن',
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -542,7 +832,7 @@ class _LoginViewState extends State<_LoginView> {
         ],
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(32),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 460),
               child: Card(
@@ -552,12 +842,87 @@ class _LoginViewState extends State<_LoginView> {
                 ),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 36,
+                    horizontal: 28,
+                    vertical: 16,
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // Active Store Profile Badge & Switcher
+                      Container(
+                        key: const Key('login_active_profile_badge'),
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceContainer,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.outlineVariant),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.store_mall_directory_rounded,
+                              size: 18,
+                              color: AppColors.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'النشاط / المتجر النشط',
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: 10,
+                                      color: AppColors.onSurfaceVariant,
+                                    ),
+                                  ),
+                                  Text(
+                                    StoreProfileService.instance.activeProfile.name,
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.primary,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: TextButton(
+                                key: const Key('login_switch_profile_btn'),
+                                onPressed: () => _showStoreProfilesDialog(context),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: AppColors.secondary,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 4,
+                                  ),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: const Text(
+                                  'تبديل المتجر / إضافة نشاط جديد',
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       Container(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(20),
@@ -570,11 +935,11 @@ class _LoginViewState extends State<_LoginView> {
                           ],
                         ),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(16),
                           child: Image.asset(
                             'assets/icons/bay3ah-256.png',
-                            width: 76,
-                            height: 76,
+                            width: 60,
+                            height: 60,
                             fit: BoxFit.cover,
                             errorBuilder: (_, _, _) => Container(
                               padding: const EdgeInsets.all(16),

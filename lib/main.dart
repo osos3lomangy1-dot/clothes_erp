@@ -1,10 +1,9 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:path_provider/path_provider.dart';
 import 'core/constants/app_colors.dart';
+import 'core/database/app_database.dart';
 import 'core/database/emergency_recovery_service.dart';
 import 'core/database/migration_marker_service.dart';
 import 'core/di/injection.dart';
@@ -13,6 +12,7 @@ import 'core/presentation/screens/emergency_recovery_screen.dart';
 import 'core/services/crash_logger_service.dart';
 import 'core/services/google_drive_backup_service.dart';
 import 'core/services/local_backup_service.dart';
+import 'core/services/store_profile_service.dart';
 import 'core/theme/app_branding.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/logging.dart';
@@ -161,14 +161,17 @@ void main() async {
   // See Phase 0 decision + TD for full removal.
   Logging.info('[Safe Mode] Running without Firebase');
 
+  // Initialize Multi-Store Profile Registry
+  await StoreProfileService.instance.init();
+  StoreProfileService.onSwitchProfileRequested = switchProfile;
+
   // Emergency Recovery Pre-Flight Check
   try {
-    final supportDir = await getApplicationSupportDirectory();
-    if (!supportDir.existsSync()) {
-      await supportDir.create(recursive: true);
+    final activeDbFile = await StoreProfileService.instance.activeDbFile();
+    if (!activeDbFile.parent.existsSync()) {
+      await activeDbFile.parent.create(recursive: true);
     }
-    final activeDbFile = File('${supportDir.path}/clothes_erp.sqlite');
-    final markerService = MigrationMarkerService(supportDir);
+    final markerService = MigrationMarkerService(activeDbFile.parent);
     final recoveryService = EmergencyRecoveryService(
       activeDbFile: activeDbFile,
       markerService: markerService,
@@ -207,6 +210,17 @@ void main() async {
   await _startNormalApp();
 }
 
+Future<void> switchProfile(String profileId) async {
+  if (getIt.isRegistered<AppDatabase>()) {
+    try {
+      await getIt<AppDatabase>().close();
+    } catch (_) {}
+  }
+  await getIt.reset();
+  await StoreProfileService.instance.setActiveProfile(profileId);
+  await _startNormalApp();
+}
+
 Future<void> _startNormalApp() async {
   await configureDependencies();
   final gate = getIt<FeatureGate>();
@@ -228,8 +242,12 @@ Future<void> _startNormalApp() async {
 
   runApp(
     MultiBlocProvider(
+      key: ValueKey('app_root_${StoreProfileService.instance.activeProfileId}'),
       providers: [BlocProvider(create: (context) => getIt<AuthCubit>())],
-      child: MyApp(isSetupCompleted: isSetupCompleted),
+      child: MyApp(
+        key: ValueKey('my_app_${StoreProfileService.instance.activeProfileId}'),
+        isSetupCompleted: isSetupCompleted,
+      ),
     ),
   );
 }
