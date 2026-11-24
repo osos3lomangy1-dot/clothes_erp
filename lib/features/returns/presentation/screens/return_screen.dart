@@ -4,9 +4,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/features/feature_gate.dart';
 import '../../../../core/utils/money.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
+import '../../../auth/presentation/widgets/manager_auth_dialog.dart';
 import '../../domain/entities/return_entity.dart';
 import '../cubits/returns_cubit.dart';
 import '../cubits/returns_state.dart';
@@ -557,15 +559,34 @@ class _ReturnScreenState extends State<ReturnScreen> {
                     child: ElevatedButton.icon(
                       onPressed: state.isProcessing || state.totalRefund == 0
                           ? null
-                          : () {
+                          : () async {
                               String cashierId = 'cashier';
+                              bool isCashier = false;
                               try {
                                 final authState = context.read<AuthCubit>().state;
                                 if (authState is AuthAuthenticated) {
                                   cashierId = authState.user.id;
+                                  isCashier = authState.user.role.toLowerCase() == 'cashier';
                                 }
                               } catch (_) {}
 
+                              if (isCashier && getIt.isRegistered<FeatureGate>()) {
+                                final pinProtected = await getIt<FeatureGate>()
+                                    .isEnabled(FeatureKeys.managerPinProtection);
+                                if (pinProtected) {
+                                  if (!context.mounted) return;
+                                  final approved =
+                                      await ManagerAuthHelper.requestManagerApproval(
+                                    context,
+                                    title: 'اعتماد المرتجع النقدي (صلاحية مدير)',
+                                    message:
+                                        'يتطلب تنفيذ المرتجع واسترداد النقدية موافقة المدير أو المشرف.',
+                                  );
+                                  if (!approved || !context.mounted) return;
+                                }
+                              }
+
+                              if (!context.mounted) return;
                               context.read<ReturnsCubit>().processReturn(
                                     reason: _reasonCtrl.text,
                                     userId: cashierId,

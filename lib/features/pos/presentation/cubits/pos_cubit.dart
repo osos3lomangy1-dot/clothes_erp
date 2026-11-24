@@ -709,6 +709,17 @@ class PosCubit extends Cubit<PosState> {
     _updateCart(state, newCart);
   }
 
+  /// Updates the cached variant's official salePrice in memory immediately.
+  void updateVariantSalePriceInCache(String variantId, int newSalePricePiasters) {
+    _allVariants = _allVariants.map((v) {
+      if (v.id == variantId) {
+        return v.copyWith(salePrice: newSalePricePiasters);
+      }
+      return v;
+    }).toList();
+    _applyFilters();
+  }
+
   void applyItemDiscount(String variantId, int discount) {
     final state = this.state;
     final newCart = state.cart.map((item) {

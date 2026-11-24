@@ -27,7 +27,7 @@ class _FakeAuthCubit extends Cubit<AuthState> implements AuthCubit {
               id: 'user-intake-1',
               name: 'أحمد مستلم المخزن',
               email: 'intake@store.com',
-              role: 'cashier',
+              role: 'admin',
               isActive: true,
               createdAt: DateTime.now(),
             ),

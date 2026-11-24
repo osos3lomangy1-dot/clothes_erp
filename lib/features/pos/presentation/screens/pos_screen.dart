@@ -10,6 +10,8 @@ import '../../../../core/di/injection.dart';
 import '../../../../core/utils/money.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
+import '../../../auth/presentation/widgets/manager_auth_dialog.dart';
+import '../../../product_variants/data/datasources/variant_local_data_source.dart';
 import '../../../customers/domain/entities/customer_entity.dart';
 import '../../../customers/domain/repositories/customer_repository.dart';
 import '../../../customers/data/datasources/customers_local_data_source.dart';
@@ -4259,6 +4261,8 @@ class _CartPanelState extends State<_CartPanel> {
   bool _creditAvailable = true;
   bool _deliveryAvailable = false;
   bool _isWholesaleMode = false;
+  bool _managerPinProtectionEnabled = false;
+  bool _managerDiscountApproved = false;
   DeliveryOrderEntity? _deliveryOrder;
   String _hospitalityOrderType = 'dineIn';
   String? _tableNumber = '1';
@@ -4616,108 +4620,47 @@ class _CartPanelState extends State<_CartPanel> {
 
   bool _isRushOrder = false;
 
+  bool get _isCashier {
+    try {
+      final authState = context.read<AuthCubit>().state;
+      return authState is AuthAuthenticated &&
+          authState.user.role.toLowerCase() == 'cashier';
+    } catch (_) {
+      return false;
+    }
+  }
+
   void confirmAndClearCart() {
     final posCubit = context.read<PosCubit>();
-    if (!_isHospitality || posCubit.state.cart.isEmpty) {
+    final needsProtection =
+        posCubit.state.cart.isNotEmpty &&
+        (_isHospitality || (_isCashier && _managerPinProtectionEnabled));
+    if (!needsProtection) {
+      _managerDiscountApproved = false;
       clearCartAndInputs();
       return;
     }
-    _showManagerVoidDialog(context, onApproved: clearCartAndInputs);
+    _showManagerVoidDialog(
+      context,
+      onApproved: () {
+        _managerDiscountApproved = false;
+        clearCartAndInputs();
+      },
+    );
   }
 
   void _showManagerVoidDialog(BuildContext context, {required VoidCallback onApproved}) {
-    final passCtrl = TextEditingController();
-    final reasonCtrl = TextEditingController();
-    String? errorText;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) {
-          return AlertDialog(
-            key: const Key('manager_void_dialog'),
-            title: Row(
-              children: [
-                Icon(Icons.security_rounded, color: AppColors.error),
-                const SizedBox(width: 8),
-                const Text(
-                  'إلغاء أوردر / تفريغ السلة (صلاحية مدير)',
-                  style: TextStyle(fontFamily: 'Cairo', fontSize: 15, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            content: SizedBox(
-              width: 380,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'يتطلب إلغاء الطلب في نشاط المطاعم إدخال كلمة مرور المشرف وتحديد سبب الإلغاء للرقابة ومنع الهدر.',
-                    style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    key: const Key('manager_void_password_field'),
-                    controller: passCtrl,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      labelText: 'كلمة مرور المشرف *',
-                      errorText: errorText,
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    key: const Key('manager_void_reason_field'),
-                    controller: reasonCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'سبب الإلغاء *',
-                      hintText: 'مثال: خطأ بالطلب، زبون غير رأيه، تأخر التحضير...',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('رجوع'),
-              ),
-              ElevatedButton(
-                key: const Key('manager_void_confirm_btn'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.error,
-                  foregroundColor: Colors.white,
-                ),
-                onPressed: () {
-                  final pass = passCtrl.text.trim();
-                  final reason = reasonCtrl.text.trim();
-                  if (pass.isEmpty) {
-                    setDialogState(() => errorText = 'يرجى إدخال كلمة مرور المشرف');
-                    return;
-                  }
-                  if (reason.isEmpty) {
-                    setDialogState(() => errorText = 'يرجى إدخال سبب الإلغاء');
-                    return;
-                  }
-                  final auth = context.read<AuthCubit>().state;
-                  final isValid = (pass == 'admin' || pass == '123456' || (auth is AuthAuthenticated && auth.user.role == 'admin'));
-                  if (!isValid) {
-                    setDialogState(() => errorText = 'كلمة المرور غير صحيحة');
-                    return;
-                  }
-                  Navigator.of(ctx).pop();
-                  onApproved();
-                },
-                child: const Text('تأكيد الإلغاء'),
-              ),
-            ],
-          );
-        },
-      ),
-    );
+    ManagerAuthHelper.requestManagerApproval(
+      context,
+      title: 'إلغاء أوردر / تفريغ السلة (صلاحية مدير)',
+      message:
+          'يتطلب إلغاء الطلب وتفريغ السلة إدخال كلمة مرور أو رمز PIN المدير وتحديد سبب الإلغاء للرقابة ومنع الهدر.',
+      requireReason: true,
+    ).then((approved) {
+      if (approved) {
+        onApproved();
+      }
+    });
   }
 
   void _printKitchenOrderTicket(BuildContext context) {
@@ -4902,6 +4845,7 @@ class _CartPanelState extends State<_CartPanel> {
     final featureOn = await gate.isEnabled(FeatureKeys.installments);
     final meta = await gate.getMeta('payment.installment');
     final deliveryOn = await gate.isEnabled(FeatureKeys.delivery);
+    final managerPinOn = await gate.isEnabled(FeatureKeys.managerPinProtection);
     if (!mounted) return;
 
     final authState = context.read<AuthCubit>().state;
@@ -4919,6 +4863,7 @@ class _CartPanelState extends State<_CartPanel> {
 
     if (mounted) {
       setState(() {
+        _managerPinProtectionEnabled = managerPinOn;
         _installmentAvailable = installmentOn;
         _creditAvailable = creditOn;
         _deliveryAvailable = deliveryOn;
@@ -6220,8 +6165,21 @@ class _CartPanelState extends State<_CartPanel> {
                                 ),
                                 Expanded(
                                   child: InkWell(
-                                    onTap: () {
+                                    onTap: () async {
                                       if (_isWholesaleMode) return;
+                                      if (_isCashier &&
+                                          !CashierPermissionsService
+                                              .current.allowManualDiscount &&
+                                          !_managerDiscountApproved) {
+                                        final ok =
+                                            await ManagerAuthHelper.requestManagerApproval(
+                                          context,
+                                          title: 'التحويل لسعر الجملة',
+                                          message:
+                                              'يتطلب التحويل إلى سعر الجملة موافقة المدير أو المشرف.',
+                                        );
+                                        if (!ok || !mounted) return;
+                                      }
                                       setState(() => _isWholesaleMode = true);
                                       _toggleWholesalePrices(true);
                                     },
@@ -6837,6 +6795,29 @@ class _CartPanelState extends State<_CartPanel> {
                                           key: const Key('pos_cart_discount_input'),
                                           controller: _discountCtrl,
                                           focusNode: _discountFocus,
+                                          readOnly: _isCashier &&
+                                              !CashierPermissionsService
+                                                  .current.allowManualDiscount &&
+                                              !_managerDiscountApproved,
+                                          onTap: () async {
+                                            if (_isCashier &&
+                                                !CashierPermissionsService
+                                                    .current.allowManualDiscount &&
+                                                !_managerDiscountApproved) {
+                                              final ok =
+                                                  await ManagerAuthHelper.requestManagerApproval(
+                                                context,
+                                                title: 'تطبيق خصم يدوي',
+                                                message:
+                                                    'صلاحية الخصم اليدوي مقيدة للكاشير. يرجى إدخال كلمة مرور / PIN المدير للاعتماد.',
+                                              );
+                                              if (ok && mounted) {
+                                                setState(() =>
+                                                    _managerDiscountApproved =
+                                                        true);
+                                              }
+                                            }
+                                          },
                                           keyboardType: TextInputType.number,
                                           style: const TextStyle(
                                             fontFamily: 'Cairo',
@@ -8530,108 +8511,277 @@ class _CartItemTileState extends State<_CartItemTile> {
     }
   }
 
-  void _openPriceEditDialog(BuildContext context) {
+  Future<void> _openPriceEditDialog(BuildContext context) async {
     final item = widget.item;
+    final authState = context.read<AuthCubit>().state;
+    final isCashier = authState is AuthAuthenticated &&
+        authState.user.role.toLowerCase() == 'cashier';
+    bool managerApproved = !isCashier;
+
+    if (isCashier && !CashierPermissionsService.current.allowManualDiscount) {
+      final approved = await ManagerAuthHelper.requestManagerApproval(
+        context,
+        title: 'تعديل سعر الصنف (اعتماد المدير)',
+        message:
+            'لا يملك الكاشير صلاحية تعديل سعر البيع مباشرة. يرجى اعتماد المدير أولاً.',
+      );
+      if (!approved || !context.mounted) return;
+      managerApproved = true;
+    }
+
     final priceCtrl = TextEditingController(
       text: (item.price / 100).toStringAsFixed(2),
     );
     final formKey = GlobalKey<FormState>();
+    bool updateOfficialPrice = false;
 
-    showDialog(
+    await showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.price_change_rounded, color: AppColors.primary),
-            const SizedBox(width: 8),
-            Text(
-              'تعديل سعر الصنف (سعر خاص / جملة)',
-              style: TextStyle(
-                fontFamily: 'Cairo',
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Icon(Icons.price_change_rounded, color: AppColors.primary),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'تعديل سعر الصنف (سعر خاص / جملة)',
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  (!(item.color == '-' && item.size == '-') &&
+                          item.color.isNotEmpty &&
+                          item.size.isNotEmpty)
+                      ? '${item.productName} (${item.color} - ${item.size})'
+                      : item.productName,
+                  style: const TextStyle(
+                    fontFamily: 'Cairo',
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  key: const Key('edit_item_price_field'),
+                  controller: priceCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  autofocus: true,
+                  style: const TextStyle(fontFamily: 'Cairo', fontSize: 14),
+                  decoration: InputDecoration(
+                    labelText: 'سعر بيع الوحدة بالج.م *',
+                    suffixText: 'ج.م',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  validator: (val) {
+                    if (val == null || val.trim().isEmpty) {
+                      return 'يرجى إدخال السعر';
+                    }
+                    final num =
+                        double.tryParse(Money.normalizeDigits(val.trim()));
+                    if (num == null || num < 0) return 'السعر غير صالح';
+                    return null;
+                  },
+                ),
+                if (managerApproved) ...[
+                  const SizedBox(height: 10),
+                  CheckboxListTile(
+                    key: const Key('update_official_price_checkbox'),
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    activeColor: AppColors.primary,
+                    value: updateOfficialPrice,
+                    onChanged: (val) => setDialogState(
+                        () => updateOfficialPrice = val ?? false),
+                    title: const Text(
+                      'تحديث السعر الرسمي للصنف في المخزن نهائياً',
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
+            ),
+            ElevatedButton(
+              key: const Key('save_edited_price_btn'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              onPressed: () async {
+                if (formKey.currentState?.validate() != true) return;
+                final pounds = double.tryParse(
+                        Money.normalizeDigits(priceCtrl.text.trim())) ??
+                    0.0;
+                final piasters = (pounds * 100).round();
+
+                if (updateOfficialPrice &&
+                    getIt.isRegistered<VariantLocalDataSource>()) {
+                  final variantDs = getIt<VariantLocalDataSource>();
+                  final existing =
+                      await variantDs.getVariantById(item.variantId);
+                  if (!ctx.mounted) return;
+                  final oldPiasters = existing?.sellPrice ?? item.price;
+                  final costPiasters = existing?.costPrice ?? 0;
+                  final isBelowCost =
+                      costPiasters > 0 && piasters < costPiasters;
+
+                  final confirmed = await showDialog<bool>(
+                    context: ctx,
+                    builder: (confirmCtx) => AlertDialog(
+                      key: const Key('confirm_official_price_dialog'),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      title: Row(
+                        children: [
+                          Icon(
+                            isBelowCost
+                                ? Icons.warning_amber_rounded
+                                : Icons.price_check_rounded,
+                            color: isBelowCost
+                                ? AppColors.error
+                                : AppColors.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'تأكيد تحديث السعر الرسمي',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'السعر الرسمي القديم: ${Money(oldPiasters).toDisplay()} ج.م',
+                            style: const TextStyle(fontFamily: 'Cairo'),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'السعر الرسمي الجديد: ${Money(piasters).toDisplay()} ج.م',
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          if (isBelowCost) ...[
+                            const SizedBox(height: 10),
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.errorContainer,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                    color:
+                                        AppColors.error.withValues(alpha: 0.4)),
+                              ),
+                              child: Text(
+                                'تحذير: السعر الجديد أقل من سعر التكلفة (${Money(costPiasters).toDisplay()} ج.م)!',
+                                style: const TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.error,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(confirmCtx, false),
+                          child: const Text('تراجع'),
+                        ),
+                        ElevatedButton(
+                          key: const Key('confirm_official_price_btn'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isBelowCost
+                                ? AppColors.error
+                                : AppColors.primary,
+                            foregroundColor: Colors.white,
+                          ),
+                          onPressed: () => Navigator.pop(confirmCtx, true),
+                          child: const Text('تأكيد التحديث النهائي'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed != true || !context.mounted) return;
+                  if (existing != null) {
+                    final userId = authState is AuthAuthenticated
+                        ? authState.user.id
+                        : 'manager';
+                    await variantDs.updateVariant(
+                      existing.id,
+                      sku: existing.sku,
+                      color: existing.color,
+                      size: existing.size,
+                      sellPrice: piasters,
+                      userId: userId,
+                    );
+                  }
+                  if (!context.mounted) return;
+                  context
+                      .read<PosCubit>()
+                      .updateVariantSalePriceInCache(item.variantId, piasters);
+                }
+
+                if (!context.mounted) return;
+                context.read<PosCubit>().updateUnitPrice(
+                      item.variantId,
+                      piasters,
+                      isReturn: item.isReturn,
+                    );
+                if (ctx.mounted) Navigator.pop(ctx);
+              },
+              child: const Text(
+                'حفظ السعر',
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
             ),
           ],
         ),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                (!(item.color == '-' && item.size == '-') &&
-                        item.color.isNotEmpty &&
-                        item.size.isNotEmpty)
-                    ? '${item.productName} (${item.color} - ${item.size})'
-                    : item.productName,
-                style: const TextStyle(
-                  fontFamily: 'Cairo',
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: priceCtrl,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                autofocus: true,
-                style: TextStyle(fontFamily: 'Cairo', fontSize: 14),
-                decoration: InputDecoration(
-                  labelText: 'سعر بيع الوحدة بالج.م *',
-                  suffixText: 'ج.م',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                validator: (val) {
-                  if (val == null || val.trim().isEmpty) {
-                    return 'يرجى إدخال السعر';
-                  }
-                  final num = double.tryParse(Money.normalizeDigits(val.trim()));
-                  if (num == null || num < 0) return 'السعر غير صالح';
-                  return null;
-                },
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            onPressed: () {
-              if (formKey.currentState?.validate() != true) return;
-              final pounds = double.tryParse(Money.normalizeDigits(priceCtrl.text.trim())) ?? 0.0;
-              final piasters = (pounds * 100).toInt();
-              context.read<PosCubit>().updateUnitPrice(
-                item.variantId,
-                piasters,
-                isReturn: item.isReturn,
-              );
-              Navigator.pop(ctx);
-            },
-            child: Text(
-              'حفظ السعر',
-              style: TextStyle(
-                fontFamily: 'Cairo',
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

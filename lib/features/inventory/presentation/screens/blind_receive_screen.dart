@@ -797,8 +797,19 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
     await _showShipmentSummaryModal();
   }
 
+  bool get _isCashier {
+    try {
+      final authState = context.read<AuthCubit>().state;
+      return authState is AuthAuthenticated &&
+          authState.user.role.toLowerCase() == 'cashier';
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> _showShipmentSummaryModal() async {
     final authState = context.read<AuthCubit>().state;
+    final isCashier = _isCashier;
     String cashierName = 'كاشير المحل';
     if (authState is AuthAuthenticated) {
       cashierName = authState.user.name.isNotEmpty ? authState.user.name : authState.user.id;
@@ -864,24 +875,33 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.teal.shade50,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.teal.shade200),
-                      ),
-                      child: Column(
-                        children: [
-                          Text('إجمالي التكلفة', style: TextStyle(fontSize: 12, color: Colors.teal.shade800)),
-                          const SizedBox(height: 4),
-                          Text('${totalCostPounds.toStringAsFixed(2)} ج.م', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.teal.shade900)),
-                        ],
+                  if (!isCashier) ...[
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.secondary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                              color: AppColors.secondary.withValues(alpha: 0.3)),
+                        ),
+                        child: Column(
+                          children: [
+                            Text('إجمالي التكلفة',
+                                style: TextStyle(
+                                    fontSize: 12, color: AppColors.secondary)),
+                            const SizedBox(height: 4),
+                            Text('${totalCostPounds.toStringAsFixed(2)} ج.م',
+                                style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary)),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
               const SizedBox(height: 16),
@@ -1258,16 +1278,17 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
                               color: Colors.grey.shade100,
                               borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                             ),
-                            child: const Row(
+                            child: Row(
                               children: [
-                                SizedBox(width: 40, child: Text('#', style: TextStyle(fontWeight: FontWeight.bold))),
-                                Expanded(flex: 3, child: Text('اسم المنتج / الموديل', style: TextStyle(fontWeight: FontWeight.bold))),
-                                Expanded(flex: 2, child: Text('كود الصنف / SKU', style: TextStyle(fontWeight: FontWeight.bold))),
-                                Expanded(flex: 1, child: Text('المقاس', style: TextStyle(fontWeight: FontWeight.bold))),
-                                Expanded(flex: 1, child: Text('اللون', style: TextStyle(fontWeight: FontWeight.bold))),
-                                Expanded(flex: 2, child: Center(child: Text('سعر الشراء', style: TextStyle(fontWeight: FontWeight.bold)))),
-                                Expanded(flex: 2, child: Center(child: Text('الكمية المستلمة', style: TextStyle(fontWeight: FontWeight.bold)))),
-                                SizedBox(width: 50, child: Center(child: Text('حذف', style: TextStyle(fontWeight: FontWeight.bold)))),
+                                const SizedBox(width: 40, child: Text('#', style: TextStyle(fontWeight: FontWeight.bold))),
+                                const Expanded(flex: 3, child: Text('اسم المنتج / الموديل', style: TextStyle(fontWeight: FontWeight.bold))),
+                                const Expanded(flex: 2, child: Text('كود الصنف / SKU', style: TextStyle(fontWeight: FontWeight.bold))),
+                                const Expanded(flex: 1, child: Text('المقاس', style: TextStyle(fontWeight: FontWeight.bold))),
+                                const Expanded(flex: 1, child: Text('اللون', style: TextStyle(fontWeight: FontWeight.bold))),
+                                if (!_isCashier)
+                                  const Expanded(flex: 2, child: Center(child: Text('سعر الشراء', style: TextStyle(fontWeight: FontWeight.bold)))),
+                                const Expanded(flex: 2, child: Center(child: Text('الكمية المستلمة', style: TextStyle(fontWeight: FontWeight.bold)))),
+                                const SizedBox(width: 50, child: Center(child: Text('حذف', style: TextStyle(fontWeight: FontWeight.bold)))),
                               ],
                             ),
                           ),
@@ -1301,55 +1322,56 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
                                         flex: 1,
                                         child: Text(line.color),
                                       ),
-                                      Expanded(
-                                        flex: 2,
-                                        child: Center(
-                                          child: InkWell(
-                                            key: Key('edit_cost_price_btn_${line.variantId}'),
-                                            onTap: () => _showEditCostDialog(line),
-                                            borderRadius: BorderRadius.circular(8),
-                                            child: Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                              decoration: BoxDecoration(
-                                                color: (line.costPricePounds != null && line.costPricePounds! > 0)
-                                                    ? Colors.teal.shade50
-                                                    : Colors.amber.shade50,
-                                                borderRadius: BorderRadius.circular(8),
-                                                border: Border.all(
+                                      if (!_isCashier)
+                                        Expanded(
+                                          flex: 2,
+                                          child: Center(
+                                            child: InkWell(
+                                              key: Key('edit_cost_price_btn_${line.variantId}'),
+                                              onTap: () => _showEditCostDialog(line),
+                                              borderRadius: BorderRadius.circular(8),
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                decoration: BoxDecoration(
                                                   color: (line.costPricePounds != null && line.costPricePounds! > 0)
-                                                      ? Colors.teal.shade300
-                                                      : Colors.amber.shade300,
-                                                ),
-                                              ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Text(
-                                                    (line.costPricePounds != null && line.costPricePounds! > 0)
-                                                        ? '${line.costPricePounds!.toStringAsFixed(2)} ج.م'
-                                                        : 'حدد السعر',
-                                                    style: TextStyle(
-                                                      fontSize: 12,
-                                                      fontWeight: FontWeight.bold,
-                                                      color: (line.costPricePounds != null && line.costPricePounds! > 0)
-                                                          ? Colors.teal.shade900
-                                                          : Colors.amber.shade900,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 4),
-                                                  Icon(
-                                                    Icons.edit_outlined,
-                                                    size: 14,
+                                                      ? AppColors.secondary.withValues(alpha: 0.1)
+                                                      : AppColors.warningContainer,
+                                                  borderRadius: BorderRadius.circular(8),
+                                                  border: Border.all(
                                                     color: (line.costPricePounds != null && line.costPricePounds! > 0)
-                                                        ? Colors.teal.shade700
-                                                        : Colors.amber.shade700,
+                                                        ? AppColors.secondary.withValues(alpha: 0.4)
+                                                        : AppColors.warning.withValues(alpha: 0.4),
                                                   ),
-                                                ],
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Text(
+                                                      (line.costPricePounds != null && line.costPricePounds! > 0)
+                                                          ? '${line.costPricePounds!.toStringAsFixed(2)} ج.م'
+                                                          : 'حدد السعر',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        fontWeight: FontWeight.bold,
+                                                        color: (line.costPricePounds != null && line.costPricePounds! > 0)
+                                                            ? AppColors.primary
+                                                            : AppColors.warning,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    Icon(
+                                                      Icons.edit_outlined,
+                                                      size: 14,
+                                                      color: (line.costPricePounds != null && line.costPricePounds! > 0)
+                                                          ? AppColors.secondary
+                                                          : AppColors.warning,
+                                                    ),
+                                                  ],
+                                                ),
                                               ),
                                             ),
                                           ),
                                         ),
-                                      ),
                                       Expanded(
                                         flex: 2,
                                         child: Row(
