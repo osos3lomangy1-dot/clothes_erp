@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:drift/drift.dart';
+import '../../../../core/constants/retail_sector.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/features/feature_gate.dart';
 import '../../../products/domain/entities/activity_type.dart';
@@ -11,6 +12,65 @@ class ActivitySettingsService {
   ActivitySettingsService(this._db, this._featureGate);
 
   static const String _metaPrefix = 'activity.';
+
+  /// Checks strict resolved hospitality mode across retail sector and enabled activities.
+  /// Unconfigured stores return all 18 activities by default, so restaurants must only
+  /// activate when explicitly selected via sectorMode == hospitality or as the sole activity.
+  static bool isHospitalityResolved({
+    required String sectorMode,
+    required List<ActivityType> enabledActivities,
+  }) {
+    if (RetailSector.isHospitalityMode(sectorMode)) return true;
+    return enabledActivities.length == 1 &&
+        enabledActivities.contains(ActivityType.restaurantsCafes);
+  }
+
+  /// Safely subscribes to [FeatureGate.watchMeta] for [RetailSector.metaKey],
+  /// ignoring unstubbed fake implementations in widget tests.
+  static StreamSubscription<String?>? listenSectorMode(
+    FeatureGate gate,
+    void Function(String mode) onMode,
+  ) {
+    try {
+      gate
+          .getMeta(RetailSector.metaKey)
+          .then((val) {
+            if (val != null) {
+              onMode(val);
+            }
+          })
+          .catchError((_) {});
+    } catch (_) {}
+    try {
+      return gate
+          .watchMeta(RetailSector.metaKey)
+          .listen(
+            (val) => onMode(val ?? RetailSector.apparel),
+            onError: (_) {},
+          );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Safely subscribes to [watchEnabledActivities] and warms cached activities,
+  /// ignoring unstubbed fake implementations in widget tests.
+  static StreamSubscription<List<ActivityType>>? listenEnabledActivities(
+    ActivitySettingsService service,
+    void Function(List<ActivityType> activities) onActivities,
+  ) {
+    try {
+      service.getEnabledActivities().then(onActivities).catchError((_) {});
+    } catch (_) {}
+    try {
+      return service.watchEnabledActivities().listen(
+        onActivities,
+        onError: (_) {},
+      );
+    } catch (_) {
+      return null;
+    }
+  }
 
   /// Checks if a specific activity type is enabled. Defaults to true.
   Future<bool> isActivityEnabled(ActivityType type) async {

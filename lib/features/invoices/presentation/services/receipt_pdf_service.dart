@@ -5,7 +5,9 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import '../../../../core/constants/retail_sector.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/features/feature_gate.dart';
 import '../../../../core/theme/app_branding.dart';
 import '../../../../core/utils/money.dart';
 import '../../../customers/domain/entities/customer_entity.dart';
@@ -89,6 +91,25 @@ class ReceiptPdfService {
     final effectiveStorePhone = storePhone ?? cfg.storePhone;
     final effectiveStoreAddress = storeAddress ?? cfg.storeAddress;
 
+    String resolvedSectorMode = RetailSector.apparel;
+    if (getIt.isRegistered<FeatureGate>()) {
+      try {
+        resolvedSectorMode =
+            await getIt<FeatureGate>().getMeta(RetailSector.metaKey) ??
+                RetailSector.apparel;
+      } catch (_) {}
+    }
+
+    List<ActivityType> enabledActs = const <ActivityType>[];
+    if (getIt.isRegistered<ActivitySettingsService>()) {
+      final actService = getIt<ActivitySettingsService>();
+      try {
+        enabledActs = await actService.getEnabledActivities();
+      } catch (_) {
+        enabledActs = actService.cachedEnabledActivities;
+      }
+    }
+
     final bool isHospitalityMode =
         isHospitality ??
         (invoice.orderType != null ||
@@ -97,9 +118,10 @@ class ReceiptPdfService {
             cfg.storeActivity.contains('مطاعم') ||
             cfg.storeActivity.contains('كافيه') ||
             cfg.returnPolicy.contains('الأطعمة والمشروبات') ||
-            (getIt.isRegistered<ActivitySettingsService>() &&
-                getIt<ActivitySettingsService>().cachedEnabledActivities
-                    .contains(ActivityType.restaurantsCafes)));
+            ActivitySettingsService.isHospitalityResolved(
+              sectorMode: resolvedSectorMode,
+              enabledActivities: enabledActs,
+            ));
 
     final effectiveOrderType = orderType ?? invoice.orderType ?? 'dineIn';
     final effectiveTableNumber = tableNumber ?? invoice.tableNumber ?? '1';

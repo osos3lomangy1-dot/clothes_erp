@@ -3787,6 +3787,30 @@ enum ActivityType {
 
 ---
 
+### 📐 ملحق 30.10.4: القضاء على التجاوزات البصرية (RenderFlex Overflows) والتجاوب التام للنافذة
+(Addendum 30.10.4: Zero RenderFlex Overflow & Desktop Responsive Window Resizing Fixes)
+
+#### 📌 1. المشاكل والتشخيص الميداني:
+1. **تجاوز شريط النسب والأرقام في كارت طرق الدفع لوحة التحكم:** ظهور شريط تحذيري أصفر وأسود عند عرض الشاشة بعرض نصفي (Half-screen) أو متوسط بسبب تزاحم نصوص النسب المئوية والمبالغ بجانب الرسم الدائري.
+2. **تزاحم حقول بيانات المورد والفاتورة في شاشة المشتريات:** حدوث تجاوز أفقي `RIGHT OVERFLOWED BY 19 PIXELS` عند تضييق النافذة أو فتح القائمة الجانبية (Sidebar) بسبب حشر حقول المورد والفاتورة في صف أفقي واحد.
+
+#### 🏗️ 2. الهيكلية المعمارية والتصميم المعتمد:
+1. **كارت توزيع طرق الدفع (`PaymentMethodPieChart`):**
+   - تغليف نصوص المبالغ والنسب داخل `FittedBox(fit: BoxFit.scaleDown)`.
+   - تعديل نقطة التحول الذكي: عند `constraints.maxWidth < 620` يتحول الكارت تلقائياً إلى النمط الرأسي (الرسم في الأعلى وقائمة طرق الدفع في الأسفل) لمنح كل بند مساحة عرض كاملة ومريحة.
+2. **شاشة إنشاء فاتورة الشراء (`CreatePurchaseScreen`):**
+   - رفع نقطة الأمان للتجاوب إلى `constraints.maxWidth < 1150` لفك التزاحم وجعل حقل المورد في سطر مستقل كامل العرض.
+   - نقطة تجاوب سفلية عند `constraints.maxWidth < 650` لتحويل كافة الحقول إلى أعمدة رأسية مريحة.
+   - زر الـ AppBar التجاوبي: يتحول إلى أيقونة مدمجة في الشاشات الضيقة لمنع أي overflow في شريط التطبيق.
+
+#### 🧪 3. معايير القبول للملحق 30.10.4:
+- [x] معالجة التجاوز في كارت توزيع طرق الدفع بلوحة التحكم عند كافة المقاسات.
+- [x] معالجة التجاوز في شاشة إنشاء فاتورة المشتريات وتجاوبها السلس من 300px إلى 1400px.
+- [x] نجاح اختبارات الوحدة المتخصصة `test/task30_10_4_responsive_layout_overflow_fix_test.dart` بنسبة 100%.
+- [x] اجتياز التحليل الساكن `dart analyze` بنسبة 100% بـ 0 أخطاء و 0 تحذيرات.
+
+---
+
 ### 💰 ملحق 30.11: الرقابة المالية ومصروفات الدرج وصندوق التيبس وتحليلات المطاعم (المرحلة 2)
 (Addendum 30.11: Restaurant Financial Control — Phase 2: Petty Cash, Shift Balance, Tips Pool, Waste Cost & Low-Stock Alerts)
 
@@ -3819,6 +3843,97 @@ enum ActivityType {
 - [ ] تقرير تكلفة الهالك المالي بالجنيه وتصنيف أسبابه.
 - [ ] تنبيه نواقص الخامات الحية على كروت الوجبات بالكاشير.
 - [ ] عزل قطاعي تام واجتياز التحليل الساكن `dart analyze` بنسبة 100% بـ 0 أخطاء و 0 تحذيرات.
+
+---
+
+### 🛡️ ملحق 30.11.1: الإحكام التام للعزل القطاعي وتطهير الكاشير والمخزون والفواتير والإعدادات
+(Addendum 30.11.1: Airtight Cross-Sector Isolation & Immediate Dynamic Activity Reaction)
+
+#### 📌 1. الحالة الراهنة (ما تم ضبطه vs ما لا يزال يسرّب):
+- **ما تم ضبطه بالفعل:**
+  - ✅ عزل زري `pos_petty_cash_btn` (`نثريات درج [سحب]`) و `kitchen_waste_btn` (`إذن هالك [مطبخ]`) في شريط الكاشير العلوي (`pos_screen.dart:1387-1435`) تحت شرط `if (_isHospitality)`.
+  - ✅ تغليف شريط الكاشير بـ `LayoutBuilder` و `SingleChildScrollView` لمنع تجاوز العرض (`Overflow`).
+  - ✅ شاشات `MainLayout` و `ProductListScreen` و `CreatePurchaseScreen` تطبق الصيغة الصارمة الموحدة للعزل وتشترك لحظياً في تغييرات النشاط.
+- **الثغرات المتبقية التي لا تزال تسبّب التسرب عند تغيير النشاط:**
+  1. **كارثة القيمة الافتراضية لـ `ActivitySettingsService` والتناقض في `_isHospitality`:**
+     - `ActivitySettingsService.getEnabledActivities()` (`activity_settings_service.dart:42`) يرجّع `true` لأي نشاط غير مسجل بعد في `app_meta`، فتكون `restaurantsCafes` مفعلة افتراضياً ضمن الـ 18 نشاطاً!
+     - الشاشات التي تفحص `.contains(ActivityType.restaurantsCafes)` فقط (`pos_screen.dart:983, 2175, 2422, 4621, 5891, 6677, 6689, 8227`، `inventory_screen.dart:104`، `purchases_screen.dart:63`، `receipt_pdf_service.dart:101`، `category_repository_impl.dart:25`) تعتبر النظام مطعماً حتى لو اختار التاجر الملابس أو متجراً متعدد الأنشطة!
+  2. **إعدادات التبديل السريع للقطاع في `system_settings_screen.dart` لا تعطل المطاعم:**
+     - في `_SectorModeSettingsCard` (`system_settings_screen.dart:4534`): النقر على `sector_tile_apparel` يغيّر `sectorMode` فقط ولا يحدّث `ActivitySettingsService`، فتبقى `restaurantsCafes` نشطة في الكاش!
+     - في سويتش `setting_pure_hospitality_isolation` (`system_settings_screen.dart:4783`): عند إطفائه (`val == false`) لا يقوم بتعطيل `restaurantsCafes` (ويجب تفعيل `clothing` أولاً قبل تعطيل `restaurantsCafes` لتفادي استثناء أمان الحد الأدنى لنشاط واحد في `setActivityEnabled:85`).
+  3. **زر إذن الهالك مكشوف في شاشة المخزون (`inventory_screen.dart:281-298`):**
+     - زر `kitchen_waste_btn` ظاهر للجميع بدون `if (_isHospitality)`.
+  4. **فرض نمط المطاعم في جدول الكاشير (`pos_screen.dart:2177 & 2420`):**
+     - السطر 2177 لا يزال يستخدم `|| state.filteredVariants.any((v) => p?.activityTypeEnum == ActivityType.restaurantsCafes)`، مما يفرض شكل المطاعم على الكاشير لمجرد وجود صنف قديم.
+  5. **تسرب خيارات الضيافة في شاشة تخصيص الفاتورة (`receipt_customizer_screen.dart`):**
+     - كارت خدمة الصالة للمطاعم (`_buildTaxAndServiceCard`: سويتش `receipt_service_charge_enabled_switch` عند سطر 775) وزر `apply_hospitality_template_body_btn` (سطر 860) يظهران لمحلات الملابس، والعكس (`المقاس واللون` وتجميع المقاسات عند سطر 690-702 يظهران للمطاعم).
+  6. **غياب التحديث اللحظي (`StreamSubscription`):**
+     - `_PosViewState` و `_CartPanelState` و `_InventoryScreenState` و `_PurchasesScreenState` و `_ReceiptCustomizerScreenState` لا تشترك في `watchEnabledActivities()` و `watchMeta(RetailSector.metaKey)`.
+
+#### 🏗️ 2. الهيكلية المعمارية والتصميم المعتمد للإصلاح:
+1. **توحيد صيغة `_isHospitality` الصارمة في كل الشاشات والخدمات:**
+   - اعتماد قاعدة مركزية واحدة متطابقة مع `MainLayout`:
+     `RetailSector.isHospitalityMode(sectorMode) || (enabledActivities.length == 1 && enabledActivities.contains(ActivityType.restaurantsCafes))`.
+   - تطبيقها في: `PosScreen` (`_PosViewState`, `_PosScreenInternalState`, `_CartPanelState`, `_CartItemTileState`, `_ProductCard`), `InventoryScreen`, `PurchasesScreen`, `ReceiptCustomizerScreen`, `ReceiptPdfService`, `CategoryRepositoryImpl`.
+2. **إحكام مزامنة الإعدادات في `system_settings_screen.dart`:**
+   - في `_SectorModeSettingsCard`: عند اختيار أي قطاع غير الضيافة (`apparel` / `supermarket` / `houseware`)، مزامنة `StorePresetsEngine.applyPreset(...)` أو ضبط الأنشطة المقابلة تلقائياً (وتعطيل `restaurantsCafes` بعد ضمان وجود نشاط التجزئة المناسب).
+   - في سويتش `setting_pure_hospitality_isolation`: عند تفعيله يفعّل `RetailSector.hospitality` + `restaurantsCafes` منفرداً، وعند إطفائه يعيد `RetailSector.apparel` + يفعّل `clothing` أولاً ثم يعطل `restaurantsCafes`.
+3. **إغلاق التسربات المتبقية في الواجهات:**
+   - `inventory_screen.dart:286`: تغليف `kitchen_waste_btn` داخل `if (_isHospitality)`.
+   - `pos_screen.dart:2177`: حذف `state.filteredVariants.any(...)` بالكامل؛ استخدام شرط المتجر الفعلي `_isHospitality` فقط في الشبكة والبطاقات (`_ProductCard` يفحص أن الصنف مطعم وأن وضع المتجر الحالي ضيافة أو يعرض حسب نشاط المتجر).
+   - `receipt_customizer_screen.dart`: عزل خدمة الصالة وزر قالب المطاعم بشرط الضيافة، وعزل المقاس واللون وتجميع المقاسات بشرط عدم الضيافة.
+4. **الاشتراك التفاعلي اللحظي عبر التدفقات:**
+   - إضافة `_activitySub` و `_sectorSub` مع قراءة أولية (`getMeta(RetailSector.metaKey)`) في الشاشات الخمس لتتحدث فورياً دون إعادة تشغيل التطبيق.
+
+#### 🧪 3. معايير القبول للملحق 30.11.1:
+- [ ] اختفاء تام لأزرار نثريات الدرج وإذن هالك المطبخ وخدمة الصالة من الكاشير والمخزون وتخصيص الإيصالات في أنشطة الملابس والتجزئة.
+- [ ] عمل التحويل من `_SectorModeSettingsCard` وسويتش `setting_pure_hospitality_isolation` مع مزامنة `ActivitySettingsService` دون أي أخطاء أو بقايا.
+- [ ] عدم تحوّل الكاشير أو المشتريات لوضع المطاعم لمجرد وجود صنف مطعم قديم في قاعدة البيانات أو لكون الأنشطة على وضعها الافتراضي.
+- [ ] تحول الكاشير والمخزون والمشتريات وتخصيص الفاتورة فورياً عند تبديل النشاط في الإعدادات.
+- [ ] نجاح اختبارات الوحدة المتخصصة `test/task30_11_1_airtight_isolation_test.dart` بنسبة 100%.
+- [ ] اجتياز التحليل الساكن `dart analyze` بنسبة 100% بـ 0 أخطاء و 0 تحذيرات.
+
+---
+
+### 🏠 ملحق 30.12: فحص ما قبل التسليم الميداني — دقة حسابات الداشبورد، جاهزية الأدوات المنزلية والمفروشات، وأمان النسخ الاحتياطي
+(Addendum 30.12: Pre-Release Merchant Readiness — Financial Truth in Dashboard/P&L, Houseware & Textiles Hybrid UX, Warranty Printing & Fractional Meter Stock)
+
+#### 📌 1. الثغرات الحرجة المكتشفة قبل إرسال التطبيق لتاجر أدوات منزلية ومفروشات:
+1. **أخطاء محاسبية في أرقام الداشبورد وتقرير الأرباح (`dashboard_local_data_source.dart` & `reports_local_data_source.dart`):**
+   - `DashboardLocalDataSourceImpl` يحسب `todayExpenses` لكل صفوف جدول المصروفات دون استثناء `e.kind == 'operating'`، مما يعني أن سداد مديونية مورد بضاعة يظهر كخسارة فورية في صافي ربح اليوم!
+   - `DashboardLocalDataSourceImpl` لا يستثني الفواتير الملغاة (`s.status.isNotValue('cancelled')`) في إجماليات المبيعات والرسم البياني الأسبوعي/بالساعة، ولا يطرح المرتجعات (`todayReturnsTotal`) وتكلفتها من صافي المبيعات والربح! (ونفس الأمر في `ReportsLocalDataSourceImpl` بخصوص المرتجعات والفواتير الملغاة).
+   - استخدام `item.priceSnapshot * item.qty` في حساب `todayTopProducts` بدلاً من `item.lineTotal` (يفقد دقة الخصومات والكميات العشرية بالمتر).
+2. **تضارب نموذج إضافة الصنف بين الأدوات المنزلية والمفروشات (`ProductListScreen` & `StorePreset`):**
+   - `textilesDecor` (مفروشات وستائر) مصنفة `isMatrixBased` (أطقم سرير وسجاد بمقاسات وألوان)، بينما `homeLiving` (أدوات منزلية وأجهزة) مصنفة `isSingleItem`.
+   - شاشة `ProductListScreen` تعتمد فقط على `RetailSector.isSingleProductMode(_sectorMode)`! مما يحرم تاجر المفروشات من إدخال المقاسات والألوان إذا اختار قطاع المنزلية، أو يربكه في الأدوات الفردية إذا اختار الأزياء.
+   - غياب قالب مخصص في `StorePreset` لـ **"معرض أدوات منزلية ومفروشات"** (`homeLiving` + `textilesDecor`).
+3. **غياب طباعة الضمان والموديل على فاتورة العميل (`ReceiptPdfService`):**
+   - رغم حفظ `warrantyPeriod` و`brandOrModel` في بطاقة الأدوات المنزلية، لا يُطبع سطر الضمان أسفل الصنف في إيصال العميل (80mm / A4).
+4. **انقطاع تتبع الرصيد العشري للأمتار في المنسوجات (`textilesDecor`):**
+   - `pos_local_data_source.dart:157` يكتب الرصيد العشري في `stock_decimal_<variantId>` ولا يُقرأ في أي شاشة أخرى، بينما تخصم حركات المخزن `qty.ceil()` (أعداد صحيحة)، ولا يدعم المرتجع العشري نفس الدقة.
+5. **خطر تداخل البطاقات (Overflow) في شاشة التقارير (`reports_screen.dart:429`):**
+   - صف كروت المؤشرات الخمسة وصف التدفق النقدي داخل `Row` ثابت بلا `LayoutBuilder`.
+
+#### 🏗️ 2. التصميم المعتمد لإغلاق ما قبل التسليم:
+1. **تصحيح المعادلات المحاسبية (`Financial Truth`):**
+   - فلترة المصروفات التشغيلية فقط في الداشبورد: `e.kind.equals('operating')`.
+   - استبعاد `status = 'cancelled'` وطرح المرتجعات (`returns.refundAmount` مع استرداد تكلفتها) في كل من `DashboardLocalDataSource` و`ReportsLocalDataSource`.
+   - استخدام `item.lineTotal` في إيرادات الأصناف بالداشبورد والتقارير.
+2. **تمكين الهجين الذكي للأدوات المنزلية والمفروشات:**
+   - إضافة `StorePreset.homeTextiles` (`أدوات منزلية ومفروشات`: يجمع `homeLiving` + `textilesDecor` + `supportsInstallment`).
+   - فتح نافذة الإضافة/التعديل بذكاء حسب طبيعة الصنف: `textilesDecor` (أو أي صنف له أكثر من Variant) يفتح مصفوفة المقاسات والألوان، و`homeLiving` يفتح النموذج المباشر السريع (مع زر تحويل اختياري لمصفوفة مقاسات عند الرغبة).
+   - إظهار شارة الضمان والموديل أسفل الصنف في الإيصال متى كانت متوفرة (`ضمان: 24 شهر`).
+   - توحيد قراءة وعرض الرصيد العشري للمتر المقطوع في الكاشير والمخزون والمرتجعات.
+3. **بروتوكول النسخ الاحتياطي والـ Release Build للتجربة:**
+   - تمرير `--dart-define-from-file=env/google_drive.local.json` أثناء `flutter build windows --release` لتعمل مزامنة Google Drive مباشرة لدى التاجر.
+   - تنظيف أي قاعدة بيانات تجريبية قبل حزم النسخة لتبدأ شاشة `FirstLaunchSetupScreen` مع التاجر.
+
+#### 🧪 3. معايير القبول للملحق 30.12:
+- [ ] دقة 100% لأرقام الداشبورد والتقارير مع استبعاد الموردين والملغي والمرتجعات.
+- [ ] وجود قالب `homeTextiles` وفتح النموذج المناسب تلقائياً للمفروشات (مقاسات وألوان) والمنزلية (سريع + ضمان).
+- [ ] طباعة الضمان على فاتورة العميل عند وجوده.
+- [ ] دقة تتبع وخصم واسترجاع كسور الأمتار في `textilesDecor`.
+- [ ] اجتياز اختبارات الوحدة `test/task30_12_merchant_readiness_audit_test.dart` والتحليل الساكن بـ 0 أخطاء.
 
 ---
 

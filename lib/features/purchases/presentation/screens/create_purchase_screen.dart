@@ -189,19 +189,22 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
     context.read<SuppliersCubit>().loadSuppliers();
 
     if (getIt.isRegistered<FeatureGate>()) {
-      getIt<FeatureGate>().getMeta(RetailSector.metaKey).then((mode) {
-        if (mounted && mode != null) {
-          setState(() => _sectorMode = mode);
-        }
-      });
-      _sectorSub = getIt<FeatureGate>().watchMeta(RetailSector.metaKey).listen((mode) {
-        if (mounted) setState(() => _sectorMode = mode ?? RetailSector.apparel);
-      });
+      _sectorSub = ActivitySettingsService.listenSectorMode(
+        getIt<FeatureGate>(),
+        (mode) {
+          if (mounted && _sectorMode != mode) {
+            setState(() => _sectorMode = mode);
+          }
+        },
+      );
     }
     if (getIt.isRegistered<ActivitySettingsService>()) {
-      _activitySub = getIt<ActivitySettingsService>().watchEnabledActivities().listen((_) {
-        if (mounted) setState(() {});
-      });
+      _activitySub = ActivitySettingsService.listenEnabledActivities(
+        getIt<ActivitySettingsService>(),
+        (_) {
+          if (mounted) setState(() {});
+        },
+      );
     }
 
     if (widget.initialItems != null && widget.initialItems!.isNotEmpty) {

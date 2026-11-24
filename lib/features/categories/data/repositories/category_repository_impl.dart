@@ -1,7 +1,9 @@
 import 'package:dartz/dartz.dart';
 import 'package:injectable/injectable.dart';
+import '../../../../core/constants/retail_sector.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/errors/failures.dart';
+import '../../../../core/features/feature_gate.dart';
 import '../../../products/domain/entities/activity_type.dart';
 import '../../../settings/data/services/activity_settings_service.dart';
 import '../../domain/entities/category_entity.dart';
@@ -22,20 +24,35 @@ class CategoryRepositoryImpl implements CategoryRepository {
 
   CategoryRepositoryImpl(this._localDataSource);
 
-  bool _isHospitalityActive() {
-    if (getIt.isRegistered<ActivitySettingsService>()) {
-      return getIt<ActivitySettingsService>()
-          .cachedEnabledActivities
-          .contains(ActivityType.restaurantsCafes);
+  Future<bool> _isHospitalityActive() async {
+    String sectorMode = RetailSector.apparel;
+    if (getIt.isRegistered<FeatureGate>()) {
+      try {
+        sectorMode =
+            await getIt<FeatureGate>().getMeta(RetailSector.metaKey) ??
+                RetailSector.apparel;
+      } catch (_) {}
     }
-    return false;
+    List<ActivityType> enabled = const <ActivityType>[];
+    if (getIt.isRegistered<ActivitySettingsService>()) {
+      final actService = getIt<ActivitySettingsService>();
+      try {
+        enabled = await actService.getEnabledActivities();
+      } catch (_) {
+        enabled = actService.cachedEnabledActivities;
+      }
+    }
+    return ActivitySettingsService.isHospitalityResolved(
+      sectorMode: sectorMode,
+      enabledActivities: enabled,
+    );
   }
 
   @override
   Future<Either<Failure, List<CategoryEntity>>> getCategories() async {
     try {
       var rows = await _localDataSource.getCategories();
-      if (rows.isEmpty && _isHospitalityActive()) {
+      if (rows.isEmpty && await _isHospitalityActive()) {
         await seedDefaultHospitalityCategories();
         rows = await _localDataSource.getCategories();
       }

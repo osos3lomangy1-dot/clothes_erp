@@ -4444,6 +4444,91 @@ class _SectorModeSettingsCard extends StatelessWidget {
 
   const _SectorModeSettingsCard({required this.userId});
 
+  Future<void> _syncSectorActivities(String mode) async {
+    if (!getIt.isRegistered<ActivitySettingsService>()) return;
+    final activityService = getIt<ActivitySettingsService>();
+    final gate = getIt.isRegistered<FeatureGate>() ? getIt<FeatureGate>() : null;
+
+    if (gate != null) {
+      if (mode == RetailSector.hospitality) {
+        await StorePresetsEngine.applyPreset(
+          preset: StorePreset.hospitality,
+          featureGate: gate,
+          activityService: activityService,
+          userId: userId,
+        );
+        return;
+      }
+      if (mode == RetailSector.apparel) {
+        await StorePresetsEngine.applyPreset(
+          preset: StorePreset.fashion,
+          featureGate: gate,
+          activityService: activityService,
+          userId: userId,
+        );
+        return;
+      }
+      if (mode == RetailSector.supermarket) {
+        await StorePresetsEngine.applyPreset(
+          preset: StorePreset.grocery,
+          featureGate: gate,
+          activityService: activityService,
+          userId: userId,
+        );
+        return;
+      }
+    }
+
+    final targetActivity = mode == RetailSector.supermarket
+        ? ActivityType.supermarketGroceries
+        : (mode == RetailSector.houseware
+            ? ActivityType.general
+            : ActivityType.clothing);
+    await activityService.setActivityEnabled(targetActivity, true, userId: userId);
+    if (mode == RetailSector.houseware) {
+      await activityService.setActivityEnabled(
+        ActivityType.homeLiving,
+        true,
+        userId: userId,
+      );
+    }
+    await activityService.setActivityEnabled(
+      ActivityType.restaurantsCafes,
+      false,
+      userId: userId,
+    );
+  }
+
+  Future<void> _selectSectorMode(
+    BuildContext context, {
+    required String targetMode,
+    required String title,
+    bool showSuccessToast = true,
+  }) async {
+    final err = await context
+        .read<SettingsCubit>()
+        .setSectorMode(targetMode, userId);
+    if (err == null) {
+      await _syncSectorActivities(targetMode);
+    }
+    if (!context.mounted) return;
+    if (err != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(err),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    } else if (showSuccessToast) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('تم تفعيل نمط: $title بنجاح'),
+          backgroundColor: Colors.green.shade800,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<SettingsCubit, SettingsState>(
@@ -4533,26 +4618,11 @@ class _SectorModeSettingsCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                     onTap: () async {
                       if (currentMode == opt.key) return;
-                      final err = await context
-                          .read<SettingsCubit>()
-                          .setSectorMode(opt.key, userId);
-                      if (context.mounted) {
-                        if (err != null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(err),
-                              backgroundColor: AppColors.error,
-                            ),
-                          );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('تم تفعيل نمط: ${opt.title} بنجاح'),
-                              backgroundColor: Colors.green.shade800,
-                            ),
-                          );
-                        }
-                      }
+                      await _selectSectorMode(
+                        context,
+                        targetMode: opt.key,
+                        title: opt.title,
+                      );
                     },
                     child: Container(
                       margin: const EdgeInsets.symmetric(vertical: 4),
@@ -4646,19 +4716,12 @@ class _SectorModeSettingsCard extends StatelessWidget {
                             groupValue: currentMode,
                             activeColor: opt.color,
                             // ignore: deprecated_member_use
-                            onChanged: (_) async {
-                              final err = await context
-                                  .read<SettingsCubit>()
-                                  .setSectorMode(opt.key, userId);
-                              if (context.mounted && err != null) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(err),
-                                    backgroundColor: AppColors.error,
-                                  ),
-                                );
-                              }
-                            },
+                            onChanged: (_) => _selectSectorMode(
+                              context,
+                              targetMode: opt.key,
+                              title: opt.title,
+                              showSuccessToast: false,
+                            ),
                           ),
                         ],
                       ),
@@ -4778,14 +4841,40 @@ class _PureHospitalityIsolationCard extends StatelessWidget {
                   activeThumbColor: const Color(0xFFC2185B),
                   activeTrackColor: const Color(0xFFC2185B).withValues(alpha: 0.4),
                   onChanged: (val) async {
-                    final targetMode = val ? RetailSector.hospitality : RetailSector.apparel;
-                    await context.read<SettingsCubit>().setSectorMode(targetMode, userId);
-                    if (val && getIt.isRegistered<ActivitySettingsService>()) {
-                      await getIt<ActivitySettingsService>().setActivityEnabled(
-                        ActivityType.restaurantsCafes,
-                        true,
-                        userId: userId,
-                      );
+                    final targetMode =
+                        val ? RetailSector.hospitality : RetailSector.apparel;
+                    final settingsCubit = context.read<SettingsCubit>();
+                    await settingsCubit.setSectorMode(targetMode, userId);
+                    if (getIt.isRegistered<ActivitySettingsService>()) {
+                      final activityService = getIt<ActivitySettingsService>();
+                      if (val) {
+                        if (getIt.isRegistered<FeatureGate>()) {
+                          await StorePresetsEngine.applyPreset(
+                            preset: StorePreset.hospitality,
+                            featureGate: getIt<FeatureGate>(),
+                            activityService: activityService,
+                            userId: userId,
+                          );
+                        } else {
+                          await activityService.setActivityEnabled(
+                            ActivityType.restaurantsCafes,
+                            true,
+                            userId: userId,
+                          );
+                        }
+                      } else {
+                        // Enable clothing first so disabling restaurantsCafes never violates min-1 activity guard.
+                        await activityService.setActivityEnabled(
+                          ActivityType.clothing,
+                          true,
+                          userId: userId,
+                        );
+                        await activityService.setActivityEnabled(
+                          ActivityType.restaurantsCafes,
+                          false,
+                          userId: userId,
+                        );
+                      }
                     }
                   },
                 ),

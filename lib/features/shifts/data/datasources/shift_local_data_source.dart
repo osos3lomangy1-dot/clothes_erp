@@ -191,6 +191,7 @@ class ShiftLocalDataSourceImpl implements ShiftLocalDataSource {
     final int expectedCash;
     int effectiveCashSales = cashSales;
     int effectiveCardSales = cardSales;
+    int effectiveCashExpenses = cashExpenses;
 
     if (movements.isNotEmpty) {
       final cashIn = movements
@@ -212,9 +213,25 @@ class ShiftLocalDataSourceImpl implements ShiftLocalDataSource {
         effectiveCashSales = movementCashSales;
         effectiveCardSales = movementCardSales;
       }
+
+      final movementExpenses = movements
+          .where((m) =>
+              m.method == 'cash' &&
+              (m.type == 'withdrawal' || m.type == 'expense') &&
+              m.direction == 'out')
+          .fold<int>(0, (s, m) => s + m.amountPiasters);
+      if (movementExpenses > 0) {
+        effectiveCashExpenses += movementExpenses;
+      }
     } else {
       expectedCash = shiftRow.openingBalance + cashSales - cashReturns - cashExpenses;
     }
+
+    final tipsPool = movements
+        .where((m) =>
+            m.direction == 'in' &&
+            (m.notes?.contains('إكرامية عاملين (Tips)') ?? false))
+        .fold<int>(0, (s, m) => s + m.amountPiasters);
 
     final cashInstallments = movements
         .where((m) =>
@@ -236,9 +253,10 @@ class ShiftLocalDataSourceImpl implements ShiftLocalDataSource {
       cardSales: effectiveCardSales,
       otherSales: otherSales,
       cashReturns: cashReturns,
-      cashExpenses: cashExpenses,
+      cashExpenses: effectiveCashExpenses,
       cashInstallments: cashInstallments,
       cardInstallments: cardInstallments,
+      tipsPool: tipsPool,
       totalSalesCount: sales.length,
       expectedCashInDrawer: expectedCash,
     );

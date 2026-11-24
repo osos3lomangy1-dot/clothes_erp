@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/retail_sector.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/features/feature_gate.dart';
 import '../../../../core/widgets/app_feedback.dart';
 
 import '../../../auth/presentation/cubits/auth_cubit.dart';
@@ -46,8 +49,11 @@ class _PurchasesView extends StatefulWidget {
   State<_PurchasesView> createState() => _PurchasesViewState();
 }
 
-class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProviderStateMixin {
-  late final TabController _tabController;
+class _PurchasesViewState extends State<_PurchasesView> with TickerProviderStateMixin {
+  late TabController _tabController;
+  String _sectorMode = RetailSector.apparel;
+  StreamSubscription<String?>? _sectorSub;
+  StreamSubscription<List<ActivityType>>? _activitySub;
 
   void _showToast(String message, {bool isError = false}) {
     if (!mounted) return;
@@ -61,23 +67,60 @@ class _PurchasesViewState extends State<_PurchasesView> with SingleTickerProvide
   }
 
   bool get _isHospitality {
-    if (getIt.isRegistered<ActivitySettingsService>()) {
-      return getIt<ActivitySettingsService>()
-          .cachedEnabledActivities
-          .contains(ActivityType.restaurantsCafes);
-    }
-    return false;
+    final enabled = getIt.isRegistered<ActivitySettingsService>()
+        ? getIt<ActivitySettingsService>().cachedEnabledActivities
+        : const <ActivityType>[];
+    return ActivitySettingsService.isHospitalityResolved(
+      sectorMode: _sectorMode,
+      enabledActivities: enabled,
+    );
+  }
+
+  void _syncTabController() {
+    final desiredCount = _isHospitality ? 3 : 4;
+    if (_tabController.length == desiredCount) return;
+    final oldController = _tabController;
+    final clampedIndex = oldController.index.clamp(0, desiredCount - 1);
+    _tabController = TabController(
+      length: desiredCount,
+      vsync: this,
+      initialIndex: clampedIndex,
+    );
+    oldController.dispose();
   }
 
   @override
   void initState() {
     super.initState();
-    final tabCount = _isHospitality ? 3 : 4;
-    _tabController = TabController(length: tabCount, vsync: this);
+    _tabController = TabController(length: _isHospitality ? 3 : 4, vsync: this);
+    if (getIt.isRegistered<FeatureGate>()) {
+      final gate = getIt<FeatureGate>();
+      _sectorSub = ActivitySettingsService.listenSectorMode(gate, (mode) {
+        if (mounted && _sectorMode != mode) {
+          setState(() {
+            _sectorMode = mode;
+            _syncTabController();
+          });
+        }
+      });
+    }
+    if (getIt.isRegistered<ActivitySettingsService>()) {
+      final actService = getIt<ActivitySettingsService>();
+      _activitySub = ActivitySettingsService.listenEnabledActivities(
+        actService,
+        (_) {
+          if (mounted) {
+            setState(_syncTabController);
+          }
+        },
+      );
+    }
   }
 
   @override
   void dispose() {
+    _sectorSub?.cancel();
+    _activitySub?.cancel();
     _tabController.dispose();
     super.dispose();
   }

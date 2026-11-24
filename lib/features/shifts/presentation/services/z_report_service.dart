@@ -135,6 +135,8 @@ class ZReportService {
                 _pdfKeyValue('إجمالي المقبوضات النقدية:', '+${Money(summary.cashSales + summary.cashInstallments).toDisplay()} ج.م'),
                 _pdfKeyValue('مرتجعات نقدية:', '-${Money(summary.cashReturns).toDisplay()} ج.م'),
                 _pdfKeyValue('مصروفات نقدية:', '-${Money(summary.cashExpenses).toDisplay()} ج.م'),
+                if (summary.tipsPool > 0)
+                  _pdfKeyValue('صندوق إكراميات العاملين (Tips Pool):', '${Money(summary.tipsPool).toDisplay()} ج.م', isBold: true),
                 pw.Divider(thickness: 1),
 
                 // Reconciliation Section

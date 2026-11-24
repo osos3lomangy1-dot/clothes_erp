@@ -10,6 +10,7 @@ class ShiftSummaryEntity extends Equatable {
   final int cashExpenses; // in piasters
   final int cashInstallments; // in piasters (collected in cash during this shift)
   final int cardInstallments; // in piasters (collected by card during this shift)
+  final int tipsPool; // in piasters (staff tips pool collected during this shift)
   final int totalSalesCount;
   final int expectedCashInDrawer; // in piasters: openingBalance + cashSales + cashInstallments - cashReturns - cashExpenses
 
@@ -22,6 +23,7 @@ class ShiftSummaryEntity extends Equatable {
     required this.cashExpenses,
     this.cashInstallments = 0,
     this.cardInstallments = 0,
+    this.tipsPool = 0,
     required this.totalSalesCount,
     required this.expectedCashInDrawer,
   });
@@ -39,6 +41,7 @@ class ShiftSummaryEntity extends Equatable {
         cashExpenses,
         cashInstallments,
         cardInstallments,
+        tipsPool,
         totalSalesCount,
         expectedCashInDrawer,
       ];

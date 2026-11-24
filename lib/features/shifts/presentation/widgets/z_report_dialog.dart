@@ -250,6 +250,15 @@ class ZReportDialog extends StatelessWidget {
                           color: Colors.red.shade600,
                         ),
                       ],
+                      if (summary.tipsPool > 0) ...[
+                        const SizedBox(height: 6),
+                        _rowDetail(
+                          'صندوق إكراميات العاملين (Tips Pool):',
+                          '${Money(summary.tipsPool).toDisplay()} ج.م',
+                          color: AppColors.secondary,
+                          isBold: true,
+                        ),
+                      ],
                       const Divider(height: 16, thickness: 1.2),
                       _rowDetail(
                         'المبلغ المتوقع في الدرج:',

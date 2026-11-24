@@ -82,20 +82,22 @@ class _ProductsAndCategoriesViewState
   void initState() {
     super.initState();
     if (getIt.isRegistered<FeatureGate>()) {
-      _sectorSub = getIt<FeatureGate>().watchMeta(RetailSector.metaKey).listen((
-        mode,
-      ) {
-        if (mounted) {
-          setState(() {
-            _sectorMode = mode ?? RetailSector.apparel;
-          });
-        }
-      });
+      _sectorSub = ActivitySettingsService.listenSectorMode(
+        getIt<FeatureGate>(),
+        (mode) {
+          if (mounted && _sectorMode != mode) {
+            setState(() => _sectorMode = mode);
+          }
+        },
+      );
     }
     if (getIt.isRegistered<ActivitySettingsService>()) {
-      _activitySub = getIt<ActivitySettingsService>().watchEnabledActivities().listen((_) {
-        if (mounted) setState(() {});
-      });
+      _activitySub = ActivitySettingsService.listenEnabledActivities(
+        getIt<ActivitySettingsService>(),
+        (_) {
+          if (mounted) setState(() {});
+        },
+      );
     }
   }
 

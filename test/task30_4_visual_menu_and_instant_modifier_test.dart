@@ -5,6 +5,7 @@ import 'package:clothes_erp/core/errors/failures.dart';
 import 'package:clothes_erp/core/features/feature_gate.dart';
 import 'package:clothes_erp/core/services/hotkey_strip_service.dart';
 import 'package:clothes_erp/core/services/shortcut_settings_service.dart';
+import 'package:clothes_erp/core/services/store_presets_engine.dart';
 import 'package:clothes_erp/core/theme/app_branding.dart';
 import 'package:clothes_erp/features/auth/data/datasources/auth_local_data_source.dart';
 import 'package:clothes_erp/features/auth/data/models/user_model.dart';
@@ -487,6 +488,14 @@ void main() {
       AppBranding.apply(AppBrandingConfig.defaults);
       CashierPermissionsService.notifier.value = const CashierPermissionsConfig();
       HotkeyStripService.isVisible.value = true;
+
+      await StorePresetsEngine.applyPreset(
+        preset: StorePreset.hospitality,
+        featureGate: featureGate,
+        activityService: activityService,
+        userId: 'system',
+      );
+      await activityService.getEnabledActivities();
 
       const culinary = RestaurantCulinaryData(
         ingredients: 'شريحتي لحم، جبنة، خس، طماطم',

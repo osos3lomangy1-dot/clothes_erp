@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/retail_sector.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/money.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
@@ -36,6 +37,7 @@ import '../../../../core/services/hotkey_strip_service.dart';
 import '../../../settings/presentation/widgets/shortcuts_config_dialog.dart';
 import '../../../../core/services/crash_logger_service.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../../core/database/branch_provider.dart';
 import 'package:drift/drift.dart' show Value;
 import '../../../installments/domain/facades/installments_facade.dart';
 import '../../../invoices/data/services/receipt_settings_service.dart';
@@ -50,6 +52,7 @@ import '../../../delivery/domain/entities/delivery_order_entity.dart';
 import '../../../delivery/domain/repositories/delivery_repository.dart';
 import '../../../delivery/presentation/screens/delivery_orders_screen.dart';
 import '../../../inventory/presentation/widgets/kitchen_waste_dialog.dart';
+import '../widgets/petty_cash_dialog.dart';
 import '../../../delivery/presentation/widgets/delivery_checkout_dialog.dart';
 import '../../../pre_orders/presentation/screens/pre_orders_screen.dart';
 import '../../../auth/services/cashier_permissions_service.dart';
@@ -130,7 +133,10 @@ class _PosViewState extends State<_PosView> {
   InvoiceDetailsEntity? _lastCompletedInvoice;
   bool _deliveryEnabled = false;
   bool _preOrdersEnabled = false;
+  String _sectorMode = RetailSector.apparel;
   StreamSubscription? _featuresSub;
+  StreamSubscription<String?>? _sectorSub;
+  StreamSubscription<List<ActivityType>>? _activitySub;
   Timer? _searchDebounceTimer;
   int? _selectedGridIndex;
   final ScrollController _productGridScrollController = ScrollController();
@@ -174,6 +180,11 @@ class _PosViewState extends State<_PosView> {
           setState(() => _preOrdersEnabled = val);
         }
       });
+      _sectorSub = ActivitySettingsService.listenSectorMode(gate, (mode) {
+        if (mounted && _sectorMode != mode) {
+          setState(() => _sectorMode = mode);
+        }
+      });
       _featuresSub = gate.watchFeatures().listen((features) {
         final del = features[FeatureKeys.delivery] ?? false;
         final pre = features[FeatureKeys.preOrders] ?? false;
@@ -184,6 +195,15 @@ class _PosViewState extends State<_PosView> {
           });
         }
       });
+    }
+    if (getIt.isRegistered<ActivitySettingsService>()) {
+      final actService = getIt<ActivitySettingsService>();
+      _activitySub = ActivitySettingsService.listenEnabledActivities(
+        actService,
+        (_) {
+          if (mounted) setState(() {});
+        },
+      );
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -737,6 +757,8 @@ class _PosViewState extends State<_PosView> {
   void dispose() {
     _searchDebounceTimer?.cancel();
     _featuresSub?.cancel();
+    _sectorSub?.cancel();
+    _activitySub?.cancel();
     HardwareKeyboard.instance.removeHandler(_handleHardwareScan);
     _searchFocusNode.dispose();
     _searchCtrl.dispose();
@@ -750,10 +772,8 @@ class _PosViewState extends State<_PosView> {
   }) async {
     final posCubit = context.read<PosCubit>();
     ActivityType? targetActivity;
-    if (getIt.isRegistered<ActivitySettingsService>()) {
-      if (getIt<ActivitySettingsService>().cachedEnabledActivities.contains(ActivityType.restaurantsCafes)) {
-        targetActivity = ActivityType.restaurantsCafes;
-      }
+    if (_isHospitality) {
+      targetActivity = ActivityType.restaurantsCafes;
     }
     final barcodeOrResult = await showDialog<dynamic>(
       context: context,
@@ -978,6 +998,16 @@ class _PosViewState extends State<_PosView> {
     }
   }
 
+  bool get _isHospitality {
+    final enabled = getIt.isRegistered<ActivitySettingsService>()
+        ? getIt<ActivitySettingsService>().cachedEnabledActivities
+        : const <ActivityType>[];
+    return ActivitySettingsService.isHospitalityResolved(
+      sectorMode: _sectorMode,
+      enabledActivities: enabled,
+    );
+  }
+
   Widget _buildContent(BuildContext context) {
     return BlocBuilder<ShiftCubit, ShiftState>(
       builder: (context, shiftState) {
@@ -1021,422 +1051,474 @@ class _PosViewState extends State<_PosView> {
             automaticallyImplyLeading: false,
             toolbarHeight: 56,
             titleSpacing: 12,
-            title: Row(
-              children: [
-                if (Navigator.canPop(context)) ...[
-                  IconButton(
-                    icon: const Icon(
-                      Icons.arrow_back_rounded,
-                      color: AppColors.onSurface,
-                      size: 20,
-                    ),
-                    tooltip: 'رجوع للوحة التحكم',
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                  const SizedBox(width: 4),
-                ],
-                Row(
-                  mainAxisSize: MainAxisSize.min,
+            title: LayoutBuilder(
+              builder: (context, appBarConstraints) {
+                final maxBarWidth = appBarConstraints.maxWidth.isFinite
+                    ? appBarConstraints.maxWidth
+                    : 1200.0;
+                return Row(
                   children: [
-                    Icon(
-                      Icons.point_of_sale_rounded,
-                      color: AppColors.primary,
-                      size: 22,
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: maxBarWidth * 0.36),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (Navigator.canPop(context)) ...[
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.arrow_back_rounded,
+                                  color: AppColors.onSurface,
+                                  size: 20,
+                                ),
+                                tooltip: 'رجوع للوحة التحكم',
+                                onPressed: () => Navigator.of(context).pop(),
+                              ),
+                              const SizedBox(width: 4),
+                            ],
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.point_of_sale_rounded,
+                                  color: AppColors.primary,
+                                  size: 22,
+                                ),
+                                const SizedBox(width: 6),
+                                const Text(
+                                  'نقطة البيع',
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16.5,
+                                    color: AppColors.onSurface,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (shiftState.shiftsEnabled && shiftState.activeShift != null) ...[
+                              const SizedBox(width: 8),
+                              InkWell(
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(builder: (_) => const ShiftScreen()),
+                                  );
+                                },
+                                borderRadius: BorderRadius.circular(16),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3.5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: AppColors.outlineVariant),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.lock_open_rounded,
+                                        color: AppColors.success,
+                                        size: 13,
+                                      ),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'وردية مفتوحة',
+                                        style: TextStyle(
+                                          fontFamily: 'Cairo',
+                                          color: AppColors.success,
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                            const SizedBox(width: 8),
+                            // Cashier Badge
+                            Tooltip(
+                              message: 'ملف ومستحقات الكاشير (الراتب، البونص، الوردية)',
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(16),
+                                onTap: cashierId.isNotEmpty
+                                    ? () => CashierProfileDialog.show(
+                                          context,
+                                          employeeId: cashierId,
+                                        )
+                                    : null,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 3.5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: AppColors.outlineVariant),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.person_rounded,
+                                        size: 14,
+                                        color: AppColors.primary,
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        cashierName,
+                                        style: const TextStyle(
+                                          fontFamily: 'Cairo',
+                                          color: AppColors.onSurface,
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            // Switch Cashier Button [Task 14.3]
+                            Tooltip(
+                              message: 'تبديل الكاشير السريع بالـ PIN دون تفريغ السلة',
+                              child: OutlinedButton.icon(
+                                key: const Key('pos_switch_cashier_button'),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  side: const BorderSide(color: AppColors.outlineVariant),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                onPressed: _showSwitchCashierDialog,
+                                icon: Icon(
+                                  Icons.swap_horiz_rounded,
+                                  size: 15,
+                                  color: AppColors.primary,
+                                ),
+                                label: const Text(
+                                  'تبديل الكاشير',
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    color: AppColors.onSurface,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    const SizedBox(width: 6),
-                    const Text(
-                      'نقطة البيع',
-                      style: TextStyle(
-                        fontFamily: 'Cairo',
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16.5,
-                        color: AppColors.onSurface,
+
+                    const SizedBox(width: 8),
+
+                    // Center: Quick Search Field [F2]
+                    Expanded(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 480),
+                          child: Container(
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceContainerLow,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppColors.outlineVariant.withValues(alpha: 0.8),
+                              ),
+                            ),
+                            child: TextField(
+                              key: const Key('pos_search_field'),
+                              controller: _searchCtrl,
+                              focusNode: _searchFocusNode,
+                              autofocus: true,
+                              style: const TextStyle(fontFamily: 'Cairo', fontSize: 13),
+                              decoration: InputDecoration(
+                                isDense: true,
+                                hintText: 'بحث بالاسم أو الكود أو المقاس... [F2]',
+                                hintStyle: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  color: Colors.grey.shade500,
+                                  fontSize: 12,
+                                ),
+                                prefixIcon: Icon(
+                                  Icons.search_rounded,
+                                  color: AppColors.primary,
+                                  size: 18,
+                                ),
+                                suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                                  valueListenable: _searchCtrl,
+                                  builder: (context, val, _) {
+                                    return Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (val.text.isNotEmpty)
+                                          IconButton(
+                                            icon: const Icon(Icons.clear, size: 16),
+                                            onPressed: () {
+                                              _searchDebounceTimer?.cancel();
+                                              _searchCtrl.clear();
+                                              context.read<PosCubit>().searchProducts('');
+                                            },
+                                          ),
+                                        Container(
+                                          margin: const EdgeInsets.only(left: 6),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.surfaceContainer,
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(
+                                              color: AppColors.outlineVariant,
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'F2',
+                                            style: TextStyle(
+                                              fontFamily: 'Cairo',
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.onSurface,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 9,
+                                ),
+                              ),
+                              onChanged: (val) {
+                                _searchDebounceTimer?.cancel();
+                                if (val.isEmpty) {
+                                  context.read<PosCubit>().searchProducts('');
+                                } else {
+                                  _searchDebounceTimer = Timer(const Duration(milliseconds: 150), () {
+                                    if (mounted) {
+                                      context.read<PosCubit>().searchProducts(val);
+                                    }
+                                  });
+                                }
+                              },
+                              onSubmitted: (val) {
+                                _searchDebounceTimer?.cancel();
+                                if (val.trim().isNotEmpty) {
+                                  final added = context.read<PosCubit>().addByBarcode(val.trim());
+                                  if (added) {
+                                    _searchCtrl.clear();
+                                    context.read<PosCubit>().searchProducts('');
+                                  }
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 8),
+
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: maxBarWidth * 0.46),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Quick Add Product Button
+                            FilledButton.icon(
+                              onPressed: () => _openQuickAddProduct(context),
+                              icon: const Icon(Icons.add_rounded, size: 17),
+                              label: const Text(
+                                'صنف جديد',
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11.5,
+                                ),
+                              ),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                minimumSize: const Size(0, 36),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                elevation: 0,
+                              ),
+                            ),
+
+                            // Pre-Orders Button [F7]
+                            if (_preOrdersEnabled)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: ElevatedButton.icon(
+                                  key: const Key('pos_preorders_header_btn'),
+                                  onPressed: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => const PreOrdersScreen(),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.bookmark_added_rounded, size: 16),
+                                  label: const Text(
+                                    'حجز مسبق [F7]',
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.surfaceContainerLow,
+                                    foregroundColor: AppColors.primary,
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    minimumSize: const Size(0, 36),
+                                    side: BorderSide(
+                                      color: AppColors.primary.withValues(alpha: 0.3),
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                ),
+                              ),
+
+                            if (_isHospitality) ...[
+                              const SizedBox(width: 8),
+                              // Petty Cash Dialog [Key('pos_petty_cash_btn')]
+                              OutlinedButton.icon(
+                                key: const Key('pos_petty_cash_btn'),
+                                onPressed: () => PettyCashDialog.show(context),
+                                icon: const Icon(Icons.money_off_rounded, size: 16),
+                                label: const Text(
+                                  'نثريات درج [سحب]',
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.primary,
+                                  side: BorderSide(
+                                    color: AppColors.primary.withValues(alpha: 0.5),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  minimumSize: const Size(0, 36),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Kitchen Waste Dialog [Key('kitchen_waste_btn')]
+                              OutlinedButton.icon(
+                                key: const Key('kitchen_waste_btn'),
+                                onPressed: () => KitchenWasteDialog.show(context),
+                                icon: const Icon(Icons.delete_sweep_rounded, size: 16),
+                                label: const Text(
+                                  'إذن هالك [مطبخ]',
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.error,
+                                  side: BorderSide(
+                                    color: AppColors.error.withValues(alpha: 0.5),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  minimumSize: const Size(0, 36),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                            ],
+
+                            const SizedBox(width: 8),
+
+                            // Re-Print Last Invoice [F9]
+                            OutlinedButton.icon(
+                              key: const Key('pos_reprint_last_invoice_button'),
+                              onPressed: _lastCompletedInvoice != null
+                                  ? () => _reprintLastInvoice()
+                                  : null,
+                              icon: const Icon(Icons.print_outlined, size: 16),
+                              label: const Text(
+                                'إعادة طباعة [F9]',
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.primary,
+                                disabledForegroundColor: const Color(0xFF94A3B8),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                minimumSize: const Size(0, 36),
+                                side: BorderSide(
+                                  color: _lastCompletedInvoice != null
+                                      ? AppColors.primary.withValues(alpha: 0.4)
+                                      : const Color(0xFFCBD5E1),
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+
+                            // Delivery Button
+                            if (_deliveryEnabled)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: IconButton(
+                                  key: const Key('pos_delivery_header_btn'),
+                                  icon: const Icon(
+                                    Icons.moped_rounded,
+                                    color: AppColors.onSurfaceVariant,
+                                    size: 20,
+                                  ),
+                                  tooltip: 'إدارة وتتبع الدليفري والطيارين',
+                                  onPressed: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => const DeliveryOrdersScreen(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
-                ),
-                if (shiftState.shiftsEnabled && shiftState.activeShift != null) ...[
-                  const SizedBox(width: 8),
-                  InkWell(
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const ShiftScreen()),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3.5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.outlineVariant),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.lock_open_rounded,
-                            color: AppColors.success,
-                            size: 13,
-                          ),
-                          SizedBox(width: 4),
-                          Text(
-                            'وردية مفتوحة',
-                            style: TextStyle(
-                              fontFamily: 'Cairo',
-                              color: AppColors.success,
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-                const SizedBox(width: 8),
-                // Cashier Badge
-                Tooltip(
-                  message: 'ملف ومستحقات الكاشير (الراتب، البونص، الوردية)',
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(16),
-                    onTap: cashierId.isNotEmpty
-                        ? () => CashierProfileDialog.show(
-                              context,
-                              employeeId: cashierId,
-                            )
-                        : null,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 3.5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.outlineVariant),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.person_rounded,
-                            size: 14,
-                            color: AppColors.primary,
-                          ),
-                          const SizedBox(width: 5),
-                          Text(
-                            cashierName,
-                            style: const TextStyle(
-                              fontFamily: 'Cairo',
-                              color: AppColors.onSurface,
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(width: 6),
-
-                // Switch Cashier Button [Task 14.3]
-                Tooltip(
-                  message: 'تبديل الكاشير السريع بالـ PIN دون تفريغ السلة',
-                  child: OutlinedButton.icon(
-                    key: const Key('pos_switch_cashier_button'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      side: const BorderSide(color: AppColors.outlineVariant),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    onPressed: _showSwitchCashierDialog,
-                    icon: Icon(
-                      Icons.swap_horiz_rounded,
-                      size: 15,
-                      color: AppColors.primary,
-                    ),
-                    label: const Text(
-                      'تبديل الكاشير',
-                      style: TextStyle(
-                        fontFamily: 'Cairo',
-                        color: AppColors.onSurface,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(width: 12),
-
-                // Center: Quick Search Field [F2]
-                Expanded(
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 480),
-                      child: Container(
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: AppColors.outlineVariant.withValues(alpha: 0.8),
-                          ),
-                        ),
-                        child: TextField(
-                          key: const Key('pos_search_field'),
-                          controller: _searchCtrl,
-                          focusNode: _searchFocusNode,
-                          autofocus: true,
-                          style: const TextStyle(fontFamily: 'Cairo', fontSize: 13),
-                          decoration: InputDecoration(
-                            isDense: true,
-                            hintText: 'بحث بالاسم أو الكود أو المقاس... [F2]',
-                            hintStyle: TextStyle(
-                              fontFamily: 'Cairo',
-                              color: Colors.grey.shade500,
-                              fontSize: 12,
-                            ),
-                            prefixIcon: Icon(
-                              Icons.search_rounded,
-                              color: AppColors.primary,
-                              size: 18,
-                            ),
-                            suffixIcon: ValueListenableBuilder<TextEditingValue>(
-                              valueListenable: _searchCtrl,
-                              builder: (context, val, _) {
-                                return Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    if (val.text.isNotEmpty)
-                                      IconButton(
-                                        icon: const Icon(Icons.clear, size: 16),
-                                        onPressed: () {
-                                          _searchDebounceTimer?.cancel();
-                                          _searchCtrl.clear();
-                                          context.read<PosCubit>().searchProducts('');
-                                        },
-                                      ),
-                                    Container(
-                                      margin: const EdgeInsets.only(left: 6),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.surfaceContainer,
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(
-                                          color: AppColors.outlineVariant,
-                                        ),
-                                      ),
-                                      child: const Text(
-                                        'F2',
-                                        style: TextStyle(
-                                          fontFamily: 'Cairo',
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.onSurface,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              },
-                            ),
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 9,
-                            ),
-                          ),
-                          onChanged: (val) {
-                            _searchDebounceTimer?.cancel();
-                            if (val.isEmpty) {
-                              context.read<PosCubit>().searchProducts('');
-                            } else {
-                              _searchDebounceTimer = Timer(const Duration(milliseconds: 150), () {
-                                if (mounted) {
-                                  context.read<PosCubit>().searchProducts(val);
-                                }
-                              });
-                            }
-                          },
-                          onSubmitted: (val) {
-                            _searchDebounceTimer?.cancel();
-                            if (val.trim().isNotEmpty) {
-                              final added = context.read<PosCubit>().addByBarcode(val.trim());
-                              if (added) {
-                                _searchCtrl.clear();
-                                context.read<PosCubit>().searchProducts('');
-                              }
-                            }
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(width: 8),
-
-                // Quick Add Product Button
-                FilledButton.icon(
-                  onPressed: () => _openQuickAddProduct(context),
-                  icon: const Icon(Icons.add_rounded, size: 17),
-                  label: const Text(
-                    'صنف جديد',
-                    style: TextStyle(
-                      fontFamily: 'Cairo',
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11.5,
-                    ),
-                  ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    minimumSize: const Size(0, 36),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    elevation: 0,
-                  ),
-                ),
-
-                const SizedBox(width: 8),
-
-                // Pre-Orders Button [F7]
-                if (_preOrdersEnabled)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: ElevatedButton.icon(
-                      key: const Key('pos_preorders_header_btn'),
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const PreOrdersScreen(),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.bookmark_added_rounded, size: 16),
-                      label: const Text(
-                        'حجز مسبق [F7]',
-                        style: TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.surfaceContainerLow,
-                        foregroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        minimumSize: const Size(0, 36),
-                        side: BorderSide(
-                          color: AppColors.primary.withValues(alpha: 0.3),
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        elevation: 0,
-                      ),
-                    ),
-                  ),
-
-                const SizedBox(width: 8),
-
-                // Kitchen Waste Dialog [Key('kitchen_waste_btn')]
-                OutlinedButton.icon(
-                  key: const Key('kitchen_waste_btn'),
-                  onPressed: () => KitchenWasteDialog.show(context),
-                  icon: const Icon(Icons.delete_sweep_rounded, size: 16),
-                  label: const Text(
-                    'إذن هالك [مطبخ]',
-                    style: TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.error,
-                    side: BorderSide(
-                      color: AppColors.error.withValues(alpha: 0.5),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    minimumSize: const Size(0, 36),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(width: 8),
-
-                // Re-Print Last Invoice [F9]
-                OutlinedButton.icon(
-                  key: const Key('pos_reprint_last_invoice_button'),
-                  onPressed: _lastCompletedInvoice != null
-                      ? () => _reprintLastInvoice()
-                      : null,
-                  icon: const Icon(Icons.print_outlined, size: 16),
-                  label: const Text(
-                    'إعادة طباعة [F9]',
-                    style: TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    disabledForegroundColor: const Color(0xFF94A3B8),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    minimumSize: const Size(0, 36),
-                    side: BorderSide(
-                      color: _lastCompletedInvoice != null
-                          ? AppColors.primary.withValues(alpha: 0.4)
-                          : const Color(0xFFCBD5E1),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-
-                // Delivery Button
-                if (_deliveryEnabled)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: IconButton(
-                      key: const Key('pos_delivery_header_btn'),
-                      icon: const Icon(
-                        Icons.moped_rounded,
-                        color: AppColors.onSurfaceVariant,
-                        size: 20,
-                      ),
-                      tooltip: 'إدارة وتتبع الدليفري والطيارين',
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const DeliveryOrdersScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-              ],
+                );
+              },
             ),
           ),
           body: LayoutBuilder(
@@ -1455,6 +1537,7 @@ class _PosViewState extends State<_PosView> {
                             searchQuery: _searchCtrl.text,
                             selectedGridIndex: _selectedGridIndex,
                             gridScrollController: _productGridScrollController,
+                            isHospitality: _isHospitality,
                             onOpenQuickAdd: (query) =>
                                 _openQuickAddProduct(context, initialQuery: query),
                           );
@@ -1783,12 +1866,14 @@ class _ProductPanel extends StatefulWidget {
   final void Function(String? query)? onOpenQuickAdd;
   final int? selectedGridIndex;
   final ScrollController? gridScrollController;
+  final bool isHospitality;
 
   const _ProductPanel({
     this.searchQuery = '',
     this.onOpenQuickAdd,
     this.selectedGridIndex,
     this.gridScrollController,
+    this.isHospitality = false,
   });
 
   @override
@@ -2109,16 +2194,7 @@ class _ProductPanelState extends State<_ProductPanel> {
                   );
                 }
                 final posCubit = context.read<PosCubit>();
-                final isHospitalityMode = (getIt.isRegistered<ActivitySettingsService>() &&
-                    getIt<ActivitySettingsService>().cachedEnabledActivities.contains(ActivityType.restaurantsCafes)) ||
-                    state.filteredVariants.any((v) {
-                      try {
-                        final p = posCubit.getProduct(v.productId);
-                        return p?.activityTypeEnum == ActivityType.restaurantsCafes;
-                      } catch (_) {
-                        return false;
-                      }
-                    });
+                final isHospitalityMode = widget.isHospitality;
                 final displayedVariants = isHospitalityMode
                     ? state.filteredVariants.where((v) {
                         try {
@@ -2198,6 +2274,7 @@ class _ProductPanelState extends State<_ProductPanel> {
                       variant: variant,
                       categoryId: catId,
                       isSelected: widget.selectedGridIndex == index,
+                      isHospitality: widget.isHospitality,
                     );
                   },
                 );
@@ -2318,11 +2395,13 @@ class _ProductCard extends StatelessWidget {
   final VariantEntity variant;
   final String? categoryId;
   final bool isSelected;
+  final bool isHospitality;
 
   const _ProductCard({
     required this.variant,
     this.categoryId,
     this.isSelected = false,
+    this.isHospitality = false,
   });
 
   @override
@@ -2345,7 +2424,7 @@ class _ProductCard extends StatelessWidget {
 
   Widget _buildContent(BuildContext context) {
     final isOut = variant.quantity <= 0;
-    final isLow = variant.quantity > 0 && variant.quantity <= 10;
+    bool isLow = variant.quantity > 0 && variant.quantity <= 10;
     _getCategoryColor(categoryId);
     final posCubit = context.read<PosCubit>();
     final productName = posCubit.getProductName(variant.productId);
@@ -2354,9 +2433,7 @@ class _ProductCard extends StatelessWidget {
         : variant.productCode;
     final product = posCubit.getProduct(variant.productId);
     final culinary = product?.culinaryData;
-    final isHospitality = (product?.activityTypeEnum == ActivityType.restaurantsCafes) ||
-        (getIt.isRegistered<ActivitySettingsService>() &&
-            getIt<ActivitySettingsService>().cachedEnabledActivities.contains(ActivityType.restaurantsCafes));
+    final bool isHospitality = this.isHospitality;
 
     return BlocBuilder<PosCubit, PosState>(
       buildWhen: (prev, curr) => prev.cart != curr.cart,
@@ -2411,6 +2488,9 @@ class _ProductCard extends StatelessWidget {
             if (hasDepleted || minMeals <= 0) {
               effectiveOut = true;
               hospitalityBadgeText = 'نفدت الخامات (${depletedName ?? bottleneckName ?? ""})';
+            } else if (minMeals > 0 && minMeals <= 5) {
+              isLow = true;
+              hospitalityBadgeText = 'تنبيه: متبقي خامات تكفي $minMeals وجبات فقط (${bottleneckName ?? ""})';
             } else {
               hospitalityBadgeText = 'متوفر خامات تكفي: $minMeals وجبة (المحدد: ${bottleneckName ?? ""})';
             }
@@ -2579,61 +2659,6 @@ class _ProductCard extends StatelessWidget {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                                if (culinary != null && culinary.calories != null) ...[
-                                  const SizedBox(width: 4),
-                                  Container(
-                                    key: Key('product_calorie_badge_${variant.productId}'),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4,
-                                      vertical: 1,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.orange.shade50,
-                                      borderRadius: BorderRadius.circular(4),
-                                      border: Border.all(color: Colors.orange.shade200),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          Icons.local_fire_department_rounded,
-                                          size: 11,
-                                          color: Colors.orange.shade800,
-                                        ),
-                                        const SizedBox(width: 1),
-                                        Text(
-                                          '${culinary.calories} kcal',
-                                          style: TextStyle(
-                                            fontFamily: 'Cairo',
-                                            fontSize: 9.5,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.orange.shade900,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                                if (culinary != null && culinary.hasCulinaryInfo) ...[
-                                  const SizedBox(width: 2),
-                                  InkWell(
-                                    key: Key('product_culinary_info_btn_${variant.productId}'),
-                                    onTap: () => _showCulinaryInfoDialog(
-                                      context,
-                                      displayName,
-                                      culinary,
-                                    ),
-                                    borderRadius: BorderRadius.circular(4),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(2),
-                                      child: Icon(
-                                        Icons.info_outline_rounded,
-                                        size: 14,
-                                        color: AppColors.primary,
-                                      ),
-                                    ),
-                                  ),
-                                ],
                               ],
                             ),
 
@@ -2862,18 +2887,36 @@ class _ProductCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                   decoration: BoxDecoration(
                     color: isOut
-                        ? Colors.red.shade700
-                        : (isLow ? Colors.amber.shade800 : AppColors.primary),
+                        ? Colors.grey.shade400
+                        : (isLow ? const Color(0xFFFEF3C7) : AppColors.primary),
                     borderRadius: BorderRadius.circular(4),
+                    border: (isLow && !isOut)
+                        ? Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.6))
+                        : null,
                   ),
-                  child: Text(
-                    hospitalityBadgeText ?? (isOut ? 'نفد' : '${variant.quantity}'),
-                    style: const TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isLow && !isOut) ...[
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          size: 11,
+                          color: Color(0xFF92400E),
+                        ),
+                        const SizedBox(width: 3),
+                      ],
+                      Text(
+                        hospitalityBadgeText ?? (isOut ? 'نفد' : '${variant.quantity}'),
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          color: isOut
+                              ? Colors.grey.shade900
+                              : (isLow ? const Color(0xFF92400E) : Colors.white),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -4219,7 +4262,11 @@ class _CartPanelState extends State<_CartPanel> {
   DeliveryOrderEntity? _deliveryOrder;
   String _hospitalityOrderType = 'dineIn';
   String? _tableNumber = '1';
+  int _selectedTipPiasters = 0;
+  String _sectorMode = RetailSector.apparel;
   StreamSubscription? _featuresSubscription;
+  StreamSubscription<String?>? _sectorSub;
+  StreamSubscription<List<ActivityType>>? _activitySub;
 
   int _nextBillId = 2;
   int _activeBillIndex = 0;
@@ -4534,12 +4581,13 @@ class _CartPanelState extends State<_CartPanel> {
   }
 
   bool get _isHospitality {
-    if (getIt.isRegistered<ActivitySettingsService>()) {
-      return getIt<ActivitySettingsService>()
-          .cachedEnabledActivities
-          .contains(ActivityType.restaurantsCafes);
-    }
-    return false;
+    final enabled = getIt.isRegistered<ActivitySettingsService>()
+        ? getIt<ActivitySettingsService>().cachedEnabledActivities
+        : const <ActivityType>[];
+    return ActivitySettingsService.isHospitalityResolved(
+      sectorMode: _sectorMode,
+      enabledActivities: enabled,
+    );
   }
 
   InvoiceDetailsEntity? _enrichHospitalityInvoice(
@@ -4813,6 +4861,7 @@ class _CartPanelState extends State<_CartPanel> {
       _isWholesaleMode = false;
       _hospitalityOrderType = 'dineIn';
       _tableNumber = '1';
+      _selectedTipPiasters = 0;
     });
     if (_activeBillIndex < _bills.length) {
       _bills[_activeBillIndex] = PosHeldBill(
@@ -4827,9 +4876,24 @@ class _CartPanelState extends State<_CartPanel> {
     super.initState();
     _checkPaymentAvailability();
     if (getIt.isRegistered<FeatureGate>()) {
-      _featuresSubscription = getIt<FeatureGate>().watchFeatures().listen((_) {
+      final gate = getIt<FeatureGate>();
+      _featuresSubscription = gate.watchFeatures().listen((_) {
         if (mounted) _checkPaymentAvailability();
       });
+      _sectorSub = ActivitySettingsService.listenSectorMode(gate, (mode) {
+        if (mounted && _sectorMode != mode) {
+          setState(() => _sectorMode = mode);
+        }
+      });
+    }
+    if (getIt.isRegistered<ActivitySettingsService>()) {
+      final actService = getIt<ActivitySettingsService>();
+      _activitySub = ActivitySettingsService.listenEnabledActivities(
+        actService,
+        (_) {
+          if (mounted) setState(() {});
+        },
+      );
     }
   }
 
@@ -4877,6 +4941,8 @@ class _CartPanelState extends State<_CartPanel> {
   @override
   void dispose() {
     _featuresSubscription?.cancel();
+    _sectorSub?.cancel();
+    _activitySub?.cancel();
     _discountCtrl.dispose();
     _discountFocus.dispose();
     _receivedCtrl.dispose();
@@ -4977,6 +5043,7 @@ class _CartPanelState extends State<_CartPanel> {
         (list) => latestInvoice = list.isNotEmpty ? list.first : null,
       );
       latestInvoice = _enrichHospitalityInvoice(latestInvoice, state);
+      await _recordTipCashMovement(latestInvoice);
 
       if (_deliveryOrder != null) {
         final deliveryRepo = getIt<DeliveryRepository>();
@@ -5056,6 +5123,7 @@ class _CartPanelState extends State<_CartPanel> {
         (list) => latestInvoice = list.isNotEmpty ? list.first : null,
       );
       latestInvoice = _enrichHospitalityInvoice(latestInvoice, state);
+      await _recordTipCashMovement(latestInvoice);
 
       if (_deliveryOrder != null) {
         final deliveryRepo = getIt<DeliveryRepository>();
@@ -5291,6 +5359,7 @@ class _CartPanelState extends State<_CartPanel> {
         (list) => latestInvoice = list.isNotEmpty ? list.first : null,
       );
       latestInvoice = _enrichHospitalityInvoice(latestInvoice, state);
+      await _recordTipCashMovement(latestInvoice);
 
       if (_deliveryOrder != null) {
         final deliveryRepo = getIt<DeliveryRepository>();
@@ -5566,8 +5635,9 @@ class _CartPanelState extends State<_CartPanel> {
           (sum, item) => sum + item.quantity,
         );
         final receivedPiasters = Money.fromString(_receivedCtrl.text).piasters;
-        final int changePiasters = receivedPiasters > state.total
-            ? (receivedPiasters - state.total).toInt()
+        final totalWithTip = state.total + (_isHospitality ? _selectedTipPiasters : 0);
+        final int changePiasters = receivedPiasters > totalWithTip
+            ? (receivedPiasters - totalWithTip).toInt()
             : 0;
 
         return LayoutBuilder(
@@ -5798,7 +5868,10 @@ class _CartPanelState extends State<_CartPanel> {
                           : Stream.value(const <ActivityType>[]),
                       builder: (context, actSnap) {
                         final enabledActs = actSnap.data ?? (getIt.isRegistered<ActivitySettingsService>() ? getIt<ActivitySettingsService>().cachedEnabledActivities : const <ActivityType>[]);
-                        if (!enabledActs.contains(ActivityType.restaurantsCafes)) {
+                        if (!ActivitySettingsService.isHospitalityResolved(
+                          sectorMode: _sectorMode,
+                          enabledActivities: enabledActs,
+                        )) {
                           return const SizedBox.shrink();
                         }
                         return Container(
@@ -6583,9 +6656,7 @@ class _CartPanelState extends State<_CartPanel> {
                                         item.variantId,
                                       );
                                       final maxStock = v?.quantity ?? 999;
-                                      final isHosp = getIt.isRegistered<ActivitySettingsService>()
-                                          ? getIt<ActivitySettingsService>().cachedEnabledActivities.contains(ActivityType.restaurantsCafes)
-                                          : false;
+                                      final isHosp = _isHospitality;
                                       return _CartItemTile(
                                         key: item.isReturn
                                             ? ValueKey('${item.variantId}_return')
@@ -6595,9 +6666,7 @@ class _CartPanelState extends State<_CartPanel> {
                                         isHospitality: isHosp,
                                       );
                                     } else {
-                                      final isHosp = getIt.isRegistered<ActivitySettingsService>()
-                                          ? getIt<ActivitySettingsService>().cachedEnabledActivities.contains(ActivityType.restaurantsCafes)
-                                          : false;
+                                      final isHosp = _isHospitality;
                                       return _CartGroupAccordionCard(
                                         key: Key('cart_group_${entry.key}'),
                                         groupKey: entry.key,
@@ -6920,42 +6989,54 @@ class _CartPanelState extends State<_CartPanel> {
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(
-                                      state.hasExchangeItems
-                                          ? (state.isZeroNetExchange
-                                              ? 'صافي تسوية الاستبدال (متطابق)'
-                                              : state.total < 0
-                                                  ? 'باقي استبدال مسترد للزبون'
-                                                  : 'صافي فرق السعر (المطلوب تحصيله)')
-                                          : 'الإجمالي النهائي',
-                                      style: TextStyle(
-                                        fontFamily: 'Cairo',
-                                        fontSize: isCompact ? 12 : 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: state.hasExchangeItems
+                                    Expanded(
+                                      child: Text(
+                                        state.hasExchangeItems
                                             ? (state.isZeroNetExchange
-                                                ? AppColors.success
+                                                ? 'صافي تسوية الاستبدال (متطابق)'
                                                 : state.total < 0
-                                                    ? AppColors.error
-                                                    : AppColors.primary)
-                                            : null,
+                                                    ? 'باقي استبدال مسترد للزبون'
+                                                    : 'صافي فرق السعر (المطلوب تحصيله)')
+                                            : 'الإجمالي النهائي',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontFamily: 'Cairo',
+                                          fontSize: isCompact ? 12 : 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: state.hasExchangeItems
+                                              ? (state.isZeroNetExchange
+                                                  ? AppColors.success
+                                                  : state.total < 0
+                                                      ? AppColors.error
+                                                      : AppColors.primary)
+                                              : null,
+                                        ),
                                       ),
                                     ),
-                                    Text(
-                                      state.total < 0
-                                          ? '-${Money(state.total.abs()).toDisplay()} ج.م'
-                                          : '${Money(state.total).toDisplay()} ج.م',
-                                      style: TextStyle(
-                                        fontFamily: 'Cairo',
-                                        fontSize: isCompact ? 16 : 20,
-                                        fontWeight: FontWeight.w900,
-                                        color: state.hasExchangeItems
-                                            ? (state.isZeroNetExchange
-                                                ? AppColors.success
-                                                : state.total < 0
-                                                    ? AppColors.error
-                                                    : AppColors.primary)
-                                            : AppColors.primary,
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: AlignmentDirectional.centerEnd,
+                                        child: Text(
+                                          state.total < 0
+                                              ? '-${Money(state.total.abs()).toDisplay()} ج.م'
+                                              : '${Money(state.total).toDisplay()} ج.م',
+                                          maxLines: 1,
+                                          style: TextStyle(
+                                            fontFamily: 'Cairo',
+                                            fontSize: isCompact ? 16 : 20,
+                                            fontWeight: FontWeight.w900,
+                                            color: state.hasExchangeItems
+                                                ? (state.isZeroNetExchange
+                                                    ? AppColors.success
+                                                    : state.total < 0
+                                                        ? AppColors.error
+                                                        : AppColors.primary)
+                                                : AppColors.primary,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -7201,8 +7282,9 @@ class _CartPanelState extends State<_CartPanel> {
                                         const SizedBox(width: 4),
                                         InkWell(
                                           onTap: () {
+                                            final totalWithTip = state.total + (_isHospitality ? _selectedTipPiasters : 0);
                                             _receivedCtrl.text = Money(
-                                              state.total,
+                                              totalWithTip,
                                             ).toDisplay();
                                             setState(() {});
                                           },
@@ -7290,6 +7372,10 @@ class _CartPanelState extends State<_CartPanel> {
                                 ],
                               ],
 
+                              if (_isHospitality) ...[
+                                _buildHospitalityTipsRow(isCompact),
+                              ],
+
                               SizedBox(height: isCompact ? 6 : 8),
 
                               // Checkout [F12] Button (Compact 46px Height)
@@ -7344,7 +7430,9 @@ class _CartPanelState extends State<_CartPanel> {
                                                   : state.total < 0
                                                       ? 'صرف باقي استبدال للعميل (${Money(state.total.abs()).toDisplay()} ج.م) [F12]'
                                                       : 'تحصيل فرق الاستبدال (${Money(state.total).toDisplay()} ج.م) [F12]')
-                                              : 'إتمام عملية البيع [F12]',
+                                              : (_selectedTipPiasters > 0
+                                                  ? 'إتمام عملية البيع (${Money(state.total + _selectedTipPiasters).toDisplay()} ج.م شامل الإكرامية) [F12]'
+                                                  : 'إتمام عملية البيع [F12]'),
                                           style: const TextStyle(
                                             fontFamily: 'Cairo',
                                             fontSize: 14,
@@ -7725,6 +7813,200 @@ class _CartPanelState extends State<_CartPanel> {
 
     return results;
   }
+
+  Widget _buildHospitalityTipsRow(bool isCompact) {
+    return Container(
+      margin: const EdgeInsets.only(top: 4, bottom: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.secondary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.secondary.withValues(alpha: 0.25),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.volunteer_activism_outlined,
+                size: 14,
+                color: AppColors.secondary,
+              ),
+              const SizedBox(width: 6),
+              const Text(
+                'إكرامية عاملين (Tips Pool):',
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.onSurface,
+                ),
+              ),
+              const Spacer(),
+              if (_selectedTipPiasters > 0) ...[
+                Text(
+                  '+${Money(_selectedTipPiasters).toDisplay()} ج.م',
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.secondary,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                InkWell(
+                  key: const Key('tip_chip_clear'),
+                  onTap: () => setState(() => _selectedTipPiasters = 0),
+                  child: const Icon(Icons.cancel, size: 14, color: Colors.grey),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 4),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildTipPresetChip('5', 500, 'tip_chip_5'),
+                const SizedBox(width: 6),
+                _buildTipPresetChip('10', 1000, 'tip_chip_10'),
+                const SizedBox(width: 6),
+                _buildTipPresetChip('20', 2000, 'tip_chip_20'),
+                const SizedBox(width: 6),
+                ActionChip(
+                  key: const Key('tip_chip_custom'),
+                  label: const Text(
+                    'مخصص',
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  backgroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                    side: BorderSide(
+                      color: AppColors.secondary.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                  onPressed: _showCustomTipDialog,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTipPresetChip(String label, int piasters, String keyStr) {
+    final isSelected = _selectedTipPiasters == piasters;
+    return ChoiceChip(
+      key: Key(keyStr),
+      label: Text(
+        '+$label ج',
+        style: TextStyle(
+          fontFamily: 'Cairo',
+          fontSize: 10.5,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected ? Colors.white : AppColors.onSurface,
+        ),
+      ),
+      selected: isSelected,
+      selectedColor: AppColors.secondary,
+      backgroundColor: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(6),
+        side: BorderSide(
+          color: isSelected
+              ? AppColors.secondary
+              : Colors.grey.shade300,
+        ),
+      ),
+      onSelected: (val) {
+        setState(() => _selectedTipPiasters = val ? piasters : 0);
+      },
+    );
+  }
+
+  Future<void> _showCustomTipDialog() async {
+    final ctrl = TextEditingController();
+    final res = await showDialog<int>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text(
+          'إكرامية مخصصة للعاملين (Tips)',
+          style: TextStyle(fontFamily: 'Cairo', fontSize: 14, fontWeight: FontWeight.bold),
+        ),
+        content: TextField(
+          controller: ctrl,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'المبلغ بالجنيه',
+            suffixText: 'ج.م',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final pounds = double.tryParse(ctrl.text.trim()) ?? 0;
+              Navigator.pop(ctx, (pounds * 100).round());
+            },
+            child: const Text('تأكيد'),
+          ),
+        ],
+      ),
+    );
+    if (res != null && mounted) {
+      setState(() => _selectedTipPiasters = res);
+    }
+  }
+
+  Future<void> _recordTipCashMovement(InvoiceDetailsEntity? invoice) async {
+    if (_selectedTipPiasters <= 0) return;
+    try {
+      final tipAmount = _selectedTipPiasters;
+      final shiftCubit = context.read<ShiftCubit>();
+      final activeShiftId = shiftCubit.state.activeShift?.id;
+      final branchId = getIt.isRegistered<BranchProvider>()
+          ? await getIt<BranchProvider>().getBranchId()
+          : 'branch_main';
+      final shortRef = invoice?.shortRef ?? 'فاتورة';
+      final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final db = getIt<AppDatabase>();
+      await db.into(db.cashMovements).insert(
+        CashMovementsCompanion.insert(
+          id: 'cm_tip_${DateTime.now().microsecondsSinceEpoch}',
+          branchId: branchId,
+          shiftId: Value(activeShiftId),
+          type: 'deposit',
+          method: _paymentMethod == 'card' ? 'card' : 'cash',
+          direction: 'in',
+          amountPiasters: tipAmount,
+          notes: Value('إكرامية عاملين (Tips): فاتورة $shortRef'),
+          createdAt: nowSec,
+          updatedAt: nowSec,
+        ),
+      );
+      if (mounted) {
+        setState(() => _selectedTipPiasters = 0);
+        shiftCubit.loadShiftData();
+      }
+    } catch (_) {}
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -7931,9 +8213,8 @@ class _CartItemTileState extends State<_CartItemTile> {
 
   bool get _isHospitality {
     if (widget.isHospitality) return true;
-    if (widget.item.kitchenNotes != null && widget.item.kitchenNotes!.isNotEmpty) return true;
-    if (getIt.isRegistered<ActivitySettingsService>()) {
-      return getIt<ActivitySettingsService>().cachedEnabledActivities.contains(ActivityType.restaurantsCafes);
+    if (widget.item.kitchenNotes != null && widget.item.kitchenNotes!.isNotEmpty) {
+      return true;
     }
     return false;
   }

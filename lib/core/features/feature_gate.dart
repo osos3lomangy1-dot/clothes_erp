@@ -261,6 +261,10 @@ class FeatureGate {
   StreamController<Map<String, bool>>? _featuresController;
   StreamSubscription? _driftFeaturesSub;
 
+  final Map<String, String?> _lastMeta = {};
+  final Map<String, StreamController<String?>> _metaControllers = {};
+  final Map<String, StreamSubscription> _driftMetaSubs = {};
+
   FeatureGate(
     this._db,
     this._authLocalDataSource,
@@ -344,6 +348,15 @@ class FeatureGate {
     _featuresController?.close();
     _featuresController = null;
     _driftFeaturesSub = null;
+    for (final sub in _driftMetaSubs.values) {
+      sub.cancel();
+    }
+    _driftMetaSubs.clear();
+    for (final controller in _metaControllers.values) {
+      controller.close();
+    }
+    _metaControllers.clear();
+    _lastMeta.clear();
   }
 
   Future<Map<String, bool>> getFeatures() async {
@@ -483,9 +496,35 @@ class FeatureGate {
     return row?.value;
   }
 
-  Stream<String?> watchMeta(String key) {
-    final q = _db.select(_db.appMeta)..where((t) => t.key.equals(key));
-    return q.watchSingleOrNull().map((r) => r?.value);
+  Stream<String?> watchMeta(String key) async* {
+    if (_lastMeta.containsKey(key)) {
+      yield _lastMeta[key];
+    } else {
+      final initial = await getMeta(key);
+      _lastMeta[key] = initial;
+      yield initial;
+    }
+    yield* _getOrCreateMetaStream(key);
+  }
+
+  Stream<String?> _getOrCreateMetaStream(String key) {
+    var controller = _metaControllers[key];
+    if (controller == null || controller.isClosed) {
+      controller = StreamController<String?>.broadcast();
+      _metaControllers[key] = controller;
+      _driftMetaSubs[key]?.cancel();
+      _driftMetaSubs[key] = (_db.select(_db.appMeta)
+            ..where((t) => t.key.equals(key)))
+          .watchSingleOrNull()
+          .listen((row) {
+        final value = row?.value;
+        _lastMeta[key] = value;
+        if (!controller!.isClosed) {
+          controller.add(value);
+        }
+      });
+    }
+    return controller.stream;
   }
 
   Future<void> setMeta(

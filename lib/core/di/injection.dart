@@ -30,6 +30,7 @@ import '../services/google_drive_backup_service.dart';
 import '../services/license_activation_service.dart';
 import '../services/local_backup_service.dart';
 import '../services/shortcut_settings_service.dart';
+import '../../features/reports/domain/services/kitchen_waste_audit_service.dart';
 
 final getIt = GetIt.instance;
 
@@ -170,6 +171,11 @@ Future<void> configureDependencies() async {
   if (!getIt.isRegistered<ShortcutSettingsService>()) {
     getIt.registerLazySingleton<ShortcutSettingsService>(
       () => ShortcutSettingsService(getIt<AppDatabase>()),
+    );
+  }
+  if (!getIt.isRegistered<KitchenWasteAuditService>()) {
+    getIt.registerLazySingleton<KitchenWasteAuditService>(
+      () => KitchenWasteAuditService(getIt<AppDatabase>()),
     );
   }
 }

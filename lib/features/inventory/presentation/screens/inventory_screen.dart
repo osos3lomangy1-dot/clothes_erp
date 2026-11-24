@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/retail_sector.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/features/feature_gate.dart';
 import '../../../../core/services/excel_service.dart';
 import '../../../../core/utils/money.dart';
 import '../../../../core/widgets/app_feedback.dart';
@@ -43,10 +46,34 @@ class _InventoryScreenState extends State<InventoryScreen> {
   _InventorySort _sort = _InventorySort.lowestQty;
   bool _exporting = false;
   Map<String, ProductEntity> _productsById = {};
+  String _sectorMode = RetailSector.apparel;
+  StreamSubscription<String?>? _sectorSub;
+  StreamSubscription<List<ActivityType>>? _activitySub;
 
   @override
   void initState() {
     super.initState();
+    if (getIt.isRegistered<FeatureGate>()) {
+      final gate = getIt<FeatureGate>();
+      _sectorSub = ActivitySettingsService.listenSectorMode(gate, (mode) {
+        if (mounted && _sectorMode != mode) {
+          setState(() => _sectorMode = mode);
+          _loadProductsIfHospitality();
+        }
+      });
+    }
+    if (getIt.isRegistered<ActivitySettingsService>()) {
+      final actService = getIt<ActivitySettingsService>();
+      _activitySub = ActivitySettingsService.listenEnabledActivities(
+        actService,
+        (_) {
+          if (mounted) {
+            setState(() {});
+            _loadProductsIfHospitality();
+          }
+        },
+      );
+    }
     _loadProductsIfHospitality();
   }
 
@@ -79,6 +106,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   @override
   void dispose() {
+    _sectorSub?.cancel();
+    _activitySub?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -102,12 +131,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   bool get _isHospitality {
-    if (getIt.isRegistered<ActivitySettingsService>()) {
-      return getIt<ActivitySettingsService>()
-          .cachedEnabledActivities
-          .contains(ActivityType.restaurantsCafes);
-    }
-    return false;
+    final enabled = getIt.isRegistered<ActivitySettingsService>()
+        ? getIt<ActivitySettingsService>().cachedEnabledActivities
+        : const <ActivityType>[];
+    return ActivitySettingsService.isHospitalityResolved(
+      sectorMode: _sectorMode,
+      enabledActivities: enabled,
+    );
   }
 
   Future<void> _openReceiveShipmentScreen(BuildContext context) async {
@@ -278,24 +308,25 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     );
                   },
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 8,
-                    horizontal: 4,
+                if (_isHospitality)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: 4,
+                    ),
+                    child: OutlinedButton.icon(
+                      key: const Key('kitchen_waste_btn'),
+                      onPressed: () async {
+                        final cubit = context.read<InventoryCubit>();
+                        final res = await KitchenWasteDialog.show(context);
+                        if (res == true && mounted) {
+                          cubit.loadInventory();
+                        }
+                      },
+                      icon: const Icon(Icons.delete_sweep_rounded, size: 18, color: AppColors.error),
+                      label: const Text('إذن هالك [مطبخ]', style: TextStyle(color: AppColors.error)),
+                    ),
                   ),
-                  child: OutlinedButton.icon(
-                    key: const Key('kitchen_waste_btn'),
-                    onPressed: () async {
-                      final cubit = context.read<InventoryCubit>();
-                      final res = await KitchenWasteDialog.show(context);
-                      if (res == true && mounted) {
-                        cubit.loadInventory();
-                      }
-                    },
-                    icon: const Icon(Icons.delete_sweep_rounded, size: 18, color: AppColors.error),
-                    label: const Text('إذن هالك [مطبخ]', style: TextStyle(color: AppColors.error)),
-                  ),
-                ),
                 if (isAdmin)
                   Padding(
                     padding: const EdgeInsets.symmetric(

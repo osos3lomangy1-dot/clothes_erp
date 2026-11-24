@@ -4,6 +4,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection.dart';
 import '../../data/datasources/inventory_local_data_source.dart';
+import 'kitchen_waste_audit_dialog.dart';
 
 class KitchenWasteDialog extends StatefulWidget {
   final String? defaultVariantId;
@@ -345,6 +346,20 @@ class _KitchenWasteDialogState extends State<KitchenWasteDialog> {
               ),
       ),
       actions: [
+        OutlinedButton.icon(
+          key: const Key('open_waste_audit_btn'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.primary,
+            side: BorderSide(color: AppColors.primary.withValues(alpha: 0.5)),
+          ),
+          onPressed: () => KitchenWasteAuditDialog.show(context),
+          icon: const Icon(Icons.analytics_outlined, size: 16),
+          label: const Text(
+            'تقرير وتكلفة الهالك',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+        const SizedBox(width: 8),
         TextButton(
           key: const Key('cancel_kitchen_waste_btn'),
           onPressed: _submitting ? null : () => Navigator.pop(context, false),

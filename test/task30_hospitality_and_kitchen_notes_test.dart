@@ -1,3 +1,4 @@
+import 'package:clothes_erp/core/constants/retail_sector.dart';
 import 'package:clothes_erp/core/database/app_database.dart';
 import 'package:clothes_erp/core/database/branch_provider.dart';
 import 'package:clothes_erp/core/database/tx_writer.dart';
@@ -5,6 +6,7 @@ import 'package:clothes_erp/core/errors/failures.dart';
 import 'package:clothes_erp/core/features/feature_gate.dart';
 import 'package:clothes_erp/core/services/hotkey_strip_service.dart';
 import 'package:clothes_erp/core/services/shortcut_settings_service.dart';
+import 'package:clothes_erp/core/services/store_presets_engine.dart';
 import 'package:clothes_erp/core/theme/app_branding.dart';
 import 'package:clothes_erp/features/auth/data/datasources/auth_local_data_source.dart';
 import 'package:clothes_erp/features/auth/data/models/user_model.dart';
@@ -296,13 +298,12 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
 
-      // Enable restaurantsCafes activity in database
-      await db.into(db.appMeta).insertOnConflictUpdate(
-        AppMetaCompanion.insert(
-          key: 'activity.restaurantsCafes',
-          value: '1',
-          updatedAt: DateTime.now(),
-        ),
+      // Enable hospitality mode exclusively for restaurant test
+      await StorePresetsEngine.applyPreset(
+        preset: StorePreset.hospitality,
+        featureGate: featureGate,
+        activityService: activityService,
+        userId: 'admin_1',
       );
       await activityService.getEnabledActivities();
 
@@ -403,12 +404,11 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
 
-      await db.into(db.appMeta).insertOnConflictUpdate(
-        AppMetaCompanion.insert(
-          key: 'activity.restaurantsCafes',
-          value: '1',
-          updatedAt: DateTime.now(),
-        ),
+      await StorePresetsEngine.applyPreset(
+        preset: StorePreset.hospitality,
+        featureGate: featureGate,
+        activityService: activityService,
+        userId: 'admin_1',
       );
       await activityService.getEnabledActivities();
 
@@ -467,20 +467,13 @@ void main() {
       addTearDown(() => tester.view.resetPhysicalSize());
 
       // Set only clothing to true, disable restaurantsCafes
-      await db.into(db.appMeta).insertOnConflictUpdate(
-        AppMetaCompanion.insert(
-          key: 'activity.restaurantsCafes',
-          value: '0',
-          updatedAt: DateTime.now(),
-        ),
+      await StorePresetsEngine.applyPreset(
+        preset: StorePreset.fashion,
+        featureGate: featureGate,
+        activityService: activityService,
+        userId: 'admin_1',
       );
-      await db.into(db.appMeta).insertOnConflictUpdate(
-        AppMetaCompanion.insert(
-          key: 'activity.clothing',
-          value: '1',
-          updatedAt: DateTime.now(),
-        ),
-      );
+      await featureGate.setMeta(RetailSector.metaKey, RetailSector.apparel, userId: 'admin_1');
       await activityService.getEnabledActivities();
 
       await tester.pumpWidget(

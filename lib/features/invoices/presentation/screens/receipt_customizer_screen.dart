@@ -1,11 +1,15 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:printing/printing.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/retail_sector.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/features/feature_gate.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
+import '../../../products/domain/entities/activity_type.dart';
+import '../../../settings/data/services/activity_settings_service.dart';
 import '../../data/services/receipt_settings_service.dart';
 import '../../domain/entities/invoice_details_entity.dart';
 import '../../domain/entities/invoice_item_details_entity.dart';
@@ -46,6 +50,19 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
   late bool _dineInServiceChargeEnabled;
 
   bool _isSaving = false;
+  String _sectorMode = RetailSector.apparel;
+  StreamSubscription<String?>? _sectorSub;
+  StreamSubscription<List<ActivityType>>? _activitySub;
+
+  bool get _isHospitality {
+    final enabled = getIt.isRegistered<ActivitySettingsService>()
+        ? getIt<ActivitySettingsService>().cachedEnabledActivities
+        : const <ActivityType>[];
+    return ActivitySettingsService.isHospitalityResolved(
+      sectorMode: _sectorMode,
+      enabledActivities: enabled,
+    );
+  }
 
   @override
   void initState() {
@@ -73,10 +90,30 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
     _taxEnabled = cfg.taxEnabled;
     _taxInclusive = cfg.taxInclusive;
     _dineInServiceChargeEnabled = cfg.dineInServiceChargeEnabled;
+
+    if (getIt.isRegistered<FeatureGate>()) {
+      final gate = getIt<FeatureGate>();
+      _sectorSub = ActivitySettingsService.listenSectorMode(gate, (mode) {
+        if (mounted && _sectorMode != mode) {
+          setState(() => _sectorMode = mode);
+        }
+      });
+    }
+    if (getIt.isRegistered<ActivitySettingsService>()) {
+      final actService = getIt<ActivitySettingsService>();
+      _activitySub = ActivitySettingsService.listenEnabledActivities(
+        actService,
+        (_) {
+          if (mounted) setState(() {});
+        },
+      );
+    }
   }
 
   @override
   void dispose() {
+    _sectorSub?.cancel();
+    _activitySub?.cancel();
     _storeNameCtrl.dispose();
     _storeActivityCtrl.dispose();
     _storePhoneCtrl.dispose();
@@ -683,23 +720,26 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
               value: _showBarcode,
               onChanged: (v) => setState(() => _showBarcode = v),
             ),
-            const Divider(height: 1),
-            SwitchListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              title: const Text('إظهار تفاصيل الصنف (المقاس واللون بجانب اسم الصنف)'),
-              value: _showItemDetails,
-              onChanged: (v) => setState(() => _showItemDetails = v),
-            ),
-            const Divider(height: 1),
-            SwitchListTile(
-              key: const Key('receipt_group_variants_switch'),
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              title: const Text('تجميع مقاسات نفس الموديل في سطر واحد (توفير الورق الحراري)'),
-              value: _groupVariantsOnReceipt,
-              onChanged: (v) => setState(() => _groupVariantsOnReceipt = v),
-            ),
+            if (!_isHospitality) ...[
+              const Divider(height: 1),
+              SwitchListTile(
+                key: const Key('receipt_show_details_switch'),
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: const Text('إظهار تفاصيل الصنف (المقاس واللون بجانب اسم الصنف)'),
+                value: _showItemDetails,
+                onChanged: (v) => setState(() => _showItemDetails = v),
+              ),
+              const Divider(height: 1),
+              SwitchListTile(
+                key: const Key('receipt_group_variants_switch'),
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: const Text('تجميع مقاسات نفس الموديل في سطر واحد (توفير الورق الحراري)'),
+                value: _groupVariantsOnReceipt,
+                onChanged: (v) => setState(() => _groupVariantsOnReceipt = v),
+              ),
+            ],
           ],
         ),
       ),
@@ -722,9 +762,13 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
               children: [
                 Icon(Icons.percent_rounded, color: AppColors.primary, size: 20),
                 const SizedBox(width: 8),
-                const Text(
-                  'التحكم في الضريبة وخدمة الصالة للمطاعم والكافيهات',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                Expanded(
+                  child: Text(
+                    _isHospitality
+                        ? 'التحكم في الضريبة وخدمة الصالة للمطاعم والكافيهات'
+                        : 'التحكم في ضريبة القيمة المضافة (VAT)',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
                 ),
               ],
             ),
@@ -769,30 +813,32 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
               ),
             ],
 
-            const Divider(height: 24),
+            if (_isHospitality) ...[
+              const Divider(height: 24),
 
-            // 2. Dine-In Service Charge Switch
-            SwitchListTile(
-              key: const Key('receipt_service_charge_enabled_switch'),
-              contentPadding: EdgeInsets.zero,
-              title: const Text('تفعيل خدمة الصالة لطلبات الأكل بالمكان (Dine-In Service Charge)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              subtitle: const Text('تطبق حصرياً وتلقائياً على فواتير الصالة فقط، وتستثني التيك أواي والدليفري بنسبة 0%', style: TextStyle(fontSize: 11, color: Colors.grey)),
-              value: _dineInServiceChargeEnabled,
-              onChanged: (v) => setState(() => _dineInServiceChargeEnabled = v),
-            ),
-            if (_dineInServiceChargeEnabled) ...[
-              const SizedBox(height: 8),
-              TextFormField(
-                key: const Key('receipt_service_charge_rate_field'),
-                controller: _dineInServiceChargeRateCtrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(
-                  labelText: 'نسبة خدمة الصالة % (افتراضي: 12%)',
-                  prefixIcon: const Icon(Icons.room_service_outlined, size: 20),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                onChanged: (_) => setState(() {}),
+              // 2. Dine-In Service Charge Switch
+              SwitchListTile(
+                key: const Key('receipt_service_charge_enabled_switch'),
+                contentPadding: EdgeInsets.zero,
+                title: const Text('تفعيل خدمة الصالة لطلبات الأكل بالمكان (Dine-In Service Charge)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                subtitle: const Text('تطبق حصرياً وتلقائياً على فواتير الصالة فقط، وتستثني التيك أواي والدليفري بنسبة 0%', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                value: _dineInServiceChargeEnabled,
+                onChanged: (v) => setState(() => _dineInServiceChargeEnabled = v),
               ),
+              if (_dineInServiceChargeEnabled) ...[
+                const SizedBox(height: 8),
+                TextFormField(
+                  key: const Key('receipt_service_charge_rate_field'),
+                  controller: _dineInServiceChargeRateCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: 'نسبة خدمة الصالة % (افتراضي: 12%)',
+                    prefixIcon: const Icon(Icons.room_service_outlined, size: 20),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+              ],
             ],
           ],
         ),
@@ -847,30 +893,34 @@ class _ReceiptCustomizerScreenState extends State<ReceiptCustomizerScreen> {
             TextFormField(
               controller: _wifiInfoCtrl,
               decoration: InputDecoration(
-                labelText: 'بيانات واي فاي المطعم أو المتجر (اختياري)',
+                labelText: _isHospitality
+                    ? 'بيانات واي فاي المطعم أو الكافيه (اختياري)'
+                    : 'بيانات شبكة الواي فاي للعملاء (اختياري)',
                 prefixIcon: const Icon(Icons.wifi_rounded, size: 20),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
               ),
               onChanged: (_) => setState(() {}),
             ),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                key: const Key('apply_hospitality_template_body_btn'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.primary,
-                  side: BorderSide(color: AppColors.primary.withValues(alpha: 0.5)),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+            if (_isHospitality) ...[
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  key: const Key('apply_hospitality_template_body_btn'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: BorderSide(color: AppColors.primary.withValues(alpha: 0.5)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
+                  onPressed: _applyHospitalityTemplate,
+                  icon: const Icon(Icons.restaurant_menu_rounded, size: 18),
+                  label: const Text('تطبيق قالب المطاعم والكافيهات'),
                 ),
-                onPressed: _applyHospitalityTemplate,
-                icon: const Icon(Icons.restaurant_menu_rounded, size: 18),
-                label: const Text('تطبيق قالب المطاعم والكافيهات'),
               ),
-            ),
+            ],
           ],
         ),
       ),
