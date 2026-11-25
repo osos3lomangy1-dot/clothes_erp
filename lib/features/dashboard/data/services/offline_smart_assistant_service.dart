@@ -1949,22 +1949,75 @@ class OfflineSmartAssistantService {
     });
   }
 
+  /// Strips repeated conversational Arabic prefixes and normalizes colloquial
+  /// verbs and nouns into canonical ERP command forms while preserving original
+  /// Arabic letter forms (ة/أ/إ/ى) for extracted entity names.
+  String _stripConversationalPrefixes(String input) {
+    var s = Money.normalizeDigits(input).trim();
+    final prefixRegex = RegExp(
+      r'^(?:عايز|عاوز|محتاج|ممكن|لو\s+سمحت|ياريت|يا\s+ريت|حابب|[أا]ريد|[أا]بغ[يى]|[أا]نا|[إا]حنا|دلوقتي|بسرع[ةه]|ع\s+السريع|[إا]ني|[إا]ن)(?=\s|$)\s*',
+    );
+    while (true) {
+      final next = s.replaceFirst(prefixRegex, '').trim();
+      if (next == s) break;
+      s = next;
+    }
+
+    const verbRules = <(String, String)>[
+      (r'^(?:[أا]ضيف|تضيف|نضيف|هضيف|هاضيف|ضف)(?=\s|$)', 'ضيف'),
+      (r'^(?:[أا]سجل|تسجل|نسجل|هسجل|هاسجل|[أا]دخل|تدخل)(?=\s|$)', 'سجل'),
+      (r'^(?:[أا]عدل|تعدل|نعدل|[أا]غير|تغير|[أا]خلي|تخلي)(?=\s|$)', 'عدل'),
+      (r'^(?:[أا]زود|تزود|نزود|هزود)(?=\s|$)', 'زود'),
+      (r'^(?:[أا]نقص|تنقص|نخصم|[أا]قلل)(?=\s|$)', 'نقص'),
+      (r'^(?:[أا]دفع|تدفع|سددت|بسدد)(?=\s|$)', 'دفعت'),
+      (r'^(?:[أا]شتري|بشتري|شريت|جبت)(?=\s|$)', 'اشتريت'),
+      (r'^(?:[أا]حصل|تحصل|نحصل|هحصل)(?=\s|$)', 'تحصيل'),
+    ];
+    for (final (pattern, replacement) in verbRules) {
+      final reg = RegExp(pattern);
+      if (reg.hasMatch(s)) {
+        s = s.replaceFirst(reg, replacement).trim();
+        break;
+      }
+    }
+
+    s = s.replaceAllMapped(
+      RegExp(r'(^|\s)زبون(?=\s|$)'),
+      (m) => '${m.group(1)}عميل',
+    );
+    s = s.replaceFirstMapped(
+      RegExp(r'^(ضيف|[أا]ضف|[إا]ضاف[ةه])\s+(?:منتج|بضاع[ةه]|موديل)(?=\s|$)'),
+      (m) => '${m.group(1)} صنف',
+    );
+    return s.trim();
+  }
+
   /// Parses ERP operational commands into a (possibly incomplete) [AssistantActionDraft].
   AssistantActionDraft? parseErpDraft(String rawQuery) {
-    final normalizedDigits = Money.normalizeDigits(rawQuery).trim();
-    final q = normalizeArabic(normalizedDigits);
+    final rawDigits = Money.normalizeDigits(rawQuery).trim();
+    final rawNorm = normalizeArabic(rawDigits);
+    if (rawNorm.contains('ازاي') ||
+        rawNorm.contains('كيف') ||
+        rawNorm.contains('خطوات') ||
+        rawNorm.contains('طريقه')) {
+      return null;
+    }
+
+    final cleanedDigits = _stripConversationalPrefixes(rawDigits);
+    final q = normalizeArabic(cleanedDigits);
 
     // 0. Add Customer: "ضيف عميل [اسم] [رقم هاتف]"
     if (q.startsWith('ضيف عميل') ||
         q.startsWith('اضف عميل') ||
         q.startsWith('اضافه عميل') ||
         q.startsWith('عميل جديد')) {
-      final body = normalizedDigits
+      var body = cleanedDigits
           .replaceFirst(
-            RegExp(r'^(?:ضيف\s+عميل|اضف\s+عميل|أضف\s+عميل|اضافه\s+عميل|إضافة\s+عميل|عميل\s+جديد)\s*'),
+            RegExp(r'^(?:ضيف\s+عميل|[أا]ضف\s+عميل|[إا]ضاف[ةه]\s+عميل|عميل\s+جديد)\s*'),
             '',
           )
           .trim();
+      if (body == 'جديد') body = '';
       final phoneMatch = RegExp(r'(\+?\d{8,15})$').firstMatch(body);
       String? phone;
       String? custName;
@@ -1983,7 +2036,7 @@ class OfflineSmartAssistantService {
 
     // 0b. Collect Installment: "العميل [اسم] دفع قسط [مبلغ]" / "تحصيل قسط [اسم] [مبلغ]"
     if (q.contains('دفع قسط') || q.startsWith('تحصيل قسط')) {
-      String body = normalizedDigits;
+      String body = cleanedDigits;
       double? amount;
       String? custName;
       final custPayMatch = RegExp(
@@ -2019,13 +2072,13 @@ class OfflineSmartAssistantService {
         q == 'الزكاه') {
       final isGregorian = q.contains('ميلادي');
       final goldMatch = RegExp(
-        r'(?:الذهب|ذهب|عيار\s*24|سعر)\s*(?:بـ|ب|هو)?\s*(\d+(?:\.\d+)?)',
-      ).firstMatch(normalizedDigits);
+        r'(?:الذهب|ذهب|عيار\s*24|سعر)\s*(?:ب|هو)?\s*(\d+(?:\.\d+)?)',
+      ).firstMatch(cleanedDigits);
       double? goldPrice =
           goldMatch != null ? double.tryParse(goldMatch.group(1)!) : null;
       if (goldPrice == null) {
         final trailingNum = RegExp(r'(\d{3,6}(?:\.\d+)?)\s*(?:ج\.?م|جنيه)?$')
-            .firstMatch(normalizedDigits);
+            .firstMatch(cleanedDigits);
         if (trailingNum != null) {
           goldPrice = double.tryParse(trailingNum.group(1)!);
         }
@@ -2042,7 +2095,7 @@ class OfflineSmartAssistantService {
         q.startsWith('دفعت لمورد') ||
         q.startsWith('سداد مورد') ||
         q.startsWith('سدد للمورد')) {
-      final body = normalizedDigits
+      final body = cleanedDigits
           .replaceFirst(
             RegExp(r'^(?:دفعت\s+(?:للمورد|لمورد)|سداد\s+مورد|سدد\s+للمورد)\s*'),
             '',
@@ -2069,9 +2122,9 @@ class OfflineSmartAssistantService {
         q.startsWith('اضف مصروف') ||
         q.startsWith('مصروف جديد') ||
         (q.startsWith('دفعت ') && !q.contains('مورد'))) {
-      final body = normalizedDigits
+      final body = cleanedDigits
           .replaceFirst(
-            RegExp(r'^(?:سجل\s+مصروف|اضف\s+مصروف|أضف\s+مصروف|مصروف\s+جديد|دفعت)\s*'),
+            RegExp(r'^(?:سجل\s+مصروف|[أا]ضف\s+مصروف|مصروف\s+جديد|دفعت)\s*'),
             '',
           )
           .trim();
@@ -2095,15 +2148,18 @@ class OfflineSmartAssistantService {
     if (q.startsWith('خلي سعر ') ||
         q.startsWith('عدل سعر ') ||
         q.startsWith('غير سعر ')) {
-      final body = normalizedDigits
+      final body = cleanedDigits
           .replaceFirst(RegExp(r'^(?:خلي|عدل|غير|عدّل)\s+سعر\s+'), '')
           .trim();
-      final numMatch = RegExp(r'(\d+(?:\.\d+)?)\s*(?:ج\.?م|جنيه)?$').firstMatch(body);
+      final numMatch = RegExp(r'(?:\s+(?:لـ?|إلى|الى|بـ?))?\s*(\d+(?:\.\d+)?)\s*(?:ج\.?م|جنيه)?$').firstMatch(body);
       double? val;
       String? prodName;
       if (numMatch != null) {
         val = double.tryParse(numMatch.group(1)!);
-        prodName = body.substring(0, numMatch.start).trim();
+        prodName = body
+            .substring(0, numMatch.start)
+            .replaceFirst(RegExp(r'\s+(?:لـ?|إلى|الى|بـ?)$'), '')
+            .trim();
       } else if (body.isNotEmpty) {
         prodName = body;
       }
@@ -2118,10 +2174,10 @@ class OfflineSmartAssistantService {
         q.startsWith('زود كميه ') ||
         q.startsWith('نقص رصيد ')) {
       final isNeg = q.startsWith('نقص');
-      final body = normalizedDigits
-          .replaceFirst(RegExp(r'^(?:زود|نقص)\s+(?:رصيد|كميه|كمية)\s+'), '')
+      final body = cleanedDigits
+          .replaceFirst(RegExp(r'^(?:زود|نقص)\s+(?:رصيد|كمي[ةه])\s+'), '')
           .trim();
-      final numMatch = RegExp(r'(\d+)\s*(?:قطعه|قطعة)?$').firstMatch(body);
+      final numMatch = RegExp(r'(\d+)\s*(?:قطع[ةه])?$').firstMatch(body);
       int? val;
       String? prodName;
       if (numMatch != null) {
@@ -2144,15 +2200,15 @@ class OfflineSmartAssistantService {
         q.startsWith('اضف صنف') ||
         q.startsWith('اضافه صنف') ||
         q.startsWith('صنف جديد')) {
-      final body = normalizedDigits
+      final body = cleanedDigits
           .replaceFirst(
-            RegExp(r'^(?:ضيف\s+صنف|اضف\s+صنف|أضف\s+صنف|اضافه\s+صنف|إضافة\s+صنف|صنف\s+جديد)\s*'),
+            RegExp(r'^(?:ضيف\s+صنف|[أا]ضف\s+صنف|[إا]ضاف[ةه]\s+صنف|صنف\s+جديد)\s*'),
             '',
           )
           .trim();
-      final costMatch = RegExp(r'(?:تكلفه|تكلفة)\s+(\d+(?:\.\d+)?)').firstMatch(body);
+      final costMatch = RegExp(r'تكلف[ةه]\s+(\d+(?:\.\d+)?)').firstMatch(body);
       final sellMatch = RegExp(r'(?:بيع|سعر)\s+(\d+(?:\.\d+)?)').firstMatch(body);
-      final qtyMatch = RegExp(r'(?:كميه|كمية|عدد)\s+(\d+)').firstMatch(body);
+      final qtyMatch = RegExp(r'(?:كمي[ةه]|عدد)\s+(\d+)').firstMatch(body);
 
       String prodName = body;
       final cutIndices = [
@@ -2163,6 +2219,9 @@ class OfflineSmartAssistantService {
       if (cutIndices.isNotEmpty) {
         cutIndices.sort();
         prodName = body.substring(0, cutIndices.first).trim();
+      }
+      if (prodName == 'جديد') {
+        prodName = '';
       }
 
       final fields = <String, dynamic>{
@@ -2176,15 +2235,15 @@ class OfflineSmartAssistantService {
 
     // 5. Record Purchase: "اشتريت [صنف] من المورد [اسم] بسعر [سعر] عدد [كمية] (نقدي/آجل)"
     if (q.startsWith('اشتريت') || q.startsWith('شراء ') || q.startsWith('سجل مشتريات')) {
-      final body = normalizedDigits
+      final body = cleanedDigits
           .replaceFirst(RegExp(r'^(?:اشتريت|شراء|سجل\s+مشتريات)\s*'), '')
           .trim();
-      final isCredit = q.contains('اجل') || q.contains('آجل') || q.contains('شكك');
+      final isCredit = q.contains('اجل') || q.contains('شكك');
       final supMatch = RegExp(
-        r'من\s+(?:المورد|مورد)?\s*([^\d]+?)(?=\s+(?:بسعر|سعر|عدد|كميه|كمية|نقدي|كاش|آجل|اجل)|$)',
+        r'من\s+(?:المورد|مورد)?\s*([^\d]+?)(?=\s+(?:بسعر|سعر|عدد|كمي[ةه]|نقدي|كاش|[آا]جل)|$)',
       ).firstMatch(body);
       final costMatch = RegExp(r'(?:بسعر|سعر)\s+(\d+(?:\.\d+)?)').firstMatch(body);
-      final qtyMatch = RegExp(r'(?:عدد|كميه|كمية)\s+(\d+)').firstMatch(body);
+      final qtyMatch = RegExp(r'(?:عدد|كمي[ةه])\s+(\d+)').firstMatch(body);
 
       String prodName = body;
       final cutIndices = [
@@ -2195,6 +2254,9 @@ class OfflineSmartAssistantService {
       if (cutIndices.isNotEmpty) {
         cutIndices.sort();
         prodName = body.substring(0, cutIndices.first).trim();
+      }
+      if (prodName == 'بضاعة' || prodName == 'بضاعه' || prodName == 'صنف' || prodName == 'جديد') {
+        prodName = '';
       }
 
       final fields = <String, dynamic>{

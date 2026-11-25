@@ -2480,4 +2480,68 @@ void main() {
       expect(navigated, isNull);
     });
   });
+
+  group('Task 40.13: Natural Colloquial Command & Intent Parsing', () {
+    test('strips conversational prefixes, normalizes verbs/synonyms, and preserves how-to guides', () async {
+      // 1) "عايز اضيف صنف" -> starts addProduct draft asking for productName
+      final d1 = assistantService.parseErpDraft('عايز اضيف صنف');
+      expect(d1?.kind, AssistantCommandKind.addProduct);
+      expect(d1?.missingField, 'productName');
+
+      // 2) "ممكن لو سمحت تضيف منتج جديد" -> addProduct draft asking for productName
+      final d2 = assistantService.parseErpDraft('ممكن لو سمحت تضيف منتج جديد');
+      expect(d2?.kind, AssistantCommandKind.addProduct);
+      expect(d2?.missingField, 'productName');
+
+      // 3) "عاوز اسجل مصروف كهرباء 300" -> complete recordExpense draft
+      final d3 = assistantService.parseErpDraft('عاوز اسجل مصروف كهرباء 300');
+      expect(d3?.kind, AssistantCommandKind.recordExpense);
+      expect(d3?.isComplete, isTrue);
+      expect(d3?.fields['category'], 'كهرباء');
+      expect(d3?.fields['amountEgp'], 300.0);
+
+      // 4) "انا اشتريت تيشيرت من المورد علي بسعر 150 عدد 5" -> complete recordPurchase draft
+      final d4 = assistantService.parseErpDraft(
+        'انا اشتريت تيشيرت من المورد علي بسعر 150 عدد 5',
+      );
+      expect(d4?.kind, AssistantCommandKind.recordPurchase);
+      expect(d4?.isComplete, isTrue);
+      expect(d4?.fields['productName'], 'تيشيرت');
+      expect(d4?.fields['supplierName'], 'علي');
+      expect(d4?.fields['costEgp'], 150.0);
+      expect(d4?.fields['qty'], 5);
+
+      // 5) "عايز اعدل سعر الجاكيت لـ 500" -> complete price update draft
+      final d5 = assistantService.parseErpDraft('عايز اعدل سعر الجاكيت لـ 500');
+      expect(d5?.kind, AssistantCommandKind.updateProductPriceOrStock);
+      expect(d5?.isComplete, isTrue);
+      expect(d5?.fields['mode'], 'price');
+      expect(d5?.fields['productName'], 'الجاكيت');
+      expect(d5?.fields['value'], 500.0);
+
+      // 6) Flexible incomplete drafts: "عايز اسجل مصروف", "عايز اشتري بضاعة", "عايز اضيف عميل", "عايز احصل قسط"
+      expect(
+        assistantService.parseErpDraft('عايز اسجل مصروف')?.kind,
+        AssistantCommandKind.recordExpense,
+      );
+      expect(
+        assistantService.parseErpDraft('عايز اشتري بضاعة')?.kind,
+        AssistantCommandKind.recordPurchase,
+      );
+      expect(
+        assistantService.parseErpDraft('عايز اضيف عميل')?.kind,
+        AssistantCommandKind.addCustomer,
+      );
+      expect(
+        assistantService.parseErpDraft('عايز احصل قسط')?.kind,
+        AssistantCommandKind.collectInstallment,
+      );
+
+      // 7) How-To Guide questions must NOT trigger ERP execution drafts
+      expect(assistantService.parseErpDraft('ازاي اضيف صنف'), isNull);
+      expect(assistantService.parseErpDraft('ازاي اضيف كاشير'), isNull);
+      expect(assistantService.matchHowToGuide('ازاي اضيف صنف'), isNotNull);
+      expect(assistantService.matchHowToGuide('ازاي اضيف كاشير'), isNotNull);
+    });
+  });
 }
