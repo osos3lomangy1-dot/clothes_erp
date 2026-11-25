@@ -641,6 +641,10 @@ class _MainLayoutState extends State<MainLayout> {
                                               ),
                                             ),
                                           ),
+                                          if (isAdmin)
+                                            _buildSidebarAssistantButton(
+                                              collapsed,
+                                            ),
                                           const SizedBox(height: 4),
 
                                           // Direct Top Actions
@@ -965,28 +969,12 @@ class _MainLayoutState extends State<MainLayout> {
                     child: Column(
                       children: [
                         Expanded(
-                          child: Stack(
-                            children: [
-                              Navigator(
-                                key: _contentNavKey,
-                                onGenerateRoute: (settings) => MaterialPageRoute(
-                                  settings: settings,
-                                  builder: (_) => _currentScreen,
-                                ),
-                              ),
-                              BlocBuilder<AuthCubit, AuthState>(
-                                builder: (context, authState) {
-                                  if (!_isAdmin(authState)) {
-                                    return const SizedBox.shrink();
-                                  }
-                                  return Positioned(
-                                    bottom: 14,
-                                    left: 16,
-                                    child: _buildFloatingAssistantBubble(),
-                                  );
-                                },
-                              ),
-                            ],
+                          child: Navigator(
+                            key: _contentNavKey,
+                            onGenerateRoute: (settings) => MaterialPageRoute(
+                              settings: settings,
+                              builder: (_) => _currentScreen,
+                            ),
                           ),
                         ),
                         if (_activeTitle != 'نقطة البيع (الكاشير)' &&
@@ -1694,48 +1682,99 @@ class _MainLayoutState extends State<MainLayout> {
     await OfflineSmartAssistantDialog.show(context);
   }
 
-  Widget _buildFloatingAssistantBubble() {
-    return Tooltip(
-      message: 'المساعد الذكي (Ctrl+M)',
+  Widget _buildSidebarAssistantButton(bool collapsed) {
+    if (collapsed) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Center(
+          child: Tooltip(
+            message: 'المساعد الذكي (Ctrl+M)',
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                key: const Key('sidebar_assistant_btn'),
+                onTap: _openAssistantPopover,
+                customBorder: const CircleBorder(),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [AppColors.primary, AppColors.secondary],
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                    ),
+                    border: Border.all(color: Colors.white30),
+                  ),
+                  child: const Icon(
+                    Icons.auto_awesome_rounded,
+                    color: Colors.white,
+                    size: 19,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          key: const Key('floating_assistant_bubble'),
+          key: const Key('sidebar_assistant_btn'),
           onTap: _openAssistantPopover,
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(10),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [AppColors.primary, AppColors.secondary],
                 begin: Alignment.centerRight,
                 end: Alignment.centerLeft,
               ),
-              borderRadius: BorderRadius.circular(999),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.35),
-                  blurRadius: 14,
-                  offset: const Offset(0, 6),
-                ),
-              ],
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.white24),
             ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
+            child: Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.auto_awesome_rounded,
                   color: Colors.white,
-                  size: 18,
+                  size: 17,
                 ),
-                SizedBox(width: 6),
-                Text(
-                  'المساعد الذكي',
-                  style: TextStyle(
-                    fontFamily: 'Cairo',
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'المساعد الذكي',
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'Ctrl+M',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
