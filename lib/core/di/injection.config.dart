@@ -63,6 +63,8 @@ import 'package:clothes_erp/features/dashboard/data/datasources/dashboard_local_
     as _i517;
 import 'package:clothes_erp/features/dashboard/data/repositories/dashboard_repository_impl.dart'
     as _i729;
+import 'package:clothes_erp/features/dashboard/data/services/offline_smart_assistant_service.dart'
+    as _i132;
 import 'package:clothes_erp/features/dashboard/domain/repositories/dashboard_repository.dart'
     as _i682;
 import 'package:clothes_erp/features/dashboard/domain/usecases/get_dashboard_stats_usecase.dart'
@@ -318,6 +320,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i861.InventoryLogRepository>(
       () => _i284.InventoryLogRepositoryImpl(gh<_i110.AppDatabase>()),
+    );
+    gh.lazySingleton<_i132.OfflineSmartAssistantService>(
+      () => _i132.OfflineSmartAssistantService(gh<_i110.AppDatabase>()),
     );
     gh.lazySingleton<_i533.KitchenWasteAuditService>(
       () => _i533.KitchenWasteAuditService(gh<_i110.AppDatabase>()),

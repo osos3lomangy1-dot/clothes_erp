@@ -245,6 +245,51 @@ class ExcelWorkbookService {
             arabicLabel: 'حالة العقد (نشط / متأخر / مكتمل)',
           ),
         ];
+      case ExcelImportEntity.expenses:
+        return const [
+          ExcelFieldSpec(
+            key: 'category',
+            arabicLabel: 'بند المصروف',
+            required: true,
+          ),
+          ExcelFieldSpec(
+            key: 'amount',
+            arabicLabel: 'المبلغ (ج.م)',
+            required: true,
+          ),
+          ExcelFieldSpec(
+            key: 'expenseDate',
+            arabicLabel: 'تاريخ المصروف (YYYY-MM-DD)',
+          ),
+          ExcelFieldSpec(
+            key: 'notes',
+            arabicLabel: 'ملاحظات',
+          ),
+        ];
+      case ExcelImportEntity.historicalSales:
+        return const [
+          ExcelFieldSpec(
+            key: 'shortRef',
+            arabicLabel: 'رقم الفاتورة (اختياري)',
+          ),
+          ExcelFieldSpec(
+            key: 'total',
+            arabicLabel: 'إجمالي الفاتورة (ج.م)',
+            required: true,
+          ),
+          ExcelFieldSpec(
+            key: 'paymentMethod',
+            arabicLabel: 'طريقة الدفع (cash / card)',
+          ),
+          ExcelFieldSpec(
+            key: 'date',
+            arabicLabel: 'تاريخ الفاتورة (YYYY-MM-DD)',
+          ),
+          ExcelFieldSpec(
+            key: 'customerName',
+            arabicLabel: 'اسم العميل (اختياري)',
+          ),
+        ];
     }
   }
 
@@ -1287,6 +1332,41 @@ class ExcelWorkbookService {
             map['status'] = i;
           }
           break;
+
+        case ExcelImportEntity.expenses:
+          if (map['category'] == null &&
+              _matchesAny(h, ['بند', 'تصنيف', 'مصروف', 'نوع', 'category', 'title'])) {
+            map['category'] = i;
+          } else if (map['amount'] == null &&
+              _matchesAny(h, ['مبلغ', 'قيمة', 'قيمة المصروف', 'amount'])) {
+            map['amount'] = i;
+          } else if (map['expenseDate'] == null &&
+              _matchesAny(h, ['تاريخ', 'date'])) {
+            map['expenseDate'] = i;
+          } else if (map['notes'] == null &&
+              _matchesAny(h, ['ملاحظ', 'بيان', 'وصف', 'note'])) {
+            map['notes'] = i;
+          }
+          break;
+
+        case ExcelImportEntity.historicalSales:
+          if (map['total'] == null &&
+              _matchesAny(h, ['اجمالي', 'إجمالي', 'مبلغ', 'total', 'amount'])) {
+            map['total'] = i;
+          } else if (map['shortRef'] == null &&
+              _matchesAny(h, ['رقم', 'مرجع', 'ref', 'invoice', 'فاتورة'])) {
+            map['shortRef'] = i;
+          } else if (map['paymentMethod'] == null &&
+              _matchesAny(h, ['دفع', 'طريقة', 'payment', 'method'])) {
+            map['paymentMethod'] = i;
+          } else if (map['date'] == null &&
+              _matchesAny(h, ['تاريخ', 'date'])) {
+            map['date'] = i;
+          } else if (map['customerName'] == null &&
+              _matchesAny(h, ['عميل', 'زبون', 'customer'])) {
+            map['customerName'] = i;
+          }
+          break;
       }
     }
 
@@ -1304,8 +1384,9 @@ class ExcelWorkbookService {
   /// Analyzes all recognized sheets in a multi-sheet workbook (Bay3ah template
   /// or full export) at once and reports conflicts + validation issues.
   Future<WorkbookImportPreview> analyzeMultiSheetWorkbook(
-    Uint8List bytes,
-  ) async {
+    Uint8List bytes, {
+    bool lenientMode = false,
+  }) async {
     final inspection = inspectWorkbook(bytes);
     final mappings = <ExcelColumnMapping>[];
     final seenEntities = <ExcelImportEntity>{};
@@ -1317,22 +1398,24 @@ class ExcelWorkbookService {
       mappings.add(suggestMapping(sheetInfo, entity));
     }
 
-    return analyzeWithMappings(bytes, mappings);
+    return analyzeWithMappings(bytes, mappings, lenientMode: lenientMode);
   }
 
   /// Analyzes a single arbitrary sheet using user-selected column mappings.
   Future<WorkbookImportPreview> analyzeSheetWithMapping(
     Uint8List bytes,
-    ExcelColumnMapping mapping,
-  ) {
-    return analyzeWithMappings(bytes, [mapping]);
+    ExcelColumnMapping mapping, {
+    bool lenientMode = false,
+  }) {
+    return analyzeWithMappings(bytes, [mapping], lenientMode: lenientMode);
   }
 
   /// Core analyzer supporting 1 or many sheets with explicit column mappings.
   Future<WorkbookImportPreview> analyzeWithMappings(
     Uint8List bytes,
-    List<ExcelColumnMapping> mappings,
-  ) async {
+    List<ExcelColumnMapping> mappings, {
+    bool lenientMode = false,
+  }) async {
     final excel = Excel.decodeBytes(bytes);
 
     final newProducts = <MigrationProductRow>[];
@@ -1342,6 +1425,8 @@ class ExcelWorkbookService {
     final newSuppliers = <MigrationSupplierRow>[];
     final supplierConflicts = <MigrationSupplierConflict>[];
     final newInstallments = <MigrationInstallmentRow>[];
+    final newExpenses = <MigrationExpenseRow>[];
+    final newHistoricalSales = <MigrationHistoricalSaleRow>[];
     final issues = <ExcelRowIssue>[];
 
     // Preload existing lookup maps from DB
@@ -1395,6 +1480,7 @@ class ExcelWorkbookService {
             newProducts: newProducts,
             conflicts: productConflicts,
             issues: issues,
+            lenientMode: lenientMode,
           );
           break;
         case ExcelImportEntity.customers:
@@ -1407,6 +1493,7 @@ class ExcelWorkbookService {
             newCustomers: newCustomers,
             conflicts: customerConflicts,
             issues: issues,
+            lenientMode: lenientMode,
           );
           break;
         case ExcelImportEntity.suppliers:
@@ -1430,6 +1517,26 @@ class ExcelWorkbookService {
             issues: issues,
           );
           break;
+        case ExcelImportEntity.expenses:
+          _parseExpensesSheet(
+            sheet: sheet,
+            sheetName: mapping.sheetName,
+            colMap: mapping.fieldToColumnIndex,
+            newExpenses: newExpenses,
+            issues: issues,
+            lenientMode: lenientMode,
+          );
+          break;
+        case ExcelImportEntity.historicalSales:
+          _parseHistoricalSalesSheet(
+            sheet: sheet,
+            sheetName: mapping.sheetName,
+            colMap: mapping.fieldToColumnIndex,
+            newSales: newHistoricalSales,
+            issues: issues,
+            lenientMode: lenientMode,
+          );
+          break;
       }
     }
 
@@ -1441,6 +1548,8 @@ class ExcelWorkbookService {
       newSuppliers: newSuppliers,
       supplierConflicts: supplierConflicts,
       newInstallments: newInstallments,
+      newExpenses: newExpenses,
+      newHistoricalSales: newHistoricalSales,
       issues: issues,
     );
   }
@@ -1455,6 +1564,7 @@ class ExcelWorkbookService {
     required List<MigrationProductRow> newProducts,
     required List<MigrationProductConflict> conflicts,
     required List<ExcelRowIssue> issues,
+    bool lenientMode = false,
   }) {
     final cName = colMap['productName'];
     final cSell = colMap['sellPrice'];
@@ -1492,6 +1602,17 @@ class ExcelWorkbookService {
       var sku = _valueAt(row, colMap['sku']);
       if (sku.isEmpty) {
         sku = 'MIG-${_uuid.v4().substring(0, 8).toUpperCase()}';
+        if (lenientMode) {
+          issues.add(
+            ExcelRowIssue(
+              entity: ExcelImportEntity.products,
+              sheetName: sheetName,
+              rowNumber: rowNum,
+              message: 'تم توليد كود SKU تلقائياً ($sku) لعدم وجوده.',
+              severity: ExcelIssueSeverity.warning,
+            ),
+          );
+        }
       }
       final skuKey = sku.toLowerCase();
       if (seenSkusInFile.contains(skuKey)) {
@@ -1571,10 +1692,11 @@ class ExcelWorkbookService {
     required List<MigrationCustomerRow> newCustomers,
     required List<MigrationCustomerConflict> conflicts,
     required List<ExcelRowIssue> issues,
+    bool lenientMode = false,
   }) {
     final cName = colMap['name'];
     final cPhone = colMap['phone'];
-    if (cName == null || cPhone == null) {
+    if (cName == null || (cPhone == null && !lenientMode)) {
       issues.add(
         ExcelRowIssue(
           entity: ExcelImportEntity.customers,
@@ -1592,8 +1714,8 @@ class ExcelWorkbookService {
       final rowNum = r + 1;
 
       final name = _valueAt(row, cName);
-      final phone = _normalizePhone(_valueAt(row, cPhone));
-      if (name.isEmpty || phone.isEmpty) {
+      var phone = cPhone != null ? _normalizePhone(_valueAt(row, cPhone)) : '';
+      if (name.isEmpty || (phone.isEmpty && !lenientMode)) {
         issues.add(
           ExcelRowIssue(
             entity: ExcelImportEntity.customers,
@@ -1603,6 +1725,18 @@ class ExcelWorkbookService {
           ),
         );
         continue;
+      }
+      if (phone.isEmpty && lenientMode) {
+        phone = 'N/A-$rowNum';
+        issues.add(
+          ExcelRowIssue(
+            entity: ExcelImportEntity.customers,
+            sheetName: sheetName,
+            rowNumber: rowNum,
+            message: 'هاتف العميل ($name) مفقود — تم تعبئته بقيمة افتراضية ($phone).',
+            severity: ExcelIssueSeverity.warning,
+          ),
+        );
       }
 
       if (seenPhonesInFile.contains(phone)) {
@@ -1865,6 +1999,186 @@ class ExcelWorkbookService {
           remainingPiasters: remainingPiasters,
           startDate: startDate,
           status: status,
+        ),
+      );
+    }
+  }
+
+  void _parseExpensesSheet({
+    required Sheet sheet,
+    required String sheetName,
+    required Map<String, int?> colMap,
+    required List<MigrationExpenseRow> newExpenses,
+    required List<ExcelRowIssue> issues,
+    bool lenientMode = false,
+  }) {
+    final cCat = colMap['category'];
+    final cAmount = colMap['amount'];
+    if (cAmount == null || (cCat == null && !lenientMode)) {
+      issues.add(
+        ExcelRowIssue(
+          entity: ExcelImportEntity.expenses,
+          sheetName: sheetName,
+          rowNumber: 1,
+          message: 'يجب تحديد عمودي «بند المصروف» و«المبلغ».',
+        ),
+      );
+      return;
+    }
+
+    for (var r = 1; r < sheet.rows.length; r++) {
+      final row = sheet.rows[r];
+      if (_isRowEmpty(row)) continue;
+      final rowNum = r + 1;
+
+      var category = cCat != null ? _valueAt(row, cCat) : '';
+      if (category.isEmpty) {
+        if (lenientMode) {
+          category = 'مصروفات عامة';
+          issues.add(
+            ExcelRowIssue(
+              entity: ExcelImportEntity.expenses,
+              sheetName: sheetName,
+              rowNumber: rowNum,
+              message: 'بند المصروف فارغ — تم تعيين «مصروفات عامة» تلقائياً.',
+              severity: ExcelIssueSeverity.warning,
+            ),
+          );
+        } else {
+          issues.add(
+            ExcelRowIssue(
+              entity: ExcelImportEntity.expenses,
+              sheetName: sheetName,
+              rowNumber: rowNum,
+              message: 'بند المصروف فارغ — تم تخطي الصف.',
+            ),
+          );
+          continue;
+        }
+      }
+
+      final amountVal = _parseDouble(_valueAt(row, cAmount));
+      if (amountVal <= 0) {
+        issues.add(
+          ExcelRowIssue(
+            entity: ExcelImportEntity.expenses,
+            sheetName: sheetName,
+            rowNumber: rowNum,
+            message: 'مبلغ المصروف يجب أن يكون أكبر من صفر.',
+          ),
+        );
+        continue;
+      }
+
+      final parsedDate = _parseDate(_valueAt(row, colMap['expenseDate']));
+      if (parsedDate == null && lenientMode) {
+        issues.add(
+          ExcelRowIssue(
+            entity: ExcelImportEntity.expenses,
+            sheetName: sheetName,
+            rowNumber: rowNum,
+            message: 'تاريخ المصروف غير محدد — تم استخدام تاريخ اليوم.',
+            severity: ExcelIssueSeverity.warning,
+          ),
+        );
+      }
+      final notes = _valueAt(row, colMap['notes']);
+
+      newExpenses.add(
+        MigrationExpenseRow(
+          rowNumber: rowNum,
+          category: category,
+          amountPiasters: (amountVal * 100).round(),
+          expenseDate: parsedDate ?? DateTime.now(),
+          notes: notes.isEmpty ? null : notes,
+        ),
+      );
+    }
+  }
+
+  void _parseHistoricalSalesSheet({
+    required Sheet sheet,
+    required String sheetName,
+    required Map<String, int?> colMap,
+    required List<MigrationHistoricalSaleRow> newSales,
+    required List<ExcelRowIssue> issues,
+    bool lenientMode = false,
+  }) {
+    final cTotal = colMap['total'];
+    if (cTotal == null) {
+      issues.add(
+        ExcelRowIssue(
+          entity: ExcelImportEntity.historicalSales,
+          sheetName: sheetName,
+          rowNumber: 1,
+          message: 'يجب تحديد عمود «إجمالي الفاتورة».',
+        ),
+      );
+      return;
+    }
+
+    for (var r = 1; r < sheet.rows.length; r++) {
+      final row = sheet.rows[r];
+      if (_isRowEmpty(row)) continue;
+      final rowNum = r + 1;
+
+      final totalVal = _parseDouble(_valueAt(row, cTotal));
+      if (totalVal <= 0) {
+        issues.add(
+          ExcelRowIssue(
+            entity: ExcelImportEntity.historicalSales,
+            sheetName: sheetName,
+            rowNumber: rowNum,
+            message: 'إجمالي الفاتورة يجب أن يكون أكبر من صفر.',
+          ),
+        );
+        continue;
+      }
+
+      var shortRef = _valueAt(row, colMap['shortRef']);
+      if (shortRef.isEmpty) {
+        shortRef = 'HIST-${_uuid.v4().substring(0, 6).toUpperCase()}';
+        if (lenientMode) {
+          issues.add(
+            ExcelRowIssue(
+              entity: ExcelImportEntity.historicalSales,
+              sheetName: sheetName,
+              rowNumber: rowNum,
+              message: 'تم توليد رقم فاتورة مرجعي ($shortRef) تلقائياً.',
+              severity: ExcelIssueSeverity.warning,
+            ),
+          );
+        }
+      }
+
+      final payRaw = _valueAt(row, colMap['paymentMethod']).toLowerCase();
+      final paymentMethod =
+          (payRaw.contains('card') || payRaw.contains('فيزا') || payRaw.contains('بطاقة'))
+              ? 'card'
+              : 'cash';
+
+      final parsedDate = _parseDate(_valueAt(row, colMap['date']));
+      if (parsedDate == null && lenientMode) {
+        issues.add(
+          ExcelRowIssue(
+            entity: ExcelImportEntity.historicalSales,
+            sheetName: sheetName,
+            rowNumber: rowNum,
+            message: 'تاريخ الفاتورة مفقود — تم استخدام تاريخ اليوم.',
+            severity: ExcelIssueSeverity.warning,
+          ),
+        );
+      }
+      final custName = _valueAt(row, colMap['customerName']);
+
+      newSales.add(
+        MigrationHistoricalSaleRow(
+          rowNumber: rowNum,
+          shortRef: shortRef,
+          totalPiasters: (totalVal * 100).round(),
+          paymentMethod: paymentMethod,
+          date: parsedDate ?? DateTime.now(),
+          customerName: custName.isEmpty ? null : custName,
         ),
       );
     }
@@ -2194,7 +2508,51 @@ class ExcelWorkbookService {
             );
         installmentsAdded++;
       }
+
+      // 5. Expenses
+      for (final row in preview.newExpenses) {
+        await _db.into(_db.expenses).insert(
+              ExpensesCompanion.insert(
+                id: _uuid.v4(),
+                branchId: branchId,
+                category: row.category,
+                amount: row.amountPiasters,
+                note: drift.Value(row.notes),
+                expenseDate: row.expenseDate,
+                userId: userId,
+                createdAt: now,
+                updatedAt: now,
+              ),
+            );
+      }
+
+      // 6. Historical Sales
+      for (final row in preview.newHistoricalSales) {
+        await _db.into(_db.sales).insert(
+              SalesCompanion.insert(
+                id: _uuid.v4(),
+                branchId: branchId,
+                shortRef: row.shortRef,
+                cashierId: userId,
+                subtotal: row.totalPiasters,
+                discountType: 'none',
+                total: row.totalPiasters,
+                paymentMethod: row.paymentMethod,
+                note: drift.Value(
+                  row.customerName != null
+                      ? 'مبيعات سابقة مستوردة - ${row.customerName}'
+                      : 'مبيعات سابقة مستوردة',
+                ),
+                date: row.date,
+                createdAt: now,
+                updatedAt: now,
+              ),
+            );
+      }
     });
+
+    final expensesAdded = preview.newExpenses.length;
+    final historicalSalesAdded = preview.newHistoricalSales.length;
 
     // Audit log + sync queue entry via TxWriter
     await _txWriter.write(
@@ -2212,6 +2570,8 @@ class ExcelWorkbookService {
         'suppliersAdded': suppliersAdded,
         'suppliersUpdated': suppliersUpdated,
         'installmentsAdded': installmentsAdded,
+        'expensesAdded': expensesAdded,
+        'historicalSalesAdded': historicalSalesAdded,
       }),
     );
 
@@ -2226,6 +2586,8 @@ class ExcelWorkbookService {
       suppliersUpdated: suppliersUpdated,
       suppliersSkipped: suppliersSkipped,
       installmentsAdded: installmentsAdded,
+      expensesAdded: expensesAdded,
+      historicalSalesAdded: historicalSalesAdded,
     );
   }
 
@@ -2299,6 +2661,12 @@ class ExcelWorkbookService {
     if (_matchesAny(s, ['تقسيط', 'اقساط', 'أقساط', 'installment']) &&
         !_matchesAny(s, ['دفعات', 'payment'])) {
       return ExcelImportEntity.installments;
+    }
+    if (_matchesAny(s, ['مصروف', 'مصاريف', 'expense'])) {
+      return ExcelImportEntity.expenses;
+    }
+    if (_matchesAny(s, ['مبيعات', 'فواتير', 'sales', 'invoice'])) {
+      return ExcelImportEntity.historicalSales;
     }
 
     // Fallback: inspect headers for arbitrary single-sheet shop files

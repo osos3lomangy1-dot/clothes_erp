@@ -20,6 +20,8 @@ import '../cubits/dashboard_cubit.dart';
 import '../cubits/dashboard_state.dart';
 import '../../domain/entities/dashboard_stats_entity.dart';
 import '../widgets/hourly_sales_chart.dart';
+import '../widgets/offline_smart_assistant_dialog.dart';
+import '../widgets/store_financial_interview_dialog.dart';
 import '../widgets/weekly_sales_chart.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
@@ -151,6 +153,16 @@ class _QuickSetupGuideCardState extends State<QuickSetupGuideCard> {
                     fontSize: 14.5,
                     color: AppColors.onSurface,
                   ),
+                ),
+              ),
+              IconButton(
+                key: const Key('quick_setup_financial_interview_btn'),
+                tooltip: 'استبيان الوضع المالي الاختياري',
+                onPressed: () => StoreFinancialInterviewDialog.show(context),
+                icon: Icon(
+                  Icons.tune_rounded,
+                  color: AppColors.primary,
+                  size: 19,
                 ),
               ),
               IconButton(
@@ -349,6 +361,15 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
             ],
           ),
           actions: [
+            IconButton(
+              key: const Key('open_smart_assistant_btn'),
+              tooltip: 'المساعد التحليلي الذكي (أوفلاين)',
+              onPressed: () => OfflineSmartAssistantDialog.show(context),
+              icon: Icon(
+                Icons.auto_awesome_rounded,
+                color: AppColors.primary,
+              ),
+            ),
             Builder(
               builder: (innerCtx) {
                 final screenWidth = MediaQuery.sizeOf(innerCtx).width;

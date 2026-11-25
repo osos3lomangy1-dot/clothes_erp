@@ -39,6 +39,7 @@ class _ExcelMigrationScreenState extends State<ExcelMigrationScreen> {
   ExcelSheetInfo? _selectedSheet;
   ExcelImportEntity _selectedEntity = ExcelImportEntity.products;
   ExcelColumnMapping? _mapping;
+  bool _lenientMode = false;
 
   WorkbookImportPreview? _preview;
   WorkbookImportResult? _result;
@@ -158,10 +159,17 @@ class _ExcelMigrationScreenState extends State<ExcelMigrationScreen> {
     try {
       final WorkbookImportPreview preview;
       if (_mode == _ImportMode.multiSheetAuto) {
-        preview = await svc.analyzeMultiSheetWorkbook(bytes);
+        preview = await svc.analyzeMultiSheetWorkbook(
+          bytes,
+          lenientMode: _lenientMode,
+        );
       } else {
         if (_mapping == null) return;
-        preview = await svc.analyzeSheetWithMapping(bytes, _mapping!);
+        preview = await svc.analyzeSheetWithMapping(
+          bytes,
+          _mapping!,
+          lenientMode: _lenientMode,
+        );
       }
       if (!mounted) return;
       setState(() {
@@ -764,6 +772,18 @@ class _ExcelMigrationScreenState extends State<ExcelMigrationScreen> {
               preview.newInstallments.length,
               Colors.deepPurple,
             ),
+            if (preview.newExpenses.isNotEmpty)
+              _statBadge(
+                'مصروفات سابقة',
+                preview.newExpenses.length,
+                Colors.brown,
+              ),
+            if (preview.newHistoricalSales.isNotEmpty)
+              _statBadge(
+                'مبيعات سابقة',
+                preview.newHistoricalSales.length,
+                Colors.green,
+              ),
             _statBadge(
               'تكرارات للمراجعة',
               preview.totalConflictCount,
@@ -775,6 +795,25 @@ class _ExcelMigrationScreenState extends State<ExcelMigrationScreen> {
               preview.errorCount > 0 ? AppColors.error : Colors.grey,
             ),
           ],
+        ),
+        const SizedBox(height: 12),
+        SwitchListTile.adaptive(
+          key: const Key('excel_lenient_mode_switch'),
+          value: _lenientMode,
+          onChanged: (v) => setState(() => _lenientMode = v),
+          title: const Text(
+            'الاستيراد المرن للبيانات الناقصة',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+          ),
+          subtitle: const Text(
+            'تعبئة الحقول غير الأساسية الناقصة (مثل التاريخ، SKU، التكلفة، الهاتف) بقيم افتراضية آمنة مع إصدار تنبيه فقط.',
+            style: TextStyle(fontSize: 12),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: BorderSide(color: AppColors.outlineVariant),
+          ),
         ),
         const SizedBox(height: 14),
         if (preview.issues.isNotEmpty)

@@ -6,6 +6,8 @@ enum ExcelImportEntity {
   customers,
   suppliers,
   installments,
+  expenses,
+  historicalSales,
 }
 
 extension ExcelImportEntityX on ExcelImportEntity {
@@ -19,6 +21,10 @@ extension ExcelImportEntityX on ExcelImportEntity {
         return 'الموردين';
       case ExcelImportEntity.installments:
         return 'عقود التقسيط القائمة';
+      case ExcelImportEntity.expenses:
+        return 'المصروفات السابقة';
+      case ExcelImportEntity.historicalSales:
+        return 'المبيعات السابقة';
     }
   }
 }
@@ -264,6 +270,40 @@ class MigrationInstallmentRow {
   int get principalPiasters => totalPiasters - downPaymentPiasters;
 }
 
+class MigrationExpenseRow {
+  final int rowNumber;
+  final String category;
+  final int amountPiasters;
+  final DateTime expenseDate;
+  final String? notes;
+
+  const MigrationExpenseRow({
+    required this.rowNumber,
+    required this.category,
+    required this.amountPiasters,
+    required this.expenseDate,
+    this.notes,
+  });
+}
+
+class MigrationHistoricalSaleRow {
+  final int rowNumber;
+  final String shortRef;
+  final int totalPiasters;
+  final String paymentMethod;
+  final DateTime date;
+  final String? customerName;
+
+  const MigrationHistoricalSaleRow({
+    required this.rowNumber,
+    required this.shortRef,
+    required this.totalPiasters,
+    required this.paymentMethod,
+    required this.date,
+    this.customerName,
+  });
+}
+
 // ─── Preview & Result Summaries ──────────────────────────────────────────────
 
 class WorkbookImportPreview {
@@ -274,6 +314,8 @@ class WorkbookImportPreview {
   final List<MigrationSupplierRow> newSuppliers;
   final List<MigrationSupplierConflict> supplierConflicts;
   final List<MigrationInstallmentRow> newInstallments;
+  final List<MigrationExpenseRow> newExpenses;
+  final List<MigrationHistoricalSaleRow> newHistoricalSales;
   final List<ExcelRowIssue> issues;
 
   const WorkbookImportPreview({
@@ -284,6 +326,8 @@ class WorkbookImportPreview {
     this.newSuppliers = const [],
     this.supplierConflicts = const [],
     this.newInstallments = const [],
+    this.newExpenses = const [],
+    this.newHistoricalSales = const [],
     this.issues = const [],
   });
 
@@ -291,7 +335,9 @@ class WorkbookImportPreview {
       newProducts.length +
       newCustomers.length +
       newSuppliers.length +
-      newInstallments.length;
+      newInstallments.length +
+      newExpenses.length +
+      newHistoricalSales.length;
 
   int get totalConflictCount =>
       productConflicts.length +
@@ -318,6 +364,8 @@ class WorkbookImportResult {
   final int suppliersUpdated;
   final int suppliersSkipped;
   final int installmentsAdded;
+  final int expensesAdded;
+  final int historicalSalesAdded;
 
   const WorkbookImportResult({
     this.productsAdded = 0,
@@ -330,6 +378,8 @@ class WorkbookImportResult {
     this.suppliersUpdated = 0,
     this.suppliersSkipped = 0,
     this.installmentsAdded = 0,
+    this.expensesAdded = 0,
+    this.historicalSalesAdded = 0,
   });
 
   int get totalWritten =>
@@ -339,7 +389,9 @@ class WorkbookImportResult {
       customersUpdated +
       suppliersAdded +
       suppliersUpdated +
-      installmentsAdded;
+      installmentsAdded +
+      expensesAdded +
+      historicalSalesAdded;
 }
 
 class ExcelFullExportResult {

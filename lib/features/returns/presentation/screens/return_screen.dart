@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -30,6 +31,7 @@ class _ReturnScreenState extends State<ReturnScreen> {
   final _historySearchCtrl = TextEditingController();
   final _reasonCtrl = TextEditingController();
   final _imeiVerifyCtrl = TextEditingController();
+  final _searchFocus = FocusNode();
   final _dateFormat = DateFormat('yyyy/MM/dd - hh:mm a');
   String _historyQuery = '';
   Timer? _searchDebounce;
@@ -108,7 +110,51 @@ class _ReturnScreenState extends State<ReturnScreen> {
     _historySearchCtrl.dispose();
     _reasonCtrl.dispose();
     _imeiVerifyCtrl.dispose();
+    _searchFocus.dispose();
     super.dispose();
+  }
+
+  Future<void> _submitReturn(BuildContext context, ReturnsState state) async {
+    final sale = state.selectedSale;
+    if (sale == null || state.isProcessing || state.totalRefund == 0) return;
+
+    final imeiValid = await _verifyReturnedImeisIfNeeded(
+      sale,
+      state.returnItems,
+    );
+    if (!imeiValid || !context.mounted) return;
+
+    String cashierId = 'cashier';
+    bool isCashier = false;
+    try {
+      final authState = context.read<AuthCubit>().state;
+      if (authState is AuthAuthenticated) {
+        cashierId = authState.user.id;
+        isCashier = authState.user.role.toLowerCase() == 'cashier';
+      }
+    } catch (_) {}
+
+    if (isCashier && getIt.isRegistered<FeatureGate>()) {
+      final pinProtected = await getIt<FeatureGate>()
+          .isEnabled(FeatureKeys.managerPinProtection);
+      if (pinProtected) {
+        if (!context.mounted) return;
+        final approved = await ManagerAuthHelper.requestManagerApproval(
+          context,
+          title: 'اعتماد المرتجع النقدي (صلاحية مدير)',
+          message:
+              'يتطلب تنفيذ المرتجع واسترداد النقدية موافقة المدير أو المشرف.',
+        );
+        if (!approved || !context.mounted) return;
+      }
+    }
+
+    if (!context.mounted) return;
+    context.read<ReturnsCubit>().processReturn(
+          reason: _reasonCtrl.text,
+          userId: cashierId,
+          paymentMethod: sale.paymentMethod,
+        );
   }
 
   String _formatPayment(String raw) {
@@ -202,11 +248,46 @@ class _ReturnScreenState extends State<ReturnScreen> {
               }
             },
             builder: (context, state) {
-              return TabBarView(
-                children: [
-                  _buildNewReturnTab(context, state),
-                  _buildReturnsHistoryTab(context, state),
-                ],
+              return Focus(
+                autofocus: true,
+                onKeyEvent: (_, event) {
+                  if (event is! KeyDownEvent) return KeyEventResult.ignored;
+                  if (event.logicalKey == LogicalKeyboardKey.f2) {
+                    _searchFocus.requestFocus();
+                    return KeyEventResult.handled;
+                  }
+                  if (event.logicalKey == LogicalKeyboardKey.f12 &&
+                      state.selectedSale != null &&
+                      !state.isProcessing &&
+                      state.totalRefund > 0) {
+                    _submitReturn(context, state);
+                    return KeyEventResult.handled;
+                  }
+                  if (event.logicalKey == LogicalKeyboardKey.escape) {
+                    if (_searchCtrl.text.isNotEmpty) {
+                      _searchDebounce?.cancel();
+                      _searchCtrl.clear();
+                      setState(() {});
+                      context.read<ReturnsCubit>().loadRecentSales();
+                      return KeyEventResult.handled;
+                    }
+                    if (state.selectedSale != null) {
+                      context.read<ReturnsCubit>().clearSelection();
+                      return KeyEventResult.handled;
+                    }
+                    if (Navigator.of(context).canPop()) {
+                      Navigator.of(context).pop();
+                      return KeyEventResult.handled;
+                    }
+                  }
+                  return KeyEventResult.ignored;
+                },
+                child: TabBarView(
+                  children: [
+                    _buildNewReturnTab(context, state),
+                    _buildReturnsHistoryTab(context, state),
+                  ],
+                ),
               );
             },
           ),
@@ -230,9 +311,11 @@ class _ReturnScreenState extends State<ReturnScreen> {
             children: [
               Expanded(
                 child: TextField(
+                  key: const Key('return_search_field'),
                   controller: _searchCtrl,
+                  focusNode: _searchFocus,
                   decoration: InputDecoration(
-                    hintText: 'ابحث برقم الفاتورة (#S...) أو المبلغ أو اسم العميل أو الهاتف...',
+                    hintText: 'ابحث برقم الفاتورة (#S...) أو المبلغ أو اسم العميل أو الهاتف... [F2]',
                     filled: true,
                     fillColor: Colors.white,
                     isDense: true,
@@ -298,11 +381,68 @@ class _ReturnScreenState extends State<ReturnScreen> {
           const SizedBox(height: 16),
           if (state.isLoading)
             const Expanded(child: Center(child: CircularProgressIndicator()))
-          else if (state.selectedSale != null)
-            Expanded(child: _buildSaleReturnDetails(context, state))
           else
-            Expanded(child: _buildRecentSalesList(context, state)),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isSplit = constraints.maxWidth >= 900;
+                  if (isSplit) {
+                    return Row(
+                      key: const Key('returns_split_view'),
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 5,
+                          child: _buildRecentSalesList(context, state),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          flex: 6,
+                          child: state.selectedSale != null
+                              ? _buildSaleReturnDetails(context, state)
+                              : _buildEmptyDetailPlaceholder(),
+                        ),
+                      ],
+                    );
+                  }
+                  return state.selectedSale != null
+                      ? _buildSaleReturnDetails(context, state)
+                      : _buildRecentSalesList(context, state);
+                },
+              ),
+            ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyDetailPlaceholder() {
+    return Container(
+      key: const Key('returns_empty_detail_placeholder'),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.outlineVariant),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.receipt_long_rounded,
+              size: 54,
+              color: AppColors.outline,
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'اختر فاتورة من القائمة لعرض تفاصيلها وإجراء المرتجع',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: AppColors.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -600,7 +740,14 @@ class _ReturnScreenState extends State<ReturnScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('إجمالي المبلغ المسترد (يخصم من الدرج):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      const Expanded(
+                        child: Text(
+                          'إجمالي المبلغ المسترد (يخصم من الدرج):',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       Text(
                         '${Money(state.totalRefund).toDisplay()} ج.م',
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: AppColors.primary),
@@ -634,48 +781,10 @@ class _ReturnScreenState extends State<ReturnScreen> {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton.icon(
+                      key: const Key('return_confirm_btn'),
                       onPressed: state.isProcessing || state.totalRefund == 0
                           ? null
-                          : () async {
-                              final imeiValid = await _verifyReturnedImeisIfNeeded(
-                                sale,
-                                state.returnItems,
-                              );
-                              if (!imeiValid || !context.mounted) return;
-
-                              String cashierId = 'cashier';
-                              bool isCashier = false;
-                              try {
-                                final authState = context.read<AuthCubit>().state;
-                                if (authState is AuthAuthenticated) {
-                                  cashierId = authState.user.id;
-                                  isCashier = authState.user.role.toLowerCase() == 'cashier';
-                                }
-                              } catch (_) {}
-
-                              if (isCashier && getIt.isRegistered<FeatureGate>()) {
-                                final pinProtected = await getIt<FeatureGate>()
-                                    .isEnabled(FeatureKeys.managerPinProtection);
-                                if (pinProtected) {
-                                  if (!context.mounted) return;
-                                  final approved =
-                                      await ManagerAuthHelper.requestManagerApproval(
-                                    context,
-                                    title: 'اعتماد المرتجع النقدي (صلاحية مدير)',
-                                    message:
-                                        'يتطلب تنفيذ المرتجع واسترداد النقدية موافقة المدير أو المشرف.',
-                                  );
-                                  if (!approved || !context.mounted) return;
-                                }
-                              }
-
-                              if (!context.mounted) return;
-                              context.read<ReturnsCubit>().processReturn(
-                                    reason: _reasonCtrl.text,
-                                    userId: cashierId,
-                                    paymentMethod: sale.paymentMethod,
-                                  );
-                            },
+                          : () => _submitReturn(context, state),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -730,10 +839,97 @@ class _ReturnScreenState extends State<ReturnScreen> {
                 matchAmount;
           }).toList();
 
+    final now = DateTime.now();
+    final todayReturns = state.returnsHistory.where((r) =>
+        r.date.year == now.year &&
+        r.date.month == now.month &&
+        r.date.day == now.day).toList();
+    final todayRefundTotal =
+        todayReturns.fold<int>(0, (sum, r) => sum + r.refundAmount);
+
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+          child: Row(
+            key: const Key('returns_history_summary_cards'),
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.outlineVariant),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.assignment_return_rounded, color: AppColors.primary),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'مرتجعات اليوم',
+                              style: TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant),
+                            ),
+                            Text(
+                              '${todayReturns.length}',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.outlineVariant),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.payments_outlined, color: AppColors.warning),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'إجمالي المسترد اليوم',
+                              style: TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant),
+                            ),
+                            Text(
+                              '${Money(todayRefundTotal).toDisplay()} ج.م',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: TextField(
             controller: _historySearchCtrl,
             decoration: InputDecoration(
