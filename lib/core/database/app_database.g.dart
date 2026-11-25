@@ -23509,6 +23509,1487 @@ class DeviceSerialUnitsCompanion extends UpdateCompanion<DeviceSerialUnit> {
   }
 }
 
+class $CashWalletsTable extends CashWallets
+    with TableInfo<$CashWalletsTable, CashWallet> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CashWalletsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _providerTypeMeta = const VerificationMeta(
+    'providerType',
+  );
+  @override
+  late final GeneratedColumn<String> providerType = GeneratedColumn<String>(
+    'provider_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('vodafone_cash'),
+  );
+  static const VerificationMeta _phoneOrTerminalMeta = const VerificationMeta(
+    'phoneOrTerminal',
+  );
+  @override
+  late final GeneratedColumn<String> phoneOrTerminal = GeneratedColumn<String>(
+    'phone_or_terminal',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _currentBalanceMeta = const VerificationMeta(
+    'currentBalance',
+  );
+  @override
+  late final GeneratedColumn<int> currentBalance = GeneratedColumn<int>(
+    'current_balance',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _monthlyLimitMeta = const VerificationMeta(
+    'monthlyLimit',
+  );
+  @override
+  late final GeneratedColumn<int> monthlyLimit = GeneratedColumn<int>(
+    'monthly_limit',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _monthlyUsedMeta = const VerificationMeta(
+    'monthlyUsed',
+  );
+  @override
+  late final GeneratedColumn<int> monthlyUsed = GeneratedColumn<int>(
+    'monthly_used',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+    'isActive',
+  );
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+    'is_active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_active" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    branchId,
+    name,
+    providerType,
+    phoneOrTerminal,
+    currentBalance,
+    monthlyLimit,
+    monthlyUsed,
+    isActive,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cash_wallets';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CashWallet> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_branchIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('provider_type')) {
+      context.handle(
+        _providerTypeMeta,
+        providerType.isAcceptableOrUnknown(
+          data['provider_type']!,
+          _providerTypeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('phone_or_terminal')) {
+      context.handle(
+        _phoneOrTerminalMeta,
+        phoneOrTerminal.isAcceptableOrUnknown(
+          data['phone_or_terminal']!,
+          _phoneOrTerminalMeta,
+        ),
+      );
+    }
+    if (data.containsKey('current_balance')) {
+      context.handle(
+        _currentBalanceMeta,
+        currentBalance.isAcceptableOrUnknown(
+          data['current_balance']!,
+          _currentBalanceMeta,
+        ),
+      );
+    }
+    if (data.containsKey('monthly_limit')) {
+      context.handle(
+        _monthlyLimitMeta,
+        monthlyLimit.isAcceptableOrUnknown(
+          data['monthly_limit']!,
+          _monthlyLimitMeta,
+        ),
+      );
+    }
+    if (data.containsKey('monthly_used')) {
+      context.handle(
+        _monthlyUsedMeta,
+        monthlyUsed.isAcceptableOrUnknown(
+          data['monthly_used']!,
+          _monthlyUsedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_active')) {
+      context.handle(
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CashWallet map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CashWallet(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      providerType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}provider_type'],
+      )!,
+      phoneOrTerminal: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}phone_or_terminal'],
+      )!,
+      currentBalance: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}current_balance'],
+      )!,
+      monthlyLimit: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}monthly_limit'],
+      )!,
+      monthlyUsed: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}monthly_used'],
+      )!,
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+    );
+  }
+
+  @override
+  $CashWalletsTable createAlias(String alias) {
+    return $CashWalletsTable(attachedDatabase, alias);
+  }
+}
+
+class CashWallet extends DataClass implements Insertable<CashWallet> {
+  final String id;
+  final String branchId;
+  final String name;
+  final String providerType;
+  final String phoneOrTerminal;
+  final int currentBalance;
+  final int monthlyLimit;
+  final int monthlyUsed;
+  final bool isActive;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  const CashWallet({
+    required this.id,
+    required this.branchId,
+    required this.name,
+    required this.providerType,
+    required this.phoneOrTerminal,
+    required this.currentBalance,
+    required this.monthlyLimit,
+    required this.monthlyUsed,
+    required this.isActive,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['branch_id'] = Variable<String>(branchId);
+    map['name'] = Variable<String>(name);
+    map['provider_type'] = Variable<String>(providerType);
+    map['phone_or_terminal'] = Variable<String>(phoneOrTerminal);
+    map['current_balance'] = Variable<int>(currentBalance);
+    map['monthly_limit'] = Variable<int>(monthlyLimit);
+    map['monthly_used'] = Variable<int>(monthlyUsed);
+    map['is_active'] = Variable<bool>(isActive);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    return map;
+  }
+
+  CashWalletsCompanion toCompanion(bool nullToAbsent) {
+    return CashWalletsCompanion(
+      id: Value(id),
+      branchId: Value(branchId),
+      name: Value(name),
+      providerType: Value(providerType),
+      phoneOrTerminal: Value(phoneOrTerminal),
+      currentBalance: Value(currentBalance),
+      monthlyLimit: Value(monthlyLimit),
+      monthlyUsed: Value(monthlyUsed),
+      isActive: Value(isActive),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory CashWallet.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CashWallet(
+      id: serializer.fromJson<String>(json['id']),
+      branchId: serializer.fromJson<String>(json['branchId']),
+      name: serializer.fromJson<String>(json['name']),
+      providerType: serializer.fromJson<String>(json['providerType']),
+      phoneOrTerminal: serializer.fromJson<String>(json['phoneOrTerminal']),
+      currentBalance: serializer.fromJson<int>(json['currentBalance']),
+      monthlyLimit: serializer.fromJson<int>(json['monthlyLimit']),
+      monthlyUsed: serializer.fromJson<int>(json['monthlyUsed']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'branchId': serializer.toJson<String>(branchId),
+      'name': serializer.toJson<String>(name),
+      'providerType': serializer.toJson<String>(providerType),
+      'phoneOrTerminal': serializer.toJson<String>(phoneOrTerminal),
+      'currentBalance': serializer.toJson<int>(currentBalance),
+      'monthlyLimit': serializer.toJson<int>(monthlyLimit),
+      'monthlyUsed': serializer.toJson<int>(monthlyUsed),
+      'isActive': serializer.toJson<bool>(isActive),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+    };
+  }
+
+  CashWallet copyWith({
+    String? id,
+    String? branchId,
+    String? name,
+    String? providerType,
+    String? phoneOrTerminal,
+    int? currentBalance,
+    int? monthlyLimit,
+    int? monthlyUsed,
+    bool? isActive,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+  }) => CashWallet(
+    id: id ?? this.id,
+    branchId: branchId ?? this.branchId,
+    name: name ?? this.name,
+    providerType: providerType ?? this.providerType,
+    phoneOrTerminal: phoneOrTerminal ?? this.phoneOrTerminal,
+    currentBalance: currentBalance ?? this.currentBalance,
+    monthlyLimit: monthlyLimit ?? this.monthlyLimit,
+    monthlyUsed: monthlyUsed ?? this.monthlyUsed,
+    isActive: isActive ?? this.isActive,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+  );
+  CashWallet copyWithCompanion(CashWalletsCompanion data) {
+    return CashWallet(
+      id: data.id.present ? data.id.value : this.id,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      name: data.name.present ? data.name.value : this.name,
+      providerType: data.providerType.present
+          ? data.providerType.value
+          : this.providerType,
+      phoneOrTerminal: data.phoneOrTerminal.present
+          ? data.phoneOrTerminal.value
+          : this.phoneOrTerminal,
+      currentBalance: data.currentBalance.present
+          ? data.currentBalance.value
+          : this.currentBalance,
+      monthlyLimit: data.monthlyLimit.present
+          ? data.monthlyLimit.value
+          : this.monthlyLimit,
+      monthlyUsed: data.monthlyUsed.present
+          ? data.monthlyUsed.value
+          : this.monthlyUsed,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CashWallet(')
+          ..write('id: $id, ')
+          ..write('branchId: $branchId, ')
+          ..write('name: $name, ')
+          ..write('providerType: $providerType, ')
+          ..write('phoneOrTerminal: $phoneOrTerminal, ')
+          ..write('currentBalance: $currentBalance, ')
+          ..write('monthlyLimit: $monthlyLimit, ')
+          ..write('monthlyUsed: $monthlyUsed, ')
+          ..write('isActive: $isActive, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    branchId,
+    name,
+    providerType,
+    phoneOrTerminal,
+    currentBalance,
+    monthlyLimit,
+    monthlyUsed,
+    isActive,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CashWallet &&
+          other.id == this.id &&
+          other.branchId == this.branchId &&
+          other.name == this.name &&
+          other.providerType == this.providerType &&
+          other.phoneOrTerminal == this.phoneOrTerminal &&
+          other.currentBalance == this.currentBalance &&
+          other.monthlyLimit == this.monthlyLimit &&
+          other.monthlyUsed == this.monthlyUsed &&
+          other.isActive == this.isActive &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
+}
+
+class CashWalletsCompanion extends UpdateCompanion<CashWallet> {
+  final Value<String> id;
+  final Value<String> branchId;
+  final Value<String> name;
+  final Value<String> providerType;
+  final Value<String> phoneOrTerminal;
+  final Value<int> currentBalance;
+  final Value<int> monthlyLimit;
+  final Value<int> monthlyUsed;
+  final Value<bool> isActive;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<int> rowid;
+  const CashWalletsCompanion({
+    this.id = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.providerType = const Value.absent(),
+    this.phoneOrTerminal = const Value.absent(),
+    this.currentBalance = const Value.absent(),
+    this.monthlyLimit = const Value.absent(),
+    this.monthlyUsed = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CashWalletsCompanion.insert({
+    required String id,
+    required String branchId,
+    required String name,
+    this.providerType = const Value.absent(),
+    this.phoneOrTerminal = const Value.absent(),
+    this.currentBalance = const Value.absent(),
+    this.monthlyLimit = const Value.absent(),
+    this.monthlyUsed = const Value.absent(),
+    this.isActive = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       branchId = Value(branchId),
+       name = Value(name),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<CashWallet> custom({
+    Expression<String>? id,
+    Expression<String>? branchId,
+    Expression<String>? name,
+    Expression<String>? providerType,
+    Expression<String>? phoneOrTerminal,
+    Expression<int>? currentBalance,
+    Expression<int>? monthlyLimit,
+    Expression<int>? monthlyUsed,
+    Expression<bool>? isActive,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (branchId != null) 'branch_id': branchId,
+      if (name != null) 'name': name,
+      if (providerType != null) 'provider_type': providerType,
+      if (phoneOrTerminal != null) 'phone_or_terminal': phoneOrTerminal,
+      if (currentBalance != null) 'current_balance': currentBalance,
+      if (monthlyLimit != null) 'monthly_limit': monthlyLimit,
+      if (monthlyUsed != null) 'monthly_used': monthlyUsed,
+      if (isActive != null) 'is_active': isActive,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CashWalletsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? branchId,
+    Value<String>? name,
+    Value<String>? providerType,
+    Value<String>? phoneOrTerminal,
+    Value<int>? currentBalance,
+    Value<int>? monthlyLimit,
+    Value<int>? monthlyUsed,
+    Value<bool>? isActive,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<int>? rowid,
+  }) {
+    return CashWalletsCompanion(
+      id: id ?? this.id,
+      branchId: branchId ?? this.branchId,
+      name: name ?? this.name,
+      providerType: providerType ?? this.providerType,
+      phoneOrTerminal: phoneOrTerminal ?? this.phoneOrTerminal,
+      currentBalance: currentBalance ?? this.currentBalance,
+      monthlyLimit: monthlyLimit ?? this.monthlyLimit,
+      monthlyUsed: monthlyUsed ?? this.monthlyUsed,
+      isActive: isActive ?? this.isActive,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (providerType.present) {
+      map['provider_type'] = Variable<String>(providerType.value);
+    }
+    if (phoneOrTerminal.present) {
+      map['phone_or_terminal'] = Variable<String>(phoneOrTerminal.value);
+    }
+    if (currentBalance.present) {
+      map['current_balance'] = Variable<int>(currentBalance.value);
+    }
+    if (monthlyLimit.present) {
+      map['monthly_limit'] = Variable<int>(monthlyLimit.value);
+    }
+    if (monthlyUsed.present) {
+      map['monthly_used'] = Variable<int>(monthlyUsed.value);
+    }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CashWalletsCompanion(')
+          ..write('id: $id, ')
+          ..write('branchId: $branchId, ')
+          ..write('name: $name, ')
+          ..write('providerType: $providerType, ')
+          ..write('phoneOrTerminal: $phoneOrTerminal, ')
+          ..write('currentBalance: $currentBalance, ')
+          ..write('monthlyLimit: $monthlyLimit, ')
+          ..write('monthlyUsed: $monthlyUsed, ')
+          ..write('isActive: $isActive, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $WalletTransactionsTable extends WalletTransactions
+    with TableInfo<$WalletTransactionsTable, WalletTransaction> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $WalletTransactionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _walletIdMeta = const VerificationMeta(
+    'walletId',
+  );
+  @override
+  late final GeneratedColumn<String> walletId = GeneratedColumn<String>(
+    'wallet_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _shiftIdMeta = const VerificationMeta(
+    'shiftId',
+  );
+  @override
+  late final GeneratedColumn<String> shiftId = GeneratedColumn<String>(
+    'shift_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<int> amount = GeneratedColumn<int>(
+    'amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _commissionMeta = const VerificationMeta(
+    'commission',
+  );
+  @override
+  late final GeneratedColumn<int> commission = GeneratedColumn<int>(
+    'commission',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _customerPhoneMeta = const VerificationMeta(
+    'customerPhone',
+  );
+  @override
+  late final GeneratedColumn<String> customerPhone = GeneratedColumn<String>(
+    'customer_phone',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _referenceNumberMeta = const VerificationMeta(
+    'referenceNumber',
+  );
+  @override
+  late final GeneratedColumn<String> referenceNumber = GeneratedColumn<String>(
+    'reference_number',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('admin'),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    branchId,
+    walletId,
+    shiftId,
+    type,
+    amount,
+    commission,
+    customerPhone,
+    referenceNumber,
+    notes,
+    userId,
+    createdAt,
+    deletedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'wallet_transactions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<WalletTransaction> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_branchIdMeta);
+    }
+    if (data.containsKey('wallet_id')) {
+      context.handle(
+        _walletIdMeta,
+        walletId.isAcceptableOrUnknown(data['wallet_id']!, _walletIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_walletIdMeta);
+    }
+    if (data.containsKey('shift_id')) {
+      context.handle(
+        _shiftIdMeta,
+        shiftId.isAcceptableOrUnknown(data['shift_id']!, _shiftIdMeta),
+      );
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('amount')) {
+      context.handle(
+        _amountMeta,
+        amount.isAcceptableOrUnknown(data['amount']!, _amountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    if (data.containsKey('commission')) {
+      context.handle(
+        _commissionMeta,
+        commission.isAcceptableOrUnknown(data['commission']!, _commissionMeta),
+      );
+    }
+    if (data.containsKey('customer_phone')) {
+      context.handle(
+        _customerPhoneMeta,
+        customerPhone.isAcceptableOrUnknown(
+          data['customer_phone']!,
+          _customerPhoneMeta,
+        ),
+      );
+    }
+    if (data.containsKey('reference_number')) {
+      context.handle(
+        _referenceNumberMeta,
+        referenceNumber.isAcceptableOrUnknown(
+          data['reference_number']!,
+          _referenceNumberMeta,
+        ),
+      );
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  WalletTransaction map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return WalletTransaction(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      )!,
+      walletId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}wallet_id'],
+      )!,
+      shiftId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}shift_id'],
+      ),
+      type: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type'],
+      )!,
+      amount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount'],
+      )!,
+      commission: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}commission'],
+      )!,
+      customerPhone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}customer_phone'],
+      ),
+      referenceNumber: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reference_number'],
+      ),
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+    );
+  }
+
+  @override
+  $WalletTransactionsTable createAlias(String alias) {
+    return $WalletTransactionsTable(attachedDatabase, alias);
+  }
+}
+
+class WalletTransaction extends DataClass
+    implements Insertable<WalletTransaction> {
+  final String id;
+  final String branchId;
+  final String walletId;
+  final String? shiftId;
+  final String type;
+  final int amount;
+  final int commission;
+  final String? customerPhone;
+  final String? referenceNumber;
+  final String? notes;
+  final String userId;
+  final DateTime createdAt;
+  final DateTime? deletedAt;
+  const WalletTransaction({
+    required this.id,
+    required this.branchId,
+    required this.walletId,
+    this.shiftId,
+    required this.type,
+    required this.amount,
+    required this.commission,
+    this.customerPhone,
+    this.referenceNumber,
+    this.notes,
+    required this.userId,
+    required this.createdAt,
+    this.deletedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['branch_id'] = Variable<String>(branchId);
+    map['wallet_id'] = Variable<String>(walletId);
+    if (!nullToAbsent || shiftId != null) {
+      map['shift_id'] = Variable<String>(shiftId);
+    }
+    map['type'] = Variable<String>(type);
+    map['amount'] = Variable<int>(amount);
+    map['commission'] = Variable<int>(commission);
+    if (!nullToAbsent || customerPhone != null) {
+      map['customer_phone'] = Variable<String>(customerPhone);
+    }
+    if (!nullToAbsent || referenceNumber != null) {
+      map['reference_number'] = Variable<String>(referenceNumber);
+    }
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    map['user_id'] = Variable<String>(userId);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    return map;
+  }
+
+  WalletTransactionsCompanion toCompanion(bool nullToAbsent) {
+    return WalletTransactionsCompanion(
+      id: Value(id),
+      branchId: Value(branchId),
+      walletId: Value(walletId),
+      shiftId: shiftId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(shiftId),
+      type: Value(type),
+      amount: Value(amount),
+      commission: Value(commission),
+      customerPhone: customerPhone == null && nullToAbsent
+          ? const Value.absent()
+          : Value(customerPhone),
+      referenceNumber: referenceNumber == null && nullToAbsent
+          ? const Value.absent()
+          : Value(referenceNumber),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
+      userId: Value(userId),
+      createdAt: Value(createdAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory WalletTransaction.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return WalletTransaction(
+      id: serializer.fromJson<String>(json['id']),
+      branchId: serializer.fromJson<String>(json['branchId']),
+      walletId: serializer.fromJson<String>(json['walletId']),
+      shiftId: serializer.fromJson<String?>(json['shiftId']),
+      type: serializer.fromJson<String>(json['type']),
+      amount: serializer.fromJson<int>(json['amount']),
+      commission: serializer.fromJson<int>(json['commission']),
+      customerPhone: serializer.fromJson<String?>(json['customerPhone']),
+      referenceNumber: serializer.fromJson<String?>(json['referenceNumber']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      userId: serializer.fromJson<String>(json['userId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'branchId': serializer.toJson<String>(branchId),
+      'walletId': serializer.toJson<String>(walletId),
+      'shiftId': serializer.toJson<String?>(shiftId),
+      'type': serializer.toJson<String>(type),
+      'amount': serializer.toJson<int>(amount),
+      'commission': serializer.toJson<int>(commission),
+      'customerPhone': serializer.toJson<String?>(customerPhone),
+      'referenceNumber': serializer.toJson<String?>(referenceNumber),
+      'notes': serializer.toJson<String?>(notes),
+      'userId': serializer.toJson<String>(userId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+    };
+  }
+
+  WalletTransaction copyWith({
+    String? id,
+    String? branchId,
+    String? walletId,
+    Value<String?> shiftId = const Value.absent(),
+    String? type,
+    int? amount,
+    int? commission,
+    Value<String?> customerPhone = const Value.absent(),
+    Value<String?> referenceNumber = const Value.absent(),
+    Value<String?> notes = const Value.absent(),
+    String? userId,
+    DateTime? createdAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+  }) => WalletTransaction(
+    id: id ?? this.id,
+    branchId: branchId ?? this.branchId,
+    walletId: walletId ?? this.walletId,
+    shiftId: shiftId.present ? shiftId.value : this.shiftId,
+    type: type ?? this.type,
+    amount: amount ?? this.amount,
+    commission: commission ?? this.commission,
+    customerPhone: customerPhone.present
+        ? customerPhone.value
+        : this.customerPhone,
+    referenceNumber: referenceNumber.present
+        ? referenceNumber.value
+        : this.referenceNumber,
+    notes: notes.present ? notes.value : this.notes,
+    userId: userId ?? this.userId,
+    createdAt: createdAt ?? this.createdAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+  );
+  WalletTransaction copyWithCompanion(WalletTransactionsCompanion data) {
+    return WalletTransaction(
+      id: data.id.present ? data.id.value : this.id,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      walletId: data.walletId.present ? data.walletId.value : this.walletId,
+      shiftId: data.shiftId.present ? data.shiftId.value : this.shiftId,
+      type: data.type.present ? data.type.value : this.type,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      commission: data.commission.present
+          ? data.commission.value
+          : this.commission,
+      customerPhone: data.customerPhone.present
+          ? data.customerPhone.value
+          : this.customerPhone,
+      referenceNumber: data.referenceNumber.present
+          ? data.referenceNumber.value
+          : this.referenceNumber,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WalletTransaction(')
+          ..write('id: $id, ')
+          ..write('branchId: $branchId, ')
+          ..write('walletId: $walletId, ')
+          ..write('shiftId: $shiftId, ')
+          ..write('type: $type, ')
+          ..write('amount: $amount, ')
+          ..write('commission: $commission, ')
+          ..write('customerPhone: $customerPhone, ')
+          ..write('referenceNumber: $referenceNumber, ')
+          ..write('notes: $notes, ')
+          ..write('userId: $userId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    branchId,
+    walletId,
+    shiftId,
+    type,
+    amount,
+    commission,
+    customerPhone,
+    referenceNumber,
+    notes,
+    userId,
+    createdAt,
+    deletedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WalletTransaction &&
+          other.id == this.id &&
+          other.branchId == this.branchId &&
+          other.walletId == this.walletId &&
+          other.shiftId == this.shiftId &&
+          other.type == this.type &&
+          other.amount == this.amount &&
+          other.commission == this.commission &&
+          other.customerPhone == this.customerPhone &&
+          other.referenceNumber == this.referenceNumber &&
+          other.notes == this.notes &&
+          other.userId == this.userId &&
+          other.createdAt == this.createdAt &&
+          other.deletedAt == this.deletedAt);
+}
+
+class WalletTransactionsCompanion extends UpdateCompanion<WalletTransaction> {
+  final Value<String> id;
+  final Value<String> branchId;
+  final Value<String> walletId;
+  final Value<String?> shiftId;
+  final Value<String> type;
+  final Value<int> amount;
+  final Value<int> commission;
+  final Value<String?> customerPhone;
+  final Value<String?> referenceNumber;
+  final Value<String?> notes;
+  final Value<String> userId;
+  final Value<DateTime> createdAt;
+  final Value<DateTime?> deletedAt;
+  final Value<int> rowid;
+  const WalletTransactionsCompanion({
+    this.id = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.walletId = const Value.absent(),
+    this.shiftId = const Value.absent(),
+    this.type = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.commission = const Value.absent(),
+    this.customerPhone = const Value.absent(),
+    this.referenceNumber = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  WalletTransactionsCompanion.insert({
+    required String id,
+    required String branchId,
+    required String walletId,
+    this.shiftId = const Value.absent(),
+    required String type,
+    required int amount,
+    this.commission = const Value.absent(),
+    this.customerPhone = const Value.absent(),
+    this.referenceNumber = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.userId = const Value.absent(),
+    required DateTime createdAt,
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       branchId = Value(branchId),
+       walletId = Value(walletId),
+       type = Value(type),
+       amount = Value(amount),
+       createdAt = Value(createdAt);
+  static Insertable<WalletTransaction> custom({
+    Expression<String>? id,
+    Expression<String>? branchId,
+    Expression<String>? walletId,
+    Expression<String>? shiftId,
+    Expression<String>? type,
+    Expression<int>? amount,
+    Expression<int>? commission,
+    Expression<String>? customerPhone,
+    Expression<String>? referenceNumber,
+    Expression<String>? notes,
+    Expression<String>? userId,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (branchId != null) 'branch_id': branchId,
+      if (walletId != null) 'wallet_id': walletId,
+      if (shiftId != null) 'shift_id': shiftId,
+      if (type != null) 'type': type,
+      if (amount != null) 'amount': amount,
+      if (commission != null) 'commission': commission,
+      if (customerPhone != null) 'customer_phone': customerPhone,
+      if (referenceNumber != null) 'reference_number': referenceNumber,
+      if (notes != null) 'notes': notes,
+      if (userId != null) 'user_id': userId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  WalletTransactionsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? branchId,
+    Value<String>? walletId,
+    Value<String?>? shiftId,
+    Value<String>? type,
+    Value<int>? amount,
+    Value<int>? commission,
+    Value<String?>? customerPhone,
+    Value<String?>? referenceNumber,
+    Value<String?>? notes,
+    Value<String>? userId,
+    Value<DateTime>? createdAt,
+    Value<DateTime?>? deletedAt,
+    Value<int>? rowid,
+  }) {
+    return WalletTransactionsCompanion(
+      id: id ?? this.id,
+      branchId: branchId ?? this.branchId,
+      walletId: walletId ?? this.walletId,
+      shiftId: shiftId ?? this.shiftId,
+      type: type ?? this.type,
+      amount: amount ?? this.amount,
+      commission: commission ?? this.commission,
+      customerPhone: customerPhone ?? this.customerPhone,
+      referenceNumber: referenceNumber ?? this.referenceNumber,
+      notes: notes ?? this.notes,
+      userId: userId ?? this.userId,
+      createdAt: createdAt ?? this.createdAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
+    }
+    if (walletId.present) {
+      map['wallet_id'] = Variable<String>(walletId.value);
+    }
+    if (shiftId.present) {
+      map['shift_id'] = Variable<String>(shiftId.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<int>(amount.value);
+    }
+    if (commission.present) {
+      map['commission'] = Variable<int>(commission.value);
+    }
+    if (customerPhone.present) {
+      map['customer_phone'] = Variable<String>(customerPhone.value);
+    }
+    if (referenceNumber.present) {
+      map['reference_number'] = Variable<String>(referenceNumber.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WalletTransactionsCompanion(')
+          ..write('id: $id, ')
+          ..write('branchId: $branchId, ')
+          ..write('walletId: $walletId, ')
+          ..write('shiftId: $shiftId, ')
+          ..write('type: $type, ')
+          ..write('amount: $amount, ')
+          ..write('commission: $commission, ')
+          ..write('customerPhone: $customerPhone, ')
+          ..write('referenceNumber: $referenceNumber, ')
+          ..write('notes: $notes, ')
+          ..write('userId: $userId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -23563,6 +25044,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $DeviceSerialUnitsTable deviceSerialUnits =
       $DeviceSerialUnitsTable(this);
+  late final $CashWalletsTable cashWallets = $CashWalletsTable(this);
+  late final $WalletTransactionsTable walletTransactions =
+      $WalletTransactionsTable(this);
   late final Index idxInventoryLogsVariantIdCreatedAt = Index(
     'idx_inventory_logs_variantId_createdAt',
     'CREATE INDEX idx_inventory_logs_variantId_createdAt ON inventory_logs (variant_id, created_at)',
@@ -23611,6 +25095,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     promotionApplications,
     promotionTargets,
     deviceSerialUnits,
+    cashWallets,
+    walletTransactions,
     idxInventoryLogsVariantIdCreatedAt,
     idxSyncQueueStatusCreatedAt,
   ];
@@ -36283,6 +37769,720 @@ typedef $$DeviceSerialUnitsTableProcessedTableManager =
       DeviceSerialUnit,
       PrefetchHooks Function()
     >;
+typedef $$CashWalletsTableCreateCompanionBuilder =
+    CashWalletsCompanion Function({
+      required String id,
+      required String branchId,
+      required String name,
+      Value<String> providerType,
+      Value<String> phoneOrTerminal,
+      Value<int> currentBalance,
+      Value<int> monthlyLimit,
+      Value<int> monthlyUsed,
+      Value<bool> isActive,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+typedef $$CashWalletsTableUpdateCompanionBuilder =
+    CashWalletsCompanion Function({
+      Value<String> id,
+      Value<String> branchId,
+      Value<String> name,
+      Value<String> providerType,
+      Value<String> phoneOrTerminal,
+      Value<int> currentBalance,
+      Value<int> monthlyLimit,
+      Value<int> monthlyUsed,
+      Value<bool> isActive,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+
+class $$CashWalletsTableFilterComposer
+    extends Composer<_$AppDatabase, $CashWalletsTable> {
+  $$CashWalletsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get providerType => $composableBuilder(
+    column: $table.providerType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get phoneOrTerminal => $composableBuilder(
+    column: $table.phoneOrTerminal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get currentBalance => $composableBuilder(
+    column: $table.currentBalance,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get monthlyLimit => $composableBuilder(
+    column: $table.monthlyLimit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get monthlyUsed => $composableBuilder(
+    column: $table.monthlyUsed,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CashWalletsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CashWalletsTable> {
+  $$CashWalletsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get providerType => $composableBuilder(
+    column: $table.providerType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get phoneOrTerminal => $composableBuilder(
+    column: $table.phoneOrTerminal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get currentBalance => $composableBuilder(
+    column: $table.currentBalance,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get monthlyLimit => $composableBuilder(
+    column: $table.monthlyLimit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get monthlyUsed => $composableBuilder(
+    column: $table.monthlyUsed,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CashWalletsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CashWalletsTable> {
+  $$CashWalletsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get providerType => $composableBuilder(
+    column: $table.providerType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get phoneOrTerminal => $composableBuilder(
+    column: $table.phoneOrTerminal,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get currentBalance => $composableBuilder(
+    column: $table.currentBalance,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get monthlyLimit => $composableBuilder(
+    column: $table.monthlyLimit,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get monthlyUsed => $composableBuilder(
+    column: $table.monthlyUsed,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+}
+
+class $$CashWalletsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CashWalletsTable,
+          CashWallet,
+          $$CashWalletsTableFilterComposer,
+          $$CashWalletsTableOrderingComposer,
+          $$CashWalletsTableAnnotationComposer,
+          $$CashWalletsTableCreateCompanionBuilder,
+          $$CashWalletsTableUpdateCompanionBuilder,
+          (
+            CashWallet,
+            BaseReferences<_$AppDatabase, $CashWalletsTable, CashWallet>,
+          ),
+          CashWallet,
+          PrefetchHooks Function()
+        > {
+  $$CashWalletsTableTableManager(_$AppDatabase db, $CashWalletsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CashWalletsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CashWalletsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CashWalletsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> branchId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> providerType = const Value.absent(),
+                Value<String> phoneOrTerminal = const Value.absent(),
+                Value<int> currentBalance = const Value.absent(),
+                Value<int> monthlyLimit = const Value.absent(),
+                Value<int> monthlyUsed = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CashWalletsCompanion(
+                id: id,
+                branchId: branchId,
+                name: name,
+                providerType: providerType,
+                phoneOrTerminal: phoneOrTerminal,
+                currentBalance: currentBalance,
+                monthlyLimit: monthlyLimit,
+                monthlyUsed: monthlyUsed,
+                isActive: isActive,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String branchId,
+                required String name,
+                Value<String> providerType = const Value.absent(),
+                Value<String> phoneOrTerminal = const Value.absent(),
+                Value<int> currentBalance = const Value.absent(),
+                Value<int> monthlyLimit = const Value.absent(),
+                Value<int> monthlyUsed = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CashWalletsCompanion.insert(
+                id: id,
+                branchId: branchId,
+                name: name,
+                providerType: providerType,
+                phoneOrTerminal: phoneOrTerminal,
+                currentBalance: currentBalance,
+                monthlyLimit: monthlyLimit,
+                monthlyUsed: monthlyUsed,
+                isActive: isActive,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CashWalletsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CashWalletsTable,
+      CashWallet,
+      $$CashWalletsTableFilterComposer,
+      $$CashWalletsTableOrderingComposer,
+      $$CashWalletsTableAnnotationComposer,
+      $$CashWalletsTableCreateCompanionBuilder,
+      $$CashWalletsTableUpdateCompanionBuilder,
+      (
+        CashWallet,
+        BaseReferences<_$AppDatabase, $CashWalletsTable, CashWallet>,
+      ),
+      CashWallet,
+      PrefetchHooks Function()
+    >;
+typedef $$WalletTransactionsTableCreateCompanionBuilder =
+    WalletTransactionsCompanion Function({
+      required String id,
+      required String branchId,
+      required String walletId,
+      Value<String?> shiftId,
+      required String type,
+      required int amount,
+      Value<int> commission,
+      Value<String?> customerPhone,
+      Value<String?> referenceNumber,
+      Value<String?> notes,
+      Value<String> userId,
+      required DateTime createdAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+typedef $$WalletTransactionsTableUpdateCompanionBuilder =
+    WalletTransactionsCompanion Function({
+      Value<String> id,
+      Value<String> branchId,
+      Value<String> walletId,
+      Value<String?> shiftId,
+      Value<String> type,
+      Value<int> amount,
+      Value<int> commission,
+      Value<String?> customerPhone,
+      Value<String?> referenceNumber,
+      Value<String?> notes,
+      Value<String> userId,
+      Value<DateTime> createdAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+
+class $$WalletTransactionsTableFilterComposer
+    extends Composer<_$AppDatabase, $WalletTransactionsTable> {
+  $$WalletTransactionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get walletId => $composableBuilder(
+    column: $table.walletId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get shiftId => $composableBuilder(
+    column: $table.shiftId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get commission => $composableBuilder(
+    column: $table.commission,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customerPhone => $composableBuilder(
+    column: $table.customerPhone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get referenceNumber => $composableBuilder(
+    column: $table.referenceNumber,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$WalletTransactionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $WalletTransactionsTable> {
+  $$WalletTransactionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get walletId => $composableBuilder(
+    column: $table.walletId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get shiftId => $composableBuilder(
+    column: $table.shiftId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get commission => $composableBuilder(
+    column: $table.commission,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get customerPhone => $composableBuilder(
+    column: $table.customerPhone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get referenceNumber => $composableBuilder(
+    column: $table.referenceNumber,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$WalletTransactionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $WalletTransactionsTable> {
+  $$WalletTransactionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<String> get walletId =>
+      $composableBuilder(column: $table.walletId, builder: (column) => column);
+
+  GeneratedColumn<String> get shiftId =>
+      $composableBuilder(column: $table.shiftId, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<int> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<int> get commission => $composableBuilder(
+    column: $table.commission,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get customerPhone => $composableBuilder(
+    column: $table.customerPhone,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get referenceNumber => $composableBuilder(
+    column: $table.referenceNumber,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+}
+
+class $$WalletTransactionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $WalletTransactionsTable,
+          WalletTransaction,
+          $$WalletTransactionsTableFilterComposer,
+          $$WalletTransactionsTableOrderingComposer,
+          $$WalletTransactionsTableAnnotationComposer,
+          $$WalletTransactionsTableCreateCompanionBuilder,
+          $$WalletTransactionsTableUpdateCompanionBuilder,
+          (
+            WalletTransaction,
+            BaseReferences<
+              _$AppDatabase,
+              $WalletTransactionsTable,
+              WalletTransaction
+            >,
+          ),
+          WalletTransaction,
+          PrefetchHooks Function()
+        > {
+  $$WalletTransactionsTableTableManager(
+    _$AppDatabase db,
+    $WalletTransactionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$WalletTransactionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$WalletTransactionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$WalletTransactionsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> branchId = const Value.absent(),
+                Value<String> walletId = const Value.absent(),
+                Value<String?> shiftId = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<int> amount = const Value.absent(),
+                Value<int> commission = const Value.absent(),
+                Value<String?> customerPhone = const Value.absent(),
+                Value<String?> referenceNumber = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => WalletTransactionsCompanion(
+                id: id,
+                branchId: branchId,
+                walletId: walletId,
+                shiftId: shiftId,
+                type: type,
+                amount: amount,
+                commission: commission,
+                customerPhone: customerPhone,
+                referenceNumber: referenceNumber,
+                notes: notes,
+                userId: userId,
+                createdAt: createdAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String branchId,
+                required String walletId,
+                Value<String?> shiftId = const Value.absent(),
+                required String type,
+                required int amount,
+                Value<int> commission = const Value.absent(),
+                Value<String?> customerPhone = const Value.absent(),
+                Value<String?> referenceNumber = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                required DateTime createdAt,
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => WalletTransactionsCompanion.insert(
+                id: id,
+                branchId: branchId,
+                walletId: walletId,
+                shiftId: shiftId,
+                type: type,
+                amount: amount,
+                commission: commission,
+                customerPhone: customerPhone,
+                referenceNumber: referenceNumber,
+                notes: notes,
+                userId: userId,
+                createdAt: createdAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$WalletTransactionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $WalletTransactionsTable,
+      WalletTransaction,
+      $$WalletTransactionsTableFilterComposer,
+      $$WalletTransactionsTableOrderingComposer,
+      $$WalletTransactionsTableAnnotationComposer,
+      $$WalletTransactionsTableCreateCompanionBuilder,
+      $$WalletTransactionsTableUpdateCompanionBuilder,
+      (
+        WalletTransaction,
+        BaseReferences<
+          _$AppDatabase,
+          $WalletTransactionsTable,
+          WalletTransaction
+        >,
+      ),
+      WalletTransaction,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -36357,4 +38557,8 @@ class $AppDatabaseManager {
       $$PromotionTargetsTableTableManager(_db, _db.promotionTargets);
   $$DeviceSerialUnitsTableTableManager get deviceSerialUnits =>
       $$DeviceSerialUnitsTableTableManager(_db, _db.deviceSerialUnits);
+  $$CashWalletsTableTableManager get cashWallets =>
+      $$CashWalletsTableTableManager(_db, _db.cashWallets);
+  $$WalletTransactionsTableTableManager get walletTransactions =>
+      $$WalletTransactionsTableTableManager(_db, _db.walletTransactions);
 }

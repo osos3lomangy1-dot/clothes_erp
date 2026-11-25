@@ -267,6 +267,24 @@ class _CloseShiftDialogState extends State<CloseShiftDialog> {
                           const Divider(height: 14),
                           _rowDetail('أقساط محصلة (كاش):', '+${Money(widget.summary.cashInstallments).toDisplay()} ج.م', color: Colors.teal.shade700),
                         ],
+                        if (widget.summary.walletNetCash != 0) ...[
+                          const Divider(height: 14),
+                          _rowDetail(
+                            'صافي حركة المحافظ (كاش):',
+                            '${widget.summary.walletNetCash >= 0 ? '+' : '-'}${Money(widget.summary.walletNetCash.abs()).toDisplay()} ج.م',
+                            color: widget.summary.walletNetCash >= 0
+                                ? AppColors.success
+                                : AppColors.error,
+                          ),
+                        ],
+                        if (widget.summary.walletCommissions > 0) ...[
+                          const Divider(height: 14),
+                          _rowDetail(
+                            'عمولات المحافظ (ربح):',
+                            '+${Money(widget.summary.walletCommissions).toDisplay()} ج.م',
+                            color: AppColors.primary,
+                          ),
+                        ],
                         if (widget.summary.cashReturns > 0) ...[
                           const Divider(height: 14),
                           _rowDetail('مرتجعات نقدية:', '-${Money(widget.summary.cashReturns).toDisplay()} ج.م', color: Colors.orange.shade800),

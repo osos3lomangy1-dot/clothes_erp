@@ -187,9 +187,9 @@ void main() {
 
   group('Task 36: Schema v12 Migration & DeviceSerialService', () {
     test(
-      'AppDatabase schemaVersion is 12 and migrateToV12 upgrades v11 DB safely',
+      'AppDatabase schemaVersion is >= 12 and migrateToV12 upgrades v11 DB safely',
       () async {
-        expect(db.schemaVersion, 12);
+        expect(db.schemaVersion, greaterThanOrEqualTo(12));
 
         // Build an in-memory v11 database with minimal sale_items table and migrate it
         final raw = sq.sqlite3.openInMemory();

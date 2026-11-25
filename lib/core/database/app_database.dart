@@ -780,6 +780,58 @@ class DeviceSerialUnits extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+class CashWallets extends Table {
+  TextColumn get id => text()();
+  TextColumn get branchId => text()();
+  TextColumn get name => text()();
+  TextColumn get providerType =>
+      text().withDefault(const Constant('vodafone_cash'))();
+  TextColumn get phoneOrTerminal => text().withDefault(const Constant(''))();
+  IntColumn get currentBalance => integer().withDefault(const Constant(0))();
+  IntColumn get monthlyLimit => integer().withDefault(const Constant(0))();
+  IntColumn get monthlyUsed => integer().withDefault(const Constant(0))();
+  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  List<String> get customConstraints => [
+    "CHECK (provider_type IN ('vodafone_cash', 'instapay', 'etisalat_cash', 'orange_cash', 'fawry', 'other'))",
+    'CHECK (monthly_limit >= 0)',
+    'CHECK (monthly_used >= 0)',
+  ];
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class WalletTransactions extends Table {
+  TextColumn get id => text()();
+  TextColumn get branchId => text()();
+  TextColumn get walletId => text()();
+  TextColumn get shiftId => text().nullable()();
+  TextColumn get type => text()();
+  IntColumn get amount => integer()();
+  IntColumn get commission => integer().withDefault(const Constant(0))();
+  TextColumn get customerPhone => text().nullable()();
+  TextColumn get referenceNumber => text().nullable()();
+  TextColumn get notes => text().nullable()();
+  TextColumn get userId => text().withDefault(const Constant('admin'))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  List<String> get customConstraints => [
+    "CHECK (type IN ('deposit_out_transfer', 'withdraw_in_cash', 'topup_from_drawer', 'bill_payment'))",
+    'CHECK (amount > 0)',
+    'CHECK (commission >= 0)',
+  ];
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     Users,
@@ -817,13 +869,15 @@ class DeviceSerialUnits extends Table {
     PromotionApplications,
     PromotionTargets,
     DeviceSerialUnits,
+    CashWallets,
+    WalletTransactions,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   /// Checkpoints committed WAL frames into the main database file.
   /// Called after POS checkout to guarantee zero receipt loss on sudden power cuts.
@@ -1196,6 +1250,23 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
+  @visibleForTesting
+  Future<void> migrateToV13(Migrator m) async {
+    final walletTables = await customSelect(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='cash_wallets'",
+    ).get();
+    if (walletTables.isEmpty) {
+      await m.createTable(cashWallets);
+    }
+
+    final txTables = await customSelect(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='wallet_transactions'",
+    ).get();
+    if (txTables.isEmpty) {
+      await m.createTable(walletTransactions);
+    }
+  }
+
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (Migrator m) async {
@@ -1303,6 +1374,10 @@ class AppDatabase extends _$AppDatabase {
           await migrateToV12(m);
         }
 
+        if (from < 13 && to >= 13) {
+          await migrateToV13(m);
+        }
+
         // Commit target user_version inside the transaction to eliminate the post-commit window
         await m.database.customStatement('PRAGMA user_version = $to;');
       });
@@ -1360,6 +1435,8 @@ class AppDatabase extends _$AppDatabase {
       );
       await createTableIfNotExists('customer_payments', customerPayments);
       await createTableIfNotExists('device_serial_units', deviceSerialUnits);
+      await createTableIfNotExists('cash_wallets', cashWallets);
+      await createTableIfNotExists('wallet_transactions', walletTransactions);
       try {
         await customStatement(
           'CREATE UNIQUE INDEX IF NOT EXISTS idx_device_serial_imei_unique ON device_serial_units(imei) WHERE deleted_at IS NULL',

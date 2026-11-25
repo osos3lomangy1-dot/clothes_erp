@@ -81,11 +81,11 @@ void main() {
         // Running a query triggers Drift open + onUpgrade
         await upgradedDb.customSelect('SELECT 1').get();
 
-        // Verify user_version was bumped to 12
+        // Verify user_version was bumped to 13
         final versionResult = await upgradedDb
             .customSelect('PRAGMA user_version')
             .getSingle();
-        expect(versionResult.data['user_version'], equals(12));
+        expect(versionResult.data['user_version'], equals(13));
 
         // -----------------------------------------------------------------------
         // STEP 3: Call onUpgrade a SECOND time (to simulate running when columns/tables already exist,

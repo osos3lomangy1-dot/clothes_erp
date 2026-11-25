@@ -74,7 +74,19 @@ class DashboardLocalDataSourceImpl implements DashboardLocalDataSource {
               e.deletedAt.isNull()))
         .get();
     final int todayExpenses = todayExpensesRows.fold<int>(0, (sum, e) => sum + e.amount);
-    final int todayEstimatedNetProfit = todaySales - todayCost - todayExpenses;
+
+    final todayWalletRows = await (_db.select(_db.walletTransactions)
+          ..where((w) =>
+              w.type.isNotValue('topup_from_drawer') &
+              w.createdAt.isBiggerOrEqualValue(startOfDay) &
+              w.createdAt.isSmallerOrEqualValue(endOfDay) &
+              w.deletedAt.isNull()))
+        .get();
+    final int todayWalletCommissions =
+        todayWalletRows.fold<int>(0, (sum, w) => sum + w.commission);
+
+    final int todayEstimatedNetProfit =
+        todaySales - todayCost - todayExpenses + todayWalletCommissions;
 
     // 3. Today Returns
     final returnRows = await (_db.select(_db.returns)
@@ -350,7 +362,17 @@ class DashboardLocalDataSourceImpl implements DashboardLocalDataSource {
         .get();
     final int yesterdayExpenses =
         yesterdayExpensesRows.fold<int>(0, (sum, e) => sum + e.amount);
-    final int yesterdayNetProfit = yesterdaySales - yesterdayCost - yesterdayExpenses;
+    final yesterdayWalletRows = await (_db.select(_db.walletTransactions)
+          ..where((w) =>
+              w.type.isNotValue('topup_from_drawer') &
+              w.createdAt.isBiggerOrEqualValue(yesterdayStart) &
+              w.createdAt.isSmallerOrEqualValue(yesterdayEnd) &
+              w.deletedAt.isNull()))
+        .get();
+    final int yesterdayWalletCommissions =
+        yesterdayWalletRows.fold<int>(0, (sum, w) => sum + w.commission);
+    final int yesterdayNetProfit =
+        yesterdaySales - yesterdayCost - yesterdayExpenses + yesterdayWalletCommissions;
 
     final stockRows = await (_db.select(_db.productVariants).join([
       innerJoin(_db.products, _db.products.id.equalsExp(_db.productVariants.productId)),

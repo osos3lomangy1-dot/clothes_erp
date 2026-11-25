@@ -60,6 +60,7 @@ class FeatureKeys {
   static const managerPinProtection = 'managerPinProtection';
   static const delivery = 'delivery';
   static const mobileImeiUsed = 'mobileImeiUsed';
+  static const mobileWallets = 'mobileWallets';
 
   static const definitions = <FeatureDefinition>[
     FeatureDefinition(
@@ -249,6 +250,12 @@ class FeatureKeys {
     FeatureDefinition(
       key: mobileImeiUsed,
       label: 'تتبع السيريال (IMEI) وشراء وبيع المستعمل',
+      coreAlwaysEnabled: false,
+      defaultEnabled: false,
+    ),
+    FeatureDefinition(
+      key: mobileWallets,
+      label: 'المحافظ الإلكترونية وشحن الكاش والتحويلات',
       coreAlwaysEnabled: false,
       defaultEnabled: false,
     ),

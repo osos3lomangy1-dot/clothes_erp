@@ -188,6 +188,29 @@ class ShiftLocalDataSourceImpl implements ShiftLocalDataSource {
           m.deletedAt.isNull());
     final movements = await movementsQuery.get();
 
+    final walletTxRows = await (_db.select(_db.walletTransactions)
+          ..where((w) =>
+              (w.shiftId.equals(shiftId) |
+                  (w.shiftId.isNull() &
+                      w.createdAt.isBiggerOrEqualValue(shiftRow.openedAt) &
+                      w.createdAt.isSmallerOrEqualValue(closedAt))) &
+              w.deletedAt.isNull()))
+        .get();
+
+    int walletNetCash = 0;
+    int walletCommissions = 0;
+    for (final wt in walletTxRows) {
+      if (wt.type == 'deposit_out_transfer' || wt.type == 'bill_payment') {
+        walletNetCash += wt.amount + wt.commission;
+        walletCommissions += wt.commission;
+      } else if (wt.type == 'withdraw_in_cash') {
+        walletNetCash -= (wt.amount - wt.commission);
+        walletCommissions += wt.commission;
+      } else if (wt.type == 'topup_from_drawer') {
+        walletNetCash -= wt.amount;
+      }
+    }
+
     final int expectedCash;
     int effectiveCashSales = cashSales;
     int effectiveCardSales = cardSales;
@@ -224,7 +247,8 @@ class ShiftLocalDataSourceImpl implements ShiftLocalDataSource {
         effectiveCashExpenses += movementExpenses;
       }
     } else {
-      expectedCash = shiftRow.openingBalance + cashSales - cashReturns - cashExpenses;
+      expectedCash =
+          shiftRow.openingBalance + cashSales + walletNetCash - cashReturns - cashExpenses;
     }
 
     final tipsPool = movements
@@ -257,6 +281,8 @@ class ShiftLocalDataSourceImpl implements ShiftLocalDataSource {
       cashInstallments: cashInstallments,
       cardInstallments: cardInstallments,
       tipsPool: tipsPool,
+      walletNetCash: walletNetCash,
+      walletCommissions: walletCommissions,
       totalSalesCount: sales.length,
       expectedCashInDrawer: expectedCash,
     );

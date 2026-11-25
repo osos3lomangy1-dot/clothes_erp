@@ -26,6 +26,7 @@ import '../../features/crash_logs/presentation/screens/crash_logs_screen.dart';
 import '../../features/customers/presentation/screens/customer_screen.dart';
 import '../../features/dashboard/presentation/cubits/dashboard_cubit.dart';
 import '../../features/delivery/presentation/screens/delivery_orders_screen.dart';
+import '../../features/wallets/presentation/screens/wallets_screen.dart';
 import '../../features/employees/presentation/screens/employee_list_screen.dart';
 import '../../features/expenses/presentation/screens/expenses_screen.dart';
 import '../../features/installments/presentation/screens/installments_list_screen.dart';
@@ -695,6 +696,16 @@ class _MainLayoutState extends State<MainLayout> {
                                                   Icons.lock_clock_rounded,
                                                   'الورديات وتصفية الدرج',
                                                   const ShiftScreen(),
+                                                  isSubItem: true,
+                                                ),
+                                              if (_featureEnabled(
+                                                features,
+                                                FeatureKeys.mobileWallets,
+                                              ))
+                                                _navItem(
+                                                  Icons.account_balance_wallet_rounded,
+                                                  'المحافظ الإلكترونية والتحويلات',
+                                                  const WalletsScreen(),
                                                   isSubItem: true,
                                                 ),
                                             ],
@@ -1480,6 +1491,20 @@ class _MainLayoutState extends State<MainLayout> {
         subtitle: 'طلبات التوصيل ومتابعة الكباتن',
         onSelect: () => _handleItemTap('إدارة الدليفري والطيارين', const DeliveryOrdersScreen(), false, null),
       ),
+      if (_featureEnabled(_latestFeatures, FeatureKeys.mobileWallets))
+        CommandPaletteItem(
+          id: 'nav_mobile_wallets',
+          title: 'المحافظ الإلكترونية والتحويلات',
+          category: 'شاشات النظام',
+          icon: Icons.account_balance_wallet_rounded,
+          subtitle: 'تحويل كاش، سحب نقدي، تغذية من الدرج ومتابعة الحد الشهري',
+          onSelect: () => _handleItemTap(
+            'المحافظ الإلكترونية والتحويلات',
+            const WalletsScreen(),
+            false,
+            null,
+          ),
+        ),
       if (!_isHospitality && _canOpenBlindReceive())
         CommandPaletteItem(
           id: 'nav_blind_receive',

@@ -273,6 +273,8 @@ import 'package:clothes_erp/features/shifts/domain/repositories/shift_repository
     as _i837;
 import 'package:clothes_erp/features/shifts/presentation/cubits/shift_cubit.dart'
     as _i252;
+import 'package:clothes_erp/features/wallets/data/services/mobile_wallets_service.dart'
+    as _i291;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart' as _i558;
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:http/http.dart' as _i519;
@@ -482,6 +484,13 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i880.DeviceSerialService>(
       () => _i880.DeviceSerialService(
+        gh<_i110.AppDatabase>(),
+        gh<_i254.BranchProvider>(),
+        gh<_i874.TxWriter>(),
+      ),
+    );
+    gh.lazySingleton<_i291.MobileWalletsService>(
+      () => _i291.MobileWalletsService(
         gh<_i110.AppDatabase>(),
         gh<_i254.BranchProvider>(),
         gh<_i874.TxWriter>(),

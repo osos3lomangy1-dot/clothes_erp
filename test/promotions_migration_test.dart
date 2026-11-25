@@ -55,9 +55,9 @@ void main() {
       // Trigger database creation
       await db.customSelect('SELECT 1').get();
 
-      // Verify PRAGMA user_version is 12
+      // Verify PRAGMA user_version is 13
       final versionResult = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(versionResult.data['user_version'], equals(12));
+      expect(versionResult.data['user_version'], equals(13));
 
       // Verify tables exist
       Future<bool> tableExists(String table) async {
