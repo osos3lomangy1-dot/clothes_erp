@@ -1,15 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/features/feature_gate.dart';
+import '../../../auth/presentation/cubits/auth_cubit.dart';
+import '../../../auth/presentation/cubits/auth_state.dart';
+import '../../../auth/presentation/widgets/manager_auth_dialog.dart';
+import '../../../employees/presentation/screens/employee_list_screen.dart';
 import '../../../expenses/presentation/screens/expenses_screen.dart';
 import '../../../installments/presentation/screens/installments_list_screen.dart';
+import '../../../invoices/presentation/screens/receipt_customizer_screen.dart';
+import '../../../partners/presentation/screens/partners_screen.dart';
 import '../../../products/presentation/screens/product_list_screen.dart';
 import '../../../purchases/presentation/screens/purchases_screen.dart';
 import '../../../reports/presentation/screens/reports_screen.dart';
+import '../../../returns/presentation/screens/return_screen.dart';
+import '../../../settings/presentation/screens/excel_migration_screen.dart';
+import '../../../settings/presentation/screens/system_settings_screen.dart';
+import '../../../shifts/presentation/screens/shift_screen.dart';
 import '../../data/services/offline_smart_assistant_service.dart';
 
 class _AssistantChatEntry {
@@ -42,7 +53,10 @@ class OfflineSmartAssistantDialog extends StatefulWidget {
 class _OfflineSmartAssistantDialogState
     extends State<OfflineSmartAssistantDialog> {
   final _queryCtrl = TextEditingController();
+  final _scrollCtrl = ScrollController();
   final List<_AssistantChatEntry> _history = [];
+  final Set<AssistantInsight> _resolvedCommands =
+      Set<AssistantInsight>.identity();
   Map<String, bool> _enabledFeatures = const {};
   bool _isLoading = true;
 
@@ -55,7 +69,16 @@ class _OfflineSmartAssistantDialogState
   @override
   void dispose() {
     _queryCtrl.dispose();
+    _scrollCtrl.dispose();
     super.dispose();
+  }
+
+  void _scrollToLatest() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollCtrl.hasClients) {
+        _scrollCtrl.jumpTo(0);
+      }
+    });
   }
 
   OfflineSmartAssistantService _resolveService() {
@@ -103,9 +126,119 @@ class _OfflineSmartAssistantDialogState
         _queryCtrl.clear();
         _isLoading = false;
       });
+      _scrollToLatest();
     } catch (_) {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _confirmCommand(AssistantInsight item) async {
+    final cmd = item.pendingCommand;
+    if (cmd == null) return;
+
+    String userId = 'admin';
+    String userRole = 'admin';
+    try {
+      final authState = context.read<AuthCubit>().state;
+      if (authState is AuthAuthenticated) {
+        userId = authState.user.id;
+        userRole = authState.user.role;
+      }
+    } catch (_) {}
+
+    if (userRole.toLowerCase() != 'admin') {
+      setState(() {
+        _resolvedCommands.add(item);
+        _history.add(
+          const _AssistantChatEntry(
+            insights: [
+              AssistantInsight(
+                id: 'cmd_denied',
+                title: 'تنفيذ مرفوض (صلاحيات)',
+                summary:
+                    'غير مصرح: تنفيذ تعديلات الإعدادات متاح لحساب المدير (admin) فقط.',
+                isAlert: true,
+              ),
+            ],
+          ),
+        );
+      });
+      _scrollToLatest();
+      return;
+    }
+
+    if (!getIt.isRegistered<FeatureGate>()) return;
+    final gate = getIt<FeatureGate>();
+
+    if (cmd.touchesFeatureGate) {
+      final unlocked = await ManagerAuthHelper.ensureSuperAdminUnlocked(
+        context,
+        gate: gate,
+        actionLabel: cmd.title,
+      );
+      if (!unlocked || !mounted) return;
+    }
+
+    try {
+      final msg = await _resolveService().executeCommand(
+        cmd,
+        userId: userId,
+        userRole: userRole,
+        gate: gate,
+      );
+      if (!mounted) return;
+      setState(() {
+        _resolvedCommands.add(item);
+        _history.add(
+          _AssistantChatEntry(
+            insights: [
+              AssistantInsight(
+                id: 'cmd_success',
+                title: 'تم تنفيذ التعديل بنجاح',
+                summary: msg,
+              ),
+            ],
+          ),
+        );
+      });
+      _scrollToLatest();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _resolvedCommands.add(item);
+        _history.add(
+          _AssistantChatEntry(
+            insights: [
+              AssistantInsight(
+                id: 'cmd_error',
+                title: 'تعذر تنفيذ التعديل',
+                summary: e.toString().replaceFirst('Exception: ', ''),
+                isAlert: true,
+              ),
+            ],
+          ),
+        );
+      });
+      _scrollToLatest();
+    }
+  }
+
+  void _cancelCommand(AssistantInsight item) {
+    setState(() {
+      _resolvedCommands.add(item);
+      _history.add(
+        const _AssistantChatEntry(
+          insights: [
+            AssistantInsight(
+              id: 'cmd_cancelled',
+              title: 'تم إلغاء التعديل',
+              summary: 'لم يتم إجراء أي تغيير على إعدادات النظام.',
+            ),
+          ],
+        ),
+      );
+    });
+    _scrollToLatest();
   }
 
   bool _canNavigate(AssistantInsight item) {
@@ -134,6 +267,27 @@ class _OfflineSmartAssistantDialogState
       case AssistantActionRoute.expenses:
         screen = const ExpensesScreen();
         break;
+      case AssistantActionRoute.settings:
+        screen = const SystemSettingsScreen();
+        break;
+      case AssistantActionRoute.employees:
+        screen = const EmployeeListScreen();
+        break;
+      case AssistantActionRoute.shifts:
+        screen = const ShiftScreen();
+        break;
+      case AssistantActionRoute.partners:
+        screen = const PartnersScreen();
+        break;
+      case AssistantActionRoute.excelMigration:
+        screen = const ExcelMigrationScreen(userId: 'admin');
+        break;
+      case AssistantActionRoute.receiptCustomizer:
+        screen = const ReceiptCustomizerScreen();
+        break;
+      case AssistantActionRoute.returns:
+        screen = const ReturnScreen();
+        break;
     }
     Navigator.of(context).pop();
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
@@ -142,11 +296,11 @@ class _OfflineSmartAssistantDialogState
   @override
   Widget build(BuildContext context) {
     const quickPrompts = [
+      'وضع المحل دلوقتي؟',
+      'المبيعات قليلة ليه؟',
+      'أعمل عروض على إيه؟',
       'صافي ربح اليوم ومقارنته بأمس',
       'أعلى 5 أصناف ربحاً',
-      'الأصناف الراكدة',
-      'توقع نفاد المخزون',
-      'مقارنة مصاريف الشهر',
       'الأقساط المتأخرة',
       'مستحقات الموردين',
     ];
@@ -174,8 +328,8 @@ class _OfflineSmartAssistantDialogState
           ],
         ),
         content: SizedBox(
-          width: 640,
-          height: 500,
+          width: 660,
+          height: 520,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -188,7 +342,7 @@ class _OfflineSmartAssistantDialogState
                       onSubmitted: _runQuery,
                       decoration: const InputDecoration(
                         hintText:
-                            'اسأل بالعامية أو ابحث عن أي صنف: "كسبت كام النهارده؟" أو "سماعة"...',
+                            'اسأل بالعامية أو اطلب تنفيذ إعداد أو ابحث عن صنف...',
                         prefixIcon: Icon(Icons.search_rounded),
                         isDense: true,
                         border: OutlineInputBorder(),
@@ -224,6 +378,7 @@ class _OfflineSmartAssistantDialogState
                 child: _isLoading && _history.isEmpty
                     ? const Center(child: CircularProgressIndicator())
                     : ListView.separated(
+                        controller: _scrollCtrl,
                         itemCount: _history.length,
                         separatorBuilder: (_, _) => const SizedBox(height: 14),
                         itemBuilder: (context, idx) {
@@ -314,6 +469,36 @@ class _OfflineSmartAssistantDialogState
                                               style: const TextStyle(fontSize: 12),
                                             ),
                                           ),
+                                      ],
+                                      if (item.pendingCommand != null &&
+                                          !_resolvedCommands.contains(item)) ...[
+                                        const SizedBox(height: 10),
+                                        Row(
+                                          children: [
+                                            ElevatedButton(
+                                              key: Key(
+                                                'assistant_confirm_${item.id}',
+                                              ),
+                                              onPressed: () =>
+                                                  _confirmCommand(item),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    AppColors.primary,
+                                                foregroundColor: Colors.white,
+                                              ),
+                                              child: const Text('تأكيد التعديل'),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            OutlinedButton(
+                                              key: Key(
+                                                'assistant_cancel_${item.id}',
+                                              ),
+                                              onPressed: () =>
+                                                  _cancelCommand(item),
+                                              child: const Text('إلغاء'),
+                                            ),
+                                          ],
+                                        ),
                                       ],
                                       if (_canNavigate(item) &&
                                           item.actionLabel != null) ...[
