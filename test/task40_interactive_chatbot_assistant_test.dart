@@ -1971,4 +1971,476 @@ void main() {
       expect(find.text('الأصناف قاربت تخلص'), findsWidgets);
     });
   });
+
+  group('Task 40.9: Offline Knowledge Distillation & Fuzzy Synonym Scoring', () {
+    test('loads assets/assistant_knowledge_ar.json with 100+ Businessman topics and answers colloquial queries accurately', () async {
+      final count = await assistantService.getKnowledgeTopicCount();
+      expect(count, greaterThanOrEqualTo(100));
+
+      final angryRes = await assistantService.ask('الزبون زعلان وعايز يرجع حاجة');
+      expect(angryRes.any((i) => i.id == 'kb_cust_angry_return'), isTrue);
+      expect(angryRes.first.followUpPrompts, isNotEmpty);
+
+      final shortageRes = await assistantService.ask('حاسس ان في عجز في الدرج');
+      expect(shortageRes.any((i) => i.id == 'kb_stf_drawer_shortage'), isTrue);
+
+      final onlineRes = await assistantService.ask('ابدا بيع اونلاين ازاي');
+      expect(onlineRes.any((i) => i.id == 'kb_onl_start_guide'), isTrue);
+
+      final compRes = await assistantService.ask('المنافس جنبي نزل السعر اعمل ايه');
+      expect(compRes.any((i) => i.id == 'kb_biz_comp_neighbor_cut'), isTrue);
+
+      final expRes = await assistantService.ask('الزبون بيقولي غالي');
+      expect(expRes.any((i) => i.id == 'kb_biz_obj_too_expensive'), isTrue);
+
+      final branchRes = await assistantService.ask('امتى افتح فرع تاني');
+      expect(branchRes.any((i) => i.id == 'kb_exp_when_open_branch'), isTrue);
+    });
+
+    test('getBusinessmanConsultationInsight reads real DB metrics to build custom plan', () async {
+      final now = DateTime.now();
+      await db.into(db.categories).insert(
+            CategoriesCompanion.insert(
+              id: 'c_biz',
+              branchId: branchId,
+              name: 'ملابس',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.products).insert(
+            ProductsCompanion.insert(
+              id: 'p_biz',
+              branchId: branchId,
+              name: 'جاكيت راكد',
+              categoryId: 'c_biz',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.productVariants).insert(
+            ProductVariantsCompanion.insert(
+              id: 'v_biz',
+              branchId: branchId,
+              productId: 'p_biz',
+              sku: 'BIZ-1',
+              color: 'أسود',
+              size: 'L',
+              quantity: const Value(5),
+              costPrice: 20000,
+              sellPrice: 30000,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.expenses).insert(
+            ExpensesCompanion.insert(
+              id: 'e_biz',
+              branchId: branchId,
+              category: 'إيجار',
+              amount: 500000,
+              expenseDate: now,
+              userId: 'admin',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.suppliers).insert(
+            SuppliersCompanion.insert(
+              id: 'sup_biz',
+              branchId: branchId,
+              name: 'مورد السلام',
+              balance: const Value(150000),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      final res = await assistantService.ask('انصحني كـ بزنس مان');
+      final biz = res.firstWhere((i) => i.id == 'businessman_consultation');
+      expect(biz.isAlert, isTrue);
+      expect(biz.details.join('\n'), contains('100.0%'));
+      expect(biz.details.join('\n'), contains('5000.00'));
+      expect(biz.details.join('\n'), contains('1500.00'));
+    });
+  });
+
+  group('Task 40.10: Detailed Zakat Calculator (Money & Trade Goods)', () {
+    test('calculates Zakat from DB (reached Nisab, below Nisab, Gregorian, and multi-turn gold price draft)', () async {
+      final now = DateTime.now();
+      await db.into(db.categories).insert(
+            CategoriesCompanion.insert(
+              id: 'c_zak',
+              branchId: branchId,
+              name: 'ملابس',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.products).insert(
+            ProductsCompanion.insert(
+              id: 'p_zak',
+              branchId: branchId,
+              name: 'بدلة رسمي',
+              categoryId: 'c_zak',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      // Stock sell = 100 * 5000 EGP = 500,000 EGP (50,000,000 piasters)
+      await db.into(db.productVariants).insert(
+            ProductVariantsCompanion.insert(
+              id: 'v_zak',
+              branchId: branchId,
+              productId: 'p_zak',
+              sku: 'ZAK-1',
+              color: 'كحلي',
+              size: '50',
+              quantity: const Value(100),
+              costPrice: 300000,
+              sellPrice: 500000,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      // CashWallet = 50,000 EGP (5,000,000 piasters)
+      await db.into(db.cashWallets).insert(
+            CashWalletsCompanion.insert(
+              id: 'w_zak',
+              branchId: branchId,
+              name: 'فودافون كاش',
+              currentBalance: const Value(5000000),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      // Open shift = 10,000 EGP (1,000,000 piasters)
+      await db.into(db.shifts).insert(
+            ShiftsCompanion.insert(
+              id: 'sh_zak',
+              branchId: branchId,
+              cashierId: 'admin',
+              openingBalance: 1000000,
+              openedAt: now,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      // Supplier debt = 60,000 EGP (6,000,000 piasters)
+      await db.into(db.suppliers).insert(
+            SuppliersCompanion.insert(
+              id: 'sup_zak',
+              branchId: branchId,
+              name: 'مورد الزكاة',
+              balance: const Value(6000000),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // Net Zakat Pool = 500,000 + 50,000 + 10,000 - 60,000 = 500,000 EGP
+      // Gold 24k = 4000 -> Nisab = 85 * 4000 = 340,000 EGP -> Reached!
+      // Hijri 2.5% = 12,500.00 EGP
+      final hijri = await assistantService.getZakatCalculatorInsight(
+        goldGramPrice24Egp: 4000,
+      );
+      expect(hijri.id, 'zakat_calculator');
+      expect(hijri.isAlert, isTrue);
+      expect(hijri.summary, contains('12500.00'));
+      expect(hijri.details.join('\n'), contains('500000.00'));
+      expect(hijri.details.join('\n'), contains('340000.00'));
+
+      // Gregorian 2.577% = 12,885.00 EGP
+      final greg = await assistantService.getZakatCalculatorInsight(
+        goldGramPrice24Egp: 4000,
+        isGregorianYear: true,
+      );
+      expect(greg.summary, contains('12885.00'));
+
+      // Below Nisab: gold 10,000 -> Nisab 850,000 > 500,000
+      final below = await assistantService.getZakatCalculatorInsight(
+        goldGramPrice24Egp: 10000,
+      );
+      expect(below.isAlert, isFalse);
+      expect(below.summary, contains('لم يبلغ النصاب'));
+
+      // Multi-turn draft: "احسب الزكاة" -> asks gold price -> "4000 بنك 100000" -> 600,000 * 2.5% = 15,000.00
+      final t1 = await assistantService.askWithDraft('احسب الزكاة');
+      expect(t1.activeDraft?.kind, AssistantCommandKind.calculateZakat);
+      expect(t1.activeDraft?.missingField, 'goldPrice24');
+
+      final t2 = await assistantService.askWithDraft(
+        '4000 بنك 100000',
+        activeDraft: t1.activeDraft,
+      );
+      expect(t2.activeDraft, isNull);
+      expect(t2.insights.first.id, 'zakat_calculator');
+      expect(t2.insights.first.summary, contains('15000.00'));
+    });
+  });
+
+  group('Task 40.11: Sector-Aware AI (Multi-Activity Support)', () {
+    Future<void> setMeta(String key, String value) async {
+      await db.into(db.appMeta).insertOnConflictUpdate(
+            AppMetaCompanion.insert(
+              key: key,
+              value: value,
+              updatedAt: DateTime.now(),
+            ),
+          );
+    }
+
+    test('detects sector and tailors Businessman advice, KB ranking, and Zakat note', () async {
+      // 1) Restaurant / Cafe (fnb)
+      await setMeta('receipt.store_activity', 'مطعم وكافيه مشويات');
+      expect(await assistantService.detectStoreSector(), 'fnb');
+
+      final fnbAdvice = await assistantService.getBusinessmanConsultationInsight();
+      expect(fnbAdvice.details.join('\n'), contains('Food Cost'));
+      expect(fnbAdvice.details.join('\n'), contains('28%'));
+
+      final fnbKb = await assistantService.searchKnowledgeBase('خامات المطبخ بتخلص بسرعة');
+      expect(fnbKb, isNotEmpty);
+      expect(fnbKb.first.id, 'kb_sector_fnb_food_cost');
+
+      // 2) Supermarket / Grocery (expiryDates -> grocery)
+      await setMeta('receipt.store_activity', 'سوبر ماركت وبقالة');
+      expect(await assistantService.detectStoreSector(), 'grocery');
+
+      final groceryAdvice = await assistantService.getBusinessmanConsultationInsight();
+      expect(groceryAdvice.details.join('\n'), contains('FEFO'));
+
+      final groceryKb = await assistantService.searchKnowledgeBase('البضاعة بتبوظ وتنتهي صلاحيتها');
+      expect(groceryKb, isNotEmpty);
+      expect(groceryKb.first.id, 'kb_sector_grocery_fefo');
+
+      // 3) Homeware (home)
+      await setMeta('receipt.store_activity', 'أدوات منزلية وجهاز عرايس');
+      expect(await assistantService.detectStoreSector(), 'home');
+
+      final homeAdvice = await assistantService.getBusinessmanConsultationInsight();
+      expect(homeAdvice.details.join('\n'), contains('جهاز العروسة'));
+
+      final homeMerch = await assistantService.getVisualMerchandisingInsight();
+      expect(homeMerch.title, contains('أدوات منزلية'));
+
+      // 4) Mobiles (feature.mobileImeiUsed)
+      await setMeta('receipt.store_activity', 'تجارة عامة');
+      await setMeta('feature.${FeatureKeys.mobileImeiUsed}', 'true');
+      expect(await assistantService.detectStoreSector(), 'mobiles');
+
+      final mobileAdvice = await assistantService.getBusinessmanConsultationInsight();
+      expect(mobileAdvice.details.join('\n'), contains('IMEI'));
+
+      // 5) Zakat note is multi-sector (mentions restaurant ovens & repair tools)
+      final zakat = await assistantService.getZakatCalculatorInsight(
+        goldGramPrice24Egp: 4000,
+      );
+      expect(zakat.details.join('\n'), contains('أفران المطعم'));
+      expect(zakat.details.join('\n'), contains('عدة الصيانة'));
+    });
+  });
+
+  group('Task 40.12: Goal Planner, Store Health Score, Smart Reorder & Objection Replies', () {
+    test('goal planner computes monthly/daily sales & invoices from expenses and margin', () async {
+      final now = DateTime.now();
+      // Monthly expense = 10,000 EGP (1,000,000 piasters)
+      await db.into(db.expenses).insert(
+            ExpensesCompanion.insert(
+              id: 'exp_gp1',
+              branchId: branchId,
+              amount: 1000000,
+              category: 'إيجار',
+              expenseDate: now,
+              userId: 'admin',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // Sale + SaleItem: revenue = 2,000 EGP, cost = 1,500 EGP -> margin = 25%
+      // Avg invoice = 2,000 EGP
+      await db.into(db.products).insert(
+            ProductsCompanion.insert(
+              id: 'p_gp1',
+              branchId: branchId,
+              name: 'منتج هدف',
+              categoryId: 'c1',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.productVariants).insert(
+            ProductVariantsCompanion.insert(
+              id: 'v_gp1',
+              branchId: branchId,
+              productId: 'p_gp1',
+              sku: 'SKU-GP1',
+              color: 'أسود',
+              size: 'M',
+              costPrice: 150000,
+              sellPrice: 200000,
+              quantity: const Value(10),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.sales).insert(
+            SalesCompanion.insert(
+              id: 's_gp1',
+              branchId: branchId,
+              shortRef: 'INV-GP1',
+              subtotal: 200000,
+              discountType: 'none',
+              total: 200000,
+              paymentMethod: 'cash',
+              cashierId: 'admin',
+              date: now,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.saleItems).insert(
+            SaleItemsCompanion.insert(
+              id: 'si_gp1',
+              branchId: branchId,
+              saleId: 's_gp1',
+              variantId: 'v_gp1',
+              productName: 'منتج هدف',
+              color: 'أسود',
+              size: 'M',
+              qty: 1,
+              priceSnapshot: 200000,
+              costSnapshot: 150000,
+              lineTotal: 200000,
+              createdAt: now,
+            ),
+          );
+
+      // Target profit 20,000 + expenses 10,000 = 30,000 gross profit needed
+      // Margin 25% -> Monthly sales = 120,000.00 EGP -> Daily = 4,000.00 EGP -> 2 invoices/day
+      final res = await assistantService.ask('عايز اكسب 20000');
+      expect(res.any((r) => r.id == 'goal_planner'), isTrue);
+      final gp = res.firstWhere((r) => r.id == 'goal_planner');
+      expect(gp.summary, contains('120000.00'));
+      expect(gp.summary, contains('4000.00'));
+      expect(gp.summary, contains('2 فاتورة'));
+    });
+
+    test('store health score returns 0..100 across 4 quarters with sector tips', () async {
+      final now = DateTime.now();
+      await db.into(db.appMeta).insertOnConflictUpdate(
+            AppMetaCompanion.insert(
+              key: 'receipt.store_activity',
+              value: 'مطعم وكافيه',
+              updatedAt: now,
+            ),
+          );
+
+      final res = await assistantService.ask('تقييم صحة المحل');
+      expect(res.any((r) => r.id == 'store_health_score'), isTrue);
+      final hs = res.firstWhere((r) => r.id == 'store_health_score');
+      expect(hs.title, contains('/ 100'));
+      final text = hs.details.join('\n');
+      expect(text, contains('/ 25'));
+      expect(text, contains('Food Cost'));
+    });
+
+    test('smart reorder list detects variants with < 14 days stock and estimates cost', () async {
+      final now = DateTime.now();
+      await db.into(db.products).insert(
+            ProductsCompanion.insert(
+              id: 'p_ro1',
+              branchId: branchId,
+              name: 'بنطلون سريع',
+              categoryId: 'c1',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      // Sold 30 units in 30d -> 1/day; current qty = 5 -> 5 days left (< 14)
+      // Order for 30d = 30 - 5 = 25 units * 100 EGP cost = 2,500.00 EGP
+      await db.into(db.productVariants).insert(
+            ProductVariantsCompanion.insert(
+              id: 'v_ro1',
+              branchId: branchId,
+              productId: 'p_ro1',
+              sku: 'SKU-RO1',
+              color: 'أزرق',
+              size: 'L',
+              costPrice: 10000,
+              sellPrice: 20000,
+              quantity: const Value(5),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.sales).insert(
+            SalesCompanion.insert(
+              id: 's_ro1',
+              branchId: branchId,
+              shortRef: 'INV-RO1',
+              subtotal: 600000,
+              discountType: 'none',
+              total: 600000,
+              paymentMethod: 'cash',
+              cashierId: 'admin',
+              date: now,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.saleItems).insert(
+            SaleItemsCompanion.insert(
+              id: 'si_ro1',
+              branchId: branchId,
+              saleId: 's_ro1',
+              variantId: 'v_ro1',
+              productName: 'بنطلون سريع',
+              color: 'أزرق',
+              size: 'L',
+              qty: 30,
+              priceSnapshot: 20000,
+              costSnapshot: 10000,
+              lineTotal: 600000,
+              createdAt: now,
+            ),
+          );
+
+      final res = await assistantService.ask('جهز طلبية الشراء');
+      expect(res.any((r) => r.id == 'smart_reorder_list'), isTrue);
+      final ro = res.firstWhere((r) => r.id == 'smart_reorder_list');
+      expect(ro.isAlert, isTrue);
+      expect(ro.summary, contains('2500.00'));
+      expect(ro.details.join('\n'), contains('اطلب 25 قطعة'));
+    });
+
+    test('customer objection replies returns 3 copyable sector-aware replies', () async {
+      final now = DateTime.now();
+      await db.into(db.appMeta).insertOnConflictUpdate(
+            AppMetaCompanion.insert(
+              key: 'receipt.store_activity',
+              value: 'موبايلات وإلكترونيات',
+              updatedAt: now,
+            ),
+          );
+
+      final priceRes = await assistantService.ask('العميل بيقول غالي');
+      expect(priceRes.any((r) => r.id == 'customer_objection_replies'), isTrue);
+      final priceCard = priceRes.firstWhere((r) => r.id == 'customer_objection_replies');
+      expect(priceCard.details.length, 3);
+      expect(priceCard.details.every((d) => d.contains('\n---\n')), isTrue);
+      expect(priceCard.details.first, contains('الضمان الحقيقي'));
+
+      final delayRes = await assistantService.ask('تاخير ديليفري');
+      final delayCard = delayRes.firstWhere((r) => r.id == 'customer_objection_replies');
+      expect(delayCard.title, contains('تأخير الديليفري'));
+      expect(delayCard.details.length, 3);
+
+      final retRes = await assistantService.ask('استرجاع بعد المدة');
+      final retCard = retRes.firstWhere((r) => r.id == 'customer_objection_replies');
+      expect(retCard.title, contains('استرجاع بعد انتهاء المدة'));
+      expect(retCard.details.length, 3);
+    });
+  });
 }

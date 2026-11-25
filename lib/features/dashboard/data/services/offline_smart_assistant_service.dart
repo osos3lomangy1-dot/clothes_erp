@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:injectable/injectable.dart';
 
 import '../../../../core/database/app_database.dart';
@@ -37,6 +40,7 @@ enum AssistantCommandKind {
   paySupplier,
   addCustomer,
   collectInstallment,
+  calculateZakat,
 }
 
 class AssistantPendingCommand {
@@ -824,7 +828,12 @@ class OfflineSmartAssistantService {
         q.contains('ترتيب المحل') ||
         q.contains('عرض البضاعه') ||
         q.contains('سيوله') ||
-        q.contains('50/30/20');
+        q.contains('50/30/20') ||
+        q.contains('منافس') ||
+        q.contains('محل جنبي') ||
+        q.contains('نزل السعر') ||
+        q.contains('غالي') ||
+        q.contains('بزنس مان');
 
     if (!isEncyclopediaQuery &&
         (q.contains('خصم') || q.contains('منع الخصم') || q.contains('تعديل السعر'))) {
@@ -888,7 +897,10 @@ class OfflineSmartAssistantService {
       );
     }
 
-    if (q.contains('ورديه') || q.contains('تقفيل') || q.contains('الدرج')) {
+    if (!q.contains('عجز') &&
+        !q.contains('سرقه') &&
+        !q.contains('تلاعب') &&
+        (q.contains('ورديه') || q.contains('تقفيل') || q.contains('الدرج'))) {
       return const AssistantInsight(
         id: 'howto_shift',
         title: 'دليل: فتح وتقفيل الوردية ومطابقة الدرج',
@@ -1255,6 +1267,8 @@ class OfflineSmartAssistantService {
         return _execAddCustomer(cmd.payload, userId: userId);
       case AssistantCommandKind.collectInstallment:
         return _execCollectInstallment(cmd.payload, userId: userId);
+      case AssistantCommandKind.calculateZakat:
+        return 'تم حساب زكاة المال وعروض التجارة بنجاح.';
     }
   }
 
@@ -1997,6 +2011,32 @@ class OfflineSmartAssistantService {
       return _finalizeDraft(AssistantCommandKind.collectInstallment, fields);
     }
 
+    // 0c. Zakat Calculator Draft: "احسب الزكاة" / "زكاة المال" / "زكاة التجارة"
+    if (q.contains('احسب الزكاه') ||
+        q.contains('زكاه المال') ||
+        q.contains('زكاه التجاره') ||
+        q.contains('حاسبه الزكاه') ||
+        q == 'الزكاه') {
+      final isGregorian = q.contains('ميلادي');
+      final goldMatch = RegExp(
+        r'(?:الذهب|ذهب|عيار\s*24|سعر)\s*(?:بـ|ب|هو)?\s*(\d+(?:\.\d+)?)',
+      ).firstMatch(normalizedDigits);
+      double? goldPrice =
+          goldMatch != null ? double.tryParse(goldMatch.group(1)!) : null;
+      if (goldPrice == null) {
+        final trailingNum = RegExp(r'(\d{3,6}(?:\.\d+)?)\s*(?:ج\.?م|جنيه)?$')
+            .firstMatch(normalizedDigits);
+        if (trailingNum != null) {
+          goldPrice = double.tryParse(trailingNum.group(1)!);
+        }
+      }
+      final fields = <String, dynamic>{
+        if (goldPrice != null && goldPrice > 0) 'goldPrice24': goldPrice,
+        'isGregorianYear': isGregorian,
+      };
+      return _finalizeDraft(AssistantCommandKind.calculateZakat, fields);
+    }
+
     // 1. Pay Supplier: "دفعت للمورد [اسم] [مبلغ]" / "سداد مورد [اسم] [مبلغ]"
     if (q.startsWith('دفعت للمورد') ||
         q.startsWith('دفعت لمورد') ||
@@ -2343,6 +2383,18 @@ class OfflineSmartAssistantService {
         }
         return AssistantActionDraft(kind: kind, fields: fields);
 
+      case AssistantCommandKind.calculateZakat:
+        if ((fields['goldPrice24'] as num? ?? 0) <= 0) {
+          return AssistantActionDraft(
+            kind: kind,
+            fields: fields,
+            missingField: 'goldPrice24',
+            promptForMissing:
+                'ما سعر جرام الذهب عيار 24 اليوم (بالجنيه)؟ (ويمكنك إضافة كاش بنكي أو ديون خارجية في نفس الرد إن وجدت)',
+          );
+        }
+        return AssistantActionDraft(kind: kind, fields: fields);
+
       default:
         return AssistantActionDraft(kind: kind, fields: fields);
     }
@@ -2356,7 +2408,25 @@ class OfflineSmartAssistantService {
     final updated = Map<String, dynamic>.from(draft.fields);
     final missing = draft.missingField;
     if (missing != null && cleaned.isNotEmpty) {
-      if (missing == 'costEgp' ||
+      if (missing == 'goldPrice24') {
+        final bankMatch = RegExp(r'(?:بنك|بنكي|خارجي)\s+(\d+(?:\.\d+)?)')
+            .firstMatch(cleaned);
+        final debtMatch = RegExp(r'(?:دين|ديون|التزامات)\s+(\d+(?:\.\d+)?)')
+            .firstMatch(cleaned);
+        if (bankMatch != null) {
+          updated['extraBankCashEgp'] = double.tryParse(bankMatch.group(1)!);
+        }
+        if (debtMatch != null) {
+          updated['extraDebtsEgp'] = double.tryParse(debtMatch.group(1)!);
+        }
+        final firstNum = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(cleaned);
+        if (firstNum != null) {
+          updated['goldPrice24'] = double.tryParse(firstNum.group(1)!);
+        }
+        if (normalizeArabic(cleaned).contains('ميلادي')) {
+          updated['isGregorianYear'] = true;
+        }
+      } else if (missing == 'costEgp' ||
           missing == 'sellEgp' ||
           missing == 'amountEgp') {
         final numMatch = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(cleaned);
@@ -3031,6 +3101,709 @@ class OfflineSmartAssistantService {
     );
   }
 
+  /// Detailed Zakat Calculator for Money & Trade Goods (100% Offline).
+  Future<AssistantInsight> getZakatCalculatorInsight({
+    required double goldGramPrice24Egp,
+    int extraBankCashPiasters = 0,
+    int extraDebtsOnBusinessPiasters = 0,
+    bool isGregorianYear = false,
+  }) async {
+    final variants = await (_db.select(_db.productVariants)
+          ..where((v) => v.deletedAt.isNull() & v.quantity.isBiggerThanValue(0)))
+        .get();
+    int stockSellPiasters = 0;
+    int stockCostPiasters = 0;
+    for (final v in variants) {
+      stockSellPiasters += v.quantity * v.sellPrice;
+      stockCostPiasters += v.quantity * v.costPrice;
+    }
+
+    final wallets = await (_db.select(_db.cashWallets)
+          ..where((w) => w.deletedAt.isNull() & w.isActive.equals(true)))
+        .get();
+    final walletsCashPiasters =
+        wallets.fold<int>(0, (sum, w) => sum + w.currentBalance);
+
+    final latestShift = await (_db.select(_db.shifts)
+          ..where((s) => s.deletedAt.isNull())
+          ..orderBy([(s) => OrderingTerm.desc(s.openedAt)])
+          ..limit(1))
+        .getSingleOrNull();
+    int drawerCashPiasters = 0;
+    if (latestShift != null) {
+      if (latestShift.closedAt != null) {
+        drawerCashPiasters = latestShift.countedBalance ??
+            latestShift.expectedBalance ??
+            latestShift.openingBalance;
+      } else {
+        final openAt = latestShift.openedAt;
+        final cashSalesRows = await (_db.select(_db.sales)
+              ..where((s) =>
+                  s.date.isBiggerOrEqualValue(openAt) &
+                  s.deletedAt.isNull() &
+                  s.status.isNotValue('cancelled') &
+                  s.paymentMethod.equals('cash')))
+            .get();
+        final cashReturnsRows = await (_db.select(_db.returns)
+              ..where((r) =>
+                  r.date.isBiggerOrEqualValue(openAt) &
+                  r.deletedAt.isNull() &
+                  r.paymentMethod.equals('cash')))
+            .get();
+        final cashExpensesRows = await (_db.select(_db.expenses)
+              ..where((e) =>
+                  e.expenseDate.isBiggerOrEqualValue(openAt) &
+                  e.deletedAt.isNull()))
+            .get();
+        final salesSum = cashSalesRows.fold<int>(0, (s, r) => s + r.total);
+        final retSum =
+            cashReturnsRows.fold<int>(0, (s, r) => s + r.refundAmount);
+        final expSum = cashExpensesRows.fold<int>(0, (s, e) => s + e.amount);
+        drawerCashPiasters =
+            latestShift.openingBalance + salesSum - retSum - expSum;
+        if (drawerCashPiasters < 0) drawerCashPiasters = 0;
+      }
+    }
+
+    final totalDbCashPiasters = walletsCashPiasters + drawerCashPiasters;
+
+    final installments = await (_db.select(_db.customerInstallments)
+          ..where((i) =>
+              i.deletedAt.isNull() &
+              (i.status.equals('active') | i.status.equals('overdue'))))
+        .get();
+    final receivablesPiasters =
+        installments.fold<int>(0, (sum, i) => sum + i.remainingPiasters);
+
+    final suppliers = await (_db.select(_db.suppliers)
+          ..where((s) => s.deletedAt.isNull() & s.balance.isBiggerThanValue(0)))
+        .get();
+    final supplierDebtPiasters =
+        suppliers.fold<int>(0, (sum, s) => sum + s.balance);
+
+    final nisabPiasters = (85 * goldGramPrice24Egp * 100).round();
+    final totalAssetsPiasters = stockSellPiasters +
+        totalDbCashPiasters +
+        extraBankCashPiasters +
+        receivablesPiasters;
+    final totalDeductionsPiasters =
+        supplierDebtPiasters + extraDebtsOnBusinessPiasters;
+    final zakatPoolPiasters = totalAssetsPiasters - totalDeductionsPiasters;
+
+    final reachedNisab =
+        zakatPoolPiasters >= nisabPiasters && zakatPoolPiasters > 0;
+    final rate = isGregorianYear ? 0.02577 : 0.025;
+    final zakatDuePiasters =
+        reachedNisab ? (zakatPoolPiasters * rate).round() : 0;
+
+    return AssistantInsight(
+      id: 'zakat_calculator',
+      title:
+          'حاسبة زكاة المال وعروض التجارة (${isGregorianYear ? '2.577% ميلادي' : '2.5% هجري'})',
+      summary: reachedNisab
+          ? 'الوعاء بلغ النصاب — الزكاة المستحقة: ${Money(zakatDuePiasters).toDisplay()} ج.م'
+          : 'الوعاء لم يبلغ النصاب بعد — لا زكاة واجبة حالياً (0.00 ج.م)',
+      details: [
+        'قيمة البضاعة بسعر البيع: ${Money(stockSellPiasters).toDisplay()} ج.م (للاسترشاد بالتكلفة: ${Money(stockCostPiasters).toDisplay()} ج.م)',
+        'النقدية المسجلة (المحافظ + الدرج): ${Money(totalDbCashPiasters).toDisplay()} ج.م${extraBankCashPiasters > 0 ? ' + كاش بنكي خارجي: ${Money(extraBankCashPiasters).toDisplay()} ج.م' : ''}',
+        'مستحقات العملاء المرجوة (الأقساط): ${Money(receivablesPiasters).toDisplay()} ج.م',
+        'يُخصم ديون الموردين: ${Money(supplierDebtPiasters).toDisplay()} ج.م${extraDebtsOnBusinessPiasters > 0 ? ' + التزامات إضافية: ${Money(extraDebtsOnBusinessPiasters).toDisplay()} ج.م' : ''}',
+        'صافي وعاء الزكاة: ${Money(zakatPoolPiasters).toDisplay()} ج.م | النصاب (85 جم ذهب عيار 24): ${Money(nisabPiasters).toDisplay()} ج.م',
+        'تنبيه فقهي ومحاسبي: تُحسب البضاعة المعدة للبيع أو خامات الوجبات، وتُستبعد الأصول الثابتة مثل أفران المطعم، عدة الصيانة، الرفوف، وأجهزة الكاشير، والديون غير المرجوة، ويشترط حولان الحول الهجري.',
+      ],
+      isAlert: reachedNisab,
+    );
+  }
+
+  /// Businessman Consultation ("انصحني كـ بزنس مان" / "اعمل ايه في محلي"):
+  /// Reads real DB metrics (stagnant ratio, avg margin, monthly expenses, supplier debt)
+  /// and outputs a tailored executive action plan.
+  Future<AssistantInsight> getBusinessmanConsultationInsight() async {
+    final now = DateTime.now();
+    final since30 = now.subtract(const Duration(days: 30));
+    final monthStart = DateTime(now.year, now.month, 1);
+
+    final recentItems = await (_db.select(_db.saleItems)
+          ..where((si) => si.createdAt.isBiggerOrEqualValue(since30)))
+        .get();
+    final soldVariantIds = <String>{};
+    int revenue30 = 0;
+    int cost30 = 0;
+    for (final si in recentItems) {
+      soldVariantIds.add(si.variantId);
+      revenue30 += si.lineTotal;
+      cost30 += si.costSnapshot * si.qty;
+    }
+
+    final variants = await (_db.select(_db.productVariants)
+          ..where((v) => v.deletedAt.isNull() & v.quantity.isBiggerThanValue(0)))
+        .get();
+    int totalStockCost = 0;
+    int stagnantStockCost = 0;
+    for (final v in variants) {
+      final val = v.quantity * v.costPrice;
+      totalStockCost += val;
+      if (!soldVariantIds.contains(v.id)) {
+        stagnantStockCost += val;
+      }
+    }
+    final stagnantPct =
+        totalStockCost > 0 ? (stagnantStockCost / totalStockCost) * 100.0 : 0.0;
+    final avgMarginPct =
+        revenue30 > 0 ? ((revenue30 - cost30) / revenue30) * 100.0 : 0.0;
+
+    final monthExpensesRows = await (_db.select(_db.expenses)
+          ..where((e) =>
+              e.expenseDate.isBiggerOrEqualValue(monthStart) &
+              e.deletedAt.isNull()))
+        .get();
+    final monthExpenses =
+        monthExpensesRows.fold<int>(0, (sum, e) => sum + e.amount);
+
+    final suppliers = await (_db.select(_db.suppliers)
+          ..where((s) => s.deletedAt.isNull()))
+        .get();
+    final supplierDebt =
+        suppliers.fold<int>(0, (sum, s) => sum + (s.balance > 0 ? s.balance : 0));
+
+    final actions = <String>[
+      'نسبة المخزون الراكد: ${stagnantPct.toStringAsFixed(1)}% (${Money(stagnantStockCost).toDisplay()} ج.م) | متوسط الهامش (30 يوم): ${avgMarginPct.toStringAsFixed(1)}%.',
+      'مصاريف هذا الشهر: ${Money(monthExpenses).toDisplay()} ج.م | ديون الموردين: ${Money(supplierDebt).toDisplay()} ج.م.',
+    ];
+
+    if (stagnantPct >= 25.0) {
+      actions.add(
+        'أولوية 1 (تسييل الراكد): المخزون الراكد مرتفع؛ أوقف شراء موديلات جديدة وصفِّ أقدم الأصناف بباقات مجمعة.',
+      );
+    } else {
+      actions.add(
+        'أولوية 1 (تسريع الدوران): نسبة الراكد تحت السيطرة؛ ركز 50% من المشتريات على أسرع الأصناف مبيعاً.',
+      );
+    }
+
+    if (revenue30 > 0 && avgMarginPct < 22.0) {
+      actions.add(
+        'أولوية 2 (حماية الهامش): متوسط الهامش (${avgMarginPct.toStringAsFixed(1)}%) منخفض؛ راجع التسعير على تكلفة الاستبدال وامنع الخصومات العشوائية.',
+      );
+    } else {
+      actions.add(
+        'أولوية 2 (رفع الفاتورة): درّب الكاشير على اقتراح مكمل مع كل فاتورة لرفع متوسط البيع 20%.',
+      );
+    }
+
+    if (supplierDebt > 0) {
+      actions.add(
+        'أولوية 3 (ضبط الالتزامات): جدول سداد ${Money(supplierDebt).toDisplay()} ج.م للموردين من عائد الأصناف السريعة واحتفظ بـ 20% كاش طوارئ.',
+      );
+    }
+
+    final sector = await detectStoreSector();
+    switch (sector) {
+      case 'clothing':
+        actions.add(
+          'توصية القطاع (ملابس وأحذية ومفروشات): ركز الشراء على أكثر المقاسات والألوان مبيعاً، وصفِّ المقاسات المكسورة وبواقي الأمتار/الأثواب قبل نهاية الموسم بـ 3 أسابيع.',
+        );
+        break;
+      case 'mobiles':
+        actions.add(
+          'توصية القطاع (موبايلات وإلكترونيات): لا تجمّد الكاش في أجهزة بطيئة مع تغير الأسعار السريع؛ عظّم الربح عبر باقات الإكسسوارات، الصيانة، وخدمة المحافظ مع توثيق IMEI للمستعمل.',
+        );
+        break;
+      case 'fnb':
+        actions.add(
+          'توصية القطاع (مطاعم وكافيهات): اضبط تكلفة الخامات (Food Cost) بين 28% و 35%، قلل الهالك اليومي بالـ Recipe الثابت، وادفع المبيعات بعروض الكومبو وسرعة دوران الطاولات.',
+        );
+        break;
+      case 'grocery':
+        actions.add(
+          'توصية القطاع (سوبر ماركت ومواد غذائية): طبّق قاعدة FEFO (الأقرب انتهاءً يخرج أولاً)، وراقب النواقص اليومية لرفع سرعة دوران الكاش حتى لو كان الهامش بسيطاً.',
+        );
+        break;
+      case 'home':
+        actions.add(
+          'توصية القطاع (أدوات منزلية): صمّم باقات جهاز العروسة والمطبخ المتكاملة لرفع قيمة الفاتورة، واهتم بتغليف وحماية الزجاجيات وسياسة الضمان الواضحة.',
+        );
+        break;
+      default:
+        break;
+    }
+
+    return AssistantInsight(
+      id: 'businessman_consultation',
+      title: 'استشارة البزنس مان المخصصة لوضع محلك',
+      summary: stagnantPct >= 25.0 || (revenue30 > 0 && avgMarginPct < 22.0)
+          ? 'توصية تنفيذية عاجلة لحماية السيولة ورفع صافي الربح:'
+          : 'أرقام محلك متوازنة — إليك خطة البزنس مان لمضاعفة النمو:',
+      details: actions,
+      isAlert: stagnantPct >= 25.0,
+      followUpPrompts: const [
+        'أعمل عروض على إيه؟',
+        'توزيع السيولة 50/30/20',
+        'كاشف تسرب الأرباح',
+      ],
+    );
+  }
+
+  /// 1. Goal Planner ("عايز اكسب [مبلغ]" / "هدف الربح [مبلغ]"):
+  /// Extracts target monthly net profit (default 20,000 EGP), reads monthly
+  /// operating expenses, actual average margin (30d), and average invoice (30d)
+  /// to compute required monthly/daily revenue and daily invoice count.
+  Future<AssistantInsight> getGoalPlannerInsight(String rawQuery) async {
+    final norm = normalizeArabic(rawQuery);
+    final match = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(norm);
+    final targetProfitEgp =
+        match != null ? (double.tryParse(match.group(1)!) ?? 20000.0) : 20000.0;
+    final targetProfitPiasters = (targetProfitEgp * 100).round();
+
+    final now = DateTime.now();
+    final since30 = now.subtract(const Duration(days: 30));
+    final monthStart = DateTime(now.year, now.month, 1);
+
+    final monthExpensesRows = await (_db.select(_db.expenses)
+          ..where((e) =>
+              e.expenseDate.isBiggerOrEqualValue(monthStart) &
+              e.deletedAt.isNull()))
+        .get();
+    final monthExpensesPiasters =
+        monthExpensesRows.fold<int>(0, (sum, e) => sum + e.amount);
+
+    final recentSales = await (_db.select(_db.sales)
+          ..where((s) =>
+              s.createdAt.isBiggerOrEqualValue(since30) &
+              s.deletedAt.isNull() &
+              s.status.equals('cancelled').not()))
+        .get();
+
+    final recentItems = await (_db.select(_db.saleItems)
+          ..where((si) => si.createdAt.isBiggerOrEqualValue(since30)))
+        .get();
+
+    int itemsRevenue30 = 0;
+    int itemsCost30 = 0;
+    for (final si in recentItems) {
+      itemsRevenue30 += si.lineTotal;
+      itemsCost30 += si.costSnapshot * si.qty;
+    }
+
+    final hasMarginData = itemsRevenue30 > 0 && itemsRevenue30 > itemsCost30;
+    final marginRate = hasMarginData
+        ? (itemsRevenue30 - itemsCost30) / itemsRevenue30
+        : 0.25;
+
+    final salesRevenue30 = recentSales.fold<int>(0, (sum, s) => sum + s.total);
+    final hasInvoiceData = recentSales.isNotEmpty && salesRevenue30 > 0;
+    final avgInvoicePiasters = hasInvoiceData
+        ? (salesRevenue30 / recentSales.length).round()
+        : 50000; // 500 EGP benchmark
+
+    final requiredTotalGrossProfit =
+        targetProfitPiasters + monthExpensesPiasters;
+    final requiredMonthlySalesPiasters =
+        (requiredTotalGrossProfit / marginRate).round();
+    final requiredDailySalesPiasters =
+        (requiredMonthlySalesPiasters / 30).round();
+    final requiredDailyInvoices = avgInvoicePiasters > 0
+        ? (requiredDailySalesPiasters / avgInvoicePiasters).ceil()
+        : 0;
+
+    final sector = await detectStoreSector();
+    final String sectorTip;
+    switch (sector) {
+      case 'clothing':
+        sectorTip = 'نصيحة القطاع: ركز على بيع الطقم الكامل لرفع متوسط الفاتورة وتقليل عدد الفواتير اليومية المطلوبة.';
+        break;
+      case 'mobiles':
+        sectorTip = 'نصيحة القطاع: أضف باقات الإكسسوارات والصيانة مع كل جهاز لرفع متوسط الهامش الفعلي.';
+        break;
+      case 'fnb':
+        sectorTip = 'نصيحة القطاع: حافظ على Food Cost أقل من 35% وفعّل عروض الكومبو لرفع قيمة الشيك.';
+        break;
+      case 'grocery':
+        sectorTip = 'نصيحة القطاع: سرّع دوران السلع اليومية واعرض المكملات عالية الهامش عند الكاشير.';
+        break;
+      case 'home':
+        sectorTip = 'نصيحة القطاع: روّج لباقات المطبخ وجهاز العروسة بدلاً من القطع الفردية.';
+        break;
+      default:
+        sectorTip = 'نصيحة تنفيذية: رفع متوسط الفاتورة 15% بالبيع التكميلي يقلص عدد الفواتير اليومية المطلوبة.';
+    }
+
+    return AssistantInsight(
+      id: 'goal_planner',
+      title:
+          'مخطط الأهداف: طريقك لصافي ربح ${Money(targetProfitPiasters).toDisplay()} ج.م شهرياً',
+      summary:
+          'تحتاج مبيعات شهرية ${Money(requiredMonthlySalesPiasters).toDisplay()} ج.م (${Money(requiredDailySalesPiasters).toDisplay()} ج.م/يوم بمعدل $requiredDailyInvoices فاتورة يومياً).',
+      details: [
+        'الهدف الصافي: ${Money(targetProfitPiasters).toDisplay()} ج.م + مصاريف الشهر المسجلة: ${Money(monthExpensesPiasters).toDisplay()} ج.م = إجمالي ربح مطلوب ${Money(requiredTotalGrossProfit).toDisplay()} ج.م.',
+        'متوسط الهامش المعتمد: ${(marginRate * 100).toStringAsFixed(1)}%${hasMarginData ? ' (فعلي آخر 30 يوم)' : ' (تقديري لعدم وجود مبيعات)'} | متوسط الفاتورة: ${Money(avgInvoicePiasters).toDisplay()} ج.م${hasInvoiceData ? '' : ' (افتراضي)'}.',
+        'المبيعات اليومية المطلوبة: ${Money(requiredDailySalesPiasters).toDisplay()} ج.م | الفواتير المطلوبة يومياً: $requiredDailyInvoices فاتورة.',
+        sectorTip,
+      ],
+      followUpPrompts: const [
+        'تقييم صحة المحل',
+        'نقطة التعادل اليومية',
+        'استشارة بزنس مان',
+      ],
+    );
+  }
+
+  /// 2. Store Health Score out of 100 ("تقييم صحة المحل" / "مؤشر صحة المحل"):
+  /// Evaluates 4 quarters (25 pts each):
+  /// A) Stock turnover & stagnant ratio
+  /// B) Margin protection & discount discipline
+  /// C) Expense coverage & profitability
+  /// D) Installment collection & supplier debt ratio
+  Future<AssistantInsight> getStoreHealthScoreInsight() async {
+    final now = DateTime.now();
+    final since30 = now.subtract(const Duration(days: 30));
+    final monthStart = DateTime(now.year, now.month, 1);
+
+    final variants = await (_db.select(_db.productVariants)
+          ..where((v) => v.deletedAt.isNull() & v.quantity.isBiggerThanValue(0)))
+        .get();
+    final recentItems = await (_db.select(_db.saleItems)
+          ..where((si) => si.createdAt.isBiggerOrEqualValue(since30)))
+        .get();
+    final recentSales = await (_db.select(_db.sales)
+          ..where((s) =>
+              s.createdAt.isBiggerOrEqualValue(since30) &
+              s.deletedAt.isNull() &
+              s.status.equals('cancelled').not()))
+        .get();
+    final monthExpensesRows = await (_db.select(_db.expenses)
+          ..where((e) =>
+              e.expenseDate.isBiggerOrEqualValue(monthStart) &
+              e.deletedAt.isNull()))
+        .get();
+    final installments = await (_db.select(_db.customerInstallments)
+          ..where((i) =>
+              i.deletedAt.isNull() &
+              (i.status.equals('active') | i.status.equals('overdue'))))
+        .get();
+    final suppliers = await (_db.select(_db.suppliers)
+          ..where((s) => s.deletedAt.isNull()))
+        .get();
+
+    // (A) Stock turnover & stagnant ratio (0..25)
+    final soldVariantIds = {for (final si in recentItems) si.variantId};
+    int totalStockCost = 0;
+    int stagnantStockCost = 0;
+    for (final v in variants) {
+      final val = v.quantity * v.costPrice;
+      totalStockCost += val;
+      if (!soldVariantIds.contains(v.id)) {
+        stagnantStockCost += val;
+      }
+    }
+    final stagnantPct =
+        totalStockCost > 0 ? (stagnantStockCost / totalStockCost) * 100.0 : 0.0;
+    final int scoreTurnover = totalStockCost == 0
+        ? 15
+        : stagnantPct <= 10.0
+            ? 25
+            : (25.0 * (1.0 - ((stagnantPct - 10.0) / 50.0).clamp(0.0, 1.0)))
+                .round();
+
+    // (B) Margin protection & discount discipline (0..25)
+    int itemsRev = 0;
+    int itemsCost = 0;
+    for (final si in recentItems) {
+      itemsRev += si.lineTotal;
+      itemsCost += si.costSnapshot * si.qty;
+    }
+    final avgMarginPct =
+        itemsRev > 0 ? ((itemsRev - itemsCost) / itemsRev) * 100.0 : 0.0;
+    final totalNetSales = recentSales.fold<int>(0, (s, r) => s + r.total);
+    final totalDiscounts =
+        recentSales.fold<int>(0, (s, r) => s + r.discountValue);
+    final grossBeforeDiscount = totalNetSales + totalDiscounts;
+    final discountPct = grossBeforeDiscount > 0
+        ? (totalDiscounts / grossBeforeDiscount) * 100.0
+        : 0.0;
+
+    final int marginPts = itemsRev == 0
+        ? 12
+        : ((avgMarginPct / 25.0).clamp(0.0, 1.0) * 15.0).round();
+    final int discountPts = discountPct <= 3.0
+        ? 10
+        : (10.0 * (1.0 - ((discountPct - 3.0) / 12.0).clamp(0.0, 1.0))).round();
+    final int scoreMargin = (marginPts + discountPts).clamp(0, 25);
+
+    // (C) Expense coverage & profitability (0..25)
+    final monthExpenses =
+        monthExpensesRows.fold<int>(0, (s, e) => s + e.amount);
+    final grossProfit30 = itemsRev - itemsCost;
+    final int scoreProfit;
+    if (monthExpenses == 0 && grossProfit30 == 0) {
+      scoreProfit = 12;
+    } else if (monthExpenses == 0) {
+      scoreProfit = grossProfit30 > 0 ? 25 : 8;
+    } else {
+      final coverage = grossProfit30 / monthExpenses;
+      scoreProfit = ((coverage / 2.0).clamp(0.0, 1.0) * 25.0).round();
+    }
+
+    // (D) Installment collection & supplier debt (0..25)
+    final overdueCount =
+        installments.where((i) => i.status == 'overdue').length;
+    final int instPts = overdueCount == 0
+        ? 13
+        : (13 - overdueCount * 3).clamp(2, 13);
+    final supplierDebt =
+        suppliers.fold<int>(0, (s, r) => s + (r.balance > 0 ? r.balance : 0));
+    final debtRatio =
+        totalStockCost > 0 ? supplierDebt / totalStockCost : (supplierDebt > 0 ? 1.0 : 0.0);
+    final int debtPts = debtRatio <= 0.25
+        ? 12
+        : (12.0 * (1.0 - ((debtRatio - 0.25) / 0.75).clamp(0.0, 1.0))).round();
+    final int scoreLiquidity = (instPts + debtPts).clamp(0, 25);
+
+    final totalScore =
+        (scoreTurnover + scoreMargin + scoreProfit + scoreLiquidity).clamp(0, 100);
+
+    final sector = await detectStoreSector();
+    final String sectorRec;
+    switch (sector) {
+      case 'clothing':
+        sectorRec = 'توصية سريعة (ملابس): صفِّ المقاسات المكسورة وبواقي الموسم بباقات لرفع ربع دوران المخزون.';
+        break;
+      case 'mobiles':
+        sectorRec = 'توصية سريعة (موبايلات): اربط كل جهاز بباقة إكسسوارات لرفع هامش الربح دون خصومات على الأجهزة.';
+        break;
+      case 'fnb':
+        sectorRec = 'توصية سريعة (مطاعم وكافيهات): راجع تكلفة الخامات (Food Cost) والهالك لرفع ربع تغطية المصاريف.';
+        break;
+      case 'grocery':
+        sectorRec = 'توصية سريعة (سوبر ماركت): راقب الأصناف قريبة الصلاحية (FEFO) واضبط النواقص اليومية.';
+        break;
+      case 'home':
+        sectorRec = 'توصية سريعة (أدوات منزلية): اعرض أطقم كاملة (باقات) لرفع قيمة الفاتورة وتنشيط الراكد.';
+        break;
+      default:
+        sectorRec = 'توصية سريعة: أوقف الخصومات العشوائية وركز المشتريات على أعلى 20% أصناف دوراناً.';
+    }
+
+    final recommendations = <String>[
+      if (scoreTurnover < 20)
+        '1. رفع دوران المخزون: نسبة الراكد ${stagnantPct.toStringAsFixed(1)}% — أطلق باقات دمج على أبطأ الأصناف.'
+      else
+        '1. استثمار المخزون: حافظ على نسبة الراكد منخفضة بتجديد المقاسات والأصناف السريعة.',
+      if (scoreMargin < 20)
+        '2. حماية الهامش: راجع التسعير وقيد الخصومات اليدوية (الخصومات الحالية ${discountPct.toStringAsFixed(1)}%).'
+      else if (scoreLiquidity < 20)
+        '2. تسريع التحصيل: تابع الأقساط المتأخرة ($overdueCount) وجدول سداد الموردين (${Money(supplierDebt).toDisplay()} ج.م).'
+      else
+        '2. مضاعفة الربحية: فعّل البيع التكميلي عند الكاشير لرفع متوسط الفاتورة.',
+      '3. $sectorRec',
+    ];
+
+    return AssistantInsight(
+      id: 'store_health_score',
+      title: 'مؤشر صحة المحل: $totalScore / 100',
+      summary: totalScore >= 80
+          ? 'أداء ممتاز ومتوازن عبر المؤشرات الأربعة.'
+          : totalScore >= 55
+              ? 'أداء متوسط — توجد فرص واضحة لرفع السيولة والربحية.'
+              : 'تنبيه: المؤشر منخفض ويحتاج تدخلاً سريعاً في المخزون والهامش.',
+      details: [
+        '(أ) دوران المخزون ونسبة الراكد: $scoreTurnover / 25 (راكد: ${stagnantPct.toStringAsFixed(1)}%)',
+        '(ب) حماية الهامش وانضباط الخصومات: $scoreMargin / 25 (هامش: ${avgMarginPct.toStringAsFixed(1)}% | خصومات: ${discountPct.toStringAsFixed(1)}%)',
+        '(ج) تغطية المصاريف والربحية: $scoreProfit / 25 (إجمالي ربح 30 يوم: ${Money(grossProfit30).toDisplay()} ج.م مقابل مصاريف: ${Money(monthExpenses).toDisplay()} ج.م)',
+        '(د) تحصيل الأقساط وديون الموردين: $scoreLiquidity / 25 (أقساط متأخرة: $overdueCount | موردين: ${Money(supplierDebt).toDisplay()} ج.م)',
+        ...recommendations,
+      ],
+      isAlert: totalScore < 55,
+      followUpPrompts: const [
+        'جهز طلبية الشراء',
+        'استشارة بزنس مان',
+        'عايز اكسب 30000',
+      ],
+    );
+  }
+
+  /// 3. Smart Reorder List ("جهز طلبية الشراء" / "اطلب بضاعة ايه"):
+  /// Computes 30-day daily velocity for active variants, flags variants with
+  /// < 14 days of remaining stock, recommends order qty for 30 days, and
+  /// estimates total order cost.
+  Future<AssistantInsight> getSmartReorderListInsight() async {
+    final since30 = DateTime.now().subtract(const Duration(days: 30));
+    final recentItems = await (_db.select(_db.saleItems)
+          ..where((si) => si.createdAt.isBiggerOrEqualValue(since30)))
+        .get();
+
+    final soldQtyByVariant = <String, int>{};
+    for (final si in recentItems) {
+      soldQtyByVariant[si.variantId] =
+          (soldQtyByVariant[si.variantId] ?? 0) + si.qty;
+    }
+
+    final variants = await (_db.select(_db.productVariants)
+          ..where((v) => v.deletedAt.isNull()))
+        .get();
+    final products = await (_db.select(_db.products)
+          ..where((p) => p.deletedAt.isNull()))
+        .get();
+    final productNames = {for (final p in products) p.id: p.name};
+
+    final urgentItems = <({
+      String label,
+      double daysLeft,
+      int currentQty,
+      int orderQty,
+      int estCostPiasters,
+    })>[];
+
+    int totalOrderCostPiasters = 0;
+    int totalOrderUnits = 0;
+
+    for (final v in variants) {
+      final sold30 = soldQtyByVariant[v.id] ?? 0;
+      if (sold30 <= 0) continue;
+      final dailyVelocity = sold30 / 30.0;
+      final daysLeft = v.quantity / dailyVelocity;
+      if (daysLeft < 14.0) {
+        final target30Qty = (dailyVelocity * 30.0).ceil();
+        final orderQty = (target30Qty - v.quantity).clamp(1, 100000);
+        final estCost = orderQty * v.costPrice;
+        totalOrderCostPiasters += estCost;
+        totalOrderUnits += orderQty;
+
+        final pName = productNames[v.productId] ?? v.sku;
+        final attrParts = [
+          if (v.size.trim().isNotEmpty) v.size.trim(),
+          if (v.color.trim().isNotEmpty) v.color.trim(),
+        ];
+        final label = attrParts.isNotEmpty
+            ? '$pName (${attrParts.join(' - ')})'
+            : pName;
+
+        urgentItems.add((
+          label: label,
+          daysLeft: daysLeft,
+          currentQty: v.quantity,
+          orderQty: orderQty,
+          estCostPiasters: estCost,
+        ));
+      }
+    }
+
+    urgentItems.sort((a, b) => a.daysLeft.compareTo(b.daysLeft));
+
+    if (urgentItems.isEmpty) {
+      return const AssistantInsight(
+        id: 'smart_reorder_list',
+        title: 'كشف طلبية الشراء الذكية',
+        summary: 'لا توجد أصناف نشطة ينفد رصيدها خلال أقل من 14 يوماً حالياً.',
+        details: [
+          'جميع الأصناف التي تحركت خلال آخر 30 يوماً لديها تغطية كافية لأسبوعين على الأقل.',
+        ],
+        followUpPrompts: ['تقييم صحة المحل', 'الأصناف الراكدة'],
+      );
+    }
+
+    final lines = urgentItems.take(8).map((item) {
+      final daysStr = item.daysLeft <= 0
+          ? 'نفد الرصيد'
+          : 'يكفي ${item.daysLeft.toStringAsFixed(1)} يوم';
+      return '• ${item.label}: متاح ${item.currentQty} ($daysStr) -> اطلب ${item.orderQty} قطعة (تكلفة ~${Money(item.estCostPiasters).toDisplay()} ج.م)';
+    }).toList();
+
+    lines.add(
+      'الإجمالي التقديري للطلبية (${urgentItems.length} صنف / $totalOrderUnits قطعة لتغطية 30 يوم): ${Money(totalOrderCostPiasters).toDisplay()} ج.م.',
+    );
+
+    return AssistantInsight(
+      id: 'smart_reorder_list',
+      title: 'كشف طلبية الشراء الذكية (${urgentItems.length} صنف عاجل)',
+      summary:
+          'إجمالي التكلفة التقديرية لتغطية 30 يوماً: ${Money(totalOrderCostPiasters).toDisplay()} ج.م ($totalOrderUnits قطعة).',
+      details: lines,
+      isAlert: true,
+      followUpPrompts: const [
+        'تقييم صحة المحل',
+        'مستحقات الموردين',
+      ],
+    );
+  }
+
+  /// 4. Diplomatic Customer Objection Replies ("العميل بيقول غالي" /
+  /// "تاخير ديليفري" / "استرجاع بعد المدة"):
+  /// Generates 3 copy-ready diplomatic replies tailored to the store's sector.
+  Future<AssistantInsight> getCustomerObjectionRepliesInsight(
+    String rawQuery,
+  ) async {
+    final q = normalizeArabic(rawQuery);
+    final sector = await detectStoreSector();
+
+    final String sectorValueProp;
+    switch (sector) {
+      case 'clothing':
+        sectorValueProp = 'جودة الخامة والتقفيل وثبات الألوان مع ضمان الاستبدال المريح';
+        break;
+      case 'mobiles':
+        sectorValueProp = 'الضمان الحقيقي، فحص الجهاز، وخدمة ما بعد البيع والدعم الفني';
+        break;
+      case 'fnb':
+        sectorValueProp = 'جودة المكونات الطازجة والنظافة ومعايير التحضير الثابتة';
+        break;
+      case 'grocery':
+        sectorValueProp = 'الصلاحية الطازجة والتخزين السليم وتوفير الطلبات اليومية بسرعة';
+        break;
+      case 'home':
+        sectorValueProp = 'متانة الخامة والتغليف الآمن وضمان الاستبدال ضد أي عيوب صناعة';
+        break;
+      default:
+        sectorValueProp = 'الجودة المضمونة، السعر العادل، وخدمة ما بعد البيع';
+    }
+
+    final String scenarioTitle;
+    final List<String> replies;
+
+    if (q.contains('تاخير') ||
+        q.contains('اتأخر') ||
+        q.contains('ديليفري') ||
+        q.contains('شحن') ||
+        q.contains('مندوب')) {
+      scenarioTitle = 'تأخير الديليفري والشحن';
+      replies = [
+        'الرد 1 (احتواء فوري وشفافية)\n---\nأهلاً بحضرتك يا فندم، نعتذر جداً عن تأخير الطلب الخارج عن إرادتنا. تواصلنا حالياً مع مسؤول التوصيل وأصبح طلبك في أولوية التسليم ليصلك في أسرع وقت، ونقدّر تفهمك وصبرك معنا.',
+        'الرد 2 (تعويض معنوي يحفظ الولاء)\n---\nحقك علينا يا فندم، رضائك أهم عندنا من أي شيء. تم متابعة الشحنة شخصياً وستصلك خلال الساعات القادمة، ويسعدنا نقدم لك خصماً أو ميزة خاصة على طلبك القادم تقديراً لتأخيرنا.',
+        'الرد 3 (متابعة دقيقة برقم الطلب)\n---\nنأسف لتأخر المندوب يا فندم، نرجو مشاركة رقم الطلب أو الهاتف للتأكيد الفوري لموعد الوصول الدقيق ومتابعته لحظة بلحظة حتى الاستلام.',
+      ];
+    } else if (q.contains('استرجاع') ||
+        q.contains('رجع') ||
+        q.contains('تبديل') ||
+        q.contains('بعد المده') ||
+        q.contains('فاتت المده')) {
+      scenarioTitle = 'طلب استرجاع بعد انتهاء المدة';
+      replies = [
+        'الرد 1 (توضيح السياسة بأسلوب لطيف)\n---\nتشرّفنا بخدمتك يا فندم، نسعد دائماً بمساعدتك. حسب سياسة المحل المعلنة في الفاتورة، مدة الاسترجاع المحددة قد انتهت، ولكن احتراماً لثقتك فينا يسعدنا نساعدك في الاستبدال بصنف آخر يناسب احتياجك إذا كانت الحالة مطابقة للشروط.',
+        'الرد 2 (بديل مرن: رصيد شراء)\n---\nأهلاً بحضرتك، رغم مرور المدة المقررة للاسترجاع النقدي، نقدّر تعاملك معنا ويمكننا استثنائياً قبول استبدال المنتج أو حفظ قيمته كرصيد شراء لصالحك في أي وقت.',
+        'الرد 3 (دعوة للفحص والحل الودي)\n---\nيسعدنا تشريفك لنا بالمحل لفحص القطعة مع الفاتورة، وبإذن الله نجد أفضل حل ودي يرضيك في إطار سياسة الاستبدال لدينا.',
+      ];
+    } else {
+      scenarioTitle = 'الاعتراض على السعر ("غالي")';
+      replies = [
+        'الرد 1 (تأكيد القيمة مقابل السعر)\n---\nمعاك حق تقارن يا فندم، السعر فعلاً بيعكس $sectorValueProp، وده بيوفر عليك مصاريف وتكلفة تغيير أو صيانة قدام مقارنة بالبدائل الرخيصة.',
+        'الرد 2 (اقتراح بديل اقتصادي أو باقة)\n---\nنورتنا يا فندم، هدفنا تلاقي الأنسب لميزانيتك. عندنا خيار تاني بسعر اقتصادي ممتاز، أو نقدر نعملك باقة متكاملة توفرلك في إجمالي الفاتورة وتاخد قيمة أكبر.',
+        'الرد 3 (تسليط الضوء على الضمان وخدمة ما بعد البيع)\n---\nفاهم وجهة نظرك تماماً يا فندم، الفارق البسيط في السعر بيضمنلك منتج مضمون وخدمة ما بعد البيع لو احتجت أي مساعدة في أي وقت، ودي راحة بال بتستمر معاك.',
+      ];
+    }
+
+    return AssistantInsight(
+      id: 'customer_objection_replies',
+      title: 'ردود دبلوماسية جاهزة للنسخ ($scenarioTitle)',
+      summary: 'اختر الرد الأنسب لعميلك واضغط "نسخ" لإرساله فوراً:',
+      details: replies,
+      followUpPrompts: const [
+        'العميل بيقول غالي',
+        'تاخير ديليفري',
+        'استرجاع بعد المدة',
+      ],
+    );
+  }
+
   /// Multi-turn conversation entry point supporting [AssistantActionDraft].
   Future<AssistantTurnResult> askWithDraft(
     String query, {
@@ -3057,6 +3830,20 @@ class OfflineSmartAssistantService {
           activeDraft: nextDraft,
         );
       }
+      if (nextDraft.kind == AssistantCommandKind.calculateZakat) {
+        final zakatInsight = await getZakatCalculatorInsight(
+          goldGramPrice24Egp:
+              (nextDraft.fields['goldPrice24'] as num).toDouble(),
+          extraBankCashPiasters:
+              (((nextDraft.fields['extraBankCashEgp'] as num?) ?? 0) * 100)
+                  .round(),
+          extraDebtsOnBusinessPiasters:
+              (((nextDraft.fields['extraDebtsEgp'] as num?) ?? 0) * 100)
+                  .round(),
+          isGregorianYear: nextDraft.fields['isGregorianYear'] == true,
+        );
+        return AssistantTurnResult(insights: [zakatInsight], activeDraft: null);
+      }
       return AssistantTurnResult(
         insights: [_buildPendingCommandInsight(nextDraft)],
         activeDraft: null,
@@ -3070,6 +3857,14 @@ class OfflineSmartAssistantService {
           insights: [_buildDraftPromptInsight(erpDraft)],
           activeDraft: erpDraft,
         );
+      }
+      if (erpDraft.kind == AssistantCommandKind.calculateZakat) {
+        final zakatInsight = await getZakatCalculatorInsight(
+          goldGramPrice24Egp:
+              (erpDraft.fields['goldPrice24'] as num).toDouble(),
+          isGregorianYear: erpDraft.fields['isGregorianYear'] == true,
+        );
+        return AssistantTurnResult(insights: [zakatInsight], activeDraft: null);
       }
       return AssistantTurnResult(
         insights: [_buildPendingCommandInsight(erpDraft)],
@@ -3174,36 +3969,82 @@ class OfflineSmartAssistantService {
   }
 
   /// 2. Visual Merchandising tailored to the store activity and top-margin items.
-  Future<AssistantInsight> getVisualMerchandisingInsight() async {
-    final activityMeta = await (_db.select(_db.appMeta)
-          ..where((m) => m.key.equals(ReceiptSettingsService.keyStoreActivity)))
-        .getSingleOrNull();
-    final mobileMeta = await (_db.select(_db.appMeta)
-          ..where((m) => m.key.equals('feature.${FeatureKeys.mobileImeiUsed}')))
-        .getSingleOrNull();
-    final dineInMeta = await (_db.select(_db.appMeta)
-          ..where((m) => m.key.equals('feature.dineIn')))
-        .getSingleOrNull();
+  /// Detects the active store business sector from `receipt.store_activity`
+  /// and `FeatureGate` metadata flags.
+  /// Returns one of: `'clothing'`, `'mobiles'`, `'fnb'`, `'grocery'`, `'home'`, or `'all'`.
+  Future<String> detectStoreSector() async {
+    final rows = await _db.select(_db.appMeta).get();
+    final meta = {for (final r in rows) r.key: r.value};
 
-    final activityText = normalizeArabic(activityMeta?.value ?? '');
-    String sector = 'عام';
-    if (mobileMeta?.value == 'true' ||
+    final activityText =
+        normalizeArabic(meta[ReceiptSettingsService.keyStoreActivity] ?? '');
+    final mobileImei = meta['feature.${FeatureKeys.mobileImeiUsed}'] == 'true';
+    final mobileRepair = meta['feature.${FeatureKeys.mobileRepair}'] == 'true';
+    final mobileWallets = meta['feature.${FeatureKeys.mobileWallets}'] == 'true';
+    final dineIn = meta['feature.dineIn'] == 'true';
+    final expiryDates = meta['feature.expiryDates'] == 'true';
+    final fabricRolls = meta['feature.fabricRolls'] == 'true';
+
+    if (mobileImei ||
+        mobileRepair ||
+        mobileWallets ||
         activityText.contains('موبايل') ||
         activityText.contains('الكترون') ||
         activityText.contains('هواتف')) {
-      sector = 'موبايلات وإلكترونيات';
-    } else if (dineInMeta?.value == 'true' ||
+      return 'mobiles';
+    }
+    if (dineIn ||
         activityText.contains('مطعم') ||
-        activityText.contains('كافيه')) {
-      sector = 'مطاعم وكافيهات';
-    } else if (activityText.contains('ملابس') ||
-        activityText.contains('ازياء') ||
-        activityText.contains('احذيه')) {
-      sector = 'ملابس وأزياء';
-    } else if (activityText.contains('سوبر') ||
+        activityText.contains('كافيه') ||
+        activityText.contains('ماكولات') ||
+        activityText.contains('مشروبات')) {
+      return 'fnb';
+    }
+    if (expiryDates ||
+        activityText.contains('سوبر') ||
         activityText.contains('بقاله') ||
         activityText.contains('غذائ')) {
-      sector = 'سوبر ماركت ومواد غذائية';
+      return 'grocery';
+    }
+    if (activityText.contains('ادوات منزليه') ||
+        activityText.contains('عرايس') ||
+        activityText.contains('مطبخ') ||
+        activityText.contains('زجاج') ||
+        activityText.contains('منزلي')) {
+      return 'home';
+    }
+    if (fabricRolls ||
+        activityText.contains('ملابس') ||
+        activityText.contains('ازياء') ||
+        activityText.contains('احذيه') ||
+        activityText.contains('مفروشات') ||
+        activityText.contains('قماش')) {
+      return 'clothing';
+    }
+    return 'all';
+  }
+
+  Future<AssistantInsight> getVisualMerchandisingInsight() async {
+    final sectorCode = await detectStoreSector();
+    final String sector;
+    switch (sectorCode) {
+      case 'mobiles':
+        sector = 'موبايلات وإلكترونيات';
+        break;
+      case 'fnb':
+        sector = 'مطاعم وكافيهات';
+        break;
+      case 'clothing':
+        sector = 'ملابس وأزياء';
+        break;
+      case 'grocery':
+        sector = 'سوبر ماركت ومواد غذائية';
+        break;
+      case 'home':
+        sector = 'أدوات منزلية';
+        break;
+      default:
+        sector = 'عام';
     }
 
     final variants = await (_db.select(_db.productVariants)
@@ -3248,6 +4089,11 @@ class OfflineSmartAssistantService {
         windowTip = 'الواجهة: اعرض العروض الأسبوعية والسلع الموسمية في مدخل الممر الأول.';
         depthTip = 'العمق: ضع السلع الأساسية اليومية (الألبان، الخبز، المخبوزات) في آخر المحل لإجبار العميل على المرور بباقي الأرفف.';
         checkoutTip = 'الكاشير: ضع الشوكولاتة، العلكة، البطاريات، والمناديل الجيبية عند نقطة الحساب.';
+        break;
+      case 'أدوات منزلية':
+        windowTip = 'الواجهة: اعرض باقات جهاز العروسة وأطقم المطبخ الكاملة بأسعار واضحة وإضاءة دافئة.';
+        depthTip = 'العمق: نظّم الزجاجيات والبورسلين القابل للكسر في أرفف آمنة بعيدة عن الممرات الضيقة.';
+        checkoutTip = 'الكاشير: ضع رفايع المطبخ العملية والمغلفات الواقية سهلة الإضافة للفاتورة.';
         break;
       default:
         windowTip = 'الواجهة: اعرض 3 منتجات جذابة بصرياً وبأسعار واضحة تمثل هوية المحل وتجذب دخول المارة.';
@@ -4152,6 +4998,16 @@ $cta${storePhone.isNotEmpty ? ' على: $storePhone' : ''}
     // 1b. Direct complete ERP action command
     final erpDraft = parseErpDraft(query);
     if (erpDraft != null) {
+      if (erpDraft.isComplete &&
+          erpDraft.kind == AssistantCommandKind.calculateZakat) {
+        return [
+          await getZakatCalculatorInsight(
+            goldGramPrice24Egp:
+                (erpDraft.fields['goldPrice24'] as num).toDouble(),
+            isGregorianYear: erpDraft.fields['isGregorianYear'] == true,
+          ),
+        ];
+      }
       return [
         erpDraft.isComplete
             ? _buildPendingCommandInsight(erpDraft)
@@ -4189,6 +5045,41 @@ $cta${storePhone.isNotEmpty ? ' على: $storePhone' : ''}
     }
 
     // Batch 3: Variants, Cheapest Supplier, Peak Hours, Today Audits
+    if (q.contains('بزنس مان') ||
+        q.contains('انصحني') ||
+        q.contains('اعمل ايه في محلي') ||
+        q.contains('استشاره') ||
+        q.contains('رايك كتاجر')) {
+      results.add(await getBusinessmanConsultationInsight());
+    }
+    if (q.contains('عايز اكسب') ||
+        q.contains('هدف الربح') ||
+        q.contains('هدف ربح') ||
+        q.contains('حقق ربح') ||
+        q.contains('تارجت ربح')) {
+      results.add(await getGoalPlannerInsight(query));
+    }
+    if (q.contains('صحه المحل') ||
+        q.contains('تقييم المحل') ||
+        q.contains('مؤشر صحه') ||
+        q.contains('كام من 100')) {
+      results.add(await getStoreHealthScoreInsight());
+    }
+    if (q.contains('طلبيه الشراء') ||
+        q.contains('اطلب بضاعه') ||
+        q.contains('طلبيه شراء') ||
+        q.contains('جهز طلبيه') ||
+        q.contains('نواقص للطلب')) {
+      results.add(await getSmartReorderListInsight());
+    }
+    if (q.contains('بيقول غالي') ||
+        q.contains('غالي عليا') ||
+        q.contains('تاخير ديليفري') ||
+        q.contains('استرجاع بعد المده') ||
+        q.contains('رد علي العميل') ||
+        q.contains('اعتراض العميل')) {
+      results.add(await getCustomerObjectionRepliesInsight(query));
+    }
     if (q.contains('مقاس ولون') ||
         q.contains('اكتر مقاس') ||
         q.contains('مقاسات والوان')) {
@@ -4457,6 +5348,11 @@ $cta${storePhone.isNotEmpty ? ' على: $storePhone' : ''}
     }
 
     if (results.isEmpty) {
+      final kbMatches = await searchKnowledgeBase(query);
+      if (kbMatches.isNotEmpty) {
+        return kbMatches;
+      }
+
       final suggestions = _buildDidYouMeanSuggestions(q);
       return [
         AssistantInsight(
@@ -4471,4 +5367,297 @@ $cta${storePhone.isNotEmpty ? ' على: $storePhone' : ''}
     }
     return results;
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // OFFLINE KNOWLEDGE DISTILLATION & FUZZY SYNONYM SCORING ENGINE
+  // ─────────────────────────────────────────────────────────────────────────
+
+  static final OfflineKnowledgeMatcher _knowledgeMatcher =
+      OfflineKnowledgeMatcher();
+
+  Future<int> getKnowledgeTopicCount() => _knowledgeMatcher.topicCount();
+
+  Future<List<AssistantInsight>> searchKnowledgeBase(
+    String rawQuery, {
+    int maxResults = 2,
+    String? activeSector,
+  }) async {
+    final sector = activeSector ?? await detectStoreSector();
+    return _knowledgeMatcher.match(
+      rawQuery,
+      maxResults: maxResults,
+      activeSector: sector,
+    );
+  }
+}
+
+/// Offline synonym + fuzzy scoring matcher over `assets/assistant_knowledge_ar.json`.
+class OfflineKnowledgeMatcher {
+  _AssistantKnowledgeBase? _cachedKnowledgeBase;
+
+  Future<_AssistantKnowledgeBase> _loadKnowledgeBase() async {
+    if (_cachedKnowledgeBase != null) return _cachedKnowledgeBase!;
+    try {
+      final raw = await rootBundle.loadString('assets/assistant_knowledge_ar.json');
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      _cachedKnowledgeBase = _AssistantKnowledgeBase.fromJson(decoded);
+      return _cachedKnowledgeBase!;
+    } catch (_) {
+      return const _AssistantKnowledgeBase(synonymGroups: [], topics: []);
+    }
+  }
+
+  Future<int> topicCount() async {
+    final kb = await _loadKnowledgeBase();
+    return kb.topics.length;
+  }
+
+  static const _arabicStopWords = <String>{
+    'في',
+    'من',
+    'على',
+    'عن',
+    'الى',
+    'مع',
+    'هذا',
+    'هذه',
+    'التي',
+    'الذي',
+    'غير',
+    'كل',
+    'او',
+    'ان',
+    'لو',
+    'ما',
+    'لا',
+    'هل',
+    'عند',
+    'بعد',
+    'قبل',
+  };
+
+  static List<String> _tokenizeArabic(String text) {
+    final norm = OfflineSmartAssistantService.normalizeArabic(text);
+    return norm
+        .split(RegExp(r'[^\u0600-\u06FFa-z0-9]+'))
+        .where((w) => w.length >= 2 && !_arabicStopWords.contains(w))
+        .toList();
+  }
+
+  static String _stemArabicToken(String token) {
+    if (token.length >= 4 && token.startsWith('ال')) {
+      return token.substring(2);
+    }
+    if (token.length >= 5 &&
+        (token.startsWith('و') ||
+            token.startsWith('ب') ||
+            token.startsWith('ل') ||
+            token.startsWith('ف'))) {
+      final rest = token.substring(1);
+      if (rest.startsWith('ال') && rest.length >= 4) {
+        return rest.substring(2);
+      }
+      return rest;
+    }
+    return token;
+  }
+
+  Future<List<AssistantInsight>> match(
+    String rawQuery, {
+    int maxResults = 2,
+    String activeSector = 'all',
+  }) async {
+    final kb = await _loadKnowledgeBase();
+    if (kb.topics.isEmpty) return const [];
+
+    final normQuery = OfflineSmartAssistantService.normalizeArabic(rawQuery);
+    final rawTokens = _tokenizeArabic(rawQuery);
+    if (rawTokens.isEmpty) return const [];
+
+    final queryTokens = <String>{};
+    final queryGroupIds = <int>{};
+    for (final t in rawTokens) {
+      queryTokens.add(t);
+      final stemmed = _stemArabicToken(t);
+      queryTokens.add(stemmed);
+      final gid = kb.groupIndexFor(t) ?? kb.groupIndexFor(stemmed);
+      if (gid != null) queryGroupIds.add(gid);
+    }
+
+    final scored = <_ScoredKnowledgeTopic>[];
+    for (final topic in kb.topics) {
+      double score = 0;
+
+      for (final sq in topic.sampleQuestions) {
+        final normSq = OfflineSmartAssistantService.normalizeArabic(sq);
+        if (normSq == normQuery) {
+          score += 20;
+        } else if (normSq.contains(normQuery) || normQuery.contains(normSq)) {
+          score += 10;
+        }
+        for (final t in _tokenizeArabic(sq)) {
+          final st = _stemArabicToken(t);
+          if (queryTokens.contains(t) || queryTokens.contains(st)) {
+            score += 4.5;
+          } else {
+            final gid = kb.groupIndexFor(t) ?? kb.groupIndexFor(st);
+            if (gid != null && queryGroupIds.contains(gid)) {
+              score += 3.5;
+            }
+          }
+        }
+      }
+
+      for (final kw in topic.keywords) {
+        final normKw = OfflineSmartAssistantService.normalizeArabic(kw);
+        if (normQuery.contains(normKw)) {
+          score += 6;
+        }
+        for (final t in _tokenizeArabic(kw)) {
+          final st = _stemArabicToken(t);
+          if (queryTokens.contains(t) || queryTokens.contains(st)) {
+            score += 4.0;
+          } else {
+            final gid = kb.groupIndexFor(t) ?? kb.groupIndexFor(st);
+            if (gid != null && queryGroupIds.contains(gid)) {
+              score += 3.0;
+            }
+          }
+        }
+      }
+
+      for (final t in _tokenizeArabic('${topic.title} ${topic.summary}')) {
+        final st = _stemArabicToken(t);
+        if (queryTokens.contains(t) || queryTokens.contains(st)) {
+          score += 2.0;
+        } else {
+          final gid = kb.groupIndexFor(t) ?? kb.groupIndexFor(st);
+          if (gid != null && queryGroupIds.contains(gid)) {
+            score += 1.5;
+          } else if (st.length >= 4) {
+            final prefix = st.substring(0, 3);
+            if (queryTokens.any((qt) => qt.length >= 4 && qt.startsWith(prefix))) {
+              score += 1.0;
+            }
+          }
+        }
+      }
+
+      if (score > 0 && activeSector != 'all') {
+        if (topic.sector == activeSector) {
+          score += 5.0;
+        } else if (topic.sector != 'all' && topic.sector != activeSector) {
+          score -= 1.5;
+        }
+      }
+
+      if (score >= 6.0) {
+        scored.add(_ScoredKnowledgeTopic(topic, score));
+      }
+    }
+
+    if (scored.isEmpty) return const [];
+    scored.sort((a, b) => b.score.compareTo(a.score));
+
+    return scored
+        .take(maxResults)
+        .map(
+          (entry) => AssistantInsight(
+            id: 'kb_${entry.topic.id}',
+            title: '${entry.topic.category}: ${entry.topic.title}',
+            summary: entry.topic.summary,
+            details: entry.topic.details,
+            followUpPrompts: entry.topic.followUpPrompts,
+          ),
+        )
+        .toList();
+  }
+}
+
+class _AssistantKnowledgeTopic {
+  final String id;
+  final String sector;
+  final String category;
+  final String title;
+  final List<String> keywords;
+  final List<String> sampleQuestions;
+  final String summary;
+  final List<String> details;
+  final List<String> followUpPrompts;
+
+  const _AssistantKnowledgeTopic({
+    required this.id,
+    this.sector = 'all',
+    required this.category,
+    required this.title,
+    required this.keywords,
+    required this.sampleQuestions,
+    required this.summary,
+    required this.details,
+    required this.followUpPrompts,
+  });
+
+  factory _AssistantKnowledgeTopic.fromJson(Map<String, dynamic> json) {
+    return _AssistantKnowledgeTopic(
+      id: json['id'] as String? ?? '',
+      sector: json['sector'] as String? ?? 'all',
+      category: json['category'] as String? ?? 'استشارات تجارية',
+      title: json['title'] as String? ?? '',
+      keywords: List<String>.from(json['keywords'] as List? ?? const []),
+      sampleQuestions:
+          List<String>.from(json['sampleQuestions'] as List? ?? const []),
+      summary: json['summary'] as String? ?? '',
+      details: List<String>.from(json['details'] as List? ?? const []),
+      followUpPrompts:
+          List<String>.from(json['followUpPrompts'] as List? ?? const []),
+    );
+  }
+}
+
+class _AssistantKnowledgeBase {
+  final List<Set<String>> synonymGroups;
+  final List<_AssistantKnowledgeTopic> topics;
+
+  const _AssistantKnowledgeBase({
+    required this.synonymGroups,
+    required this.topics,
+  });
+
+  int? groupIndexFor(String token) {
+    for (int i = 0; i < synonymGroups.length; i++) {
+      if (synonymGroups[i].contains(token)) return i;
+    }
+    return null;
+  }
+
+  factory _AssistantKnowledgeBase.fromJson(Map<String, dynamic> json) {
+    final rawSyns = json['synonyms'] as List? ?? const [];
+    final groups = <Set<String>>[];
+    for (final g in rawSyns) {
+      if (g is List) {
+        final set = <String>{};
+        for (final w in g) {
+          final norm = OfflineSmartAssistantService.normalizeArabic(w.toString());
+          if (norm.isNotEmpty) {
+            set.add(norm);
+            set.add(OfflineKnowledgeMatcher._stemArabicToken(norm));
+          }
+        }
+        if (set.isNotEmpty) groups.add(set);
+      }
+    }
+    final rawTopics = json['topics'] as List? ?? const [];
+    final topics = rawTopics
+        .whereType<Map<String, dynamic>>()
+        .map(_AssistantKnowledgeTopic.fromJson)
+        .toList();
+    return _AssistantKnowledgeBase(synonymGroups: groups, topics: topics);
+  }
+}
+
+class _ScoredKnowledgeTopic {
+  final _AssistantKnowledgeTopic topic;
+  final double score;
+
+  const _ScoredKnowledgeTopic(this.topic, this.score);
 }

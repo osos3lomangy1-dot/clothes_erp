@@ -440,6 +440,9 @@ class _OfflineSmartAssistantDialogState
       'analytics': [
         'وضع المحل دلوقتي؟',
         'الأقساط المتأخرة',
+        'استشارة بزنس مان',
+        'تقييم صحة المحل',
+        'جهز طلبية الشراء',
         'صافي ربح اليوم ومقارنته بأمس',
         'نقطة التعادل اليومية',
         'كاشف تسرب الأرباح',
@@ -450,6 +453,7 @@ class _OfflineSmartAssistantDialogState
         'مستحقات الموردين',
       ],
       'marketing': [
+        'العميل بيقول غالي',
         'اكتب بوست واتساب',
         'اكتب بوست باقة فيسبوك',
         'اكتب بوست كولكشن جديد انستا',
@@ -459,6 +463,8 @@ class _OfflineSmartAssistantDialogState
         'ترتيب المحل وعرض البضاعة',
       ],
       'pricing': [
+        'عايز اكسب 30000',
+        'حاسبة الزكاة',
         'لو عملت خصم 15% أحتاج أبيع كام؟',
         'حاسبة التضخم 20%',
         'توزيع السيولة 50/30/20',
@@ -887,6 +893,9 @@ class _OfflineSmartAssistantDialogState
                                               ) ||
                                               item.id.startsWith(
                                                 'installment_reminder',
+                                              ) ||
+                                              item.id.startsWith(
+                                                'customer_objection_replies',
                                               ),
                                           isSuggestion:
                                               item.id == 'no_direct_match',

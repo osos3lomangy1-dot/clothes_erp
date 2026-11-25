@@ -50,6 +50,7 @@ flutter:
 
   assets:
     - assets/icons/
+    - assets/assistant_knowledge_ar.json
 
   fonts:
     - family: Cairo
