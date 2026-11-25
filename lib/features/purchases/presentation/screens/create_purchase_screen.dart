@@ -11,9 +11,12 @@ import '../../../../core/features/feature_gate.dart';
 import '../../../../core/utils/barcode_helper.dart';
 import 'package:drift/drift.dart' hide Column, Table;
 import '../../../../core/database/branch_provider.dart';
+import '../../../../core/database/tx_writer.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
+import '../../../inventory/data/services/device_serial_service.dart';
 import '../../../inventory/domain/entities/goods_receipt_entity.dart';
+import '../../../inventory/presentation/widgets/serial_units_entry_dialog.dart';
 import '../../../products/domain/entities/product_entity.dart';
 import '../../../settings/data/services/activity_settings_service.dart';
 import '../../data/datasources/purchases_local_data_source.dart';
@@ -31,6 +34,7 @@ class _InvoiceItemRow {
   final String size;
   int qty;
   double costPricePounds;
+  List<String> imeis;
 
   _InvoiceItemRow({
     required this.variantId,
@@ -40,7 +44,8 @@ class _InvoiceItemRow {
     required this.size,
     required this.qty,
     required this.costPricePounds,
-  });
+    List<String>? imeis,
+  }) : imeis = imeis ?? [];
 
   double get totalPounds => qty * costPricePounds;
 }
@@ -173,6 +178,7 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
   DateTime _purchaseDate = DateTime.now();
   final List<_InvoiceItemRow> _items = [];
   bool _isSaving = false;
+  bool _mobileImeiEnabled = false;
 
   void _showToast(String message, {bool isError = false}) {
     if (!mounted) return;
@@ -191,6 +197,13 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
     context.read<SuppliersCubit>().loadSuppliers();
 
     if (getIt.isRegistered<FeatureGate>()) {
+      getIt<FeatureGate>()
+          .isEnabled(FeatureKeys.mobileImeiUsed)
+          .then((enabled) {
+        if (mounted && enabled != _mobileImeiEnabled) {
+          setState(() => _mobileImeiEnabled = enabled);
+        }
+      });
       _sectorSub = ActivitySettingsService.listenSectorMode(
         getIt<FeatureGate>(),
         (mode) {
@@ -1240,6 +1253,30 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
       if (!mounted) return;
 
       if (created != null) {
+        final itemsWithImeis =
+            _items.where((it) => it.imeis.isNotEmpty).toList();
+        if (itemsWithImeis.isNotEmpty) {
+          final serialSvc = getIt.isRegistered<DeviceSerialService>()
+              ? getIt<DeviceSerialService>()
+              : DeviceSerialService(
+                  getIt<AppDatabase>(),
+                  getIt.isRegistered<BranchProvider>()
+                      ? getIt<BranchProvider>()
+                      : BranchProvider(getIt<AppDatabase>()),
+                  getIt.isRegistered<TxWriter>()
+                      ? getIt<TxWriter>()
+                      : TxWriter(getIt<AppDatabase>()),
+                );
+          for (final it in itemsWithImeis) {
+            await serialSvc.registerSerialUnits(
+              variantId: it.variantId,
+              imeis: it.imeis,
+              buyPricePiasters: (it.costPricePounds * 100).round(),
+              userId: currentUserId,
+            );
+          }
+        }
+        if (!mounted) return;
         _showToast('تم حفظ فاتورة المشتريات وتحديث رصيد المخزن والمورد بنجاح');
         if (widget.onSaved != null) {
           widget.onSaved!();
@@ -1839,14 +1876,42 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                                   ),
                                   Padding(
                                     padding: const EdgeInsets.all(6),
-                                    child: IconButton(
-                                      tooltip: 'حذف من الفاتورة',
-                                      icon: const Icon(
-                                        Icons.delete_outline_rounded,
-                                        color: Colors.red,
-                                      ),
-                                      onPressed: () =>
-                                          setState(() => _items.removeAt(idx)),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (_mobileImeiEnabled)
+                                          IconButton(
+                                            key: Key('purchase_line_imei_btn_${it.variantId}'),
+                                            tooltip: 'أرقام IMEI (${it.imeis.length})',
+                                            icon: Icon(
+                                              Icons.qr_code_2_rounded,
+                                              color: it.imeis.isNotEmpty
+                                                  ? AppColors.primary
+                                                  : Colors.grey.shade600,
+                                            ),
+                                            onPressed: () async {
+                                              final updated =
+                                                  await SerialUnitsEntryDialog.show(
+                                                context,
+                                                productName: it.productName,
+                                                targetQty: it.qty,
+                                                initialImeis: it.imeis,
+                                              );
+                                              if (updated != null && mounted) {
+                                                setState(() => it.imeis = updated);
+                                              }
+                                            },
+                                          ),
+                                        IconButton(
+                                          tooltip: 'حذف من الفاتورة',
+                                          icon: const Icon(
+                                            Icons.delete_outline_rounded,
+                                            color: Colors.red,
+                                          ),
+                                          onPressed: () =>
+                                              setState(() => _items.removeAt(idx)),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],

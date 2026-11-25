@@ -59,6 +59,7 @@ class FeatureKeys {
   static const drawerPettyCash = 'drawerPettyCash';
   static const managerPinProtection = 'managerPinProtection';
   static const delivery = 'delivery';
+  static const mobileImeiUsed = 'mobileImeiUsed';
 
   static const definitions = <FeatureDefinition>[
     FeatureDefinition(
@@ -242,6 +243,12 @@ class FeatureKeys {
     FeatureDefinition(
       key: managerPinProtection,
       label: 'حماية المدير بالرقم السري',
+      coreAlwaysEnabled: false,
+      defaultEnabled: false,
+    ),
+    FeatureDefinition(
+      key: mobileImeiUsed,
+      label: 'تتبع السيريال (IMEI) وشراء وبيع المستعمل',
       coreAlwaysEnabled: false,
       defaultEnabled: false,
     ),

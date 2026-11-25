@@ -14,6 +14,7 @@ import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../../inventory/domain/entities/goods_receipt_entity.dart';
 import '../../../inventory/presentation/cubits/goods_receipt_cubit.dart';
 import '../../../inventory/presentation/cubits/goods_receipt_state.dart';
+import '../../../inventory/presentation/widgets/used_device_intake_dialog.dart';
 import '../../../products/domain/entities/activity_type.dart';
 import '../../../settings/data/services/activity_settings_service.dart';
 import '../../data/datasources/purchases_local_data_source.dart';
@@ -129,6 +130,23 @@ class _PurchasesViewState extends State<_PurchasesView> with TickerProviderState
 
   bool _isCreatingInvoice = false;
   GoodsReceiptEntity? _selectedReceiptForInvoice;
+  bool _mobileImeiEnabled = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (getIt.isRegistered<FeatureGate>()) {
+      try {
+        getIt<FeatureGate>()
+            .isEnabled(FeatureKeys.mobileImeiUsed)
+            .then((enabled) {
+          if (mounted && enabled != _mobileImeiEnabled) {
+            setState(() => _mobileImeiEnabled = enabled);
+          }
+        }).catchError((_) {});
+      } catch (_) {}
+    }
+  }
 
   void _openCreatePurchase({GoodsReceiptEntity? fromReceipt}) {
     setState(() {
@@ -467,6 +485,26 @@ class _PurchasesViewState extends State<_PurchasesView> with TickerProviderState
                       label: const Text('فاتورة شراء جديدة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       onPressed: _openCreatePurchase,
                     ),
+                    if (_mobileImeiEnabled && !_isHospitality) ...[
+                      const SizedBox(width: 8),
+                      OutlinedButton.icon(
+                        key: const Key('open_used_device_intake_btn'),
+                        style: OutlinedButton.styleFrom(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        icon: Icon(Icons.phone_android_rounded, color: AppColors.primary, size: 18),
+                        label: const Text('شراء مستعمل', style: TextStyle(fontWeight: FontWeight.bold)),
+                        onPressed: () async {
+                          final res = await UsedDeviceIntakeDialog.show(context);
+                          if (res != null && context.mounted) {
+                            AppFeedback.showSuccess(
+                              context,
+                              'تم تسجيل الجهاز المستعمل (${res.imei}) وإضافته للمخزون',
+                            );
+                          }
+                        },
+                      ),
+                    ],
                     const SizedBox(width: 8),
                     OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(

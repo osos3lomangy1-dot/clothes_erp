@@ -199,6 +199,21 @@ class ReturnsLocalDataSourceImpl implements ReturnsLocalDataSource {
             refType: 'return',
             refId: returnId,
           );
+
+          final siImei = si?.imei?.trim();
+          if (siImei != null && siImei.isNotEmpty) {
+            await (_db.update(_db.deviceSerialUnits)
+                  ..where(
+                    (t) => t.imei.equals(siImei) & t.deletedAt.isNull(),
+                  ))
+                .write(
+              DeviceSerialUnitsCompanion(
+                status: const Value('in_stock'),
+                saleId: const Value(null),
+                updatedAt: Value(now),
+              ),
+            );
+          }
         }
 
         // 4. Update sale status to 'returned' or 'partially_returned'

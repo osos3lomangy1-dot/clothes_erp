@@ -141,6 +141,8 @@ class SaleItems extends Table {
   IntColumn get promotionDiscountPiasters =>
       integer().withDefault(const Constant(0))();
   IntColumn get lineTotal => integer()();
+  TextColumn get imei => text().nullable()();
+  TextColumn get deviceCondition => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
 
   @override
@@ -749,6 +751,35 @@ QueryExecutor _openConnection() {
   );
 }
 
+class DeviceSerialUnits extends Table {
+  TextColumn get id => text()();
+  TextColumn get branchId => text()();
+  TextColumn get variantId => text()();
+  TextColumn get imei => text()();
+  TextColumn get condition => text().withDefault(const Constant('new'))();
+  IntColumn get batteryHealth => integer().nullable()();
+  TextColumn get notes => text().nullable()();
+  TextColumn get sellerName => text().nullable()();
+  TextColumn get sellerNationalId => text().nullable()();
+  TextColumn get sellerPhone => text().nullable()();
+  IntColumn get buyPrice => integer().withDefault(const Constant(0))();
+  TextColumn get status => text().withDefault(const Constant('in_stock'))();
+  TextColumn get saleId => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  List<String> get customConstraints => [
+    "CHECK (condition IN ('new', 'used', 'refurbished'))",
+    "CHECK (status IN ('in_stock', 'sold', 'returned', 'in_repair'))",
+    'CHECK (buy_price >= 0)',
+  ];
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     Users,
@@ -785,13 +816,14 @@ QueryExecutor _openConnection() {
     Promotions,
     PromotionApplications,
     PromotionTargets,
+    DeviceSerialUnits,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   /// Checkpoints committed WAL frames into the main database file.
   /// Called after POS checkout to guarantee zero receipt loss on sudden power cuts.
@@ -1138,12 +1170,41 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
+  @visibleForTesting
+  Future<void> migrateToV12(Migrator m) async {
+    final unitTables = await customSelect(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='device_serial_units'",
+    ).get();
+    if (unitTables.isEmpty) {
+      await m.createTable(deviceSerialUnits);
+    }
+    await customStatement(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_device_serial_imei_unique ON device_serial_units(imei) WHERE deleted_at IS NULL',
+    );
+
+    final saleItemCols = await customSelect(
+      'PRAGMA table_info("sale_items")',
+    ).get();
+    final cols = saleItemCols
+        .map((r) => (r.data['name'] as String).toLowerCase())
+        .toSet();
+    if (!cols.contains('imei')) {
+      await m.addColumn(saleItems, saleItems.imei);
+    }
+    if (!cols.contains('device_condition')) {
+      await m.addColumn(saleItems, saleItems.deviceCondition);
+    }
+  }
+
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (Migrator m) async {
       await m.createAll();
       await customStatement(
         'CREATE UNIQUE INDEX idx_variants_sku_unique ON product_variants(sku) WHERE deleted_at IS NULL',
+      );
+      await customStatement(
+        'CREATE UNIQUE INDEX IF NOT EXISTS idx_device_serial_imei_unique ON device_serial_units(imei) WHERE deleted_at IS NULL',
       );
     },
     onUpgrade: (Migrator m, int from, int to) async {
@@ -1238,6 +1299,10 @@ class AppDatabase extends _$AppDatabase {
           await migrateToV11(m);
         }
 
+        if (from < 12 && to >= 12) {
+          await migrateToV12(m);
+        }
+
         // Commit target user_version inside the transaction to eliminate the post-commit window
         await m.database.customStatement('PRAGMA user_version = $to;');
       });
@@ -1294,6 +1359,12 @@ class AppDatabase extends _$AppDatabase {
         promotionApplications,
       );
       await createTableIfNotExists('customer_payments', customerPayments);
+      await createTableIfNotExists('device_serial_units', deviceSerialUnits);
+      try {
+        await customStatement(
+          'CREATE UNIQUE INDEX IF NOT EXISTS idx_device_serial_imei_unique ON device_serial_units(imei) WHERE deleted_at IS NULL',
+        );
+      } catch (_) {}
 
       await addColumnIfNotExists(
         'product_variants',
@@ -1350,6 +1421,8 @@ class AppDatabase extends _$AppDatabase {
         'is_installment_eligible',
         'INTEGER NOT NULL DEFAULT 1',
       );
+      await addColumnIfNotExists('sale_items', 'imei', 'TEXT');
+      await addColumnIfNotExists('sale_items', 'device_condition', 'TEXT');
     },
   );
 }

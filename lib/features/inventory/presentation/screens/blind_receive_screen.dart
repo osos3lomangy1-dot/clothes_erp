@@ -5,7 +5,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../../core/database/branch_provider.dart';
+import '../../../../core/database/tx_writer.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/features/feature_gate.dart';
 import '../../../../core/utils/barcode_helper.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
@@ -15,7 +18,10 @@ import '../../../products/domain/entities/activity_type.dart';
 import '../../../products/presentation/screens/product_form_screen.dart';
 import '../../../purchases/presentation/screens/create_purchase_screen.dart';
 import '../../data/datasources/inventory_local_data_source.dart';
+import '../../data/services/device_serial_service.dart';
 import '../cubits/goods_receipt_cubit.dart';
+import '../widgets/serial_units_entry_dialog.dart';
+import '../widgets/used_device_intake_dialog.dart';
 
 class _ReceiptLineItem {
   final String variantId;
@@ -25,6 +31,7 @@ class _ReceiptLineItem {
   final String size;
   int quantity;
   double? costPricePounds;
+  List<String> imeis;
 
   _ReceiptLineItem({
     required this.variantId,
@@ -34,7 +41,8 @@ class _ReceiptLineItem {
     required this.size,
     required this.quantity,
     this.costPricePounds,
-  });
+    List<String>? imeis,
+  }) : imeis = imeis ?? [];
 }
 
 class BlindReceiveScreen extends StatelessWidget {
@@ -68,10 +76,22 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
 
   final List<_ReceiptLineItem> _lines = [];
   bool _isSaving = false;
+  bool _mobileImeiEnabled = false;
 
   @override
   void initState() {
     super.initState();
+    if (getIt.isRegistered<FeatureGate>()) {
+      try {
+        getIt<FeatureGate>()
+            .isEnabled(FeatureKeys.mobileImeiUsed)
+            .then((enabled) {
+          if (mounted && enabled != _mobileImeiEnabled) {
+            setState(() => _mobileImeiEnabled = enabled);
+          }
+        }).catchError((_) {});
+      } catch (_) {}
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _barcodeFocusNode.requestFocus();
     });
@@ -1021,6 +1041,30 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
       if (!mounted) return;
 
       if (receipt != null) {
+        final linesWithImeis =
+            _lines.where((l) => l.imeis.isNotEmpty).toList();
+        if (linesWithImeis.isNotEmpty) {
+          final serialSvc = getIt.isRegistered<DeviceSerialService>()
+              ? getIt<DeviceSerialService>()
+              : DeviceSerialService(
+                  getIt<AppDatabase>(),
+                  getIt.isRegistered<BranchProvider>()
+                      ? getIt<BranchProvider>()
+                      : BranchProvider(getIt<AppDatabase>()),
+                  getIt.isRegistered<TxWriter>()
+                      ? getIt<TxWriter>()
+                      : TxWriter(getIt<AppDatabase>()),
+                );
+          for (final l in linesWithImeis) {
+            await serialSvc.registerSerialUnits(
+              variantId: l.variantId,
+              imeis: l.imeis,
+              buyPricePiasters: ((l.costPricePounds ?? 0.0) * 100).round(),
+              userId: cashierId,
+            );
+          }
+        }
+        if (!mounted) return;
         _showToast('تم حفظ استلام الشحنة بنجاح وزيادة المخزون مباشرة!');
 
         if (convertToPurchase) {
@@ -1179,6 +1223,24 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
             label: const Text('إضافة صنف جديد كلياً', style: TextStyle(fontWeight: FontWeight.bold)),
             onPressed: _openQuickAddVariantDialog,
           ),
+          if (_mobileImeiEnabled) ...[
+            const SizedBox(width: 8),
+            OutlinedButton.icon(
+              key: const Key('open_used_device_intake_btn'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              icon: Icon(Icons.phone_android_rounded, color: AppColors.primary, size: 18),
+              label: const Text('شراء مستعمل', style: TextStyle(fontWeight: FontWeight.bold)),
+              onPressed: () async {
+                final res = await UsedDeviceIntakeDialog.show(context);
+                if (res != null && mounted) {
+                  _showToast('تم تسجيل الجهاز المستعمل (${res.imei}) وإضافته للمخزون');
+                }
+              },
+            ),
+          ],
           const SizedBox(width: 8),
           if (_lines.isNotEmpty) ...[
             ElevatedButton.icon(
@@ -1466,16 +1528,43 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
                                           ],
                                         ),
                                       ),
-                                      SizedBox(
-                                        width: 50,
-                                        child: IconButton(
-                                          icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
-                                          tooltip: 'حذف من الشحنة',
-                                          onPressed: () {
-                                            setState(() => _lines.removeAt(idx));
-                                          },
+                                        SizedBox(
+                                          width: _mobileImeiEnabled ? 96 : 50,
+                                          child: Row(
+                                            mainAxisAlignment: MainAxisAlignment.end,
+                                            children: [
+                                              if (_mobileImeiEnabled)
+                                                IconButton(
+                                                  key: Key('line_imei_btn_${line.variantId}'),
+                                                  icon: Icon(
+                                                    Icons.qr_code_2_rounded,
+                                                    color: line.imeis.isNotEmpty
+                                                        ? AppColors.primary
+                                                        : Colors.grey.shade600,
+                                                  ),
+                                                  tooltip: 'أرقام IMEI (${line.imeis.length})',
+                                                  onPressed: () async {
+                                                    final updated = await SerialUnitsEntryDialog.show(
+                                                      context,
+                                                      productName: line.productName,
+                                                      targetQty: line.quantity,
+                                                      initialImeis: line.imeis,
+                                                    );
+                                                    if (updated != null && mounted) {
+                                                      setState(() => line.imeis = updated);
+                                                    }
+                                                  },
+                                                ),
+                                              IconButton(
+                                                icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                                                tooltip: 'حذف من الشحنة',
+                                                onPressed: () {
+                                                  setState(() => _lines.removeAt(idx));
+                                                },
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                      ),
                                     ],
                                   ),
                                 );

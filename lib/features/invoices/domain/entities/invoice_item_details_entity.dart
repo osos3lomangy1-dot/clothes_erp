@@ -18,6 +18,8 @@ class InvoiceItemDetailsEntity extends Equatable {
   final List<String> modifiers;
   final String? warrantyPeriod;
   final String? brandOrModel;
+  final String? imei;
+  final String? deviceCondition;
 
   const InvoiceItemDetailsEntity({
     required this.id,
@@ -37,6 +39,8 @@ class InvoiceItemDetailsEntity extends Equatable {
     this.modifiers = const [],
     this.warrantyPeriod,
     this.brandOrModel,
+    this.imei,
+    this.deviceCondition,
   });
 
   InvoiceItemDetailsEntity copyWith({
@@ -57,6 +61,8 @@ class InvoiceItemDetailsEntity extends Equatable {
     List<String>? modifiers,
     String? warrantyPeriod,
     String? brandOrModel,
+    String? imei,
+    String? deviceCondition,
   }) {
     return InvoiceItemDetailsEntity(
       id: id ?? this.id,
@@ -76,6 +82,8 @@ class InvoiceItemDetailsEntity extends Equatable {
       modifiers: modifiers ?? this.modifiers,
       warrantyPeriod: warrantyPeriod ?? this.warrantyPeriod,
       brandOrModel: brandOrModel ?? this.brandOrModel,
+      imei: imei ?? this.imei,
+      deviceCondition: deviceCondition ?? this.deviceCondition,
     );
   }
 

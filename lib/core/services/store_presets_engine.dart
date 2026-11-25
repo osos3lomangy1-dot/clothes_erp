@@ -43,6 +43,11 @@ class StorePresetsEngine {
     if (preset.enableInstallments) {
       await featureGate.setFeatureEnabled(FeatureKeys.installments, true, userId: userId);
     }
+    await featureGate.setFeatureEnabled(
+      FeatureKeys.mobileImeiUsed,
+      preset == StorePreset.electronics,
+      userId: userId,
+    );
 
     // 4. Record preset code in app_meta
     await featureGate.setMeta('store.preset', preset.code, userId: userId);

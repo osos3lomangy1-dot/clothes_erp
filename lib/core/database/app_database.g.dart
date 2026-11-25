@@ -4070,6 +4070,26 @@ class $SaleItemsTable extends SaleItems
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _imeiMeta = const VerificationMeta('imei');
+  @override
+  late final GeneratedColumn<String> imei = GeneratedColumn<String>(
+    'imei',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _deviceConditionMeta = const VerificationMeta(
+    'deviceCondition',
+  );
+  @override
+  late final GeneratedColumn<String> deviceCondition = GeneratedColumn<String>(
+    'device_condition',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -4096,6 +4116,8 @@ class $SaleItemsTable extends SaleItems
     lineDiscount,
     promotionDiscountPiasters,
     lineTotal,
+    imei,
+    deviceCondition,
     createdAt,
   ];
   @override
@@ -4222,6 +4244,21 @@ class $SaleItemsTable extends SaleItems
     } else if (isInserting) {
       context.missing(_lineTotalMeta);
     }
+    if (data.containsKey('imei')) {
+      context.handle(
+        _imeiMeta,
+        imei.isAcceptableOrUnknown(data['imei']!, _imeiMeta),
+      );
+    }
+    if (data.containsKey('device_condition')) {
+      context.handle(
+        _deviceConditionMeta,
+        deviceCondition.isAcceptableOrUnknown(
+          data['device_condition']!,
+          _deviceConditionMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -4291,6 +4328,14 @@ class $SaleItemsTable extends SaleItems
         DriftSqlType.int,
         data['${effectivePrefix}line_total'],
       )!,
+      imei: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}imei'],
+      ),
+      deviceCondition: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}device_condition'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -4318,6 +4363,8 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
   final int lineDiscount;
   final int promotionDiscountPiasters;
   final int lineTotal;
+  final String? imei;
+  final String? deviceCondition;
   final DateTime createdAt;
   const SaleItem({
     required this.id,
@@ -4333,6 +4380,8 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
     required this.lineDiscount,
     required this.promotionDiscountPiasters,
     required this.lineTotal,
+    this.imei,
+    this.deviceCondition,
     required this.createdAt,
   });
   @override
@@ -4353,6 +4402,12 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
       promotionDiscountPiasters,
     );
     map['line_total'] = Variable<int>(lineTotal);
+    if (!nullToAbsent || imei != null) {
+      map['imei'] = Variable<String>(imei);
+    }
+    if (!nullToAbsent || deviceCondition != null) {
+      map['device_condition'] = Variable<String>(deviceCondition);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -4372,6 +4427,10 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
       lineDiscount: Value(lineDiscount),
       promotionDiscountPiasters: Value(promotionDiscountPiasters),
       lineTotal: Value(lineTotal),
+      imei: imei == null && nullToAbsent ? const Value.absent() : Value(imei),
+      deviceCondition: deviceCondition == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deviceCondition),
       createdAt: Value(createdAt),
     );
   }
@@ -4397,6 +4456,8 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
         json['promotionDiscountPiasters'],
       ),
       lineTotal: serializer.fromJson<int>(json['lineTotal']),
+      imei: serializer.fromJson<String?>(json['imei']),
+      deviceCondition: serializer.fromJson<String?>(json['deviceCondition']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -4419,6 +4480,8 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
         promotionDiscountPiasters,
       ),
       'lineTotal': serializer.toJson<int>(lineTotal),
+      'imei': serializer.toJson<String?>(imei),
+      'deviceCondition': serializer.toJson<String?>(deviceCondition),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -4437,6 +4500,8 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
     int? lineDiscount,
     int? promotionDiscountPiasters,
     int? lineTotal,
+    Value<String?> imei = const Value.absent(),
+    Value<String?> deviceCondition = const Value.absent(),
     DateTime? createdAt,
   }) => SaleItem(
     id: id ?? this.id,
@@ -4453,6 +4518,10 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
     promotionDiscountPiasters:
         promotionDiscountPiasters ?? this.promotionDiscountPiasters,
     lineTotal: lineTotal ?? this.lineTotal,
+    imei: imei.present ? imei.value : this.imei,
+    deviceCondition: deviceCondition.present
+        ? deviceCondition.value
+        : this.deviceCondition,
     createdAt: createdAt ?? this.createdAt,
   );
   SaleItem copyWithCompanion(SaleItemsCompanion data) {
@@ -4480,6 +4549,10 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
           ? data.promotionDiscountPiasters.value
           : this.promotionDiscountPiasters,
       lineTotal: data.lineTotal.present ? data.lineTotal.value : this.lineTotal,
+      imei: data.imei.present ? data.imei.value : this.imei,
+      deviceCondition: data.deviceCondition.present
+          ? data.deviceCondition.value
+          : this.deviceCondition,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -4500,6 +4573,8 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
           ..write('lineDiscount: $lineDiscount, ')
           ..write('promotionDiscountPiasters: $promotionDiscountPiasters, ')
           ..write('lineTotal: $lineTotal, ')
+          ..write('imei: $imei, ')
+          ..write('deviceCondition: $deviceCondition, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -4520,6 +4595,8 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
     lineDiscount,
     promotionDiscountPiasters,
     lineTotal,
+    imei,
+    deviceCondition,
     createdAt,
   );
   @override
@@ -4539,6 +4616,8 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
           other.lineDiscount == this.lineDiscount &&
           other.promotionDiscountPiasters == this.promotionDiscountPiasters &&
           other.lineTotal == this.lineTotal &&
+          other.imei == this.imei &&
+          other.deviceCondition == this.deviceCondition &&
           other.createdAt == this.createdAt);
 }
 
@@ -4556,6 +4635,8 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
   final Value<int> lineDiscount;
   final Value<int> promotionDiscountPiasters;
   final Value<int> lineTotal;
+  final Value<String?> imei;
+  final Value<String?> deviceCondition;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
   const SaleItemsCompanion({
@@ -4572,6 +4653,8 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
     this.lineDiscount = const Value.absent(),
     this.promotionDiscountPiasters = const Value.absent(),
     this.lineTotal = const Value.absent(),
+    this.imei = const Value.absent(),
+    this.deviceCondition = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -4589,6 +4672,8 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
     this.lineDiscount = const Value.absent(),
     this.promotionDiscountPiasters = const Value.absent(),
     required int lineTotal,
+    this.imei = const Value.absent(),
+    this.deviceCondition = const Value.absent(),
     required DateTime createdAt,
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -4617,6 +4702,8 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
     Expression<int>? lineDiscount,
     Expression<int>? promotionDiscountPiasters,
     Expression<int>? lineTotal,
+    Expression<String>? imei,
+    Expression<String>? deviceCondition,
     Expression<DateTime>? createdAt,
     Expression<int>? rowid,
   }) {
@@ -4635,6 +4722,8 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
       if (promotionDiscountPiasters != null)
         'promotion_discount_piasters': promotionDiscountPiasters,
       if (lineTotal != null) 'line_total': lineTotal,
+      if (imei != null) 'imei': imei,
+      if (deviceCondition != null) 'device_condition': deviceCondition,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -4654,6 +4743,8 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
     Value<int>? lineDiscount,
     Value<int>? promotionDiscountPiasters,
     Value<int>? lineTotal,
+    Value<String?>? imei,
+    Value<String?>? deviceCondition,
     Value<DateTime>? createdAt,
     Value<int>? rowid,
   }) {
@@ -4672,6 +4763,8 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
       promotionDiscountPiasters:
           promotionDiscountPiasters ?? this.promotionDiscountPiasters,
       lineTotal: lineTotal ?? this.lineTotal,
+      imei: imei ?? this.imei,
+      deviceCondition: deviceCondition ?? this.deviceCondition,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
     );
@@ -4721,6 +4814,12 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
     if (lineTotal.present) {
       map['line_total'] = Variable<int>(lineTotal.value);
     }
+    if (imei.present) {
+      map['imei'] = Variable<String>(imei.value);
+    }
+    if (deviceCondition.present) {
+      map['device_condition'] = Variable<String>(deviceCondition.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -4746,6 +4845,8 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
           ..write('lineDiscount: $lineDiscount, ')
           ..write('promotionDiscountPiasters: $promotionDiscountPiasters, ')
           ..write('lineTotal: $lineTotal, ')
+          ..write('imei: $imei, ')
+          ..write('deviceCondition: $deviceCondition, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -22497,6 +22598,917 @@ class PromotionTargetsCompanion extends UpdateCompanion<PromotionTarget> {
   }
 }
 
+class $DeviceSerialUnitsTable extends DeviceSerialUnits
+    with TableInfo<$DeviceSerialUnitsTable, DeviceSerialUnit> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DeviceSerialUnitsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _variantIdMeta = const VerificationMeta(
+    'variantId',
+  );
+  @override
+  late final GeneratedColumn<String> variantId = GeneratedColumn<String>(
+    'variant_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _imeiMeta = const VerificationMeta('imei');
+  @override
+  late final GeneratedColumn<String> imei = GeneratedColumn<String>(
+    'imei',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _conditionMeta = const VerificationMeta(
+    'condition',
+  );
+  @override
+  late final GeneratedColumn<String> condition = GeneratedColumn<String>(
+    'condition',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('new'),
+  );
+  static const VerificationMeta _batteryHealthMeta = const VerificationMeta(
+    'batteryHealth',
+  );
+  @override
+  late final GeneratedColumn<int> batteryHealth = GeneratedColumn<int>(
+    'battery_health',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sellerNameMeta = const VerificationMeta(
+    'sellerName',
+  );
+  @override
+  late final GeneratedColumn<String> sellerName = GeneratedColumn<String>(
+    'seller_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sellerNationalIdMeta = const VerificationMeta(
+    'sellerNationalId',
+  );
+  @override
+  late final GeneratedColumn<String> sellerNationalId = GeneratedColumn<String>(
+    'seller_national_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sellerPhoneMeta = const VerificationMeta(
+    'sellerPhone',
+  );
+  @override
+  late final GeneratedColumn<String> sellerPhone = GeneratedColumn<String>(
+    'seller_phone',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _buyPriceMeta = const VerificationMeta(
+    'buyPrice',
+  );
+  @override
+  late final GeneratedColumn<int> buyPrice = GeneratedColumn<int>(
+    'buy_price',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('in_stock'),
+  );
+  static const VerificationMeta _saleIdMeta = const VerificationMeta('saleId');
+  @override
+  late final GeneratedColumn<String> saleId = GeneratedColumn<String>(
+    'sale_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    branchId,
+    variantId,
+    imei,
+    condition,
+    batteryHealth,
+    notes,
+    sellerName,
+    sellerNationalId,
+    sellerPhone,
+    buyPrice,
+    status,
+    saleId,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'device_serial_units';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DeviceSerialUnit> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_branchIdMeta);
+    }
+    if (data.containsKey('variant_id')) {
+      context.handle(
+        _variantIdMeta,
+        variantId.isAcceptableOrUnknown(data['variant_id']!, _variantIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_variantIdMeta);
+    }
+    if (data.containsKey('imei')) {
+      context.handle(
+        _imeiMeta,
+        imei.isAcceptableOrUnknown(data['imei']!, _imeiMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_imeiMeta);
+    }
+    if (data.containsKey('condition')) {
+      context.handle(
+        _conditionMeta,
+        condition.isAcceptableOrUnknown(data['condition']!, _conditionMeta),
+      );
+    }
+    if (data.containsKey('battery_health')) {
+      context.handle(
+        _batteryHealthMeta,
+        batteryHealth.isAcceptableOrUnknown(
+          data['battery_health']!,
+          _batteryHealthMeta,
+        ),
+      );
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    if (data.containsKey('seller_name')) {
+      context.handle(
+        _sellerNameMeta,
+        sellerName.isAcceptableOrUnknown(data['seller_name']!, _sellerNameMeta),
+      );
+    }
+    if (data.containsKey('seller_national_id')) {
+      context.handle(
+        _sellerNationalIdMeta,
+        sellerNationalId.isAcceptableOrUnknown(
+          data['seller_national_id']!,
+          _sellerNationalIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('seller_phone')) {
+      context.handle(
+        _sellerPhoneMeta,
+        sellerPhone.isAcceptableOrUnknown(
+          data['seller_phone']!,
+          _sellerPhoneMeta,
+        ),
+      );
+    }
+    if (data.containsKey('buy_price')) {
+      context.handle(
+        _buyPriceMeta,
+        buyPrice.isAcceptableOrUnknown(data['buy_price']!, _buyPriceMeta),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('sale_id')) {
+      context.handle(
+        _saleIdMeta,
+        saleId.isAcceptableOrUnknown(data['sale_id']!, _saleIdMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DeviceSerialUnit map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DeviceSerialUnit(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      )!,
+      variantId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}variant_id'],
+      )!,
+      imei: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}imei'],
+      )!,
+      condition: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}condition'],
+      )!,
+      batteryHealth: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}battery_health'],
+      ),
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
+      sellerName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}seller_name'],
+      ),
+      sellerNationalId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}seller_national_id'],
+      ),
+      sellerPhone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}seller_phone'],
+      ),
+      buyPrice: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}buy_price'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      saleId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sale_id'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+    );
+  }
+
+  @override
+  $DeviceSerialUnitsTable createAlias(String alias) {
+    return $DeviceSerialUnitsTable(attachedDatabase, alias);
+  }
+}
+
+class DeviceSerialUnit extends DataClass
+    implements Insertable<DeviceSerialUnit> {
+  final String id;
+  final String branchId;
+  final String variantId;
+  final String imei;
+  final String condition;
+  final int? batteryHealth;
+  final String? notes;
+  final String? sellerName;
+  final String? sellerNationalId;
+  final String? sellerPhone;
+  final int buyPrice;
+  final String status;
+  final String? saleId;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  const DeviceSerialUnit({
+    required this.id,
+    required this.branchId,
+    required this.variantId,
+    required this.imei,
+    required this.condition,
+    this.batteryHealth,
+    this.notes,
+    this.sellerName,
+    this.sellerNationalId,
+    this.sellerPhone,
+    required this.buyPrice,
+    required this.status,
+    this.saleId,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['branch_id'] = Variable<String>(branchId);
+    map['variant_id'] = Variable<String>(variantId);
+    map['imei'] = Variable<String>(imei);
+    map['condition'] = Variable<String>(condition);
+    if (!nullToAbsent || batteryHealth != null) {
+      map['battery_health'] = Variable<int>(batteryHealth);
+    }
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    if (!nullToAbsent || sellerName != null) {
+      map['seller_name'] = Variable<String>(sellerName);
+    }
+    if (!nullToAbsent || sellerNationalId != null) {
+      map['seller_national_id'] = Variable<String>(sellerNationalId);
+    }
+    if (!nullToAbsent || sellerPhone != null) {
+      map['seller_phone'] = Variable<String>(sellerPhone);
+    }
+    map['buy_price'] = Variable<int>(buyPrice);
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || saleId != null) {
+      map['sale_id'] = Variable<String>(saleId);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    return map;
+  }
+
+  DeviceSerialUnitsCompanion toCompanion(bool nullToAbsent) {
+    return DeviceSerialUnitsCompanion(
+      id: Value(id),
+      branchId: Value(branchId),
+      variantId: Value(variantId),
+      imei: Value(imei),
+      condition: Value(condition),
+      batteryHealth: batteryHealth == null && nullToAbsent
+          ? const Value.absent()
+          : Value(batteryHealth),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
+      sellerName: sellerName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sellerName),
+      sellerNationalId: sellerNationalId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sellerNationalId),
+      sellerPhone: sellerPhone == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sellerPhone),
+      buyPrice: Value(buyPrice),
+      status: Value(status),
+      saleId: saleId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(saleId),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory DeviceSerialUnit.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DeviceSerialUnit(
+      id: serializer.fromJson<String>(json['id']),
+      branchId: serializer.fromJson<String>(json['branchId']),
+      variantId: serializer.fromJson<String>(json['variantId']),
+      imei: serializer.fromJson<String>(json['imei']),
+      condition: serializer.fromJson<String>(json['condition']),
+      batteryHealth: serializer.fromJson<int?>(json['batteryHealth']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      sellerName: serializer.fromJson<String?>(json['sellerName']),
+      sellerNationalId: serializer.fromJson<String?>(json['sellerNationalId']),
+      sellerPhone: serializer.fromJson<String?>(json['sellerPhone']),
+      buyPrice: serializer.fromJson<int>(json['buyPrice']),
+      status: serializer.fromJson<String>(json['status']),
+      saleId: serializer.fromJson<String?>(json['saleId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'branchId': serializer.toJson<String>(branchId),
+      'variantId': serializer.toJson<String>(variantId),
+      'imei': serializer.toJson<String>(imei),
+      'condition': serializer.toJson<String>(condition),
+      'batteryHealth': serializer.toJson<int?>(batteryHealth),
+      'notes': serializer.toJson<String?>(notes),
+      'sellerName': serializer.toJson<String?>(sellerName),
+      'sellerNationalId': serializer.toJson<String?>(sellerNationalId),
+      'sellerPhone': serializer.toJson<String?>(sellerPhone),
+      'buyPrice': serializer.toJson<int>(buyPrice),
+      'status': serializer.toJson<String>(status),
+      'saleId': serializer.toJson<String?>(saleId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+    };
+  }
+
+  DeviceSerialUnit copyWith({
+    String? id,
+    String? branchId,
+    String? variantId,
+    String? imei,
+    String? condition,
+    Value<int?> batteryHealth = const Value.absent(),
+    Value<String?> notes = const Value.absent(),
+    Value<String?> sellerName = const Value.absent(),
+    Value<String?> sellerNationalId = const Value.absent(),
+    Value<String?> sellerPhone = const Value.absent(),
+    int? buyPrice,
+    String? status,
+    Value<String?> saleId = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+  }) => DeviceSerialUnit(
+    id: id ?? this.id,
+    branchId: branchId ?? this.branchId,
+    variantId: variantId ?? this.variantId,
+    imei: imei ?? this.imei,
+    condition: condition ?? this.condition,
+    batteryHealth: batteryHealth.present
+        ? batteryHealth.value
+        : this.batteryHealth,
+    notes: notes.present ? notes.value : this.notes,
+    sellerName: sellerName.present ? sellerName.value : this.sellerName,
+    sellerNationalId: sellerNationalId.present
+        ? sellerNationalId.value
+        : this.sellerNationalId,
+    sellerPhone: sellerPhone.present ? sellerPhone.value : this.sellerPhone,
+    buyPrice: buyPrice ?? this.buyPrice,
+    status: status ?? this.status,
+    saleId: saleId.present ? saleId.value : this.saleId,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+  );
+  DeviceSerialUnit copyWithCompanion(DeviceSerialUnitsCompanion data) {
+    return DeviceSerialUnit(
+      id: data.id.present ? data.id.value : this.id,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      variantId: data.variantId.present ? data.variantId.value : this.variantId,
+      imei: data.imei.present ? data.imei.value : this.imei,
+      condition: data.condition.present ? data.condition.value : this.condition,
+      batteryHealth: data.batteryHealth.present
+          ? data.batteryHealth.value
+          : this.batteryHealth,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      sellerName: data.sellerName.present
+          ? data.sellerName.value
+          : this.sellerName,
+      sellerNationalId: data.sellerNationalId.present
+          ? data.sellerNationalId.value
+          : this.sellerNationalId,
+      sellerPhone: data.sellerPhone.present
+          ? data.sellerPhone.value
+          : this.sellerPhone,
+      buyPrice: data.buyPrice.present ? data.buyPrice.value : this.buyPrice,
+      status: data.status.present ? data.status.value : this.status,
+      saleId: data.saleId.present ? data.saleId.value : this.saleId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeviceSerialUnit(')
+          ..write('id: $id, ')
+          ..write('branchId: $branchId, ')
+          ..write('variantId: $variantId, ')
+          ..write('imei: $imei, ')
+          ..write('condition: $condition, ')
+          ..write('batteryHealth: $batteryHealth, ')
+          ..write('notes: $notes, ')
+          ..write('sellerName: $sellerName, ')
+          ..write('sellerNationalId: $sellerNationalId, ')
+          ..write('sellerPhone: $sellerPhone, ')
+          ..write('buyPrice: $buyPrice, ')
+          ..write('status: $status, ')
+          ..write('saleId: $saleId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    branchId,
+    variantId,
+    imei,
+    condition,
+    batteryHealth,
+    notes,
+    sellerName,
+    sellerNationalId,
+    sellerPhone,
+    buyPrice,
+    status,
+    saleId,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DeviceSerialUnit &&
+          other.id == this.id &&
+          other.branchId == this.branchId &&
+          other.variantId == this.variantId &&
+          other.imei == this.imei &&
+          other.condition == this.condition &&
+          other.batteryHealth == this.batteryHealth &&
+          other.notes == this.notes &&
+          other.sellerName == this.sellerName &&
+          other.sellerNationalId == this.sellerNationalId &&
+          other.sellerPhone == this.sellerPhone &&
+          other.buyPrice == this.buyPrice &&
+          other.status == this.status &&
+          other.saleId == this.saleId &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
+}
+
+class DeviceSerialUnitsCompanion extends UpdateCompanion<DeviceSerialUnit> {
+  final Value<String> id;
+  final Value<String> branchId;
+  final Value<String> variantId;
+  final Value<String> imei;
+  final Value<String> condition;
+  final Value<int?> batteryHealth;
+  final Value<String?> notes;
+  final Value<String?> sellerName;
+  final Value<String?> sellerNationalId;
+  final Value<String?> sellerPhone;
+  final Value<int> buyPrice;
+  final Value<String> status;
+  final Value<String?> saleId;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<int> rowid;
+  const DeviceSerialUnitsCompanion({
+    this.id = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.variantId = const Value.absent(),
+    this.imei = const Value.absent(),
+    this.condition = const Value.absent(),
+    this.batteryHealth = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.sellerName = const Value.absent(),
+    this.sellerNationalId = const Value.absent(),
+    this.sellerPhone = const Value.absent(),
+    this.buyPrice = const Value.absent(),
+    this.status = const Value.absent(),
+    this.saleId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DeviceSerialUnitsCompanion.insert({
+    required String id,
+    required String branchId,
+    required String variantId,
+    required String imei,
+    this.condition = const Value.absent(),
+    this.batteryHealth = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.sellerName = const Value.absent(),
+    this.sellerNationalId = const Value.absent(),
+    this.sellerPhone = const Value.absent(),
+    this.buyPrice = const Value.absent(),
+    this.status = const Value.absent(),
+    this.saleId = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       branchId = Value(branchId),
+       variantId = Value(variantId),
+       imei = Value(imei),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<DeviceSerialUnit> custom({
+    Expression<String>? id,
+    Expression<String>? branchId,
+    Expression<String>? variantId,
+    Expression<String>? imei,
+    Expression<String>? condition,
+    Expression<int>? batteryHealth,
+    Expression<String>? notes,
+    Expression<String>? sellerName,
+    Expression<String>? sellerNationalId,
+    Expression<String>? sellerPhone,
+    Expression<int>? buyPrice,
+    Expression<String>? status,
+    Expression<String>? saleId,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (branchId != null) 'branch_id': branchId,
+      if (variantId != null) 'variant_id': variantId,
+      if (imei != null) 'imei': imei,
+      if (condition != null) 'condition': condition,
+      if (batteryHealth != null) 'battery_health': batteryHealth,
+      if (notes != null) 'notes': notes,
+      if (sellerName != null) 'seller_name': sellerName,
+      if (sellerNationalId != null) 'seller_national_id': sellerNationalId,
+      if (sellerPhone != null) 'seller_phone': sellerPhone,
+      if (buyPrice != null) 'buy_price': buyPrice,
+      if (status != null) 'status': status,
+      if (saleId != null) 'sale_id': saleId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DeviceSerialUnitsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? branchId,
+    Value<String>? variantId,
+    Value<String>? imei,
+    Value<String>? condition,
+    Value<int?>? batteryHealth,
+    Value<String?>? notes,
+    Value<String?>? sellerName,
+    Value<String?>? sellerNationalId,
+    Value<String?>? sellerPhone,
+    Value<int>? buyPrice,
+    Value<String>? status,
+    Value<String?>? saleId,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<int>? rowid,
+  }) {
+    return DeviceSerialUnitsCompanion(
+      id: id ?? this.id,
+      branchId: branchId ?? this.branchId,
+      variantId: variantId ?? this.variantId,
+      imei: imei ?? this.imei,
+      condition: condition ?? this.condition,
+      batteryHealth: batteryHealth ?? this.batteryHealth,
+      notes: notes ?? this.notes,
+      sellerName: sellerName ?? this.sellerName,
+      sellerNationalId: sellerNationalId ?? this.sellerNationalId,
+      sellerPhone: sellerPhone ?? this.sellerPhone,
+      buyPrice: buyPrice ?? this.buyPrice,
+      status: status ?? this.status,
+      saleId: saleId ?? this.saleId,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
+    }
+    if (variantId.present) {
+      map['variant_id'] = Variable<String>(variantId.value);
+    }
+    if (imei.present) {
+      map['imei'] = Variable<String>(imei.value);
+    }
+    if (condition.present) {
+      map['condition'] = Variable<String>(condition.value);
+    }
+    if (batteryHealth.present) {
+      map['battery_health'] = Variable<int>(batteryHealth.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (sellerName.present) {
+      map['seller_name'] = Variable<String>(sellerName.value);
+    }
+    if (sellerNationalId.present) {
+      map['seller_national_id'] = Variable<String>(sellerNationalId.value);
+    }
+    if (sellerPhone.present) {
+      map['seller_phone'] = Variable<String>(sellerPhone.value);
+    }
+    if (buyPrice.present) {
+      map['buy_price'] = Variable<int>(buyPrice.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (saleId.present) {
+      map['sale_id'] = Variable<String>(saleId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeviceSerialUnitsCompanion(')
+          ..write('id: $id, ')
+          ..write('branchId: $branchId, ')
+          ..write('variantId: $variantId, ')
+          ..write('imei: $imei, ')
+          ..write('condition: $condition, ')
+          ..write('batteryHealth: $batteryHealth, ')
+          ..write('notes: $notes, ')
+          ..write('sellerName: $sellerName, ')
+          ..write('sellerNationalId: $sellerNationalId, ')
+          ..write('sellerPhone: $sellerPhone, ')
+          ..write('buyPrice: $buyPrice, ')
+          ..write('status: $status, ')
+          ..write('saleId: $saleId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -22549,6 +23561,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PromotionTargetsTable promotionTargets = $PromotionTargetsTable(
     this,
   );
+  late final $DeviceSerialUnitsTable deviceSerialUnits =
+      $DeviceSerialUnitsTable(this);
   late final Index idxInventoryLogsVariantIdCreatedAt = Index(
     'idx_inventory_logs_variantId_createdAt',
     'CREATE INDEX idx_inventory_logs_variantId_createdAt ON inventory_logs (variant_id, created_at)',
@@ -22596,6 +23610,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     promotions,
     promotionApplications,
     promotionTargets,
+    deviceSerialUnits,
     idxInventoryLogsVariantIdCreatedAt,
     idxSyncQueueStatusCreatedAt,
   ];
@@ -24974,6 +25989,8 @@ typedef $$SaleItemsTableCreateCompanionBuilder =
       Value<int> lineDiscount,
       Value<int> promotionDiscountPiasters,
       required int lineTotal,
+      Value<String?> imei,
+      Value<String?> deviceCondition,
       required DateTime createdAt,
       Value<int> rowid,
     });
@@ -24992,6 +26009,8 @@ typedef $$SaleItemsTableUpdateCompanionBuilder =
       Value<int> lineDiscount,
       Value<int> promotionDiscountPiasters,
       Value<int> lineTotal,
+      Value<String?> imei,
+      Value<String?> deviceCondition,
       Value<DateTime> createdAt,
       Value<int> rowid,
     });
@@ -25085,6 +26104,16 @@ class $$SaleItemsTableFilterComposer
 
   ColumnFilters<int> get lineTotal => $composableBuilder(
     column: $table.lineTotal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get imei => $composableBuilder(
+    column: $table.imei,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deviceCondition => $composableBuilder(
+    column: $table.deviceCondition,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -25186,6 +26215,16 @@ class $$SaleItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get imei => $composableBuilder(
+    column: $table.imei,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deviceCondition => $composableBuilder(
+    column: $table.deviceCondition,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -25270,6 +26309,14 @@ class $$SaleItemsTableAnnotationComposer
   GeneratedColumn<int> get lineTotal =>
       $composableBuilder(column: $table.lineTotal, builder: (column) => column);
 
+  GeneratedColumn<String> get imei =>
+      $composableBuilder(column: $table.imei, builder: (column) => column);
+
+  GeneratedColumn<String> get deviceCondition => $composableBuilder(
+    column: $table.deviceCondition,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -25338,6 +26385,8 @@ class $$SaleItemsTableTableManager
                 Value<int> lineDiscount = const Value.absent(),
                 Value<int> promotionDiscountPiasters = const Value.absent(),
                 Value<int> lineTotal = const Value.absent(),
+                Value<String?> imei = const Value.absent(),
+                Value<String?> deviceCondition = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SaleItemsCompanion(
@@ -25354,6 +26403,8 @@ class $$SaleItemsTableTableManager
                 lineDiscount: lineDiscount,
                 promotionDiscountPiasters: promotionDiscountPiasters,
                 lineTotal: lineTotal,
+                imei: imei,
+                deviceCondition: deviceCondition,
                 createdAt: createdAt,
                 rowid: rowid,
               ),
@@ -25372,6 +26423,8 @@ class $$SaleItemsTableTableManager
                 Value<int> lineDiscount = const Value.absent(),
                 Value<int> promotionDiscountPiasters = const Value.absent(),
                 required int lineTotal,
+                Value<String?> imei = const Value.absent(),
+                Value<String?> deviceCondition = const Value.absent(),
                 required DateTime createdAt,
                 Value<int> rowid = const Value.absent(),
               }) => SaleItemsCompanion.insert(
@@ -25388,6 +26441,8 @@ class $$SaleItemsTableTableManager
                 lineDiscount: lineDiscount,
                 promotionDiscountPiasters: promotionDiscountPiasters,
                 lineTotal: lineTotal,
+                imei: imei,
+                deviceCondition: deviceCondition,
                 createdAt: createdAt,
                 rowid: rowid,
               ),
@@ -34798,6 +35853,436 @@ typedef $$PromotionTargetsTableProcessedTableManager =
       PromotionTarget,
       PrefetchHooks Function()
     >;
+typedef $$DeviceSerialUnitsTableCreateCompanionBuilder =
+    DeviceSerialUnitsCompanion Function({
+      required String id,
+      required String branchId,
+      required String variantId,
+      required String imei,
+      Value<String> condition,
+      Value<int?> batteryHealth,
+      Value<String?> notes,
+      Value<String?> sellerName,
+      Value<String?> sellerNationalId,
+      Value<String?> sellerPhone,
+      Value<int> buyPrice,
+      Value<String> status,
+      Value<String?> saleId,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+typedef $$DeviceSerialUnitsTableUpdateCompanionBuilder =
+    DeviceSerialUnitsCompanion Function({
+      Value<String> id,
+      Value<String> branchId,
+      Value<String> variantId,
+      Value<String> imei,
+      Value<String> condition,
+      Value<int?> batteryHealth,
+      Value<String?> notes,
+      Value<String?> sellerName,
+      Value<String?> sellerNationalId,
+      Value<String?> sellerPhone,
+      Value<int> buyPrice,
+      Value<String> status,
+      Value<String?> saleId,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+
+class $$DeviceSerialUnitsTableFilterComposer
+    extends Composer<_$AppDatabase, $DeviceSerialUnitsTable> {
+  $$DeviceSerialUnitsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get variantId => $composableBuilder(
+    column: $table.variantId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get imei => $composableBuilder(
+    column: $table.imei,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get condition => $composableBuilder(
+    column: $table.condition,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get batteryHealth => $composableBuilder(
+    column: $table.batteryHealth,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sellerName => $composableBuilder(
+    column: $table.sellerName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sellerNationalId => $composableBuilder(
+    column: $table.sellerNationalId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sellerPhone => $composableBuilder(
+    column: $table.sellerPhone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get buyPrice => $composableBuilder(
+    column: $table.buyPrice,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get saleId => $composableBuilder(
+    column: $table.saleId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DeviceSerialUnitsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DeviceSerialUnitsTable> {
+  $$DeviceSerialUnitsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get variantId => $composableBuilder(
+    column: $table.variantId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get imei => $composableBuilder(
+    column: $table.imei,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get condition => $composableBuilder(
+    column: $table.condition,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get batteryHealth => $composableBuilder(
+    column: $table.batteryHealth,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sellerName => $composableBuilder(
+    column: $table.sellerName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sellerNationalId => $composableBuilder(
+    column: $table.sellerNationalId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sellerPhone => $composableBuilder(
+    column: $table.sellerPhone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get buyPrice => $composableBuilder(
+    column: $table.buyPrice,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get saleId => $composableBuilder(
+    column: $table.saleId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DeviceSerialUnitsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DeviceSerialUnitsTable> {
+  $$DeviceSerialUnitsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<String> get variantId =>
+      $composableBuilder(column: $table.variantId, builder: (column) => column);
+
+  GeneratedColumn<String> get imei =>
+      $composableBuilder(column: $table.imei, builder: (column) => column);
+
+  GeneratedColumn<String> get condition =>
+      $composableBuilder(column: $table.condition, builder: (column) => column);
+
+  GeneratedColumn<int> get batteryHealth => $composableBuilder(
+    column: $table.batteryHealth,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<String> get sellerName => $composableBuilder(
+    column: $table.sellerName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sellerNationalId => $composableBuilder(
+    column: $table.sellerNationalId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sellerPhone => $composableBuilder(
+    column: $table.sellerPhone,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get buyPrice =>
+      $composableBuilder(column: $table.buyPrice, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get saleId =>
+      $composableBuilder(column: $table.saleId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+}
+
+class $$DeviceSerialUnitsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DeviceSerialUnitsTable,
+          DeviceSerialUnit,
+          $$DeviceSerialUnitsTableFilterComposer,
+          $$DeviceSerialUnitsTableOrderingComposer,
+          $$DeviceSerialUnitsTableAnnotationComposer,
+          $$DeviceSerialUnitsTableCreateCompanionBuilder,
+          $$DeviceSerialUnitsTableUpdateCompanionBuilder,
+          (
+            DeviceSerialUnit,
+            BaseReferences<
+              _$AppDatabase,
+              $DeviceSerialUnitsTable,
+              DeviceSerialUnit
+            >,
+          ),
+          DeviceSerialUnit,
+          PrefetchHooks Function()
+        > {
+  $$DeviceSerialUnitsTableTableManager(
+    _$AppDatabase db,
+    $DeviceSerialUnitsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DeviceSerialUnitsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DeviceSerialUnitsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DeviceSerialUnitsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> branchId = const Value.absent(),
+                Value<String> variantId = const Value.absent(),
+                Value<String> imei = const Value.absent(),
+                Value<String> condition = const Value.absent(),
+                Value<int?> batteryHealth = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<String?> sellerName = const Value.absent(),
+                Value<String?> sellerNationalId = const Value.absent(),
+                Value<String?> sellerPhone = const Value.absent(),
+                Value<int> buyPrice = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> saleId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DeviceSerialUnitsCompanion(
+                id: id,
+                branchId: branchId,
+                variantId: variantId,
+                imei: imei,
+                condition: condition,
+                batteryHealth: batteryHealth,
+                notes: notes,
+                sellerName: sellerName,
+                sellerNationalId: sellerNationalId,
+                sellerPhone: sellerPhone,
+                buyPrice: buyPrice,
+                status: status,
+                saleId: saleId,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String branchId,
+                required String variantId,
+                required String imei,
+                Value<String> condition = const Value.absent(),
+                Value<int?> batteryHealth = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<String?> sellerName = const Value.absent(),
+                Value<String?> sellerNationalId = const Value.absent(),
+                Value<String?> sellerPhone = const Value.absent(),
+                Value<int> buyPrice = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> saleId = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DeviceSerialUnitsCompanion.insert(
+                id: id,
+                branchId: branchId,
+                variantId: variantId,
+                imei: imei,
+                condition: condition,
+                batteryHealth: batteryHealth,
+                notes: notes,
+                sellerName: sellerName,
+                sellerNationalId: sellerNationalId,
+                sellerPhone: sellerPhone,
+                buyPrice: buyPrice,
+                status: status,
+                saleId: saleId,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DeviceSerialUnitsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DeviceSerialUnitsTable,
+      DeviceSerialUnit,
+      $$DeviceSerialUnitsTableFilterComposer,
+      $$DeviceSerialUnitsTableOrderingComposer,
+      $$DeviceSerialUnitsTableAnnotationComposer,
+      $$DeviceSerialUnitsTableCreateCompanionBuilder,
+      $$DeviceSerialUnitsTableUpdateCompanionBuilder,
+      (
+        DeviceSerialUnit,
+        BaseReferences<
+          _$AppDatabase,
+          $DeviceSerialUnitsTable,
+          DeviceSerialUnit
+        >,
+      ),
+      DeviceSerialUnit,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -34870,4 +36355,6 @@ class $AppDatabaseManager {
       $$PromotionApplicationsTableTableManager(_db, _db.promotionApplications);
   $$PromotionTargetsTableTableManager get promotionTargets =>
       $$PromotionTargetsTableTableManager(_db, _db.promotionTargets);
+  $$DeviceSerialUnitsTableTableManager get deviceSerialUnits =>
+      $$DeviceSerialUnitsTableTableManager(_db, _db.deviceSerialUnits);
 }

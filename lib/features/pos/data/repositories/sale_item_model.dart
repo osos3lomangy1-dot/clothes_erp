@@ -17,6 +17,8 @@ class SaleItemModel extends SaleItemEntity {
     super.isReturn,
     super.kitchenNotes,
     super.modifiers,
+    super.imei,
+    super.deviceCondition,
   });
 
   @override
@@ -38,6 +40,8 @@ class SaleItemModel extends SaleItemEntity {
     String? kitchenNotes,
     bool clearKitchenNotes = false,
     List<String>? modifiers,
+    String? imei,
+    String? deviceCondition,
   }) {
     return SaleItemModel(
       variantId: variantId ?? this.variantId,
@@ -59,6 +63,8 @@ class SaleItemModel extends SaleItemEntity {
           ? null
           : (kitchenNotes ?? this.kitchenNotes),
       modifiers: modifiers ?? this.modifiers,
+      imei: imei ?? this.imei,
+      deviceCondition: deviceCondition ?? this.deviceCondition,
     );
   }
 

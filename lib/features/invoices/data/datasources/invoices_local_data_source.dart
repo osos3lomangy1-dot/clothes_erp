@@ -249,6 +249,8 @@ class InvoicesLocalDataSourceImpl implements InvoicesLocalDataSource {
           : const [],
       warrantyPeriod: warrantyPeriod,
       brandOrModel: brandOrModel,
+      imei: it.imei,
+      deviceCondition: it.deviceCondition,
     );
   }
 }

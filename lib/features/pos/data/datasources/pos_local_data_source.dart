@@ -151,9 +151,28 @@ class PosLocalDataSource {
             lineDiscount: Value(lineDiscount),
             promotionDiscountPiasters: Value(promoDiscount),
             lineTotal: lineTotal,
+            imei: Value(item['imei'] as String?),
+            deviceCondition: Value(item['deviceCondition'] as String?),
             createdAt: now,
           ));
+          final itemImei = (item['imei'] as String?)?.trim();
           final isReturn = (item['isReturn'] as bool?) ?? false;
+          if (itemImei != null && itemImei.isNotEmpty && !isReturn) {
+            await (_db.update(_db.deviceSerialUnits)
+                  ..where(
+                    (t) =>
+                        t.imei.equals(itemImei) &
+                        t.status.equals('in_stock') &
+                        t.deletedAt.isNull(),
+                  ))
+                .write(
+              DeviceSerialUnitsCompanion(
+                status: const Value('sold'),
+                saleId: Value(effectiveSaleId),
+                updatedAt: Value(now),
+              ),
+            );
+          }
           int effectiveIntDelta = isReturn ? qty : -qty;
           if (decimalQty != null && decimalQty > 0) {
             final decimalStockKey = 'stock_decimal_${item['variantId']}';

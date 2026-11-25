@@ -983,6 +983,14 @@ class ReceiptPdfService {
                   final bm = it.brandOrModel;
                   if (bm != null && bm.isNotEmpty) parts.add('موديل: $bm');
                   if (wp != null && wp.isNotEmpty) parts.add('ضمان: $wp');
+                  if (it.imei != null && it.imei!.isNotEmpty) {
+                    final cond = it.deviceCondition == 'used'
+                        ? 'مستعمل'
+                        : it.deviceCondition == 'refurbished'
+                            ? 'مجدد'
+                            : 'جديد';
+                    parts.add('IMEI: ${it.imei} ($cond)');
+                  }
                   if (parts.isEmpty) return <pw.Widget>[];
                   return [
                     pw.SizedBox(height: 1),
@@ -1045,6 +1053,8 @@ class ReceiptPdfService {
                 final desc = [
                   if (i.size.isNotEmpty && i.size != '-') i.size,
                   if (i.color.isNotEmpty && i.color != '-') i.color,
+                  if (i.imei != null && i.imei!.isNotEmpty)
+                    'IMEI: ${i.imei} (${i.deviceCondition == 'used' ? 'مستعمل' : i.deviceCondition == 'refurbished' ? 'مجدد' : 'جديد'})',
                 ].join(' ');
                 return '${_formatItemQty(i)}× ${desc.isNotEmpty ? desc : 'افتراضي'}';
               })
@@ -1271,6 +1281,8 @@ class ReceiptPdfService {
                 final desc = [
                   if (i.size.isNotEmpty && i.size != '-') i.size,
                   if (i.color.isNotEmpty && i.color != '-') i.color,
+                  if (i.imei != null && i.imei!.isNotEmpty)
+                    'IMEI: ${i.imei} (${i.deviceCondition == 'used' ? 'مستعمل' : i.deviceCondition == 'refurbished' ? 'مجدد' : 'جديد'})',
                 ].join(' ');
                 return '${_formatItemQty(i)}× ${desc.isNotEmpty ? desc : 'افتراضي'}';
               })

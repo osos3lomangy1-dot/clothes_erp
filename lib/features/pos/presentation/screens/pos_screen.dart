@@ -6,9 +6,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/retail_sector.dart';
+import '../../../../core/database/app_database.dart';
+import '../../../../core/database/branch_provider.dart';
+import '../../../../core/database/tx_writer.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/keyboard_focus_helper.dart';
 import '../../../../core/utils/money.dart';
+import '../../../inventory/data/services/device_serial_service.dart';
+import '../../../inventory/presentation/widgets/used_device_intake_dialog.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../../auth/presentation/widgets/manager_auth_dialog.dart';
@@ -39,8 +44,6 @@ import '../../../../core/services/shortcut_settings_service.dart';
 import '../../../../core/services/hotkey_strip_service.dart';
 import '../../../settings/presentation/widgets/shortcuts_config_dialog.dart';
 import '../../../../core/services/crash_logger_service.dart';
-import '../../../../core/database/app_database.dart';
-import '../../../../core/database/branch_provider.dart';
 import 'package:drift/drift.dart' show Value;
 import '../../../installments/domain/facades/installments_facade.dart';
 import '../../../invoices/data/services/receipt_settings_service.dart';
@@ -136,6 +139,7 @@ class _PosViewState extends State<_PosView> {
   InvoiceDetailsEntity? _lastCompletedInvoice;
   bool _deliveryEnabled = false;
   bool _preOrdersEnabled = false;
+  bool _mobileImeiEnabled = false;
   String _sectorMode = RetailSector.apparel;
   StreamSubscription? _featuresSub;
   StreamSubscription<String?>? _sectorSub;
@@ -183,6 +187,11 @@ class _PosViewState extends State<_PosView> {
           setState(() => _preOrdersEnabled = val);
         }
       });
+      gate.isEnabled(FeatureKeys.mobileImeiUsed).then((val) {
+        if (mounted && _mobileImeiEnabled != val) {
+          setState(() => _mobileImeiEnabled = val);
+        }
+      });
       _sectorSub = ActivitySettingsService.listenSectorMode(gate, (mode) {
         if (mounted && _sectorMode != mode) {
           setState(() => _sectorMode = mode);
@@ -191,10 +200,15 @@ class _PosViewState extends State<_PosView> {
       _featuresSub = gate.watchFeatures().listen((features) {
         final del = features[FeatureKeys.delivery] ?? false;
         final pre = features[FeatureKeys.preOrders] ?? false;
-        if (mounted && (_deliveryEnabled != del || _preOrdersEnabled != pre)) {
+        final imei = features[FeatureKeys.mobileImeiUsed] ?? false;
+        if (mounted &&
+            (_deliveryEnabled != del ||
+                _preOrdersEnabled != pre ||
+                _mobileImeiEnabled != imei)) {
           setState(() {
             _deliveryEnabled = del;
             _preOrdersEnabled = pre;
+            _mobileImeiEnabled = imei;
           });
         }
       });
@@ -439,6 +453,47 @@ class _PosViewState extends State<_PosView> {
         );
       },
     );
+  }
+
+  DeviceSerialService? _resolveSerialService() {
+    if (getIt.isRegistered<DeviceSerialService>()) {
+      return getIt<DeviceSerialService>();
+    }
+    if (!getIt.isRegistered<AppDatabase>()) return null;
+    final db = getIt<AppDatabase>();
+    final bp = getIt.isRegistered<BranchProvider>()
+        ? getIt<BranchProvider>()
+        : BranchProvider(db);
+    final tx = getIt.isRegistered<TxWriter>() ? getIt<TxWriter>() : TxWriter(db);
+    return DeviceSerialService(db, bp, tx);
+  }
+
+  Future<bool> _handleBarcodeOrImeiCode(String rawCode) async {
+    final code = rawCode.trim();
+    if (code.isEmpty) return false;
+    final posCubit = context.read<PosCubit>();
+    if (_mobileImeiEnabled) {
+      final serialSvc = _resolveSerialService();
+      if (serialSvc != null) {
+        final unit = await serialSvc.findInStockByImei(code);
+        if (unit != null && mounted) {
+          final variant = posCubit.getVariantById(unit.variantId);
+          if (variant != null) {
+            posCubit.addToCart(
+              variant,
+              1,
+              null,
+              const [],
+              0,
+              unit.imei,
+              unit.condition,
+            );
+            return true;
+          }
+        }
+      }
+    }
+    return posCubit.addByBarcode(code);
   }
 
   void _adjustLastCartItemQty(int delta) {
@@ -777,11 +832,12 @@ class _PosViewState extends State<_PosView> {
       _scannerBuffer.clear();
       if (code.isNotEmpty && code.length >= 3) {
         if (!_searchFocusNode.hasFocus) {
-          final added = context.read<PosCubit>().addByBarcode(code);
-          if (added) {
-            _searchFocusNode.requestFocus();
-            return true;
-          }
+          _handleBarcodeOrImeiCode(code).then((added) {
+            if (added && mounted) {
+              _searchFocusNode.requestFocus();
+            }
+          });
+          return true;
         }
       }
       return false;
@@ -1361,13 +1417,14 @@ class _PosViewState extends State<_PosView> {
                                   });
                                 }
                               },
-                              onSubmitted: (val) {
+                              onSubmitted: (val) async {
                                 _searchDebounceTimer?.cancel();
                                 if (val.trim().isNotEmpty) {
-                                  final added = context.read<PosCubit>().addByBarcode(val.trim());
-                                  if (added) {
+                                  final cubit = context.read<PosCubit>();
+                                  final added = await _handleBarcodeOrImeiCode(val.trim());
+                                  if (added && mounted) {
                                     _searchCtrl.clear();
-                                    context.read<PosCubit>().searchProducts('');
+                                    cubit.searchProducts('');
                                   }
                                 }
                               },
@@ -1386,6 +1443,37 @@ class _PosViewState extends State<_PosView> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            if (_mobileImeiEnabled) ...[
+                              OutlinedButton.icon(
+                                key: const Key('pos_trade_in_btn'),
+                                icon: Icon(Icons.swap_horiz_rounded, color: AppColors.primary, size: 18),
+                                label: const Text(
+                                  'استبدال (Trade-in)',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                ),
+                                onPressed: () async {
+                                  final res = await UsedDeviceIntakeDialog.show(
+                                    context,
+                                    isTradeInMode: true,
+                                  );
+                                  if (res != null && context.mounted) {
+                                    final cubit = context.read<PosCubit>();
+                                    final currentDiscount =
+                                        cubit.state.subtotal - cubit.state.total;
+                                    cubit.applyDiscount(
+                                      (currentDiscount + res.buyPricePiasters).round(),
+                                    );
+                                    AppFloatingToast.show(
+                                      context,
+                                      message:
+                                          'تم خصم قيمة استبدال (${res.imei}) بمبلغ ${Money(res.buyPricePiasters).toDisplay()} ج.م',
+                                      type: ToastType.success,
+                                    );
+                                  }
+                                },
+                              ),
+                              const SizedBox(width: 6),
+                            ],
                             // Quick Add Product Button
                             FilledButton.icon(
                               onPressed: () => _openQuickAddProduct(context),
@@ -2436,6 +2524,114 @@ class _ProductPanelState extends State<_ProductPanel> {
 // ---------------------------------------------------------------------------
 // PRODUCT CARD: INSTANT IN-CARD QUANTITY CONTROLS + VARIANT PICKER
 // ---------------------------------------------------------------------------
+Future<void> _addVariantWithOptionalImei(
+  BuildContext context,
+  PosCubit posCubit,
+  VariantEntity variant,
+) async {
+  bool imeiEnabled = false;
+  if (getIt.isRegistered<FeatureGate>()) {
+    try {
+      imeiEnabled =
+          await getIt<FeatureGate>().isEnabled(FeatureKeys.mobileImeiUsed);
+    } catch (_) {}
+  }
+  if (!imeiEnabled) {
+    posCubit.addToCart(variant, 1);
+    return;
+  }
+
+  DeviceSerialService? serialSvc;
+  if (getIt.isRegistered<DeviceSerialService>()) {
+    serialSvc = getIt<DeviceSerialService>();
+  } else if (getIt.isRegistered<AppDatabase>()) {
+    final db = getIt<AppDatabase>();
+    serialSvc = DeviceSerialService(
+      db,
+      getIt.isRegistered<BranchProvider>()
+          ? getIt<BranchProvider>()
+          : BranchProvider(db),
+      getIt.isRegistered<TxWriter>() ? getIt<TxWriter>() : TxWriter(db),
+    );
+  }
+
+  if (serialSvc == null) {
+    posCubit.addToCart(variant, 1);
+    return;
+  }
+
+  final units = await serialSvc.getInStockUnitsForVariant(variant.id);
+  final inCartImeis = posCubit.state.cart
+      .where((c) => !c.isReturn && c.imei != null)
+      .map((c) => c.imei!)
+      .toSet();
+  final available = units.where((u) => !inCartImeis.contains(u.imei)).toList();
+
+  if (available.isEmpty) {
+    // Zero-friction: accessories and non-serialized items add immediately
+    posCubit.addToCart(variant, 1);
+    return;
+  }
+
+  if (!context.mounted) return;
+  final selected = await showDialog<DeviceSerialUnit>(
+    context: context,
+    builder: (dlgCtx) => AlertDialog(
+      key: const Key('select_imei_dialog'),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      title: Text(
+        'اختر رقم السيريال / IMEI (${variant.productName})',
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+      ),
+      content: SizedBox(
+        width: 400,
+        child: ListView.separated(
+          shrinkWrap: true,
+          itemCount: available.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 6),
+          itemBuilder: (_, idx) {
+            final u = available[idx];
+            final cond = DeviceSerialService.conditionLabel(u.condition);
+            final bat = u.batteryHealth != null ? ' • بطارية ${u.batteryHealth}%' : '';
+            return ListTile(
+              key: Key('select_imei_option_${u.imei}'),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+                side: BorderSide(color: AppColors.outlineVariant),
+              ),
+              leading: Icon(Icons.qr_code_2_rounded, color: AppColors.primary),
+              title: Text(
+                u.imei,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text('$cond$bat'),
+              onTap: () => Navigator.of(dlgCtx).pop(u),
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dlgCtx).pop(),
+          child: const Text('إلغاء'),
+        ),
+      ],
+    ),
+  );
+
+  if (selected != null) {
+    posCubit.addToCart(
+      variant,
+      1,
+      null,
+      const [],
+      0,
+      selected.imei,
+      selected.condition,
+    );
+  }
+}
+
 class _ProductCard extends StatelessWidget {
   final VariantEntity variant;
   final String? categoryId;
@@ -2571,7 +2767,7 @@ class _ProductCard extends StatelessWidget {
                           variant.productId,
                         );
                       } else if (inCartQty < variant.quantity) {
-                        posCubit.addToCart(variant, 1);
+                        _addVariantWithOptionalImei(context, posCubit, variant);
                       }
                     },
               child: Container(
@@ -8985,6 +9181,28 @@ class _CartItemTileState extends State<_CartItemTile> {
                   runSpacing: 2,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
+                    if (item.imei != null && item.imei!.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'IMEI: ${item.imei} (${DeviceSerialService.conditionLabel(item.deviceCondition)})',
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
                     if (!(item.color == '-' && item.size == '-') &&
                         item.color.isNotEmpty &&
                         item.size.isNotEmpty) ...[

@@ -3,13 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/features/feature_gate.dart';
 import '../../../../core/utils/money.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../../auth/presentation/widgets/manager_auth_dialog.dart';
+import '../../../pos/domain/entities/sale_entity.dart';
 import '../../domain/entities/return_entity.dart';
+import '../../domain/entities/return_item_entity.dart';
 import '../cubits/returns_cubit.dart';
 import '../cubits/returns_state.dart';
 
@@ -26,17 +29,76 @@ class _ReturnScreenState extends State<ReturnScreen> {
   final _searchCtrl = TextEditingController();
   final _historySearchCtrl = TextEditingController();
   final _reasonCtrl = TextEditingController();
+  final _imeiVerifyCtrl = TextEditingController();
   final _dateFormat = DateFormat('yyyy/MM/dd - hh:mm a');
   String _historyQuery = '';
   Timer? _searchDebounce;
+  bool _mobileImeiEnabled = false;
 
   @override
   void initState() {
     super.initState();
+    _loadFeatureFlags();
     if (widget.initialInvoiceRef != null &&
         widget.initialInvoiceRef!.trim().isNotEmpty) {
       _searchCtrl.text = widget.initialInvoiceRef!.trim();
     }
+  }
+
+  Future<void> _loadFeatureFlags() async {
+    if (!getIt.isRegistered<FeatureGate>()) return;
+    final enabled = await getIt<FeatureGate>().isEnabled(FeatureKeys.mobileImeiUsed);
+    if (mounted && enabled != _mobileImeiEnabled) {
+      setState(() => _mobileImeiEnabled = enabled);
+    }
+  }
+
+  Future<bool> _verifyReturnedImeisIfNeeded(
+    SaleEntity sale,
+    List<ReturnItemEntity> returnItems,
+  ) async {
+    if (!_mobileImeiEnabled && getIt.isRegistered<FeatureGate>()) {
+      final enabled = await getIt<FeatureGate>().isEnabled(FeatureKeys.mobileImeiUsed);
+      if (!enabled) return true;
+    } else if (!_mobileImeiEnabled) {
+      return true;
+    }
+    if (!getIt.isRegistered<AppDatabase>()) return true;
+
+    final selectedSaleItemIds = returnItems
+        .where((i) => i.qty > 0 && i.saleItemId != null)
+        .map((i) => i.saleItemId!)
+        .toSet();
+    if (selectedSaleItemIds.isEmpty) return true;
+
+    final db = getIt<AppDatabase>();
+    final saleItems = await (db.select(db.saleItems)
+          ..where((t) => t.saleId.equals(sale.id)))
+        .get();
+    final soldImeis = saleItems
+        .where((si) =>
+            selectedSaleItemIds.contains(si.id) &&
+            si.imei != null &&
+            si.imei!.trim().isNotEmpty)
+        .map((si) => si.imei!.trim())
+        .toSet();
+    if (soldImeis.isEmpty) return true;
+
+    final enteredImei = _imeiVerifyCtrl.text.trim();
+    if (enteredImei.isEmpty || !soldImeis.contains(enteredImei)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'يرجى مسح أو إدخال رقم IMEI المطابق للجهاز المباع في الفاتورة',
+            ),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+      return false;
+    }
+    return true;
   }
 
   @override
@@ -45,6 +107,7 @@ class _ReturnScreenState extends State<ReturnScreen> {
     _searchCtrl.dispose();
     _historySearchCtrl.dispose();
     _reasonCtrl.dispose();
+    _imeiVerifyCtrl.dispose();
     super.dispose();
   }
 
@@ -545,6 +608,19 @@ class _ReturnScreenState extends State<ReturnScreen> {
                     ],
                   ),
                   const SizedBox(height: 14),
+                  if (_mobileImeiEnabled) ...[
+                    TextField(
+                      key: const Key('return_imei_verify_field'),
+                      controller: _imeiVerifyCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'تأكيد رقم IMEI للجهاز المرتجع (للأجهزة المتسلسلة)',
+                        prefixIcon: Icon(Icons.qr_code_scanner_rounded),
+                        border: OutlineInputBorder(),
+                        hintText: 'امسح أو أدخل رقم الـ IMEI لمطابقة الجهاز المباع',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   TextField(
                     controller: _reasonCtrl,
                     decoration: const InputDecoration(
@@ -561,6 +637,12 @@ class _ReturnScreenState extends State<ReturnScreen> {
                       onPressed: state.isProcessing || state.totalRefund == 0
                           ? null
                           : () async {
+                              final imeiValid = await _verifyReturnedImeisIfNeeded(
+                                sale,
+                                state.returnItems,
+                              );
+                              if (!imeiValid || !context.mounted) return;
+
                               String cashierId = 'cashier';
                               bool isCashier = false;
                               try {

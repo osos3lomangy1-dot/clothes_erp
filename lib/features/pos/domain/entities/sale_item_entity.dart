@@ -16,6 +16,8 @@ class SaleItemEntity extends Equatable {
   final bool isReturn;
   final String? kitchenNotes;
   final List<String> modifiers;
+  final String? imei;
+  final String? deviceCondition;
 
   const SaleItemEntity({
     required this.variantId,
@@ -33,6 +35,8 @@ class SaleItemEntity extends Equatable {
     this.isReturn = false,
     this.kitchenNotes,
     this.modifiers = const [],
+    this.imei,
+    this.deviceCondition,
   });
 
   double get effectiveQuantity =>
@@ -62,6 +66,8 @@ class SaleItemEntity extends Equatable {
     String? kitchenNotes,
     bool clearKitchenNotes = false,
     List<String>? modifiers,
+    String? imei,
+    String? deviceCondition,
   }) {
     return SaleItemEntity(
       variantId: variantId ?? this.variantId,
@@ -83,6 +89,8 @@ class SaleItemEntity extends Equatable {
           ? null
           : (kitchenNotes ?? this.kitchenNotes),
       modifiers: modifiers ?? this.modifiers,
+      imei: imei ?? this.imei,
+      deviceCondition: deviceCondition ?? this.deviceCondition,
     );
   }
 
@@ -109,5 +117,7 @@ class SaleItemEntity extends Equatable {
         isReturn,
         kitchenNotes,
         modifiers,
+        imei,
+        deviceCondition,
       ];
 }

@@ -125,6 +125,8 @@ import 'package:clothes_erp/features/inventory/data/repositories/inventory_log_r
     as _i284;
 import 'package:clothes_erp/features/inventory/data/repositories/inventory_repository_impl.dart'
     as _i351;
+import 'package:clothes_erp/features/inventory/data/services/device_serial_service.dart'
+    as _i880;
 import 'package:clothes_erp/features/inventory/domain/repositories/inventory_log_repository.dart'
     as _i861;
 import 'package:clothes_erp/features/inventory/domain/repositories/inventory_repository.dart'
@@ -237,6 +239,8 @@ import 'package:clothes_erp/features/reports/domain/repositories/reports_reposit
     as _i633;
 import 'package:clothes_erp/features/reports/domain/repositories/smart_inventory_repository.dart'
     as _i751;
+import 'package:clothes_erp/features/reports/domain/services/kitchen_waste_audit_service.dart'
+    as _i533;
 import 'package:clothes_erp/features/reports/domain/usecases/get_sales_report_usecase.dart'
     as _i957;
 import 'package:clothes_erp/features/reports/presentation/cubits/installments_report_cubit.dart'
@@ -310,6 +314,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i861.InventoryLogRepository>(
       () => _i284.InventoryLogRepositoryImpl(gh<_i110.AppDatabase>()),
+    );
+    gh.lazySingleton<_i533.KitchenWasteAuditService>(
+      () => _i533.KitchenWasteAuditService(gh<_i110.AppDatabase>()),
     );
     gh.factory<_i254.BranchProvider>(
       () => _i254.BranchProvider(gh<_i110.AppDatabase>()),
@@ -472,6 +479,13 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i898.InventoryRepository>(
       () =>
           _i351.InventoryRepositoryImpl(gh<_i1019.InventoryLocalDataSource>()),
+    );
+    gh.lazySingleton<_i880.DeviceSerialService>(
+      () => _i880.DeviceSerialService(
+        gh<_i110.AppDatabase>(),
+        gh<_i254.BranchProvider>(),
+        gh<_i874.TxWriter>(),
+      ),
     );
     gh.lazySingleton<_i971.PartnerRepository>(
       () => _i859.PartnerRepositoryImpl(

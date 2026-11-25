@@ -450,19 +450,29 @@ class PosCubit extends Cubit<PosState> {
     String? kitchenNotes,
     List<String> modifiers = const [],
     int extraUnitPrice = 0,
+    String? imei,
+    String? deviceCondition,
   ]) {
     if (quantity <= 0) return;
     final state = this.state;
+    final cleanImei = imei != null && imei.trim().isNotEmpty ? imei.trim() : null;
+    if (cleanImei != null &&
+        state.cart.any((it) => !it.isReturn && it.imei == cleanImei)) {
+      return;
+    }
     final cleanNotes = (kitchenNotes != null && kitchenNotes.trim().isNotEmpty)
         ? kitchenNotes.trim()
         : null;
     final targetPrice = variant.salePrice + extraUnitPrice;
-    final existingIndex = state.cart.indexWhere((item) =>
-        item.variantId == variant.id &&
-        !item.isReturn &&
-        item.price == targetPrice &&
-        (item.kitchenNotes ?? '') == (cleanNotes ?? '') &&
-        _modifiersEqual(item.modifiers, modifiers));
+    final existingIndex = cleanImei != null
+        ? -1
+        : state.cart.indexWhere((item) =>
+            item.variantId == variant.id &&
+            !item.isReturn &&
+            item.imei == null &&
+            item.price == targetPrice &&
+            (item.kitchenNotes ?? '') == (cleanNotes ?? '') &&
+            _modifiersEqual(item.modifiers, modifiers));
     List<SaleItemEntity> newCart;
     if (existingIndex >= 0) {
       final existing = state.cart[existingIndex];
@@ -478,9 +488,11 @@ class PosCubit extends Cubit<PosState> {
         size: variant.size,
         color: variant.color,
         price: targetPrice,
-        quantity: quantity,
+        quantity: cleanImei != null ? 1 : quantity,
         kitchenNotes: cleanNotes,
         modifiers: modifiers,
+        imei: cleanImei,
+        deviceCondition: deviceCondition,
       );
       newCart = [...state.cart, newItem];
     }

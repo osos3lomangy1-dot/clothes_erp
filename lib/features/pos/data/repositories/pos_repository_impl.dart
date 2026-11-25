@@ -34,6 +34,8 @@ class PosRepositoryImpl implements PosRepository {
         'discount': i.discount,
         'promotionDiscount': i.promotionDiscount,
         'isReturn': i.isReturn,
+        'imei': i.imei,
+        'deviceCondition': i.deviceCondition,
       }).toList();
       final createdId = await _localDataSource.checkout(
         items: items,
