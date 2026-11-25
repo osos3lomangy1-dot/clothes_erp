@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/retail_sector.dart';
@@ -31,7 +31,12 @@ import 'product_form_screen.dart';
 import '../../../settings/data/services/activity_settings_service.dart';
 
 class ProductListScreen extends StatelessWidget {
-  const ProductListScreen({super.key});
+  final bool openAddOnLaunch;
+
+  const ProductListScreen({
+    super.key,
+    this.openAddOnLaunch = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -40,13 +45,15 @@ class ProductListScreen extends StatelessWidget {
         BlocProvider(create: (_) => getIt<ProductCubit>()..getProducts()),
         BlocProvider(create: (_) => getIt<CategoryCubit>()..getCategories()),
       ],
-      child: const _ProductsAndCategoriesView(),
+      child: _ProductsAndCategoriesView(openAddOnLaunch: openAddOnLaunch),
     );
   }
 }
 
 class _ProductsAndCategoriesView extends StatefulWidget {
-  const _ProductsAndCategoriesView();
+  final bool openAddOnLaunch;
+
+  const _ProductsAndCategoriesView({this.openAddOnLaunch = false});
 
   @override
   State<_ProductsAndCategoriesView> createState() =>
@@ -58,6 +65,8 @@ enum CulinaryFilterTab { all, meals, rawMaterials }
 class _ProductsAndCategoriesViewState
     extends State<_ProductsAndCategoriesView> {
   final TextEditingController _searchCtrl = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  bool _didTriggerLaunchAdd = false;
   String _searchQuery = '';
   String? _selectedCategoryId;
   String? _selectedCategoryName;
@@ -81,6 +90,7 @@ class _ProductsAndCategoriesViewState
   @override
   void initState() {
     super.initState();
+    _triggerLaunchAddIfNeeded();
     if (getIt.isRegistered<FeatureGate>()) {
       _sectorSub = ActivitySettingsService.listenSectorMode(
         getIt<FeatureGate>(),
@@ -101,11 +111,42 @@ class _ProductsAndCategoriesViewState
     }
   }
 
+  void _triggerLaunchAddIfNeeded() {
+    if (!widget.openAddOnLaunch || _didTriggerLaunchAdd) return;
+    if (!getIt.isRegistered<FeatureGate>()) {
+      _didTriggerLaunchAdd = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openAddProductDialog(context);
+      });
+      return;
+    }
+    getIt<FeatureGate>().getMeta(RetailSector.metaKey).then((val) {
+      if (!mounted || _didTriggerLaunchAdd) return;
+      _didTriggerLaunchAdd = true;
+      if (val != null && val.isNotEmpty) {
+        setState(() => _sectorMode = val);
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openAddProductDialog(context);
+      });
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _ProductsAndCategoriesView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.openAddOnLaunch && !oldWidget.openAddOnLaunch) {
+      _didTriggerLaunchAdd = false;
+      _triggerLaunchAddIfNeeded();
+    }
+  }
+
   @override
   void dispose() {
     _activitySub?.cancel();
     _sectorSub?.cancel();
     _searchCtrl.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -576,7 +617,20 @@ class _ProductsAndCategoriesViewState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyN, control: true): () =>
+            _openAddProductDialog(context),
+        const SingleActivator(LogicalKeyboardKey.f3): () =>
+            _openAddProductDialog(context),
+        const SingleActivator(LogicalKeyboardKey.f2): () =>
+            _searchFocusNode.requestFocus(),
+        const SingleActivator(LogicalKeyboardKey.keyF, control: true): () =>
+            _searchFocusNode.requestFocus(),
+      },
+      child: Focus(
+        autofocus: true,
+        child: Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -804,6 +858,8 @@ class _ProductsAndCategoriesViewState
           );
         },
       ),
+    ),
+    ),
     );
   }
 
@@ -1197,7 +1253,9 @@ class _ProductsAndCategoriesViewState
                 children: [
                   Expanded(
                     child: TextField(
+                      key: const Key('product_list_search_field'),
                       controller: _searchCtrl,
+                      focusNode: _searchFocusNode,
                       onChanged: (val) => setState(() => _searchQuery = val),
                       decoration: InputDecoration(
                         hintText: _selectedCategoryName != null

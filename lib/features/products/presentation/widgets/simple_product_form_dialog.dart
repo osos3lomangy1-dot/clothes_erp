@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_colors.dart';
@@ -81,6 +82,16 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
   late TextEditingController _qtyCtrl;
   late TextEditingController _minStockCtrl;
   late TextEditingController _descCtrl;
+
+  final FocusNode _nameFocus = FocusNode();
+  final FocusNode _barcodeFocus = FocusNode();
+  final FocusNode _costFocus = FocusNode();
+  final FocusNode _sellFocus = FocusNode();
+  final FocusNode _wholesaleFocus = FocusNode();
+  final FocusNode _qtyFocus = FocusNode();
+  final FocusNode _minStockFocus = FocusNode();
+  final FocusNode _descFocus = FocusNode();
+  List<CategoryEntity> _lastCategories = const [];
 
   String? _selectedCategoryId;
   String? _existingVariantId;
@@ -258,6 +269,14 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
     _qtyCtrl.dispose();
     _minStockCtrl.dispose();
     _descCtrl.dispose();
+    _nameFocus.dispose();
+    _barcodeFocus.dispose();
+    _costFocus.dispose();
+    _sellFocus.dispose();
+    _wholesaleFocus.dispose();
+    _qtyFocus.dispose();
+    _minStockFocus.dispose();
+    _descFocus.dispose();
     _ingredientsCtrl.dispose();
     _caloriesCtrl.dispose();
     _prepTimeCtrl.dispose();
@@ -540,8 +559,21 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
         }
 
         final categories = state.categories;
+        _lastCategories = categories;
 
-        return Form(
+        return CallbackShortcuts(
+          bindings: {
+            const SingleActivator(LogicalKeyboardKey.keyS, control: true): () {
+              if (!_isSaving) _handleSave(_lastCategories);
+            },
+            const SingleActivator(LogicalKeyboardKey.f12): () {
+              if (!_isSaving) _handleSave(_lastCategories);
+            },
+            const SingleActivator(LogicalKeyboardKey.escape): () {
+              if (!_isSaving) Navigator.of(context).pop();
+            },
+          },
+          child: Form(
           key: _formKey,
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -722,6 +754,10 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
                             flex: 3,
                             child: TextFormField(
                               controller: _nameCtrl,
+                              focusNode: _nameFocus,
+                              autofocus: true,
+                              textInputAction: TextInputAction.next,
+                              onFieldSubmitted: (_) => _barcodeFocus.requestFocus(),
                               decoration: InputDecoration(
                                 labelText: 'اسم الصنف / المنتج *',
                                 hintText: _activityType == ActivityType.restaurantsCafes
@@ -749,6 +785,9 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
                             flex: 2,
                             child: TextFormField(
                               controller: _barcodeCtrl,
+                              focusNode: _barcodeFocus,
+                              textInputAction: TextInputAction.next,
+                              onFieldSubmitted: (_) => _costFocus.requestFocus(),
                               decoration: InputDecoration(
                                 labelText: _activityType == ActivityType.restaurantsCafes
                                     ? 'الباركود / الكود (SKU) (اختياري)'
@@ -1117,6 +1156,9 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
                           Expanded(
                             child: TextFormField(
                               controller: _costCtrl,
+                              focusNode: _costFocus,
+                              textInputAction: TextInputAction.next,
+                              onFieldSubmitted: (_) => _sellFocus.requestFocus(),
                               keyboardType:
                                   const TextInputType.numberWithOptions(decimal: true),
                               decoration: InputDecoration(
@@ -1140,6 +1182,9 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
                           Expanded(
                             child: TextFormField(
                               controller: _sellCtrl,
+                              focusNode: _sellFocus,
+                              textInputAction: TextInputAction.next,
+                              onFieldSubmitted: (_) => _wholesaleFocus.requestFocus(),
                               keyboardType:
                                   const TextInputType.numberWithOptions(decimal: true),
                               decoration: InputDecoration(
@@ -1163,6 +1208,9 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
                           Expanded(
                             child: TextFormField(
                               controller: _wholesaleCtrl,
+                              focusNode: _wholesaleFocus,
+                              textInputAction: TextInputAction.next,
+                              onFieldSubmitted: (_) => _qtyFocus.requestFocus(),
                               keyboardType:
                                   const TextInputType.numberWithOptions(decimal: true),
                               decoration: InputDecoration(
@@ -1185,6 +1233,9 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
                           Expanded(
                             child: TextFormField(
                               controller: _qtyCtrl,
+                              focusNode: _qtyFocus,
+                              textInputAction: TextInputAction.next,
+                              onFieldSubmitted: (_) => _minStockFocus.requestFocus(),
                               keyboardType: TextInputType.number,
                               decoration: InputDecoration(
                                 labelText: isEdit
@@ -1207,6 +1258,9 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
                           Expanded(
                             child: TextFormField(
                               controller: _minStockCtrl,
+                              focusNode: _minStockFocus,
+                              textInputAction: TextInputAction.next,
+                              onFieldSubmitted: (_) => _descFocus.requestFocus(),
                               keyboardType: TextInputType.number,
                               decoration: InputDecoration(
                                 labelText: 'حد الأمان / الطلب *',
@@ -1232,7 +1286,13 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
                       // Description
                       TextFormField(
                         controller: _descCtrl,
+                        focusNode: _descFocus,
                         maxLines: 2,
+                        keyboardType: TextInputType.text,
+                        textInputAction: TextInputAction.done,
+                        onFieldSubmitted: (_) {
+                          if (!_isSaving) _handleSave(categories);
+                        },
                         decoration: InputDecoration(
                           labelText: 'ملاحظات / وصف إضافي (اختياري)',
                           prefixIcon: const Icon(Icons.notes_rounded),
@@ -1294,6 +1354,7 @@ class _SimpleProductFormInternalState extends State<_SimpleProductFormInternal> 
               ),
             ],
           ),
+        ),
         );
       },
     );

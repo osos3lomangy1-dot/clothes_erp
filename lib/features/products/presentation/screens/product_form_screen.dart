@@ -1551,10 +1551,14 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  Wrap(
+                                    alignment: WrapAlignment.spaceBetween,
+                                    crossAxisAlignment: WrapCrossAlignment.center,
+                                    spacing: 12,
+                                    runSpacing: 8,
                                     children: [
                                       Row(
+                                        mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Icon(Icons.table_chart_outlined, color: AppColors.primary, size: 20),
                                           const SizedBox(width: 8),
@@ -1564,7 +1568,10 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                           ),
                                         ],
                                       ),
-                                      Row(
+                                      Wrap(
+                                        spacing: 8,
+                                        runSpacing: 8,
+                                        crossAxisAlignment: WrapCrossAlignment.center,
                                         children: [
                                           OutlinedButton.icon(
                                             style: OutlinedButton.styleFrom(
@@ -1585,8 +1592,7 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                             ),
                                             onPressed: () => _loadStandardSizes(state.activityTypeEnum),
                                           ),
-                                          if (state.activityTypeEnum.supportsCutToLength || state.activityTypeEnum == ActivityType.textilesDecor) ...[
-                                            const SizedBox(width: 8),
+                                          if (state.activityTypeEnum.supportsCutToLength || state.activityTypeEnum == ActivityType.textilesDecor)
                                             OutlinedButton.icon(
                                               key: const Key('generate_custom_dimension_btn'),
                                               style: OutlinedButton.styleFrom(
@@ -1596,8 +1602,6 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                               label: const Text('توليد مقاس مخصص', style: TextStyle(fontSize: 12)),
                                               onPressed: _openCustomDimensionDialog,
                                             ),
-                                          ],
-                                          const SizedBox(width: 8),
                                           ElevatedButton.icon(
                                             style: ElevatedButton.styleFrom(
                                               backgroundColor: AppColors.surfaceContainer,

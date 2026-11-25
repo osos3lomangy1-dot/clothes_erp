@@ -41,6 +41,7 @@ import '../../features/auth/domain/models/cashier_permissions_config.dart';
 import '../../features/auth/services/cashier_permissions_service.dart';
 import '../../features/products/presentation/screens/product_list_screen.dart';
 import '../../features/promotions/presentation/screens/promotions_screen.dart';
+import '../../features/purchases/presentation/screens/create_purchase_screen.dart';
 import '../../features/purchases/presentation/screens/purchases_screen.dart';
 import '../../features/reports/presentation/screens/reports_screen.dart';
 import '../../features/returns/presentation/screens/return_screen.dart';
@@ -78,6 +79,8 @@ class _MainLayoutState extends State<MainLayout> {
   String _sectorMode = RetailSector.apparel;
   StreamSubscription<String?>? _sectorModeSub;
   StreamSubscription<List<ActivityType>>? _activitySub;
+  StreamSubscription<Map<String, bool>>? _featuresSub;
+  Map<String, bool> _latestFeatures = const {};
 
   bool get _isHospitality {
     if (RetailSector.isHospitalityMode(_sectorMode)) return true;
@@ -110,6 +113,11 @@ class _MainLayoutState extends State<MainLayout> {
     final featureGate = getIt.isRegistered<FeatureGate>() ? getIt<FeatureGate>() : null;
 
     if (featureGate != null) {
+      _featuresSub = featureGate.watchFeatures().listen((features) {
+        if (mounted) {
+          _latestFeatures = features;
+        }
+      });
       featureGate.getMeta(RetailSector.metaKey).then((val) {
         if (val != null && mounted) {
           setState(() {
@@ -191,6 +199,7 @@ class _MainLayoutState extends State<MainLayout> {
     HardwareKeyboard.instance.removeHandler(_handleGlobalHardwareKeys);
     _activitySub?.cancel();
     _sectorModeSub?.cancel();
+    _featuresSub?.cancel();
     _activeInstallmentsSub?.cancel();
     _cloudSyncSub?.cancel();
     _syncSubscription?.cancel();
@@ -224,6 +233,12 @@ class _MainLayoutState extends State<MainLayout> {
 
     final posActivator = svc?.getActivator('openPos') ??
         const SingleActivator(LogicalKeyboardKey.keyP, alt: true);
+    final addProductActivator = svc?.getActivator('openAddProduct') ??
+        const SingleActivator(LogicalKeyboardKey.keyA, alt: true);
+    final blindReceiveActivator = svc?.getActivator('openBlindReceive') ??
+        const SingleActivator(LogicalKeyboardKey.keyR, alt: true);
+    final createPurchaseActivator = svc?.getActivator('openCreatePurchase') ??
+        const SingleActivator(LogicalKeyboardKey.keyB, alt: true);
     final shortcutsActivator = svc?.getActivator('openShortcuts') ??
         const SingleActivator(LogicalKeyboardKey.f1);
 
@@ -241,11 +256,108 @@ class _MainLayoutState extends State<MainLayout> {
       return true;
     }
 
+    // 4. Jump to Add Product Dialog (Alt + A by default)
+    if (addProductActivator.accepts(event, HardwareKeyboard.instance) ||
+        (isAlt && !isCtrl && key == LogicalKeyboardKey.keyA)) {
+      if (_canOpenAddProduct()) {
+        _openAddProductShortcut();
+        return true;
+      }
+      return false;
+    }
+
+    // 5. Jump to Blind Receive Screen (Alt + R by default)
+    if (blindReceiveActivator.accepts(event, HardwareKeyboard.instance) ||
+        (isAlt && !isCtrl && key == LogicalKeyboardKey.keyR)) {
+      if (_canOpenBlindReceive()) {
+        _openBlindReceiveShortcut();
+        return true;
+      }
+      return false;
+    }
+
+    // 6. Jump to Create Purchase Screen (Alt + B by default)
+    if (createPurchaseActivator.accepts(event, HardwareKeyboard.instance) ||
+        (isAlt && !isCtrl && key == LogicalKeyboardKey.keyB)) {
+      if (_canOpenCreatePurchase()) {
+        _openCreatePurchaseShortcut();
+        return true;
+      }
+      return false;
+    }
+
     return false;
+  }
+
+  bool _safeIsAdmin() {
+    try {
+      return _isAdmin(context.read<AuthCubit>().state);
+    } catch (_) {
+      return true;
+    }
+  }
+
+  bool _canOpenAddProduct() {
+    return _safeIsAdmin() &&
+        _featureEnabled(_latestFeatures, FeatureKeys.inventory);
+  }
+
+  bool _canOpenBlindReceive() {
+    final isAdmin = _safeIsAdmin();
+    final cashierPerms = CashierPermissionsService.current;
+    return (isAdmin || cashierPerms.allowGoodsIntake) && !_isHospitality;
+  }
+
+  bool _canOpenCreatePurchase() {
+    final isAdmin = _safeIsAdmin();
+    final cashierPerms = CashierPermissionsService.current;
+    return (isAdmin || cashierPerms.allowViewPurchases) &&
+        _featureEnabled(_latestFeatures, FeatureKeys.purchases) &&
+        _featureEnabled(_latestFeatures, FeatureKeys.suppliers);
   }
 
   void _openPos() {
     _handleItemTap(_posTitle, const PosScreen(), true, null);
+  }
+
+  void _openAddProductShortcut() {
+    if (!_canOpenAddProduct()) return;
+    _handleItemTap(
+      'المنتجات والتصنيفات',
+      ProductListScreen(
+        key: ValueKey('products_quick_add_${DateTime.now().microsecondsSinceEpoch}'),
+        openAddOnLaunch: true,
+      ),
+      false,
+      null,
+    );
+  }
+
+  void _openBlindReceiveShortcut() {
+    if (!_canOpenBlindReceive()) return;
+    _handleItemTap(
+      'استلام بضاعة (شحنة جديدة)',
+      const BlindReceiveScreen(),
+      false,
+      null,
+    );
+  }
+
+  void _openCreatePurchaseShortcut() {
+    if (!_canOpenCreatePurchase()) return;
+    _handleItemTap(
+      'فاتورة مشتريات جديدة',
+      CreatePurchaseScreen(
+        onBack: () => _handleItemTap(
+          'المشتريات والموردين',
+          const PurchasesScreen(),
+          false,
+          null,
+        ),
+      ),
+      false,
+      null,
+    );
   }
 
   Future<void> _handleSync() async {
@@ -335,6 +447,9 @@ class _MainLayoutState extends State<MainLayout> {
       builder: (context, branding, _) {
         final svc = getIt.isRegistered<ShortcutSettingsService>() ? getIt<ShortcutSettingsService>() : null;
         final posAct = svc?.getActivator('openPos') ?? const SingleActivator(LogicalKeyboardKey.keyP, alt: true);
+        final addProductAct = svc?.getActivator('openAddProduct') ?? const SingleActivator(LogicalKeyboardKey.keyA, alt: true);
+        final blindReceiveAct = svc?.getActivator('openBlindReceive') ?? const SingleActivator(LogicalKeyboardKey.keyR, alt: true);
+        final createPurchaseAct = svc?.getActivator('openCreatePurchase') ?? const SingleActivator(LogicalKeyboardKey.keyB, alt: true);
         final shortcutsAct = svc?.getActivator('openShortcuts') ?? const SingleActivator(LogicalKeyboardKey.f1);
         final cmdAct = svc?.getActivator('openCommandPalette') ?? const SingleActivator(LogicalKeyboardKey.keyK, control: true);
 
@@ -343,6 +458,9 @@ class _MainLayoutState extends State<MainLayout> {
             cmdAct: _openCommandPalette,
             shortcutsAct: _openShortcutsGuide,
             posAct: _openPos,
+            if (_canOpenAddProduct()) addProductAct: _openAddProductShortcut,
+            if (_canOpenBlindReceive()) blindReceiveAct: _openBlindReceiveShortcut,
+            if (_canOpenCreatePurchase()) createPurchaseAct: _openCreatePurchaseShortcut,
           },
           child: Focus(
             autofocus: true,
@@ -1362,14 +1480,14 @@ class _MainLayoutState extends State<MainLayout> {
         subtitle: 'طلبات التوصيل ومتابعة الكباتن',
         onSelect: () => _handleItemTap('إدارة الدليفري والطيارين', const DeliveryOrdersScreen(), false, null),
       ),
-      if (!_isHospitality)
+      if (!_isHospitality && _canOpenBlindReceive())
         CommandPaletteItem(
           id: 'nav_blind_receive',
           title: 'استلام بضاعة (شحنة جديدة)',
           category: 'شاشات النظام',
           icon: Icons.move_to_inbox_rounded,
-          subtitle: 'فحص الباركود واستلام الشحنات وتحديث المخزون',
-          onSelect: () => _handleItemTap('استلام بضاعة (شحنة جديدة)', const BlindReceiveScreen(), false, null),
+          subtitle: 'فحص الباركود واستلام الشحنات وتحديث المخزون [Alt+R]',
+          onSelect: _openBlindReceiveShortcut,
         ),
       if (isAdmin) ...[
         CommandPaletteItem(
@@ -1407,14 +1525,33 @@ class _MainLayoutState extends State<MainLayout> {
       ],
 
       // Quick Actions
-      CommandPaletteItem(
-        id: 'act_add_product',
-        title: 'إضافة منتج جديد وسريع',
-        category: 'إجراءات سريعة',
-        icon: Icons.add_business_rounded,
-        subtitle: 'تسجيل صنف ومقاساته مباشرة في النظام',
-        onSelect: () => _handleItemTap('المنتجات والتصنيفات', const ProductListScreen(), false, null),
-      ),
+      if (_canOpenAddProduct())
+        CommandPaletteItem(
+          id: 'act_add_product',
+          title: 'إضافة منتج جديد وسريع',
+          category: 'إجراءات سريعة',
+          icon: Icons.add_business_rounded,
+          subtitle: 'تسجيل صنف ومقاساته مباشرة في النظام [Alt+A]',
+          onSelect: _openAddProductShortcut,
+        ),
+      if (_canOpenCreatePurchase())
+        CommandPaletteItem(
+          id: 'act_create_purchase',
+          title: 'إنشاء فاتورة مشتريات جديدة',
+          category: 'إجراءات سريعة',
+          icon: Icons.add_shopping_cart_rounded,
+          subtitle: 'فتح شاشة فاتورة شراء مورد جديدة [Alt+B]',
+          onSelect: _openCreatePurchaseShortcut,
+        ),
+      if (_canOpenBlindReceive())
+        CommandPaletteItem(
+          id: 'act_blind_receive',
+          title: 'استلام بضاعة / شحنة جديدة',
+          category: 'إجراءات سريعة',
+          icon: Icons.qr_code_scanner_rounded,
+          subtitle: 'فتح شاشة استلام الشحنة والباركود [Alt+R]',
+          onSelect: _openBlindReceiveShortcut,
+        ),
       CommandPaletteItem(
         id: 'act_quick_expense',
         title: 'تسجيل حركة درج / مصروف نثري',
@@ -1573,27 +1710,36 @@ class _MainLayoutState extends State<MainLayout> {
   Widget _buildContextualHotkeyStrip() {
     final title = _activeTitle.toLowerCase();
     final bool isStocktake = title.contains('جرد');
+    final bool isBlindReceive =
+        title.contains('استلام بضاعة') || title.contains('شحنة جديدة');
     final bool isProducts = !isStocktake &&
+        !isBlindReceive &&
         (title.contains('منتجات') ||
             title.contains('تصنيفات') ||
             title.contains('مخزون') ||
             title.contains('بضاعة'));
-    final bool isDelivery = title.contains('دليفري') ||
-        title.contains('توصيل') ||
-        title.contains('طيار') ||
-        title.contains('شحن');
-    final bool isPurchases =
-        title.contains('مشتريات') || title.contains('مورد');
+    final bool isDelivery = !isBlindReceive &&
+        (title.contains('دليفري') ||
+            title.contains('توصيل') ||
+            title.contains('طيار') ||
+            title.contains('شحن'));
+    final bool isCreatePurchase = title.contains('فاتورة مشتريات');
+    final bool isPurchases = !isCreatePurchase &&
+        (title.contains('مشتريات') || title.contains('مورد'));
 
     final String stripKey = isStocktake
         ? 'contextual_hotkey_strip_stocktake'
-        : isProducts
-            ? 'contextual_hotkey_strip_products'
-            : isDelivery
-                ? 'contextual_hotkey_strip_delivery'
-                : isPurchases
-                    ? 'contextual_hotkey_strip_purchases'
-                    : 'contextual_hotkey_strip_general';
+        : isBlindReceive
+            ? 'contextual_hotkey_strip_blind_receive'
+            : isProducts
+                ? 'contextual_hotkey_strip_products'
+                : isDelivery
+                    ? 'contextual_hotkey_strip_delivery'
+                    : isCreatePurchase
+                        ? 'contextual_hotkey_strip_create_purchase'
+                        : isPurchases
+                            ? 'contextual_hotkey_strip_purchases'
+                            : 'contextual_hotkey_strip_general';
 
     final List<_ContextualHotkeyItem> items;
     if (isStocktake) {
@@ -1606,6 +1752,36 @@ class _MainLayoutState extends State<MainLayout> {
         ),
         _ContextualHotkeyItem(
           key: 'hotkey_stocktake_shortcuts',
+          label: 'F1 اختصارات',
+          icon: Icons.keyboard_rounded,
+          onTap: _openShortcutsGuide,
+        ),
+      ];
+    } else if (isBlindReceive) {
+      items = [
+        const _ContextualHotkeyItem(
+          key: 'hotkey_blind_receive_search',
+          label: 'F2 تركيز الباركود',
+          icon: Icons.qr_code_scanner_rounded,
+        ),
+        const _ContextualHotkeyItem(
+          key: 'hotkey_blind_receive_quick_add',
+          label: 'F3 صنف سريع',
+          icon: Icons.add_box_rounded,
+        ),
+        const _ContextualHotkeyItem(
+          key: 'hotkey_blind_receive_save',
+          label: 'Ctrl+S / F12 حفظ واستلام',
+          icon: Icons.save_rounded,
+        ),
+        _ContextualHotkeyItem(
+          key: 'hotkey_blind_receive_palette',
+          label: 'Ctrl+K لوحة الأوامر',
+          icon: Icons.terminal_rounded,
+          onTap: _openCommandPalette,
+        ),
+        _ContextualHotkeyItem(
+          key: 'hotkey_blind_receive_shortcuts',
           label: 'F1 اختصارات',
           icon: Icons.keyboard_rounded,
           onTap: _openShortcutsGuide,
@@ -1633,6 +1809,16 @@ class _MainLayoutState extends State<MainLayout> {
         ];
       } else {
         items = [
+          const _ContextualHotkeyItem(
+            key: 'hotkey_products_add',
+            label: 'Ctrl+N / F3 صنف جديد',
+            icon: Icons.add_box_rounded,
+          ),
+          const _ContextualHotkeyItem(
+            key: 'hotkey_products_search',
+            label: 'F2 / Ctrl+F بحث',
+            icon: Icons.search_rounded,
+          ),
           _ContextualHotkeyItem(
             key: 'hotkey_products_palette',
             label: 'Ctrl+K لوحة الأوامر',
@@ -1662,8 +1848,50 @@ class _MainLayoutState extends State<MainLayout> {
           onTap: _openShortcutsGuide,
         ),
       ];
+    } else if (isCreatePurchase) {
+      items = [
+        const _ContextualHotkeyItem(
+          key: 'hotkey_create_purchase_supplier',
+          label: 'F2 المورد',
+          icon: Icons.storefront_rounded,
+        ),
+        const _ContextualHotkeyItem(
+          key: 'hotkey_create_purchase_quick_add',
+          label: 'F3 إضافة صنف',
+          icon: Icons.add_circle_outline_rounded,
+        ),
+        const _ContextualHotkeyItem(
+          key: 'hotkey_create_purchase_save',
+          label: 'Ctrl+S / F12 حفظ الفاتورة',
+          icon: Icons.save_rounded,
+        ),
+        _ContextualHotkeyItem(
+          key: 'hotkey_create_purchase_palette',
+          label: 'Ctrl+K لوحة الأوامر',
+          icon: Icons.terminal_rounded,
+          onTap: _openCommandPalette,
+        ),
+        _ContextualHotkeyItem(
+          key: 'hotkey_create_purchase_shortcuts',
+          label: 'F1 اختصارات',
+          icon: Icons.keyboard_rounded,
+          onTap: _openShortcutsGuide,
+        ),
+      ];
     } else if (isPurchases) {
       items = [
+        const _ContextualHotkeyItem(
+          key: 'hotkey_purchases_new',
+          label: 'Ctrl+N / F3 فاتورة جديدة',
+          icon: Icons.add_shopping_cart_rounded,
+        ),
+        if (_canOpenBlindReceive())
+          _ContextualHotkeyItem(
+            key: 'hotkey_purchases_alt_r',
+            label: 'Alt+R استلام شحنة',
+            icon: Icons.move_to_inbox_rounded,
+            onTap: _openBlindReceiveShortcut,
+          ),
         _ContextualHotkeyItem(
           key: 'hotkey_purchases_palette',
           label: 'Ctrl+K لوحة الأوامر',
@@ -1679,6 +1907,27 @@ class _MainLayoutState extends State<MainLayout> {
       ];
     } else {
       items = [
+        if (_canOpenAddProduct())
+          _ContextualHotkeyItem(
+            key: 'hotkey_general_alt_a',
+            label: 'Alt+A إضافة صنف',
+            icon: Icons.add_box_rounded,
+            onTap: _openAddProductShortcut,
+          ),
+        if (_canOpenBlindReceive())
+          _ContextualHotkeyItem(
+            key: 'hotkey_general_alt_r',
+            label: 'Alt+R استلام شحنة',
+            icon: Icons.move_to_inbox_rounded,
+            onTap: _openBlindReceiveShortcut,
+          ),
+        if (_canOpenCreatePurchase())
+          _ContextualHotkeyItem(
+            key: 'hotkey_general_alt_b',
+            label: 'Alt+B فاتورة شراء',
+            icon: Icons.add_shopping_cart_rounded,
+            onTap: _openCreatePurchaseShortcut,
+          ),
         _ContextualHotkeyItem(
           key: 'hotkey_general_palette',
           label: 'Ctrl+K لوحة الأوامر العامة',

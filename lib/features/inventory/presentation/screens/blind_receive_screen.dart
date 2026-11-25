@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -1081,7 +1082,26 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
     final isCashier =
         authState is AuthAuthenticated && authState.user.role == 'cashier';
 
-    return Scaffold(
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.f2): () =>
+            _barcodeFocusNode.requestFocus(),
+        const SingleActivator(LogicalKeyboardKey.f3):
+            _openQuickAddVariantDialog,
+        const SingleActivator(LogicalKeyboardKey.keyS, control: true): () {
+          if (!_isSaving && _totalItemsCount > 0) {
+            _saveReceipt();
+          }
+        },
+        const SingleActivator(LogicalKeyboardKey.f12): () {
+          if (!_isSaving && _totalItemsCount > 0) {
+            _saveReceipt();
+          }
+        },
+      },
+      child: Focus(
+        autofocus: true,
+        child: Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -1435,6 +1455,8 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
           ],
         ),
       ),
+    ),
+    ),
     );
   }
 }

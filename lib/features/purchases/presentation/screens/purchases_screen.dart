@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/retail_sector.dart';
@@ -398,7 +399,15 @@ class _PurchasesViewState extends State<_PurchasesView> with TickerProviderState
       );
     }
 
-    return Scaffold(
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyN, control: true):
+            _openCreatePurchase,
+        const SingleActivator(LogicalKeyboardKey.f3): _openCreatePurchase,
+      },
+      child: Focus(
+        autofocus: true,
+        child: Scaffold(
       backgroundColor: AppColors.surface,
         appBar: AppBar(
           backgroundColor: Colors.white,
@@ -515,7 +524,9 @@ class _PurchasesViewState extends State<_PurchasesView> with TickerProviderState
             ),
           ],
         ),
-      );
+      ),
+    ),
+    );
   }
 
   Widget _buildTopSummaryBanner() {

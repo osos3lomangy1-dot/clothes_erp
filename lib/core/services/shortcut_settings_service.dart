@@ -24,6 +24,9 @@ class ShortcutSettingsService {
 
   static const Map<String, String> defaultShortcuts = {
     'openPos': 'Alt+P',
+    'openAddProduct': 'Alt+A',
+    'openBlindReceive': 'Alt+R',
+    'openCreatePurchase': 'Alt+B',
     'openCommandPalette': 'Ctrl+K',
     'openShortcuts': 'F1',
     'quickSearch': 'F2',
@@ -133,6 +136,24 @@ class ShortcutSettingsService {
       defaultCombo: 'Alt+P',
     ),
     ShortcutDefinition(
+      action: 'openAddProduct',
+      label: 'إضافة صنف جديد فوراً',
+      category: 'navigation',
+      defaultCombo: 'Alt+A',
+    ),
+    ShortcutDefinition(
+      action: 'openBlindReceive',
+      label: 'الانتقال لشاشة استلام بضاعة / شحنة جديدة',
+      category: 'navigation',
+      defaultCombo: 'Alt+R',
+    ),
+    ShortcutDefinition(
+      action: 'openCreatePurchase',
+      label: 'الانتقال لشاشة إنشاء فاتورة مشتريات جديدة',
+      category: 'navigation',
+      defaultCombo: 'Alt+B',
+    ),
+    ShortcutDefinition(
       action: 'openCommandPalette',
       label: 'لوحة الأوامر الشاملة (Spotlight)',
       category: 'navigation',
@@ -231,10 +252,14 @@ class ShortcutSettingsService {
       case '8': return LogicalKeyboardKey.digit8;
       case '9': return LogicalKeyboardKey.digit9;
       case '0': return LogicalKeyboardKey.digit0;
+      case 'A': return LogicalKeyboardKey.keyA;
+      case 'B': return LogicalKeyboardKey.keyB;
       case 'D': return LogicalKeyboardKey.keyD;
       case 'F': return LogicalKeyboardKey.keyF;
       case 'K': return LogicalKeyboardKey.keyK;
+      case 'N': return LogicalKeyboardKey.keyN;
       case 'P': return LogicalKeyboardKey.keyP;
+      case 'R': return LogicalKeyboardKey.keyR;
       case 'S': return LogicalKeyboardKey.keyS;
       case 'ENTER': return LogicalKeyboardKey.enter;
       case 'ESC':

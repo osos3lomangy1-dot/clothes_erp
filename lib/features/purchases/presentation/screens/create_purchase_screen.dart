@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -143,6 +144,7 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
   final _invoiceNumController = TextEditingController();
   final _paidController = TextEditingController(text: '0');
   final _notesController = TextEditingController();
+  final _supplierFocusNode = FocusNode();
 
   static const List<String> kitchenSupplyUnits = [
     'بالعدد / حبة',
@@ -278,6 +280,7 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
     _invoiceNumController.dispose();
     _paidController.dispose();
     _notesController.dispose();
+    _supplierFocusNode.dispose();
     super.dispose();
   }
 
@@ -1256,7 +1259,27 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.f2): () =>
+            _supplierFocusNode.requestFocus(),
+        const SingleActivator(LogicalKeyboardKey.f3): () {
+          if (_isHospitality) {
+            _showAddQuickRawMaterialDialog();
+          } else {
+            _showAddVariantDialog();
+          }
+        },
+        const SingleActivator(LogicalKeyboardKey.keyS, control: true): () {
+          if (!_isSaving) _submitInvoice();
+        },
+        const SingleActivator(LogicalKeyboardKey.f12): () {
+          if (!_isSaving) _submitInvoice();
+        },
+      },
+      child: Focus(
+        autofocus: true,
+        child: Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
         leading: IconButton(
@@ -1376,6 +1399,7 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
                                 children: [
                                   Expanded(
                                     child: DropdownButtonFormField<String>(
+                                      focusNode: _supplierFocusNode,
                                       isExpanded: true,
                                       initialValue: _selectedSupplierId,
                                       decoration: InputDecoration(
@@ -2009,6 +2033,8 @@ class _CreatePurchaseScreenContentState extends State<_CreatePurchaseScreenConte
           ),
         ),
       ),
+    ),
+    ),
     );
   }
 }
