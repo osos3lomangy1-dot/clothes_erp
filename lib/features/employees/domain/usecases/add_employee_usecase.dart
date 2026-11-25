@@ -10,7 +10,11 @@ class AddEmployeeUseCase {
 
   AddEmployeeUseCase(this._repository);
 
-  Future<Either<Failure, EmployeeEntity>> call(EmployeeEntity employee, {String? password}) {
-    return _repository.addEmployee(employee, password: password);
+  Future<Either<Failure, EmployeeEntity>> call(
+    EmployeeEntity employee, {
+    String? password,
+    String? pinCode,
+  }) {
+    return _repository.addEmployee(employee, password: password, pinCode: pinCode);
   }
 }

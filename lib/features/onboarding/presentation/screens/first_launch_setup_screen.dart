@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/database/app_database.dart';
@@ -52,6 +53,7 @@ class _FirstLaunchSetupScreenState extends State<FirstLaunchSetupScreen> {
   final _adminUsernameController = TextEditingController(text: 'admin');
   final _adminPasswordController = TextEditingController();
   final _adminConfirmPasswordController = TextEditingController();
+  final _adminPinController = TextEditingController();
   bool _obscureAdminPassword = true;
 
   // Step 4: First Cashier
@@ -67,6 +69,7 @@ class _FirstLaunchSetupScreenState extends State<FirstLaunchSetupScreen> {
     _adminUsernameController.dispose();
     _adminPasswordController.dispose();
     _adminConfirmPasswordController.dispose();
+    _adminPinController.dispose();
     _cashierNameController.dispose();
     _cashierPinController.dispose();
     super.dispose();
@@ -88,6 +91,7 @@ class _FirstLaunchSetupScreenState extends State<FirstLaunchSetupScreen> {
       final username = _adminUsernameController.text.trim();
       final password = _adminPasswordController.text;
       final confirm = _adminConfirmPasswordController.text;
+      final adminPin = _adminPinController.text.trim();
 
       if (username.isEmpty) {
         setState(() => _stepErrorMessage = 'اسم مستخدم الآدمن مطلوب.');
@@ -101,13 +105,17 @@ class _FirstLaunchSetupScreenState extends State<FirstLaunchSetupScreen> {
         setState(() => _stepErrorMessage = 'كلمة المرور وتأكيدها غير متطابقين.');
         return;
       }
+      if (adminPin.isNotEmpty && !RegExp(r'^\d{4}$').hasMatch(adminPin)) {
+        setState(() => _stepErrorMessage = 'رمز PIN للآدمن يجب أن يتكون من 4 أرقام.');
+        return;
+      }
     }
 
     // Validate Step 3 (First Cashier)
     if (_currentStep == 3 && _createCashier) {
       final pin = _cashierPinController.text.trim();
-      if (pin.length < 4) {
-        setState(() => _stepErrorMessage = 'رمز PIN للكاشير يجب أن يتكون من 4 أرقام على الأقل.');
+      if (!RegExp(r'^\d{4}$').hasMatch(pin)) {
+        setState(() => _stepErrorMessage = 'رمز PIN للكاشير يجب أن يتكون من 4 أرقام.');
         return;
       }
     }
@@ -145,6 +153,7 @@ class _FirstLaunchSetupScreenState extends State<FirstLaunchSetupScreen> {
       final storeAddress = _storeAddressController.text.trim();
       final adminUser = _adminUsernameController.text.trim();
       final adminPass = _adminPasswordController.text.trim();
+      final adminPin = _adminPinController.text.trim();
       final cashierName = _cashierNameController.text.trim();
       final cashierPin = _cashierPinController.text.trim();
 
@@ -162,6 +171,7 @@ class _FirstLaunchSetupScreenState extends State<FirstLaunchSetupScreen> {
             role: 'admin',
             passwordHash: 'hash_$adminPass',
             passwordSalt: 'salt',
+            pinHash: drift.Value(adminPin.length == 4 ? adminPin : null),
             isActive: const drift.Value(true),
             createdAt: now,
             updatedAt: now,
@@ -736,6 +746,7 @@ class _FirstLaunchSetupScreenState extends State<FirstLaunchSetupScreen> {
         TextField(
           key: const Key('setup_admin_username_field'),
           controller: _adminUsernameController,
+          textInputAction: TextInputAction.next,
           decoration: InputDecoration(
             hintText: 'admin',
             prefixIcon: const Icon(Icons.person_rounded, size: 20),
@@ -750,6 +761,7 @@ class _FirstLaunchSetupScreenState extends State<FirstLaunchSetupScreen> {
           key: const Key('setup_admin_password_field'),
           controller: _adminPasswordController,
           obscureText: _obscureAdminPassword,
+          textInputAction: TextInputAction.next,
           decoration: InputDecoration(
             hintText: 'أدخل كلمة مرور قوية',
             prefixIcon: const Icon(Icons.lock_rounded, size: 20),
@@ -771,9 +783,29 @@ class _FirstLaunchSetupScreenState extends State<FirstLaunchSetupScreen> {
           key: const Key('setup_admin_confirm_password_field'),
           controller: _adminConfirmPasswordController,
           obscureText: _obscureAdminPassword,
+          textInputAction: TextInputAction.next,
           decoration: InputDecoration(
             hintText: 'أعد إدخال كلمة المرور',
             prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          ),
+        ),
+        const SizedBox(height: 16),
+        const Text('رمز PIN السريع للآدمن (4 أرقام - اختياري)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        const SizedBox(height: 6),
+        TextField(
+          key: const Key('setup_admin_pin_field'),
+          controller: _adminPinController,
+          keyboardType: TextInputType.number,
+          maxLength: 4,
+          textInputAction: TextInputAction.done,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          onSubmitted: (_) => _goToNextStep(),
+          decoration: InputDecoration(
+            hintText: 'مثال: 0000 (اختياري للدخول السريع)',
+            counterText: '',
+            prefixIcon: const Icon(Icons.pin_rounded, size: 20),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           ),
@@ -819,6 +851,7 @@ class _FirstLaunchSetupScreenState extends State<FirstLaunchSetupScreen> {
           TextField(
             key: const Key('setup_cashier_name_field'),
             controller: _cashierNameController,
+            textInputAction: TextInputAction.next,
             decoration: InputDecoration(
               hintText: 'كاشير 1',
               prefixIcon: const Icon(Icons.badge_rounded, size: 20),
@@ -833,7 +866,10 @@ class _FirstLaunchSetupScreenState extends State<FirstLaunchSetupScreen> {
             key: const Key('setup_cashier_pin_field'),
             controller: _cashierPinController,
             keyboardType: TextInputType.number,
-            maxLength: 6,
+            maxLength: 4,
+            textInputAction: TextInputAction.done,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            onSubmitted: (_) => _goToNextStep(),
             decoration: InputDecoration(
               hintText: '1234',
               counterText: '',

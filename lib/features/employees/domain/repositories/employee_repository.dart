@@ -7,8 +7,16 @@ import '../../../expenses/domain/entities/expense_entity.dart';
 abstract class EmployeeRepository {
   Future<Either<Failure, List<EmployeeEntity>>> getEmployees({String? search});
   Future<Either<Failure, EmployeeEntity?>> getEmployeeById(String id);
-  Future<Either<Failure, EmployeeEntity>> addEmployee(EmployeeEntity employee, {String? password});
-  Future<Either<Failure, EmployeeEntity>> updateEmployee(EmployeeEntity employee);
+  Future<Either<Failure, EmployeeEntity>> addEmployee(
+    EmployeeEntity employee, {
+    String? password,
+    String? pinCode,
+  });
+  Future<Either<Failure, EmployeeEntity>> updateEmployee(
+    EmployeeEntity employee, {
+    String? password,
+    String? pinCode,
+  });
   Future<Either<Failure, Unit>> updateEmployeeStatus(String id, bool isActive);
   Future<Either<Failure, Unit>> deleteEmployee(String id);
   Future<Either<Failure, EmployeePayrollSummary>> getPayrollSummary(String employeeId, {DateTime? monthDate});

@@ -10,8 +10,15 @@ class UpdateEmployeeUseCase {
 
   UpdateEmployeeUseCase(this._repository);
 
-  Future<Either<Failure, EmployeeEntity>> call(EmployeeEntity employee) {
-    return _repository.updateEmployee(employee);
+  Future<Either<Failure, EmployeeEntity>> call(
+    EmployeeEntity employee, {
+    String? password,
+    String? pinCode,
+  }) {
+    return _repository.updateEmployee(
+      employee,
+      password: password,
+      pinCode: pinCode,
+    );
   }
 }
-

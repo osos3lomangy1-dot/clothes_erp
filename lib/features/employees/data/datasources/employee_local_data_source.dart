@@ -12,8 +12,16 @@ import '../models/employee_model.dart';
 abstract class EmployeeLocalDataSource {
   Future<List<EmployeeEntity>> getEmployees({String? search});
   Future<EmployeeEntity?> getEmployeeById(String id);
-  Future<EmployeeEntity> addEmployee(EmployeeEntity employee, {String? password});
-  Future<EmployeeEntity> updateEmployee(EmployeeEntity employee);
+  Future<EmployeeEntity> addEmployee(
+    EmployeeEntity employee, {
+    String? password,
+    String? pinCode,
+  });
+  Future<EmployeeEntity> updateEmployee(
+    EmployeeEntity employee, {
+    String? password,
+    String? pinCode,
+  });
   Future<void> updateEmployeeStatus(String id, bool isActive);
   Future<void> deleteEmployee(String id);
   Future<EmployeePayrollSummary> getPayrollSummary(String employeeId, {DateTime? monthDate});
@@ -62,8 +70,18 @@ class EmployeeLocalDataSourceImpl implements EmployeeLocalDataSource {
     return user != null ? EmployeeModel.fromDrift(user) : null;
   }
 
+  static String? _normalizePin(String? raw) {
+    final trimmed = raw?.trim();
+    if (trimmed == null || trimmed.isEmpty) return null;
+    return trimmed;
+  }
+
   @override
-  Future<EmployeeEntity> addEmployee(EmployeeEntity employee, {String? password}) async {
+  Future<EmployeeEntity> addEmployee(
+    EmployeeEntity employee, {
+    String? password,
+    String? pinCode,
+  }) async {
     final branch = await _branchId();
     final now = DateTime.now();
     final id = employee.id.isNotEmpty ? employee.id : _uuid.v4();
@@ -71,6 +89,7 @@ class EmployeeLocalDataSourceImpl implements EmployeeLocalDataSource {
     final pass = (password != null && password.trim().isNotEmpty) ? password.trim() : '123456';
     final salt = _uuid.v4().substring(0, 8);
     final passHash = 'hash_$pass';
+    final resolvedPin = _normalizePin(pinCode ?? employee.pinCode);
 
     await _tx.write(
       writeFn: () async {
@@ -85,6 +104,7 @@ class EmployeeLocalDataSourceImpl implements EmployeeLocalDataSource {
                 salary: Value(employee.salary),
                 passwordHash: passHash,
                 passwordSalt: salt,
+                pinHash: Value(resolvedPin),
                 createdAt: now,
                 updatedAt: now,
               ),
@@ -99,15 +119,23 @@ class EmployeeLocalDataSourceImpl implements EmployeeLocalDataSource {
 
     return employee.copyWith(
       id: id,
+      pinCode: resolvedPin,
       createdAt: now,
       updatedAt: now,
     );
   }
 
   @override
-  Future<EmployeeEntity> updateEmployee(EmployeeEntity employee) async {
+  Future<EmployeeEntity> updateEmployee(
+    EmployeeEntity employee, {
+    String? password,
+    String? pinCode,
+  }) async {
     final branch = await _branchId();
     final now = DateTime.now();
+    final hasPinUpdate = pinCode != null || employee.pinCode != null;
+    final resolvedPin = hasPinUpdate ? _normalizePin(pinCode ?? employee.pinCode) : null;
+    final cleanPass = password?.trim();
 
     await _tx.write(
       writeFn: () async {
@@ -118,6 +146,10 @@ class EmployeeLocalDataSourceImpl implements EmployeeLocalDataSource {
             role: Value(employee.role),
             isActive: Value(employee.isActive),
             salary: Value(employee.salary),
+            pinHash: hasPinUpdate ? Value(resolvedPin) : const Value.absent(),
+            passwordHash: (cleanPass != null && cleanPass.isNotEmpty)
+                ? Value('hash_$cleanPass')
+                : const Value.absent(),
             updatedAt: Value(now),
           ),
         );
@@ -129,7 +161,10 @@ class EmployeeLocalDataSourceImpl implements EmployeeLocalDataSource {
       userId: 'system',
     );
 
-    return employee.copyWith(updatedAt: now);
+    return employee.copyWith(
+      pinCode: hasPinUpdate ? resolvedPin : employee.pinCode,
+      updatedAt: now,
+    );
   }
 
   @override

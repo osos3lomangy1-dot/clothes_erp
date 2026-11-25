@@ -35,6 +35,9 @@ class _LoginView extends StatefulWidget {
 class _LoginViewState extends State<_LoginView> {
   late final TextEditingController _emailController;
   late final TextEditingController _passwordController;
+  final FocusNode _passwordFocusNode = FocusNode();
+  final FocusNode _pinKeyboardFocusNode = FocusNode();
+  bool _obscurePassword = true;
   bool _isPinMode = false;
   List<User>? _activeUsers;
   User? _selectedUser;
@@ -74,11 +77,91 @@ class _LoginViewState extends State<_LoginView> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _passwordFocusNode.dispose();
+    _pinKeyboardFocusNode.dispose();
     super.dispose();
   }
 
+  void _appendPinDigit(String digit) {
+    if (_isPinLoading || _pinInput.length >= 4) return;
+    setState(() {
+      _pinInput += digit;
+      _pinError = null;
+    });
+    if (_pinInput.length == 4) {
+      _submitPinLogin();
+    }
+  }
+
+  void _backspacePin() {
+    if (_isPinLoading || _pinInput.isEmpty) return;
+    setState(() {
+      _pinInput = _pinInput.substring(0, _pinInput.length - 1);
+      _pinError = null;
+    });
+  }
+
+  void _clearPin() {
+    if (_isPinLoading) return;
+    setState(() {
+      _pinInput = '';
+      _pinError = null;
+    });
+  }
+
+  static String? _digitFromKeyEvent(KeyEvent event) {
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.digit0 || key == LogicalKeyboardKey.numpad0) return '0';
+    if (key == LogicalKeyboardKey.digit1 || key == LogicalKeyboardKey.numpad1) return '1';
+    if (key == LogicalKeyboardKey.digit2 || key == LogicalKeyboardKey.numpad2) return '2';
+    if (key == LogicalKeyboardKey.digit3 || key == LogicalKeyboardKey.numpad3) return '3';
+    if (key == LogicalKeyboardKey.digit4 || key == LogicalKeyboardKey.numpad4) return '4';
+    if (key == LogicalKeyboardKey.digit5 || key == LogicalKeyboardKey.numpad5) return '5';
+    if (key == LogicalKeyboardKey.digit6 || key == LogicalKeyboardKey.numpad6) return '6';
+    if (key == LogicalKeyboardKey.digit7 || key == LogicalKeyboardKey.numpad7) return '7';
+    if (key == LogicalKeyboardKey.digit8 || key == LogicalKeyboardKey.numpad8) return '8';
+    if (key == LogicalKeyboardKey.digit9 || key == LogicalKeyboardKey.numpad9) return '9';
+    final ch = event.character;
+    if (ch != null && ch.length == 1 && ch.codeUnitAt(0) >= 48 && ch.codeUnitAt(0) <= 57) {
+      return ch;
+    }
+    return null;
+  }
+
+  void _handlePinKeyEvent(KeyEvent event) {
+    if (!_isPinMode || event is! KeyDownEvent) return;
+    if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
+
+    final digit = _digitFromKeyEvent(event);
+    if (digit != null) {
+      _appendPinDigit(digit);
+      return;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.backspace) {
+      _backspacePin();
+      return;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.escape ||
+        event.logicalKey == LogicalKeyboardKey.delete) {
+      _clearPin();
+      return;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.enter ||
+        event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+      _submitPinLogin();
+    }
+  }
+
   Future<void> _submitPinLogin() async {
-    if (_selectedUser == null || _pinInput.isEmpty) return;
+    if (_isPinLoading) return;
+    if (_selectedUser == null) {
+      setState(() => _pinError = 'يرجى اختيار المستخدم أولاً');
+      return;
+    }
+    if (_pinInput.length != 4) {
+      setState(() => _pinError = 'يرجى إدخال رمز PIN المكوّن من 4 أرقام');
+      return;
+    }
     setState(() {
       _isPinLoading = true;
       _pinError = null;
@@ -96,6 +179,7 @@ class _LoginViewState extends State<_LoginView> {
           _pinError = 'رمز PIN غير صحيح للمستخدم المحدد';
           _pinInput = '';
         });
+        _pinKeyboardFocusNode.requestFocus();
       }
     }
   }
@@ -349,10 +433,8 @@ class _LoginViewState extends State<_LoginView> {
               label: 'مسح',
               icon: Icons.clear_all_rounded,
               onTap: () {
-                setState(() {
-                  _pinInput = '';
-                  _pinError = null;
-                });
+                _clearPin();
+                _pinKeyboardFocusNode.requestFocus();
               },
             ),
             _buildNumpadBtn('0'),
@@ -361,12 +443,8 @@ class _LoginViewState extends State<_LoginView> {
               label: 'حذف',
               icon: Icons.backspace_outlined,
               onTap: () {
-                if (_pinInput.isNotEmpty) {
-                  setState(() {
-                    _pinInput = _pinInput.substring(0, _pinInput.length - 1);
-                    _pinError = null;
-                  });
-                }
+                _backspacePin();
+                _pinKeyboardFocusNode.requestFocus();
               },
             ),
           ],
@@ -382,15 +460,8 @@ class _LoginViewState extends State<_LoginView> {
         key: Key('pin_key_$digit'),
         borderRadius: BorderRadius.circular(28),
         onTap: () {
-          if (_pinInput.length < 6) {
-            setState(() {
-              _pinInput += digit;
-              _pinError = null;
-            });
-            if (_pinInput.length >= 4) {
-              _submitPinLogin();
-            }
-          }
+          _pinKeyboardFocusNode.requestFocus();
+          _appendPinDigit(digit);
         },
         child: Container(
           width: 56,
@@ -1040,6 +1111,11 @@ class _LoginViewState extends State<_LoginView> {
                                 onTap: () {
                                   setState(() => _isPinMode = true);
                                   if (_activeUsers == null) _loadUsers();
+                                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                                    if (mounted) {
+                                      _pinKeyboardFocusNode.requestFocus();
+                                    }
+                                  });
                                 },
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(vertical: 8),
@@ -1095,6 +1171,8 @@ class _LoginViewState extends State<_LoginView> {
                           builder: (context, state) {
                             return TextField(
                               controller: _emailController,
+                              textInputAction: TextInputAction.next,
+                              onSubmitted: (_) => _passwordFocusNode.requestFocus(),
                               onChanged: (val) => context
                                   .read<LoginFormCubit>()
                                   .onEmailChanged(val),
@@ -1120,15 +1198,30 @@ class _LoginViewState extends State<_LoginView> {
                           builder: (context, state) {
                             return TextField(
                               controller: _passwordController,
+                              focusNode: _passwordFocusNode,
+                              textInputAction: TextInputAction.done,
+                              onSubmitted: (_) =>
+                                  context.read<LoginFormCubit>().submit(),
                               onChanged: (val) => context
                                   .read<LoginFormCubit>()
                                   .onPasswordChanged(val),
-                              obscureText: true,
+                              obscureText: _obscurePassword,
                               decoration: InputDecoration(
                                 labelText: 'كلمة المرور',
                                 prefixIcon: Icon(
                                   Icons.lock_outlined,
                                   color: AppColors.primary,
+                                ),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscurePassword
+                                        ? Icons.visibility_off_outlined
+                                        : Icons.visibility_outlined,
+                                    size: 20,
+                                  ),
+                                  onPressed: () => setState(
+                                    () => _obscurePassword = !_obscurePassword,
+                                  ),
                                 ),
                                 filled: true,
                                 fillColor: AppColors.surfaceContainerLow,
@@ -1178,140 +1271,160 @@ class _LoginViewState extends State<_LoginView> {
                           },
                         ),
                       ] else ...[
-                        // PIN Mode UI
-                        if (_activeUsers != null && _activeUsers!.isNotEmpty) ...[
-                          const Align(
-                            alignment: Alignment.centerRight,
-                            child: Text(
-                              'اختر المستخدم:',
-                              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            alignment: WrapAlignment.center,
-                            children: _activeUsers!.map((u) {
-                              final isSelected = _selectedUser?.id == u.id;
-                              return InkWell(
-                                key: Key('pin_user_${u.username}'),
-                                borderRadius: BorderRadius.circular(12),
-                                onTap: () {
-                                  setState(() {
-                                    _selectedUser = u;
-                                    _pinInput = '';
-                                    _pinError = null;
-                                  });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                                  decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? AppColors.primary.withValues(alpha: 0.1)
-                                        : AppColors.surfaceContainerLow,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: isSelected ? AppColors.primary : AppColors.outlineVariant,
-                                      width: isSelected ? 2 : 1,
-                                    ),
+                        // PIN Mode UI (4 digits + physical keyboard support)
+                        KeyboardListener(
+                          focusNode: _pinKeyboardFocusNode,
+                          autofocus: true,
+                          onKeyEvent: _handlePinKeyEvent,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (_activeUsers != null && _activeUsers!.isNotEmpty) ...[
+                                const Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Text(
+                                    'اختر المستخدم:',
+                                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
                                   ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        u.role == 'admin'
-                                            ? Icons.admin_panel_settings_rounded
-                                            : Icons.person_rounded,
-                                        size: 16,
-                                        color: isSelected ? AppColors.primary : Colors.grey.shade600,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        u.displayName.isNotEmpty ? u.displayName : u.username,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                          color: isSelected ? AppColors.primary : AppColors.onSurface,
+                                ),
+                                const SizedBox(height: 10),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  alignment: WrapAlignment.center,
+                                  children: _activeUsers!.map((u) {
+                                    final isSelected = _selectedUser?.id == u.id;
+                                    return InkWell(
+                                      key: Key('pin_user_${u.username}'),
+                                      borderRadius: BorderRadius.circular(12),
+                                      onTap: () {
+                                        setState(() {
+                                          _selectedUser = u;
+                                          _pinInput = '';
+                                          _pinError = null;
+                                        });
+                                        _pinKeyboardFocusNode.requestFocus();
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                                        decoration: BoxDecoration(
+                                          color: isSelected
+                                              ? AppColors.primary.withValues(alpha: 0.1)
+                                              : AppColors.surfaceContainerLow,
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color: isSelected ? AppColors.primary : AppColors.outlineVariant,
+                                            width: isSelected ? 2 : 1,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              u.role == 'admin'
+                                                  ? Icons.admin_panel_settings_rounded
+                                                  : Icons.person_rounded,
+                                              size: 16,
+                                              color: isSelected ? AppColors.primary : Colors.grey.shade600,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              u.displayName.isNotEmpty ? u.displayName : u.username,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                                color: isSelected ? AppColors.primary : AppColors.onSurface,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                    ],
-                                  ),
+                                    );
+                                  }).toList(),
                                 ),
-                              );
-                            }).toList(),
-                          ),
-                          const SizedBox(height: 16),
-                        ],
+                                const SizedBox(height: 14),
+                              ],
 
-                        // PIN Dots Indicator
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: List.generate(4, (index) {
-                            final isFilled = index < _pinInput.length;
-                            return Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 6),
-                              width: 14,
-                              height: 14,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: isFilled ? AppColors.primary : Colors.transparent,
-                                border: Border.all(
-                                  color: isFilled ? AppColors.primary : Colors.grey.shade400,
-                                  width: 2,
-                                ),
-                              ),
-                            );
-                          }),
-                        ),
-                        if (_pinError != null) ...[
-                          const SizedBox(height: 10),
-                          Text(
-                            _pinError!,
-                            style: const TextStyle(
-                              color: AppColors.error,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                        const SizedBox(height: 16),
-
-                        // Numpad
-                        _buildNumpad(),
-                        const SizedBox(height: 14),
-
-                        // PIN Submit Button
-                        SizedBox(
-                          width: double.infinity,
-                          height: 44,
-                          child: ElevatedButton(
-                            key: const Key('pin_submit_button'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            onPressed: _isPinLoading ? null : _submitPinLogin,
-                            child: _isPinLoading
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
+                              // PIN Dots Indicator (strictly 4 digits)
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: List.generate(4, (index) {
+                                  final isFilled = index < _pinInput.length;
+                                  return Container(
+                                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                                    width: 14,
+                                    height: 14,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: isFilled ? AppColors.primary : Colors.transparent,
+                                      border: Border.all(
+                                        color: isFilled ? AppColors.primary : Colors.grey.shade400,
+                                        width: 2,
+                                      ),
                                     ),
-                                  )
-                                : const Text(
-                                    'تسجيل الدخول بالـ PIN',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
+                                  );
+                                }),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'أدخل 4 أرقام من لوحة المفاتيح أو الأزرار أدناه',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey.shade600,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              if (_pinError != null) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  _pinError!,
+                                  style: const TextStyle(
+                                    color: AppColors.error,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                              const SizedBox(height: 12),
+
+                              // Numpad
+                              _buildNumpad(),
+                              const SizedBox(height: 12),
+
+                              // PIN Submit Button
+                              SizedBox(
+                                width: double.infinity,
+                                height: 44,
+                                child: ElevatedButton(
+                                  key: const Key('pin_submit_button'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
                                   ),
+                                  onPressed: _isPinLoading ? null : _submitPinLogin,
+                                  child: _isPinLoading
+                                      ? const SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : const Text(
+                                          'تسجيل الدخول بالـ PIN',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],

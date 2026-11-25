@@ -9,6 +9,7 @@ class EmployeeModel extends EmployeeEntity {
     required super.role,
     super.isActive = true,
     super.salary = 0,
+    super.pinCode,
     required super.createdAt,
     super.updatedAt,
   });
@@ -21,6 +22,7 @@ class EmployeeModel extends EmployeeEntity {
       role: entity.role,
       isActive: entity.isActive,
       salary: entity.salary,
+      pinCode: entity.pinCode,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
     );
@@ -34,6 +36,7 @@ class EmployeeModel extends EmployeeEntity {
       role: user.role,
       isActive: user.isActive,
       salary: user.salary,
+      pinCode: user.pinHash,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     );

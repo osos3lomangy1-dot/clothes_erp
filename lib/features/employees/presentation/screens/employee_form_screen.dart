@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
@@ -107,6 +108,26 @@ class EmployeeFormView extends StatelessWidget {
               },
               decoration: const InputDecoration(
                 labelText: 'الدور الوظيفي / الصلاحية *',
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              key: const Key('employee_form_pin_field'),
+              keyboardType: TextInputType.number,
+              maxLength: 4,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              textInputAction: TextInputAction.done,
+              onChanged: (value) =>
+                  context.read<EmployeeFormCubit>().onPinCodeChanged(value),
+              onSubmitted: (_) {
+                if (!state.isSubmitting) {
+                  context.read<EmployeeFormCubit>().submit();
+                }
+              },
+              decoration: const InputDecoration(
+                labelText: 'رمز PIN للدخول السريع (4 أرقام - اختياري)',
+                hintText: 'مثال: 1234',
+                counterText: '',
               ),
             ),
             const SizedBox(height: 24),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
@@ -46,6 +47,7 @@ class _EmployeeListViewState extends State<EmployeeListView> {
       text: employee != null && employee.salary > 0 ? '${employee.salary / 100}' : '',
     );
     final passwordCtrl = TextEditingController();
+    final pinCtrl = TextEditingController(text: employee?.pinCode ?? '');
     final formKey = GlobalKey<FormState>();
 
     String role = employee?.role ?? 'cashier';
@@ -103,6 +105,7 @@ class _EmployeeListViewState extends State<EmployeeListView> {
                     const SizedBox(height: 14),
                     DropdownButtonFormField<String>(
                       initialValue: role,
+                      isExpanded: true,
                       decoration: InputDecoration(
                         labelText: 'الدور / الصلاحيات *',
                         prefixIcon: const Icon(Icons.security_rounded),
@@ -111,15 +114,24 @@ class _EmployeeListViewState extends State<EmployeeListView> {
                       items: const [
                         DropdownMenuItem(
                           value: 'cashier',
-                          child: Text('كاشير (إصدار فواتير وسداد فقط)'),
+                          child: Text(
+                            'كاشير (إصدار فواتير وسداد فقط)',
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         DropdownMenuItem(
                           value: 'manager',
-                          child: Text('مدير فرع (إدارة المخازن والمبيعات)'),
+                          child: Text(
+                            'مدير فرع (إدارة المخازن والمبيعات)',
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         DropdownMenuItem(
                           value: 'admin',
-                          child: Text('مسؤول عام (صلاحيات كاملة للمتجر)'),
+                          child: Text(
+                            'مسؤول عام (صلاحيات كاملة للمتجر)',
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                       onChanged: (val) {
@@ -151,6 +163,28 @@ class _EmployeeListViewState extends State<EmployeeListView> {
                       validator: (val) {
                         if (!isEdit && (val == null || val.trim().isEmpty)) {
                           return 'يرجى تعيين كلمة مرور للموظف الجديد';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      key: const Key('employee_dialog_pin_field'),
+                      controller: pinCtrl,
+                      keyboardType: TextInputType.number,
+                      maxLength: 4,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      decoration: InputDecoration(
+                        labelText: 'رمز PIN السريع للدخول (4 أرقام - اختياري)',
+                        hintText: 'مثال: 1234 (يُستخدم في الدخول السريع بالكاشير)',
+                        counterText: '',
+                        prefixIcon: const Icon(Icons.pin_rounded),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      validator: (val) {
+                        final clean = val?.trim() ?? '';
+                        if (clean.isNotEmpty && !RegExp(r'^\d{4}$').hasMatch(clean)) {
+                          return 'رمز PIN السريع يجب أن يتكون من 4 أرقام بالضبط';
                         }
                         return null;
                       },
@@ -191,15 +225,22 @@ class _EmployeeListViewState extends State<EmployeeListView> {
                 final piasters = (pounds * 100).toInt();
 
                 bool ok = false;
+                final cleanPin = pinCtrl.text.trim();
+                final cleanPass = passwordCtrl.text.trim();
                 if (isEdit) {
                   final toUpdate = employee.copyWith(
                     displayName: nameCtrl.text.trim(),
                     username: usernameCtrl.text.trim(),
                     role: role,
                     salary: piasters,
+                    pinCode: cleanPin,
                     isActive: isActive,
                   );
-                  ok = await cubit.updateEmployee(toUpdate);
+                  ok = await cubit.updateEmployee(
+                    toUpdate,
+                    password: cleanPass.isNotEmpty ? cleanPass : null,
+                    pinCode: cleanPin,
+                  );
                 } else {
                   final toAdd = EmployeeEntity(
                     id: '',
@@ -207,10 +248,15 @@ class _EmployeeListViewState extends State<EmployeeListView> {
                     username: usernameCtrl.text.trim(),
                     role: role,
                     salary: piasters,
+                    pinCode: cleanPin.isNotEmpty ? cleanPin : null,
                     isActive: isActive,
                     createdAt: DateTime.now(),
                   );
-                  ok = await cubit.addEmployee(toAdd, password: passwordCtrl.text.trim());
+                  ok = await cubit.addEmployee(
+                    toAdd,
+                    password: cleanPass,
+                    pinCode: cleanPin.isNotEmpty ? cleanPin : null,
+                  );
                 }
 
                 if (ok && dialogCtx.mounted) {
@@ -488,6 +534,22 @@ class _EmployeeListViewState extends State<EmployeeListView> {
                                                   color: Colors.green.shade800,
                                                   fontSize: 12,
                                                   fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        if (employee.pinCode != null && employee.pinCode!.isNotEmpty)
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.pin_rounded, size: 14, color: AppColors.primary),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                'PIN سريع مُفعّل',
+                                                style: TextStyle(
+                                                  color: AppColors.primary,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
                                                 ),
                                               ),
                                             ],

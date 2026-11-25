@@ -37,12 +37,20 @@ class EmployeeRepositoryImpl implements EmployeeRepository {
   }
 
   @override
-  Future<Either<Failure, EmployeeEntity>> addEmployee(EmployeeEntity employee, {String? password}) async {
+  Future<Either<Failure, EmployeeEntity>> addEmployee(
+    EmployeeEntity employee, {
+    String? password,
+    String? pinCode,
+  }) async {
     try {
       if (!await _featureGate.isEnabled(FeatureKeys.employees)) {
         return const Left(CacheFailure('ميزة الموظفين غير مفعّلة'));
       }
-      final created = await _localDataSource.addEmployee(employee, password: password);
+      final created = await _localDataSource.addEmployee(
+        employee,
+        password: password,
+        pinCode: pinCode,
+      );
       return Right(created);
     } catch (e) {
       return Left(CacheFailure(e.toString()));
@@ -50,9 +58,17 @@ class EmployeeRepositoryImpl implements EmployeeRepository {
   }
 
   @override
-  Future<Either<Failure, EmployeeEntity>> updateEmployee(EmployeeEntity employee) async {
+  Future<Either<Failure, EmployeeEntity>> updateEmployee(
+    EmployeeEntity employee, {
+    String? password,
+    String? pinCode,
+  }) async {
     try {
-      final updated = await _localDataSource.updateEmployee(employee);
+      final updated = await _localDataSource.updateEmployee(
+        employee,
+        password: password,
+        pinCode: pinCode,
+      );
       return Right(updated);
     } catch (e) {
       return Left(CacheFailure(e.toString()));

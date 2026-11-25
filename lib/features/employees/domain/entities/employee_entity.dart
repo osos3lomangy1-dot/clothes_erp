@@ -7,6 +7,7 @@ class EmployeeEntity extends Equatable {
   final String role; // 'admin', 'cashier', 'manager'
   final bool isActive;
   final int salary; // in piasters (e.g. 500000 = 5000 EGP)
+  final String? pinCode; // 4-digit quick PIN
   final DateTime createdAt;
   final DateTime? updatedAt;
 
@@ -17,6 +18,7 @@ class EmployeeEntity extends Equatable {
     required this.role,
     this.isActive = true,
     this.salary = 0,
+    this.pinCode,
     required this.createdAt,
     this.updatedAt,
   });
@@ -33,6 +35,7 @@ class EmployeeEntity extends Equatable {
     String? role,
     bool? isActive,
     int? salary,
+    String? pinCode,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -43,6 +46,7 @@ class EmployeeEntity extends Equatable {
       role: role ?? this.role,
       isActive: isActive ?? this.isActive,
       salary: salary ?? this.salary,
+      pinCode: pinCode ?? this.pinCode,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -55,6 +59,7 @@ class EmployeeEntity extends Equatable {
         'role': role,
         'isActive': isActive,
         'salary': salary,
+        'pinCode': pinCode,
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt?.toIso8601String(),
       };
@@ -70,10 +75,11 @@ class EmployeeEntity extends Equatable {
                 ? (json['salary'] as num).toInt()
                 : ((json['salary'] as num) * 100).toInt())
             : 0,
+        pinCode: json['pinCode'] as String?,
         createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt'] as String) : DateTime.now(),
         updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt'] as String) : null,
       );
 
   @override
-  List<Object?> get props => [id, displayName, username, role, isActive, salary, createdAt, updatedAt];
+  List<Object?> get props => [id, displayName, username, role, isActive, salary, pinCode, createdAt, updatedAt];
 }

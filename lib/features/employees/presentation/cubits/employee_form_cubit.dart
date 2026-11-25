@@ -22,13 +22,21 @@ class EmployeeFormCubit extends Cubit<EmployeeFormState> {
     emit(state.copyWith(role: role, errorMessage: null));
   }
 
+  void onPinCodeChanged(String pinCode) {
+    emit(state.copyWith(pinCode: pinCode.trim(), errorMessage: null));
+  }
+
   void onStatusChanged(bool isActive) {
     emit(state.copyWith(isActive: isActive, errorMessage: null));
   }
 
   Future<void> submit() async {
-    if (state.name.isEmpty || state.email.isEmpty) {
-      emit(state.copyWith(errorMessage: 'Please fill in all required fields'));
+    if (state.name.trim().isEmpty || state.email.trim().isEmpty) {
+      emit(state.copyWith(errorMessage: 'يرجى تعبئة الاسم واسم المستخدم المطلوبين'));
+      return;
+    }
+    if (state.pinCode.isNotEmpty && !RegExp(r'^\d{4}$').hasMatch(state.pinCode)) {
+      emit(state.copyWith(errorMessage: 'رمز PIN السريع يجب أن يتكون من 4 أرقام'));
       return;
     }
 
@@ -36,14 +44,18 @@ class EmployeeFormCubit extends Cubit<EmployeeFormState> {
 
     final employee = EmployeeEntity(
       id: '',
-      displayName: state.name,
-      username: state.email,
+      displayName: state.name.trim(),
+      username: state.email.trim(),
       role: state.role,
       isActive: state.isActive,
+      pinCode: state.pinCode.isNotEmpty ? state.pinCode : null,
       createdAt: DateTime.now(),
     );
 
-    final result = await _addEmployeeUseCase(employee);
+    final result = await _addEmployeeUseCase(
+      employee,
+      pinCode: state.pinCode.isNotEmpty ? state.pinCode : null,
+    );
 
     result.fold(
       (failure) => emit(state.copyWith(isSubmitting: false, errorMessage: failure.message)),

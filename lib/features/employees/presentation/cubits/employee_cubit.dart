@@ -40,8 +40,16 @@ class EmployeeCubit extends Cubit<EmployeeState> {
     loadEmployees(search: query);
   }
 
-  Future<bool> addEmployee(EmployeeEntity employee, {String? password}) async {
-    final result = await _addEmployeeUseCase(employee, password: password);
+  Future<bool> addEmployee(
+    EmployeeEntity employee, {
+    String? password,
+    String? pinCode,
+  }) async {
+    final result = await _addEmployeeUseCase(
+      employee,
+      password: password,
+      pinCode: pinCode,
+    );
     return result.fold(
       (failure) {
         emit(EmployeeError(failure.message));
@@ -54,8 +62,16 @@ class EmployeeCubit extends Cubit<EmployeeState> {
     );
   }
 
-  Future<bool> updateEmployee(EmployeeEntity employee) async {
-    final result = await _updateEmployeeUseCase(employee);
+  Future<bool> updateEmployee(
+    EmployeeEntity employee, {
+    String? password,
+    String? pinCode,
+  }) async {
+    final result = await _updateEmployeeUseCase(
+      employee,
+      password: password,
+      pinCode: pinCode,
+    );
     return result.fold(
       (failure) {
         emit(EmployeeError(failure.message));
