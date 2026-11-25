@@ -10,6 +10,7 @@ import '../../../../core/services/local_backup_service.dart';
 import '../../../../core/utils/money.dart';
 import '../../../auth/services/cashier_permissions_service.dart';
 import '../../../invoices/data/services/receipt_settings_service.dart';
+import 'assistant_nlu_engine.dart';
 
 enum AssistantActionRoute {
   reports,
@@ -1993,6 +1994,32 @@ class OfflineSmartAssistantService {
   }
 
   /// Parses ERP operational commands into a (possibly incomplete) [AssistantActionDraft].
+  final AssistantContextMemory contextMemory = AssistantContextMemory();
+
+  AssistantCommandKind? _commandKindForNluIntent(AssistantNluIntent intent) {
+    switch (intent) {
+      case AssistantNluIntent.addProduct:
+        return AssistantCommandKind.addProduct;
+      case AssistantNluIntent.recordPurchase:
+        return AssistantCommandKind.recordPurchase;
+      case AssistantNluIntent.recordExpense:
+        return AssistantCommandKind.recordExpense;
+      case AssistantNluIntent.paySupplier:
+        return AssistantCommandKind.paySupplier;
+      case AssistantNluIntent.addCustomer:
+        return AssistantCommandKind.addCustomer;
+      case AssistantNluIntent.collectInstallment:
+        return AssistantCommandKind.collectInstallment;
+      case AssistantNluIntent.updatePrice:
+      case AssistantNluIntent.updateStock:
+        return AssistantCommandKind.updateProductPriceOrStock;
+      case AssistantNluIntent.calculateZakat:
+        return AssistantCommandKind.calculateZakat;
+      default:
+        return null;
+    }
+  }
+
   AssistantActionDraft? parseErpDraft(String rawQuery) {
     final rawDigits = Money.normalizeDigits(rawQuery).trim();
     final rawNorm = normalizeArabic(rawDigits);
@@ -2001,6 +2028,22 @@ class OfflineSmartAssistantService {
         rawNorm.contains('خطوات') ||
         rawNorm.contains('طريقه')) {
       return null;
+    }
+
+    final nluResult = AssistantIntentScorer.score(
+      rawDigits,
+      context: contextMemory,
+    );
+    if (nluResult != null) {
+      final mappedKind = _commandKindForNluIntent(nluResult.intent);
+      if (mappedKind != null) {
+        final draft = _finalizeDraft(mappedKind, nluResult.slots);
+        contextMemory.updateFromDraft(
+          intent: nluResult.intent,
+          fields: draft.fields,
+        );
+        return draft;
+      }
     }
 
     final cleanedDigits = _stripConversationalPrefixes(rawDigits);
@@ -3886,6 +3929,27 @@ class OfflineSmartAssistantService {
         );
       }
       final nextDraft = advanceDraft(activeDraft, query);
+      if (nextDraft.fields.isNotEmpty) {
+        final intent = switch (nextDraft.kind) {
+          AssistantCommandKind.addProduct => AssistantNluIntent.addProduct,
+          AssistantCommandKind.recordPurchase =>
+            AssistantNluIntent.recordPurchase,
+          AssistantCommandKind.recordExpense =>
+            AssistantNluIntent.recordExpense,
+          AssistantCommandKind.paySupplier => AssistantNluIntent.paySupplier,
+          AssistantCommandKind.addCustomer => AssistantNluIntent.addCustomer,
+          AssistantCommandKind.collectInstallment =>
+            AssistantNluIntent.collectInstallment,
+          AssistantCommandKind.calculateZakat =>
+            AssistantNluIntent.calculateZakat,
+          AssistantCommandKind.updateProductPriceOrStock =>
+            nextDraft.fields['mode'] == 'stock'
+                ? AssistantNluIntent.updateStock
+                : AssistantNluIntent.updatePrice,
+          _ => AssistantNluIntent.addProduct,
+        };
+        contextMemory.updateFromDraft(intent: intent, fields: nextDraft.fields);
+      }
       if (!nextDraft.isComplete) {
         return AssistantTurnResult(
           insights: [_buildDraftPromptInsight(nextDraft)],
@@ -5034,6 +5098,49 @@ $cta${storePhone.isNotEmpty ? ' على: $storePhone' : ''}
     );
   }
 
+  Future<AssistantInsight> _buildYesterdayFollowupInsight() async {
+    final now = DateTime.now();
+    final yesterdayStart = DateTime(now.year, now.month, now.day - 1);
+    final todayStart = DateTime(now.year, now.month, now.day);
+
+    final ySales = await (_db.select(_db.sales)
+          ..where((s) =>
+              s.createdAt.isBiggerOrEqualValue(yesterdayStart) &
+              s.createdAt.isSmallerThanValue(todayStart) &
+              s.deletedAt.isNull() &
+              s.status.equals('cancelled').not()))
+        .get();
+    final yRev = ySales.fold<int>(0, (sum, r) => sum + r.total);
+    final yItems = await (_db.select(_db.saleItems)
+          ..where((si) =>
+              si.createdAt.isBiggerOrEqualValue(yesterdayStart) &
+              si.createdAt.isSmallerThanValue(todayStart)))
+        .get();
+    final yCost =
+        yItems.fold<int>(0, (sum, si) => sum + si.costSnapshot * si.qty);
+    final yProfit = yRev - yCost;
+
+    final ctxLabel = contextMemory.lastIntent == AssistantNluIntent.salesDiagnosis
+        ? 'متابعة تشخيص المبيعات (أمس)'
+        : 'ملخص مبيعات وأرباح أمس';
+
+    return AssistantInsight(
+      id: 'yesterday_followup',
+      title: ctxLabel,
+      summary:
+          'مبيعات أمس: ${Money(yRev).toDisplay()} ج.م (${ySales.length} فاتورة) | إجمالي ربح أمس: ${Money(yProfit).toDisplay()} ج.م.',
+      details: [
+        'إجمالي فواتير أمس: ${ySales.length} فاتورة.',
+        'تكلفة البضاعة المباعة أمس: ${Money(yCost).toDisplay()} ج.م.',
+        'صافي الربح التقديري أمس (قبل المصروفات): ${Money(yProfit).toDisplay()} ج.م.',
+      ],
+      followUpPrompts: const [
+        'وضع المحل دلوقتي؟',
+        'صافي ربح اليوم ومقارنته بأمس',
+      ],
+    );
+  }
+
   /// Automatic Daily Smart Briefing shown when the assistant opens.
   Future<List<AssistantInsight>> getDailyBriefing() async {
     return [
@@ -5084,6 +5191,59 @@ $cta${storePhone.isNotEmpty ? ' على: $storePhone' : ''}
     }
 
     final results = <AssistantInsight>[];
+
+    // 2b. NLU IntentScorer for natural colloquial analytical & follow-up queries
+    final nluMatch = AssistantIntentScorer.score(query, context: contextMemory);
+    if (nluMatch != null) {
+      final intentsToRun = <AssistantNluIntent>[
+        nluMatch.intent,
+        ...nluMatch.secondaryIntents,
+      ];
+      for (final intent in intentsToRun) {
+        switch (intent) {
+          case AssistantNluIntent.overdueInstallments:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(await getOverdueInstallmentsInsight());
+            break;
+          case AssistantNluIntent.promoPost:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(
+              await getPromoPostGeneratorInsight(
+                AssistantArabicNormalizer.replaceSpokenNumbers(query),
+              ),
+            );
+            break;
+          case AssistantNluIntent.salesDiagnosis:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(await getSalesDiagnosisInsight());
+            break;
+          case AssistantNluIntent.todayProfit:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(await getTodayProfitInsight());
+            break;
+          case AssistantNluIntent.yesterdayFollowup:
+            results.add(await _buildYesterdayFollowupInsight());
+            break;
+          case AssistantNluIntent.whatIfPricing:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(
+              await getWhatIfPricingInsight(
+                AssistantArabicNormalizer.replaceSpokenNumbers(query),
+              ),
+            );
+            break;
+          case AssistantNluIntent.objectionReplies:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(await getCustomerObjectionRepliesInsight(query));
+            break;
+          default:
+            break;
+        }
+      }
+      if (results.isNotEmpty) {
+        return results;
+      }
+    }
 
     // 3. Direct barcode / SKU or product lookup
     final barcodeMatch = await searchByBarcodeOrSkuInsight(query);
