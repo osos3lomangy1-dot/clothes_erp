@@ -9,6 +9,7 @@ import '../../../../core/constants/retail_sector.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/features/feature_gate.dart';
 import '../../../../core/services/excel_service.dart';
+import '../../../../core/utils/keyboard_focus_helper.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../../barcode_printing/domain/models/barcode_label_item.dart';
@@ -615,6 +616,17 @@ class _ProductsAndCategoriesViewState
     );
   }
 
+  void _handleEsc(BuildContext context) {
+    if (_searchCtrl.text.isNotEmpty || _searchQuery.isNotEmpty) {
+      _searchCtrl.clear();
+      setState(() => _searchQuery = '');
+      return;
+    }
+    if (Navigator.canPop(context)) {
+      Navigator.of(context).maybePop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return CallbackShortcuts(
@@ -627,9 +639,15 @@ class _ProductsAndCategoriesViewState
             _searchFocusNode.requestFocus(),
         const SingleActivator(LogicalKeyboardKey.keyF, control: true): () =>
             _searchFocusNode.requestFocus(),
+        const SingleActivator(LogicalKeyboardKey.escape): () =>
+            _handleEsc(context),
       },
       child: Focus(
         autofocus: true,
+        onKeyEvent: (_, event) => handleNumpadAddShortcut(
+          event,
+          () => _openAddProductDialog(context),
+        ),
         child: Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(

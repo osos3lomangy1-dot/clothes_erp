@@ -6,11 +6,13 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/features/feature_gate.dart';
+import '../../../../core/utils/keyboard_focus_helper.dart';
 import '../../../../core/utils/money.dart';
 import '../../../../core/widgets/app_feedback.dart';
 import '../../../../core/widgets/show_customer_dialog.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
+import '../../../auth/services/cashier_permissions_service.dart';
 import '../../data/services/customer_ledger_service.dart';
 import '../../domain/entities/customer_entity.dart';
 import '../cubits/customer_cubit.dart';
@@ -45,6 +47,7 @@ class _CustomerView extends StatefulWidget {
 
 class _CustomerViewState extends State<_CustomerView> {
   final _searchCtrl = TextEditingController();
+  final _searchFocusNode = FocusNode();
   _CustomerFilter _filter = _CustomerFilter.all;
   _CustomerSort _sort = _CustomerSort.newest;
   Map<String, CustomerFinancialSummary> _summaries = const {};
@@ -90,6 +93,7 @@ class _CustomerViewState extends State<_CustomerView> {
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -190,11 +194,55 @@ class _CustomerViewState extends State<_CustomerView> {
     }
   }
 
+  bool _canManageCustomers(BuildContext context) {
+    bool admin = true;
+    try {
+      final auth = context.read<AuthCubit>().state;
+      if (auth is AuthAuthenticated) {
+        admin = auth.user.role.toLowerCase() != 'cashier';
+      }
+    } catch (_) {}
+    if (admin) return true;
+    return CashierPermissionsService.current.allowManageCustomers;
+  }
+
+  void _handleEsc(BuildContext context) {
+    if (_searchCtrl.text.isNotEmpty) {
+      _searchCtrl.clear();
+      context.read<CustomerCubit>().searchCustomers('');
+      setState(() {});
+      return;
+    }
+    if (Navigator.canPop(context)) {
+      Navigator.of(context).maybePop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isAdmin = _isAdmin(context);
+    final canManage = isAdmin || CashierPermissionsService.current.allowManageCustomers;
 
-    return Scaffold(
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.f2): () =>
+            _searchFocusNode.requestFocus(),
+        const SingleActivator(LogicalKeyboardKey.f3): () {
+          if (_canManageCustomers(context)) {
+            showCustomerDialog(context);
+          }
+        },
+        const SingleActivator(LogicalKeyboardKey.escape): () =>
+            _handleEsc(context),
+      },
+      child: Focus(
+        autofocus: true,
+        onKeyEvent: (_, event) => handleNumpadAddShortcut(event, () {
+          if (_canManageCustomers(context)) {
+            showCustomerDialog(context);
+          }
+        }),
+        child: Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -270,9 +318,7 @@ class _CustomerViewState extends State<_CustomerView> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      onPressed: () {
-                        showCustomerDialog(context);
-                      },
+                      onPressed: canManage ? () => showCustomerDialog(context) : null,
                     ),
                   ),
                 ],
@@ -408,7 +454,9 @@ class _CustomerViewState extends State<_CustomerView> {
                       LayoutBuilder(
                         builder: (context, c) {
                           final searchField = TextField(
+                            key: const Key('customer_search_field'),
                             controller: _searchCtrl,
+                            focusNode: _searchFocusNode,
                             decoration: InputDecoration(
                               hintText: 'البحث عن عميل بالاسم أو رقم الهاتف...',
                               hintStyle: TextStyle(
@@ -455,6 +503,7 @@ class _CustomerViewState extends State<_CustomerView> {
                               DropdownButtonFormField<_CustomerSort>(
                             initialValue: _sort,
                             isDense: true,
+                            isExpanded: true,
                             decoration: const InputDecoration(
                               labelText: 'الترتيب',
                               filled: true,
@@ -679,6 +728,8 @@ class _CustomerViewState extends State<_CustomerView> {
           );
         },
       ),
+    ),
+    ),
     );
   }
 

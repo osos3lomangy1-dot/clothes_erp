@@ -372,6 +372,8 @@ class _ShortcutsConfigDialogState extends State<ShortcutsConfigDialog> {
     final canProducts = !isCashier && _inventoryEnabled;
     final canBlindReceive = (!isCashier || cashierPerms.allowGoodsIntake) && !_isHospitality;
     final canPurchases = (!isCashier || cashierPerms.allowViewPurchases) && _purchasesEnabled;
+    final canCustomers = !isCashier || cashierPerms.allowManageCustomers;
+    final canExpenses = !isCashier || cashierPerms.allowCashExpenses;
 
     final groups = <_CheatsheetGroupData>[
       _CheatsheetGroupData(
@@ -405,6 +407,7 @@ class _ShortcutsConfigDialogState extends State<ShortcutsConfigDialog> {
           _CheatsheetItemData(label: 'لوحة الأوامر الشاملة (Spotlight)', combo: _keyFor('openCommandPalette', 'Ctrl+K')),
           _CheatsheetItemData(label: 'دليل وتخصيص اختصارات النظام', combo: _keyFor('openShortcuts', 'F1')),
           _CheatsheetItemData(label: 'البحث المباشر في الإعدادات', combo: _keyFor('openSettingsSearch', 'Ctrl+F')),
+          const _CheatsheetItemData(label: 'إلغاء ذكي: مسح البحث أو إغلاق / رجوع', combo: 'Esc'),
         ],
       ),
       if (canProducts || canBlindReceive)
@@ -417,11 +420,13 @@ class _ShortcutsConfigDialogState extends State<ShortcutsConfigDialog> {
               const _CheatsheetItemData(label: 'التركيز على بحث المنتجات', combo: 'F2 / Ctrl+F'),
               const _CheatsheetItemData(label: 'حفظ الصنف في نموذج الإضافة البسيط', combo: 'Ctrl+S / F12'),
               const _CheatsheetItemData(label: 'التنقل بين حقول نموذج الصنف / الحفظ', combo: 'Enter'),
+              const _CheatsheetItemData(label: 'مسح نص البحث أو إغلاق النافذة / الرجوع', combo: 'Esc'),
             ],
             if (canBlindReceive) ...[
               const _CheatsheetItemData(label: 'التركيز على حقل باركود استلام الشحنة', combo: 'F2'),
               const _CheatsheetItemData(label: 'إضافة صنف سريع أثناء استلام الشحنة', combo: 'F3'),
               const _CheatsheetItemData(label: 'حفظ واعتماد إذن استلام البضاعة', combo: 'Ctrl+S / F12'),
+              const _CheatsheetItemData(label: 'رجوع (مع تأكيد إذا وُجدت أصناف غير محفوظة)', combo: 'Esc'),
             ],
           ],
         ),
@@ -434,6 +439,25 @@ class _ShortcutsConfigDialogState extends State<ShortcutsConfigDialog> {
             _CheatsheetItemData(label: 'التركيز على اختيار المورد / البحث', combo: 'F2'),
             _CheatsheetItemData(label: 'إضافة صنف سريع داخل فاتورة الشراء', combo: 'F3'),
             _CheatsheetItemData(label: 'حفظ واعتماد فاتورة المشتريات', combo: 'Ctrl+S / F12'),
+            _CheatsheetItemData(label: 'رجوع (مع تأكيد إذا وُجدت أصناف غير محفوظة)', combo: 'Esc'),
+          ],
+        ),
+      if (canCustomers || canExpenses)
+        _CheatsheetGroupData(
+          title: 'العملاء والمصروفات',
+          icon: Icons.people_alt_rounded,
+          items: [
+            if (canCustomers) ...[
+              const _CheatsheetItemData(label: 'التركيز على بحث العملاء', combo: 'F2'),
+              const _CheatsheetItemData(label: 'فتح نافذة إضافة عميل جديد', combo: 'F3'),
+              const _CheatsheetItemData(label: 'حفظ بيانات العميل داخل النافذة', combo: 'Ctrl+S / F12'),
+            ],
+            if (canExpenses) ...[
+              const _CheatsheetItemData(label: 'التركيز على بحث المصروفات', combo: 'F2'),
+              const _CheatsheetItemData(label: 'فتح نافذة تسجيل مصروف جديد', combo: 'F3'),
+              const _CheatsheetItemData(label: 'حفظ المصروف داخل النافذة', combo: 'Ctrl+S / F12'),
+            ],
+            const _CheatsheetItemData(label: 'مسح البحث أو إغلاق النافذة / الرجوع', combo: 'Esc'),
           ],
         ),
     ];

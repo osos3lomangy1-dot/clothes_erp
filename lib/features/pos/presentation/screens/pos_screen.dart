@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/retail_sector.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/utils/keyboard_focus_helper.dart';
 import '../../../../core/utils/money.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
@@ -440,6 +441,37 @@ class _PosViewState extends State<_PosView> {
     );
   }
 
+  void _adjustLastCartItemQty(int delta) {
+    final posCubit = context.read<PosCubit>();
+    final cart = posCubit.state.cart;
+    if (cart.isEmpty) return;
+    final lastItem = cart.last;
+    if (delta > 0) {
+      if (!lastItem.isReturn) {
+        final variant = posCubit.getVariantById(lastItem.variantId);
+        if (variant != null) {
+          final currentVariantQty = cart
+              .where((it) => it.variantId == lastItem.variantId && !it.isReturn)
+              .fold<num>(0, (sum, it) => sum + it.effectiveQuantity);
+          if (currentVariantQty >= variant.quantity) {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('الحد الأقصى المتاح في المخزون (${variant.quantity})'),
+                backgroundColor: Colors.orange.shade800,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+            return;
+          }
+        }
+      }
+      posCubit.increaseQty(lastItem.variantId, isReturn: lastItem.isReturn);
+    } else if (delta < 0) {
+      posCubit.decreaseQty(lastItem.variantId, isReturn: lastItem.isReturn);
+    }
+  }
+
   void _navigateCategory({required bool forward}) {
     final posCubit = context.read<PosCubit>();
     final categories = posCubit.state.categories;
@@ -592,6 +624,17 @@ class _PosViewState extends State<_PosView> {
         return true;
       }
       return false;
+    }
+
+    // Shortcut [Numpad + / Numpad -]: Adjust last cart item quantity (+1 / -1) when not in a text input
+    if (!isCtrl &&
+        !isAlt &&
+        !isEditableTextFocused() &&
+        (key == LogicalKeyboardKey.numpadAdd ||
+            key == LogicalKeyboardKey.numpadSubtract)) {
+      _scannerBuffer.clear();
+      _adjustLastCartItemQty(key == LogicalKeyboardKey.numpadAdd ? 1 : -1);
+      return true;
     }
 
     // Grid Navigation via Hardware Keyboard (Down / Up / Left / Right / Enter / NumpadEnter / Space)

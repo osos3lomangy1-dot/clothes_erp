@@ -4,6 +4,7 @@ import 'package:clothes_erp/core/di/injection.dart';
 import 'package:clothes_erp/core/features/feature_gate.dart';
 import 'package:clothes_erp/core/widgets/app_feedback.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../features/customers/domain/entities/customer_entity.dart';
@@ -43,7 +44,94 @@ Future<void> showCustomerDialog(BuildContext context, {CustomerEntity? customer}
     showDialog(
       context: context,
       builder: (dialogCtx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
+        builder: (ctx, setDialogState) {
+          Future<void> submitCustomer() async {
+            final name = nameCtrl.text.trim();
+            final phone = phoneCtrl.text.trim();
+            final points = int.tryParse(pointsCtrl.text.trim()) ?? 0;
+            final discount = int.tryParse(discountCtrl.text.trim()) ?? 0;
+            final creditLimitNum = double.tryParse(creditLimitCtrl.text.trim()) ?? 0.0;
+            final creditLimit = (creditLimitNum * 100).round();
+
+            if (name.isEmpty || phone.isEmpty) {
+              AppFeedback.showError(dialogCtx, 'يرجى إدخال اسم العميل ورقم هاتفه');
+              return;
+            }
+            if (discount < 0 || discount > 100) {
+              AppFeedback.showError(dialogCtx, 'نسبة الخصم يجب أن تكون بين 0% و 100%');
+              return;
+            }
+            if (points < 0) {
+              AppFeedback.showError(dialogCtx, 'رصيد نقاط الولاء لا يمكن أن يكون سالباً');
+              return;
+            }
+            if (creditLimit < 0) {
+              AppFeedback.showError(dialogCtx, 'الحد الائتماني لا يمكن أن يكون سالباً');
+              return;
+            }
+
+            if (isEditing) {
+              final ok = await cubit.updateCustomer(
+                customer.copyWith(
+                  name: name,
+                  phone: phone,
+                  loyaltyPoints: points,
+                  discountPercent: discount,
+                  customerType: selectedType,
+                  creditLimit: creditLimit,
+                ),
+              );
+              if (!dialogCtx.mounted) return;
+              if (ok) {
+                Navigator.pop(dialogCtx);
+                if (context.mounted) {
+                  AppFeedback.showSuccess(context, 'تم تعديل بيانات العميل بنجاح');
+                }
+              } else {
+                final err = cubit.state.errorMessage ?? 'تعذر تعديل بيانات العميل';
+                AppFeedback.showError(
+                  dialogCtx,
+                  err.replaceFirst('Exception: ', ''),
+                );
+              }
+            } else {
+              final ok = await cubit.addCustomer(
+                CustomerEntity(
+                  id: '',
+                  name: name,
+                  phone: phone,
+                  loyaltyPoints: points,
+                  discountPercent: discount,
+                  customerType: selectedType,
+                  creditLimit: creditLimit,
+                  createdAt: DateTime.now(),
+                ),
+              );
+              if (!dialogCtx.mounted) return;
+              if (ok) {
+                Navigator.pop(dialogCtx);
+                if (context.mounted) {
+                  AppFeedback.showSuccess(context, 'تمت إضافة العميل "$name" بنجاح');
+                }
+              } else {
+                final err = cubit.state.errorMessage ?? 'تعذر إضافة العميل';
+                AppFeedback.showError(
+                  dialogCtx,
+                  err.replaceFirst('Exception: ', ''),
+                );
+              }
+            }
+          }
+
+          return CallbackShortcuts(
+            bindings: {
+              const SingleActivator(LogicalKeyboardKey.keyS, control: true):
+                  submitCustomer,
+              const SingleActivator(LogicalKeyboardKey.f12): submitCustomer,
+              const SingleActivator(LogicalKeyboardKey.escape): () =>
+                  Navigator.pop(dialogCtx),
+            },
+            child: AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Row(
             children: [
@@ -63,6 +151,8 @@ Future<void> showCustomerDialog(BuildContext context, {CustomerEntity? customer}
                 children: [
                   TextField(
                     controller: nameCtrl,
+                    autofocus: true,
+                    textInputAction: TextInputAction.next,
                     decoration: InputDecoration(
                       labelText: 'اسم العميل *',
                       hintText: 'مثال: محمد أحمد',
@@ -75,6 +165,7 @@ Future<void> showCustomerDialog(BuildContext context, {CustomerEntity? customer}
                   const SizedBox(height: 12),
                   TextField(
                     controller: phoneCtrl,
+                    textInputAction: TextInputAction.next,
                     decoration: InputDecoration(
                       labelText: 'رقم الهاتف *',
                       hintText: 'مثال: 01012345678',
@@ -166,89 +257,14 @@ Future<void> showCustomerDialog(BuildContext context, {CustomerEntity? customer}
               child: const Text('إلغاء'),
             ),
             ElevatedButton(
+              key: const Key('customer_dialog_save_btn'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              onPressed: () async {
-                final name = nameCtrl.text.trim();
-                final phone = phoneCtrl.text.trim();
-                final points = int.tryParse(pointsCtrl.text.trim()) ?? 0;
-                final discount = int.tryParse(discountCtrl.text.trim()) ?? 0;
-                final creditLimitNum = double.tryParse(creditLimitCtrl.text.trim()) ?? 0.0;
-                final creditLimit = (creditLimitNum * 100).round();
-
-                if (name.isEmpty || phone.isEmpty) {
-                  AppFeedback.showError(dialogCtx, 'يرجى إدخال اسم العميل ورقم هاتفه');
-                  return;
-                }
-                if (discount < 0 || discount > 100) {
-                  AppFeedback.showError(dialogCtx, 'نسبة الخصم يجب أن تكون بين 0% و 100%');
-                  return;
-                }
-                if (points < 0) {
-                  AppFeedback.showError(dialogCtx, 'رصيد نقاط الولاء لا يمكن أن يكون سالباً');
-                  return;
-                }
-                if (creditLimit < 0) {
-                  AppFeedback.showError(dialogCtx, 'الحد الائتماني لا يمكن أن يكون سالباً');
-                  return;
-                }
-
-                if (isEditing) {
-                  final ok = await cubit.updateCustomer(
-                    customer.copyWith(
-                      name: name,
-                      phone: phone,
-                      loyaltyPoints: points,
-                      discountPercent: discount,
-                      customerType: selectedType,
-                      creditLimit: creditLimit,
-                    ),
-                  );
-                  if (!dialogCtx.mounted) return;
-                  if (ok) {
-                    Navigator.pop(dialogCtx);
-                    if (context.mounted) {
-                      AppFeedback.showSuccess(context, 'تم تعديل بيانات العميل بنجاح');
-                    }
-                  } else {
-                    final err = cubit.state.errorMessage ?? 'تعذر تعديل بيانات العميل';
-                    AppFeedback.showError(
-                      dialogCtx,
-                      err.replaceFirst('Exception: ', ''),
-                    );
-                  }
-                } else {
-                  final ok = await cubit.addCustomer(
-                    CustomerEntity(
-                      id: '',
-                      name: name,
-                      phone: phone,
-                      loyaltyPoints: points,
-                      discountPercent: discount,
-                      customerType: selectedType,
-                      creditLimit: creditLimit,
-                      createdAt: DateTime.now(),
-                    ),
-                  );
-                  if (!dialogCtx.mounted) return;
-                  if (ok) {
-                    Navigator.pop(dialogCtx);
-                    if (context.mounted) {
-                      AppFeedback.showSuccess(context, 'تمت إضافة العميل "$name" بنجاح');
-                    }
-                  } else {
-                    final err = cubit.state.errorMessage ?? 'تعذر إضافة العميل';
-                    AppFeedback.showError(
-                      dialogCtx,
-                      err.replaceFirst('Exception: ', ''),
-                    );
-                  }
-                }
-              },
+              onPressed: submitCustomer,
               child: Text(
                 isEditing ? 'حفظ التعديلات' : 'إضافة العميل',
                 style: const TextStyle(
@@ -258,7 +274,9 @@ Future<void> showCustomerDialog(BuildContext context, {CustomerEntity? customer}
               ),
             ),
           ],
-        ),
+            ),
+          );
+        },
       ),
     );
   }

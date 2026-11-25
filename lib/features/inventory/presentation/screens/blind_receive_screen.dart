@@ -1076,6 +1076,39 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
 
   int get _totalItemsCount => _lines.fold(0, (sum, l) => sum + l.quantity);
 
+  Future<void> _handleEscBack() async {
+    if (_lines.isNotEmpty) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          title: const Text('تأكيد الرجوع', style: TextStyle(fontWeight: FontWeight.bold)),
+          content: const Text(
+            'توجد أصناف مضافة في الشحنة لم تُحفظ بعد. هل تريد الرجوع وتجاهلها؟',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('بقاء'),
+            ),
+            ElevatedButton(
+              key: const Key('confirm_discard_esc_btn'),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('تجاهل ورجوع', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+    }
+    if (widget.onBack != null) {
+      widget.onBack!();
+    } else if (Navigator.canPop(context)) {
+      await Navigator.of(context).maybePop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = context.watch<AuthCubit>().state;
@@ -1098,6 +1131,7 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
             _saveReceipt();
           }
         },
+        const SingleActivator(LogicalKeyboardKey.escape): _handleEscBack,
       },
       child: Focus(
         autofocus: true,

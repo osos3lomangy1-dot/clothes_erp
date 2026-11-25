@@ -6,6 +6,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/retail_sector.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/features/feature_gate.dart';
+import '../../../../core/utils/keyboard_focus_helper.dart';
 import '../../../../core/widgets/app_feedback.dart';
 
 import '../../../auth/presentation/cubits/auth_cubit.dart';
@@ -407,6 +408,8 @@ class _PurchasesViewState extends State<_PurchasesView> with TickerProviderState
       },
       child: Focus(
         autofocus: true,
+        onKeyEvent: (_, event) =>
+            handleNumpadAddShortcut(event, _openCreatePurchase),
         child: Scaffold(
       backgroundColor: AppColors.surface,
         appBar: AppBar(

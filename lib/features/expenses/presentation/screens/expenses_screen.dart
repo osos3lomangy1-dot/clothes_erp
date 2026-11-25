@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/services/excel_service.dart';
+import '../../../../core/utils/keyboard_focus_helper.dart';
 import '../../../../core/utils/money.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
+import '../../../auth/services/cashier_permissions_service.dart';
 import '../cubits/expenses_cubit.dart';
 import '../cubits/expenses_state.dart';
 import '../../domain/entities/expense_entity.dart';
@@ -19,6 +22,9 @@ class ExpensesScreen extends StatefulWidget {
 
 class _ExpensesScreenState extends State<ExpensesScreen> {
   DateTimeRange? _dateRange;
+  final TextEditingController _searchCtrl = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -28,6 +34,34 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       start: DateTime(now.year, now.month, 1),
       end: DateTime(now.year, now.month, now.day, 23, 59, 59),
     );
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  bool _canAddExpense(BuildContext context) {
+    try {
+      final auth = context.read<AuthCubit>().state;
+      if (auth is AuthAuthenticated && auth.user.role.toLowerCase() == 'cashier') {
+        return CashierPermissionsService.current.allowCashExpenses;
+      }
+    } catch (_) {}
+    return true;
+  }
+
+  void _handleEsc(BuildContext context) {
+    if (_searchCtrl.text.isNotEmpty || _searchQuery.isNotEmpty) {
+      _searchCtrl.clear();
+      setState(() => _searchQuery = '');
+      return;
+    }
+    if (Navigator.canPop(context)) {
+      Navigator.of(context).maybePop();
+    }
   }
 
   void _openAddExpenseDialog(BuildContext context, List<String> currentCategories) {
@@ -46,7 +80,44 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       context: context,
       barrierDismissible: false,
       builder: (dialogCtx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
+        builder: (ctx, setDialogState) {
+          Future<void> submitExpense() async {
+            if (formKey.currentState?.validate() != true) return;
+            final pounds = double.tryParse(amountCtrl.text.trim()) ?? 0.0;
+            final piasters = (pounds * 100).toInt();
+
+            final finalCategory = isCustomCategory
+                ? customCategoryCtrl.text.trim()
+                : selectedCategory;
+
+            String userId = 'admin';
+            try {
+              final auth = context.read<AuthCubit>().state;
+              if (auth is AuthAuthenticated) userId = auth.user.name;
+            } catch (_) {}
+
+            final ok = await cubit.addExpense(
+              category: finalCategory,
+              amount: piasters,
+              note: noteCtrl.text.trim().isNotEmpty ? noteCtrl.text.trim() : null,
+              expenseDate: expenseDate,
+              userId: userId,
+            );
+
+            if (ok && dialogCtx.mounted) {
+              Navigator.pop(dialogCtx);
+            }
+          }
+
+          return CallbackShortcuts(
+            bindings: {
+              const SingleActivator(LogicalKeyboardKey.keyS, control: true):
+                  submitExpense,
+              const SingleActivator(LogicalKeyboardKey.f12): submitExpense,
+              const SingleActivator(LogicalKeyboardKey.escape): () =>
+                  Navigator.pop(dialogCtx),
+            },
+            child: AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Row(
             children: [
@@ -65,6 +136,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   children: [
                     DropdownButtonFormField<String>(
                       initialValue: isCustomCategory ? addCustomKey : selectedCategory,
+                      isExpanded: true,
                       items: [
                         ...currentCategories.map((c) => DropdownMenuItem(value: c, child: Text(c))),
                         DropdownMenuItem(
@@ -120,6 +192,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     const SizedBox(height: 14),
                     TextFormField(
                       controller: amountCtrl,
+                      autofocus: !isCustomCategory,
+                      textInputAction: TextInputAction.next,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(
                         labelText: 'المبلغ بالج.م *',
@@ -180,41 +254,18 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               child: const Text('إلغاء'),
             ),
             ElevatedButton(
+              key: const Key('save_expense_btn'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
-              onPressed: () async {
-                if (formKey.currentState?.validate() != true) return;
-                final pounds = double.tryParse(amountCtrl.text.trim()) ?? 0.0;
-                final piasters = (pounds * 100).toInt();
-
-                final finalCategory = isCustomCategory
-                    ? customCategoryCtrl.text.trim()
-                    : selectedCategory;
-
-                String userId = 'admin';
-                try {
-                  final auth = context.read<AuthCubit>().state;
-                  if (auth is AuthAuthenticated) userId = auth.user.name;
-                } catch (_) {}
-
-                final ok = await cubit.addExpense(
-                  category: finalCategory,
-                  amount: piasters,
-                  note: noteCtrl.text.trim().isNotEmpty ? noteCtrl.text.trim() : null,
-                  expenseDate: expenseDate,
-                  userId: userId,
-                );
-
-                if (ok && dialogCtx.mounted) {
-                  Navigator.pop(dialogCtx);
-                }
-              },
+              onPressed: submitExpense,
               child: const Text('حفظ المصروف', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -289,7 +340,37 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         ),
       child: BlocBuilder<ExpensesCubit, ExpensesState>(
         builder: (context, state) {
-          return Scaffold(
+          final canAdd = _canAddExpense(context);
+          final q = _searchQuery.trim().toLowerCase();
+          final visibleExpenses = q.isEmpty
+              ? state.expenses
+              : state.expenses.where((exp) {
+                  return exp.category.toLowerCase().contains(q) ||
+                      (exp.note?.toLowerCase().contains(q) ?? false) ||
+                      exp.userId.toLowerCase().contains(q) ||
+                      exp.formattedAmount.toLowerCase().contains(q);
+                }).toList();
+
+          return CallbackShortcuts(
+            bindings: {
+              const SingleActivator(LogicalKeyboardKey.f2): () =>
+                  _searchFocusNode.requestFocus(),
+              const SingleActivator(LogicalKeyboardKey.f3): () {
+                if (_canAddExpense(context)) {
+                  _openAddExpenseDialog(context, state.categories);
+                }
+              },
+              const SingleActivator(LogicalKeyboardKey.escape): () =>
+                  _handleEsc(context),
+            },
+            child: Focus(
+              autofocus: true,
+              onKeyEvent: (_, event) => handleNumpadAddShortcut(event, () {
+                if (_canAddExpense(context)) {
+                  _openAddExpenseDialog(context, state.categories);
+                }
+              }),
+              child: Scaffold(
             backgroundColor: AppColors.surface,
             appBar: AppBar(
               backgroundColor: Colors.white,
@@ -324,11 +405,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
                   child: ElevatedButton.icon(
+                    key: const Key('add_expense_btn'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
-                    onPressed: () => _openAddExpenseDialog(context, state.categories),
+                    onPressed: canAdd
+                        ? () => _openAddExpenseDialog(context, state.categories)
+                        : null,
                     icon: const Icon(Icons.add, color: Colors.white, size: 18),
                     label: const Text('تسجيل مصروف جديد', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
@@ -400,6 +484,33 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             label: const Text('تغيير الفترة'),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        key: const Key('expenses_search_field'),
+                        controller: _searchCtrl,
+                        focusNode: _searchFocusNode,
+                        onChanged: (val) => setState(() => _searchQuery = val),
+                        decoration: InputDecoration(
+                          hintText: 'ابحث في المصروفات بالبند أو البيان أو المبلغ... (F2)',
+                          prefixIcon: Icon(Icons.search_rounded, color: AppColors.primary, size: 20),
+                          suffixIcon: _searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 18),
+                                  onPressed: () {
+                                    _searchCtrl.clear();
+                                    setState(() => _searchQuery = '');
+                                  },
+                                )
+                              : null,
+                          isDense: true,
+                          filled: true,
+                          fillColor: AppColors.surfaceContainer,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: AppColors.outlineVariant),
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 10),
                       // Category Chips
@@ -526,7 +637,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                   const Text('عدد سندات الصرف', style: TextStyle(fontSize: 12, color: Colors.grey)),
                                   const SizedBox(height: 4),
                                   Text(
-                                    '${state.expenses.length} مصروف',
+                                    '${visibleExpenses.length} مصروف',
                                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: AppColors.primary),
                                   ),
                                 ],
@@ -543,26 +654,28 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 Expanded(
                   child: state.status == ExpensesStatus.loading
                       ? const Center(child: CircularProgressIndicator())
-                      : state.expenses.isEmpty
+                      : visibleExpenses.isEmpty
                           ? Center(
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(Icons.money_off_csred_rounded, size: 64, color: Colors.grey.shade400),
                                   const SizedBox(height: 12),
-                                  const Text(
-                                    'لا توجد مصروفات مسجلة خلال هذه الفترة',
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                  Text(
+                                    _searchQuery.isNotEmpty
+                                        ? 'لا توجد مصروفات مطابقة للبحث'
+                                        : 'لا توجد مصروفات مسجلة خلال هذه الفترة',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                   ),
                                 ],
                               ),
                             )
                           : ListView.separated(
                               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                              itemCount: state.expenses.length,
+                              itemCount: visibleExpenses.length,
                               separatorBuilder: (_, index) => const SizedBox(height: 10),
                               itemBuilder: (context, index) {
-                                final exp = state.expenses[index];
+                                final exp = visibleExpenses[index];
                                 return Material(
                                   color: Colors.white,
                                   shape: RoundedRectangleBorder(
@@ -627,6 +740,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             ),
                 ),
               ],
+            ),
+            ),
             ),
           );
         },

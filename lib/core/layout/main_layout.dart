@@ -1707,6 +1707,12 @@ class _MainLayoutState extends State<MainLayout> {
     );
   }
 
+  _ContextualHotkeyItem _escHotkeyItem(String key) => _ContextualHotkeyItem(
+        key: key,
+        label: 'Esc إلغاء / رجوع',
+        icon: Icons.keyboard_return_rounded,
+      );
+
   Widget _buildContextualHotkeyStrip() {
     final title = _activeTitle.toLowerCase();
     final bool isStocktake = title.contains('جرد');
@@ -1726,6 +1732,8 @@ class _MainLayoutState extends State<MainLayout> {
     final bool isCreatePurchase = title.contains('فاتورة مشتريات');
     final bool isPurchases = !isCreatePurchase &&
         (title.contains('مشتريات') || title.contains('مورد'));
+    final bool isCustomers = title.contains('عملاء');
+    final bool isExpenses = title.contains('مصروفات');
 
     final String stripKey = isStocktake
         ? 'contextual_hotkey_strip_stocktake'
@@ -1739,11 +1747,16 @@ class _MainLayoutState extends State<MainLayout> {
                         ? 'contextual_hotkey_strip_create_purchase'
                         : isPurchases
                             ? 'contextual_hotkey_strip_purchases'
-                            : 'contextual_hotkey_strip_general';
+                            : isCustomers
+                                ? 'contextual_hotkey_strip_customers'
+                                : isExpenses
+                                    ? 'contextual_hotkey_strip_expenses'
+                                    : 'contextual_hotkey_strip_general';
 
     final List<_ContextualHotkeyItem> items;
     if (isStocktake) {
       items = [
+        _escHotkeyItem('hotkey_stocktake_esc'),
         _ContextualHotkeyItem(
           key: 'hotkey_stocktake_palette',
           label: 'Ctrl+K لوحة الأوامر',
@@ -1774,6 +1787,7 @@ class _MainLayoutState extends State<MainLayout> {
           label: 'Ctrl+S / F12 حفظ واستلام',
           icon: Icons.save_rounded,
         ),
+        _escHotkeyItem('hotkey_blind_receive_esc'),
         _ContextualHotkeyItem(
           key: 'hotkey_blind_receive_palette',
           label: 'Ctrl+K لوحة الأوامر',
@@ -1800,6 +1814,7 @@ class _MainLayoutState extends State<MainLayout> {
             label: 'تنقل شبكي بالأسهم',
             icon: Icons.grid_view_rounded,
           ),
+          _escHotkeyItem('hotkey_products_esc'),
           _ContextualHotkeyItem(
             key: 'hotkey_products_shortcuts',
             label: 'F1 دليل ومفاتيح',
@@ -1819,6 +1834,7 @@ class _MainLayoutState extends State<MainLayout> {
             label: 'F2 / Ctrl+F بحث',
             icon: Icons.search_rounded,
           ),
+          _escHotkeyItem('hotkey_products_esc'),
           _ContextualHotkeyItem(
             key: 'hotkey_products_palette',
             label: 'Ctrl+K لوحة الأوامر',
@@ -1835,6 +1851,7 @@ class _MainLayoutState extends State<MainLayout> {
       }
     } else if (isDelivery) {
       items = [
+        _escHotkeyItem('hotkey_delivery_esc'),
         _ContextualHotkeyItem(
           key: 'hotkey_delivery_palette',
           label: 'Ctrl+K لوحة الأوامر',
@@ -1865,6 +1882,7 @@ class _MainLayoutState extends State<MainLayout> {
           label: 'Ctrl+S / F12 حفظ الفاتورة',
           icon: Icons.save_rounded,
         ),
+        _escHotkeyItem('hotkey_create_purchase_esc'),
         _ContextualHotkeyItem(
           key: 'hotkey_create_purchase_palette',
           label: 'Ctrl+K لوحة الأوامر',
@@ -1892,6 +1910,7 @@ class _MainLayoutState extends State<MainLayout> {
             icon: Icons.move_to_inbox_rounded,
             onTap: _openBlindReceiveShortcut,
           ),
+        _escHotkeyItem('hotkey_purchases_esc'),
         _ContextualHotkeyItem(
           key: 'hotkey_purchases_palette',
           label: 'Ctrl+K لوحة الأوامر',
@@ -1900,6 +1919,58 @@ class _MainLayoutState extends State<MainLayout> {
         ),
         _ContextualHotkeyItem(
           key: 'hotkey_purchases_shortcuts',
+          label: 'F1 اختصارات',
+          icon: Icons.keyboard_rounded,
+          onTap: _openShortcutsGuide,
+        ),
+      ];
+    } else if (isCustomers) {
+      items = [
+        const _ContextualHotkeyItem(
+          key: 'hotkey_customers_search',
+          label: 'F2 بحث',
+          icon: Icons.search_rounded,
+        ),
+        const _ContextualHotkeyItem(
+          key: 'hotkey_customers_add',
+          label: 'F3 عميل جديد',
+          icon: Icons.person_add_rounded,
+        ),
+        _escHotkeyItem('hotkey_customers_esc'),
+        _ContextualHotkeyItem(
+          key: 'hotkey_customers_palette',
+          label: 'Ctrl+K لوحة الأوامر',
+          icon: Icons.terminal_rounded,
+          onTap: _openCommandPalette,
+        ),
+        _ContextualHotkeyItem(
+          key: 'hotkey_customers_shortcuts',
+          label: 'F1 اختصارات',
+          icon: Icons.keyboard_rounded,
+          onTap: _openShortcutsGuide,
+        ),
+      ];
+    } else if (isExpenses) {
+      items = [
+        const _ContextualHotkeyItem(
+          key: 'hotkey_expenses_search',
+          label: 'F2 بحث',
+          icon: Icons.search_rounded,
+        ),
+        const _ContextualHotkeyItem(
+          key: 'hotkey_expenses_add',
+          label: 'F3 مصروف جديد',
+          icon: Icons.add_card_rounded,
+        ),
+        _escHotkeyItem('hotkey_expenses_esc'),
+        _ContextualHotkeyItem(
+          key: 'hotkey_expenses_palette',
+          label: 'Ctrl+K لوحة الأوامر',
+          icon: Icons.terminal_rounded,
+          onTap: _openCommandPalette,
+        ),
+        _ContextualHotkeyItem(
+          key: 'hotkey_expenses_shortcuts',
           label: 'F1 اختصارات',
           icon: Icons.keyboard_rounded,
           onTap: _openShortcutsGuide,
@@ -1928,6 +1999,7 @@ class _MainLayoutState extends State<MainLayout> {
             icon: Icons.add_shopping_cart_rounded,
             onTap: _openCreatePurchaseShortcut,
           ),
+        _escHotkeyItem('hotkey_general_esc'),
         _ContextualHotkeyItem(
           key: 'hotkey_general_palette',
           label: 'Ctrl+K لوحة الأوامر العامة',
