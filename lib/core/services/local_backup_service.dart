@@ -261,6 +261,82 @@ class LocalBackupService {
     }
   }
 
+  /// Fast, atomic snapshot on desktop window/app exit.
+  /// Writes today's `auto_backup_YYYY-MM-DD.sqlite` via a temp file and atomic rename,
+  /// bounded by [timeout] (default 3s) so exit is never stalled and partial files cannot remain.
+  Future<BackupResult?> runOnCloseBackupSnapshot({
+    DateTime? now,
+    Duration timeout = const Duration(seconds: 3),
+  }) async {
+    final current = now ?? DateTime.now();
+    File? tempFile;
+    try {
+      final config = await loadConfig().timeout(timeout);
+      if (!config.autoEnabled) return null;
+
+      final dir = Directory(config.directoryPath);
+      if (!dir.existsSync()) {
+        await dir.create(recursive: true).timeout(timeout);
+      }
+
+      final todayKey = _formatDateOnly(current);
+      final targetPath =
+          '${dir.path}${Platform.pathSeparator}auto_backup_$todayKey.sqlite';
+      final tempPath =
+          '${dir.path}${Platform.pathSeparator}.auto_backup_${todayKey}_tmp.sqlite';
+      tempFile = File(tempPath);
+      if (tempFile.existsSync()) {
+        await tempFile.delete().timeout(timeout);
+      }
+
+      final result = await createBackup(
+        targetFilePath: tempPath,
+        userId: 'system_on_close_backup',
+        updateMetadata: false,
+      ).timeout(timeout);
+
+      // Atomically replace today's snapshot file
+      await tempFile.rename(targetPath).timeout(timeout);
+      tempFile = null;
+
+      await _featureGate.setMeta(
+        BackupMetaKeys.lastAutoDate,
+        todayKey,
+        userId: 'system_on_close_backup',
+      ).timeout(timeout);
+      await _featureGate.setMeta(
+        BackupMetaKeys.lastBackupAt,
+        result.createdAt.toIso8601String(),
+        userId: 'system_on_close_backup',
+      ).timeout(timeout);
+      await _featureGate.setMeta(
+        BackupMetaKeys.lastBackupPath,
+        targetPath,
+        userId: 'system_on_close_backup',
+      ).timeout(timeout);
+      await pruneOldAutoBackups(
+        directoryPath: dir.path,
+        keepCount: config.retentionCount,
+      ).timeout(timeout);
+
+      Logging.info('[OnCloseBackup] Updated snapshot: $targetPath');
+      return BackupResult(
+        filePath: targetPath,
+        sizeBytes: result.sizeBytes,
+        createdAt: result.createdAt,
+      );
+    } catch (e) {
+      Logging.error('[OnCloseBackup] Skipped/failed: $e');
+      return null;
+    } finally {
+      if (tempFile != null && tempFile.existsSync()) {
+        try {
+          await tempFile.delete();
+        } catch (_) {}
+      }
+    }
+  }
+
   /// Deletes older `auto_backup_*.sqlite` files keeping only the newest [keepCount].
   Future<int> pruneOldAutoBackups({
     required String directoryPath,

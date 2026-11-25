@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/constants/app_colors.dart';
@@ -263,11 +265,30 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   late bool _setupCompleted;
+  AppLifecycleListener? _lifecycleListener;
 
   @override
   void initState() {
     super.initState();
     _setupCompleted = widget.isSetupCompleted;
+    if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+      _lifecycleListener = AppLifecycleListener(
+        onExitRequested: _handleExitRequested,
+      );
+    }
+  }
+
+  Future<AppExitResponse> _handleExitRequested() async {
+    if (getIt.isRegistered<LocalBackupService>()) {
+      await getIt<LocalBackupService>().runOnCloseBackupSnapshot();
+    }
+    return AppExitResponse.exit;
+  }
+
+  @override
+  void dispose() {
+    _lifecycleListener?.dispose();
+    super.dispose();
   }
 
   void _onSetupCompleted() {

@@ -1,5 +1,9 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import '../../../../core/di/injection.dart';
+import '../../../../core/services/google_drive_backup_service.dart';
+import '../../../../core/services/local_backup_service.dart';
 import '../../domain/entities/shift_entity.dart';
 import '../../domain/repositories/shift_repository.dart';
 import 'shift_state.dart';
@@ -105,6 +109,12 @@ class ShiftCubit extends Cubit<ShiftState> {
       (closedShift) async {
         emit(state.copyWith(isOperating: false));
         await loadShiftData();
+        if (getIt.isRegistered<LocalBackupService>()) {
+          unawaited(getIt<LocalBackupService>().runAutoBackupIfDue());
+        }
+        if (getIt.isRegistered<GoogleDriveBackupService>()) {
+          unawaited(getIt<GoogleDriveBackupService>().runAutoDriveBackupIfDue());
+        }
         return true;
       },
     );

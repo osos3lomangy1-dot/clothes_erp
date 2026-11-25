@@ -88,6 +88,9 @@ Future<void> configureDependencies() async {
         getIt<AppDatabase>(),
         getIt<BranchProvider>(),
         getIt<TxWriter>(),
+        activitySettingsService: getIt.isRegistered<ActivitySettingsService>()
+            ? getIt<ActivitySettingsService>()
+            : null,
       ),
     );
   }

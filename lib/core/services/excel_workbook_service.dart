@@ -10,9 +10,13 @@ import 'package:uuid/uuid.dart';
 
 import '../../features/installments/domain/services/installment_calculator.dart';
 import '../../features/partners/domain/entities/partner_entity.dart';
+import '../../features/products/domain/entities/activity_type.dart';
+import '../../features/settings/data/services/activity_settings_service.dart';
+import '../constants/retail_sector.dart';
 import '../database/app_database.dart';
 import '../database/branch_provider.dart';
 import '../database/tx_writer.dart';
+import '../di/injection.dart';
 import 'excel_workbook_models.dart';
 
 /// Full Linked Excel Workbook Exporter + Shop Migration & Smart Column Mapper.
@@ -23,6 +27,7 @@ class ExcelWorkbookService {
   final AppDatabase _db;
   final BranchProvider _branchProvider;
   final TxWriter _txWriter;
+  final ActivitySettingsService? _activitySettingsService;
   final _uuid = const Uuid();
 
   // Canonical Arabic sheet names used across Full Export & Migration Template
@@ -40,7 +45,55 @@ class ExcelWorkbookService {
   static const sheetReturns = 'المرتجعات';
   static const sheetInstructions = 'التعليمات';
 
-  ExcelWorkbookService(this._db, this._branchProvider, this._txWriter);
+  ExcelWorkbookService(
+    this._db,
+    this._branchProvider,
+    this._txWriter, {
+    ActivitySettingsService? activitySettingsService,
+  }) : _activitySettingsService = activitySettingsService;
+
+  Future<String> _resolveDefaultActivityType(String? override) async {
+    if (override != null && override.trim().isNotEmpty) {
+      return override.trim();
+    }
+    final svc = _activitySettingsService ??
+        (getIt.isRegistered<ActivitySettingsService>()
+            ? getIt<ActivitySettingsService>()
+            : null);
+    if (svc != null) {
+      try {
+        final enabled = await svc.getEnabledActivities();
+        if (enabled.isNotEmpty && enabled.length < ActivityType.values.length) {
+          return enabled.first.code;
+        }
+      } catch (_) {}
+    }
+
+    final metaRows = await _db.select(_db.appMeta).get();
+    final enabledFromMeta = <String>[];
+    String? sectorMode;
+    for (final r in metaRows) {
+      if (r.key.startsWith('activity.') && r.value == '1') {
+        enabledFromMeta.add(r.key.replaceFirst('activity.', ''));
+      } else if (r.key == RetailSector.metaKey) {
+        sectorMode = r.value;
+      }
+    }
+    if (enabledFromMeta.isNotEmpty &&
+        enabledFromMeta.length < ActivityType.values.length) {
+      return enabledFromMeta.first;
+    }
+    switch (sectorMode) {
+      case RetailSector.houseware:
+        return ActivityType.homeLiving.code;
+      case RetailSector.supermarket:
+        return ActivityType.supermarketGroceries.code;
+      case RetailSector.hospitality:
+        return ActivityType.restaurantsCafes.code;
+      default:
+        return ActivityType.clothing.code;
+    }
+  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 1. FIELD SPECIFICATIONS FOR SMART COLUMN MAPPER
@@ -1826,9 +1879,11 @@ class ExcelWorkbookService {
   Future<WorkbookImportResult> executeWorkbookImport({
     required WorkbookImportPreview preview,
     required String userId,
+    String? defaultActivityType,
   }) async {
     final branchId = await _branchProvider.getBranchId();
     final now = DateTime.now();
+    final resolvedActivityType = await _resolveDefaultActivityType(defaultActivityType);
 
     int productsAdded = 0;
     int productsUpdated = 0;
@@ -1891,6 +1946,7 @@ class ExcelWorkbookService {
                 branchId: branchId,
                 name: name.trim(),
                 categoryId: categoryId,
+                activityType: drift.Value(resolvedActivityType),
                 minStock: drift.Value(minStock),
                 createdAt: now,
                 updatedAt: now,
