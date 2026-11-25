@@ -8,6 +8,7 @@ import '../../../../core/database/branch_provider.dart';
 import '../../../../core/database/tx_writer.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/money.dart';
+import '../../../../core/utils/phone_validator.dart';
 import '../../data/services/device_serial_service.dart';
 
 class _VariantPickerOption {
@@ -422,6 +423,13 @@ class _UsedDeviceIntakeDialogState extends State<UsedDeviceIntakeDialog> {
                                 controller: _sellerPhoneCtrl,
                                 textInputAction: TextInputAction.next,
                                 keyboardType: TextInputType.phone,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
+                                validator: (v) => PhoneValidator.validate(
+                                  v,
+                                  required: false,
+                                ),
                                 decoration: InputDecoration(
                                   labelText: 'هاتف البائع',
                                   prefixIcon: const Icon(Icons.phone_outlined),

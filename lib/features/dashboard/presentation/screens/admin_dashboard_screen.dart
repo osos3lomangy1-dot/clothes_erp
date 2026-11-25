@@ -1,15 +1,21 @@
 import 'dart:async';
+import 'package:drift/drift.dart' as drift show InsertMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/features/feature_gate.dart';
 import '../../../../core/layout/main_layout.dart';
 import '../../../../core/services/app_update_service.dart';
 import '../../../../core/utils/money.dart';
+import '../../../employees/presentation/screens/employee_list_screen.dart';
+import '../../../inventory/presentation/screens/blind_receive_screen.dart';
+import '../../../partners/presentation/screens/partners_screen.dart';
 import '../../../reports/presentation/screens/reports_screen.dart';
 import '../../../reports/presentation/widgets/payment_method_pie_chart.dart';
 import '../../../reports/presentation/widgets/top_selling_products_widget.dart';
+import '../../../settings/presentation/screens/excel_migration_screen.dart';
 import '../cubits/dashboard_cubit.dart';
 import '../cubits/dashboard_state.dart';
 import '../../domain/entities/dashboard_stats_entity.dart';
@@ -24,6 +30,240 @@ class AdminDashboardScreen extends StatelessWidget {
     return BlocProvider(
       create: (context) => getIt<DashboardCubit>()..loadStats(),
       child: const _AdminDashboardView(),
+    );
+  }
+}
+
+class QuickSetupGuideCard extends StatefulWidget {
+  const QuickSetupGuideCard({super.key});
+
+  @override
+  State<QuickSetupGuideCard> createState() => _QuickSetupGuideCardState();
+}
+
+class _QuickSetupGuideCardState extends State<QuickSetupGuideCard> {
+  static const String _quickSetupMetaKey = 'dashboard.quick_setup_state';
+  bool _collapsed = false;
+  bool _hidden = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadState();
+  }
+
+  Future<void> _loadState() async {
+    try {
+      if (!getIt.isRegistered<AppDatabase>()) return;
+      final db = getIt<AppDatabase>();
+      final row = await (db.select(db.appMeta)
+            ..where((t) => t.key.equals(_quickSetupMetaKey)))
+          .getSingleOrNull();
+      if (!mounted || row == null) return;
+      setState(() {
+        _hidden = row.value == 'hidden';
+        _collapsed = row.value == 'collapsed';
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _saveState(String stateVal) async {
+    try {
+      if (!getIt.isRegistered<AppDatabase>()) return;
+      final db = getIt<AppDatabase>();
+      await db.into(db.appMeta).insert(
+            AppMetaCompanion.insert(
+              key: _quickSetupMetaKey,
+              value: stateVal,
+              updatedAt: DateTime.now(),
+            ),
+            mode: drift.InsertMode.insertOrReplace,
+          );
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_hidden) return const SizedBox.shrink();
+
+    final steps = [
+      (
+        key: const Key('quick_setup_partners_btn'),
+        icon: Icons.account_balance_rounded,
+        title: 'تسجيل رأس المال والشركاء',
+        subtitle: 'إدخال رأس المال الافتتاحي ونسب الشركاء',
+        screen: const PartnersScreen(),
+      ),
+      (
+        key: const Key('quick_setup_excel_btn'),
+        icon: Icons.table_view_rounded,
+        title: 'استيراد البضاعة والعملاء (Excel)',
+        subtitle: 'ترحيل المنتجات والعملاء والأقساط القديمة',
+        screen: const ExcelMigrationScreen(userId: 'admin'),
+      ),
+      (
+        key: const Key('quick_setup_receive_btn'),
+        icon: Icons.move_to_inbox_rounded,
+        title: 'استلام بضاعة جديدة يدوياً',
+        subtitle: 'إضافة شحنة سريعة وتحديث المخزون',
+        screen: const BlindReceiveScreen(),
+      ),
+      (
+        key: const Key('quick_setup_employees_btn'),
+        icon: Icons.badge_rounded,
+        title: 'إضافة الكاشير والموظفين (PIN)',
+        subtitle: 'إنشاء حسابات الكاشير وتحديد الصلاحيات',
+        screen: const EmployeeListScreen(),
+      ),
+    ];
+
+    return Container(
+      key: const Key('quick_setup_guide_card'),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.rocket_launch_rounded,
+                  color: AppColors.primary,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'خطوات تأسيس المحل السريعة',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14.5,
+                    color: AppColors.onSurface,
+                  ),
+                ),
+              ),
+              IconButton(
+                key: const Key('quick_setup_toggle_btn'),
+                tooltip: _collapsed ? 'توسيع' : 'طي',
+                onPressed: () {
+                  final nextCollapsed = !_collapsed;
+                  setState(() => _collapsed = nextCollapsed);
+                  _saveState(nextCollapsed ? 'collapsed' : 'expanded');
+                },
+                icon: Icon(
+                  _collapsed
+                      ? Icons.expand_more_rounded
+                      : Icons.expand_less_rounded,
+                ),
+              ),
+              IconButton(
+                key: const Key('quick_setup_hide_btn'),
+                tooltip: 'إخفاء البطاقة',
+                onPressed: () {
+                  setState(() => _hidden = true);
+                  _saveState('hidden');
+                },
+                icon: const Icon(Icons.close_rounded, size: 18),
+              ),
+            ],
+          ),
+          if (!_collapsed) ...[
+            const SizedBox(height: 12),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final itemWidth = constraints.maxWidth >= 900
+                    ? (constraints.maxWidth - 30) / 4
+                    : (constraints.maxWidth >= 540
+                        ? (constraints.maxWidth - 10) / 2
+                        : constraints.maxWidth);
+                return Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    for (final step in steps)
+                      SizedBox(
+                        width: itemWidth,
+                        child: InkWell(
+                          key: step.key,
+                          borderRadius: BorderRadius.circular(10),
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => step.screen),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: AppColors.outlineVariant,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  step.icon,
+                                  color: AppColors.primary,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        step.title,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12.5,
+                                          color: AppColors.onSurface,
+                                        ),
+                                      ),
+                                      Text(
+                                        step.subtitle,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 10.5,
+                                          color: AppColors.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.arrow_forward_ios_rounded,
+                                  size: 13,
+                                  color: AppColors.onSurfaceVariant,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -233,6 +473,9 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
               child: ListView(
                 padding: const EdgeInsets.all(20.0),
                 children: [
+                  const QuickSetupGuideCard(),
+                  const SizedBox(height: 16),
+
                   // 1. Executive Financial Row (4 Cards)
                   _buildExecutiveKpiRow(context, stats),
 

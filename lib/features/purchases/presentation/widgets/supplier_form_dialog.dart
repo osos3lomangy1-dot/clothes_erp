@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/utils/phone_validator.dart';
 import '../../domain/entities/supplier_entity.dart';
 
 class SupplierFormDialog extends StatefulWidget {
@@ -48,16 +50,6 @@ class _SupplierFormDialogState extends State<SupplierFormDialog> {
     super.dispose();
   }
 
-  String _normalizeNumbers(String input) {
-    const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    const english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-    var res = input;
-    for (int i = 0; i < 10; i++) {
-      res = res.replaceAll(arabic[i], english[i]);
-    }
-    return res;
-  }
-
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -69,7 +61,7 @@ class _SupplierFormDialogState extends State<SupplierFormDialog> {
     try {
       final phone = _phoneController.text.trim().isEmpty
           ? null
-          : _normalizeNumbers(_phoneController.text.trim());
+          : PhoneValidator.normalize(_phoneController.text.trim());
       final res = await widget.onSave(
         name: _nameController.text.trim(),
         phone: phone,
@@ -176,6 +168,8 @@ class _SupplierFormDialogState extends State<SupplierFormDialog> {
                 TextFormField(
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  validator: (v) => PhoneValidator.validate(v, required: false),
                   decoration: InputDecoration(
                     labelText: 'رقم الهاتف',
                     prefixIcon: const Icon(Icons.phone_rounded),

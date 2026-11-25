@@ -11,6 +11,7 @@ import '../../../../core/database/tx_writer.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/keyboard_focus_helper.dart';
 import '../../../../core/utils/money.dart';
+import '../../../../core/utils/phone_validator.dart';
 import '../../data/services/mobile_repair_service.dart';
 
 class RepairCenterScreen extends StatefulWidget {
@@ -763,6 +764,12 @@ class _CreateRepairTicketDialogState extends State<_CreateRepairTicketDialog> {
                         child: TextFormField(
                           key: const Key('repair_phone_field'),
                           controller: _phoneCtrl,
+                          keyboardType: TextInputType.phone,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                          validator: (v) =>
+                              PhoneValidator.validate(v, required: false),
                           decoration: const InputDecoration(
                             labelText: 'رقم الهاتف',
                             border: OutlineInputBorder(),

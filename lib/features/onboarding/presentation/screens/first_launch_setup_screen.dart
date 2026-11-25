@@ -8,6 +8,7 @@ import '../../../../core/di/injection.dart';
 import '../../../../core/features/feature_gate.dart';
 import '../../../../core/services/store_presets_engine.dart';
 import '../../../../core/theme/app_branding.dart';
+import '../../../../core/utils/phone_validator.dart';
 import '../../../../features/auth/presentation/cubits/auth_cubit.dart';
 import '../../../../features/dashboard/presentation/screens/admin_dashboard_screen.dart';
 import '../../../../features/invoices/data/services/receipt_settings_service.dart';
@@ -84,6 +85,14 @@ class _FirstLaunchSetupScreenState extends State<FirstLaunchSetupScreen> {
         setState(() => _stepErrorMessage = 'يرجى إدخال اسم المتجر أو المحل للمتابعة.');
         return;
       }
+      final phoneErr = PhoneValidator.validate(
+        _storePhoneController.text,
+        required: false,
+      );
+      if (phoneErr != null) {
+        setState(() => _stepErrorMessage = phoneErr);
+        return;
+      }
     }
 
     // Validate Step 2 (Admin Account)
@@ -149,7 +158,7 @@ class _FirstLaunchSetupScreenState extends State<FirstLaunchSetupScreen> {
       final activityService = getIt<ActivitySettingsService>();
 
       final storeName = _storeNameController.text.trim();
-      final storePhone = _storePhoneController.text.trim();
+      final storePhone = PhoneValidator.normalize(_storePhoneController.text);
       final storeAddress = _storeAddressController.text.trim();
       final adminUser = _adminUsernameController.text.trim();
       final adminPass = _adminPasswordController.text.trim();
@@ -283,6 +292,25 @@ class _FirstLaunchSetupScreenState extends State<FirstLaunchSetupScreen> {
           _isSubmitting = false;
         });
       }
+    }
+  }
+
+  List<String> _presetFeatureChips(StorePreset preset) {
+    switch (preset) {
+      case StorePreset.fashion:
+        return const ['مقاسات وألوان', 'باركود', 'مواسم'];
+      case StorePreset.electronics:
+        return const ['IMEI', 'ضمان', 'تقسيط وصيانة'];
+      case StorePreset.grocery:
+        return const ['باركود سريع', 'صلاحية', 'موازين'];
+      case StorePreset.hospitality:
+        return const ['طاولات', 'مطبخ', 'دليفري'];
+      case StorePreset.pharmacy:
+        return const ['صلاحية', 'نواقص', 'باركود'];
+      case StorePreset.homeTextiles:
+        return const ['أمتار', 'تقسيط', 'ضمان'];
+      case StorePreset.custom:
+        return const ['تخصيص كامل', 'مرن'];
     }
   }
 
@@ -510,6 +538,7 @@ class _FirstLaunchSetupScreenState extends State<FirstLaunchSetupScreen> {
           key: const Key('setup_store_phone_field'),
           controller: _storePhoneController,
           keyboardType: TextInputType.phone,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           decoration: InputDecoration(
             hintText: 'مثال: 01012345678',
             prefixIcon: const Icon(Icons.phone_rounded, size: 20),
@@ -584,24 +613,29 @@ class _FirstLaunchSetupScreenState extends State<FirstLaunchSetupScreen> {
                 crossAxisCount: isWide ? 3 : 2,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
-                childAspectRatio: isWide ? 1.45 : 1.25,
+                childAspectRatio: isWide ? 1.32 : 1.1,
               ),
               itemBuilder: (context, index) {
                 final preset = presets[index];
                 final isSelected = _selectedPreset == preset;
+                final chips = _presetFeatureChips(preset);
 
                 return InkWell(
                   key: Key('preset_card_${preset.code}'),
                   onTap: () => _selectPreset(preset),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: isSelected ? AppColors.primary.withValues(alpha: 0.08) : Colors.white,
-                      borderRadius: BorderRadius.circular(10),
+                      color: isSelected
+                          ? AppColors.primary.withValues(alpha: 0.08)
+                          : AppColors.surfaceContainerLowest,
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isSelected ? AppColors.primary : const Color(0xFFE2E8F0),
+                        color: isSelected
+                            ? AppColors.primary
+                            : AppColors.outlineVariant,
                         width: isSelected ? 2 : 1,
                       ),
                       boxShadow: isSelected
@@ -616,43 +650,93 @@ class _FirstLaunchSetupScreenState extends State<FirstLaunchSetupScreen> {
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.all(7),
+                              padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
                                 color: isSelected
                                     ? AppColors.primary
-                                    : const Color(0xFFF1F5F9),
-                                borderRadius: BorderRadius.circular(8),
+                                    : AppColors.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(10),
                               ),
                               child: Icon(
                                 preset.icon,
-                                size: 18,
-                                color: isSelected ? Colors.white : const Color(0xFF475569),
+                                size: 20,
+                                color: isSelected
+                                    ? Colors.white
+                                    : AppColors.primary,
                               ),
                             ),
                             const Spacer(),
                             if (isSelected)
-                              Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 20),
+                              Icon(
+                                Icons.check_circle_rounded,
+                                color: AppColors.primary,
+                                size: 20,
+                              ),
                           ],
                         ),
-                        const Spacer(),
-                        Text(
-                          preset.title,
-                          style: TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.bold,
-                            color: isSelected ? AppColors.primary : const Color(0xFF0F172A),
-                          ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              preset.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.bold,
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : AppColors.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              preset.description,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          preset.description,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                        Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          children: chips
+                              .take(3)
+                              .map(
+                                (label) => Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? AppColors.primary.withValues(alpha: 0.14)
+                                        : AppColors.surfaceContainer,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    label,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: isSelected
+                                          ? AppColors.primary
+                                          : AppColors.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
                         ),
                       ],
                     ),

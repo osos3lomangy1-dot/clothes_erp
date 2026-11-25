@@ -2,6 +2,7 @@
 import 'package:clothes_erp/core/constants/app_colors.dart';
 import 'package:clothes_erp/core/di/injection.dart';
 import 'package:clothes_erp/core/features/feature_gate.dart';
+import 'package:clothes_erp/core/utils/phone_validator.dart';
 import 'package:clothes_erp/core/widgets/app_feedback.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -53,10 +54,16 @@ Future<void> showCustomerDialog(BuildContext context, {CustomerEntity? customer}
             final creditLimitNum = double.tryParse(creditLimitCtrl.text.trim()) ?? 0.0;
             final creditLimit = (creditLimitNum * 100).round();
 
-            if (name.isEmpty || phone.isEmpty) {
-              AppFeedback.showError(dialogCtx, 'يرجى إدخال اسم العميل ورقم هاتفه');
+            if (name.isEmpty) {
+              AppFeedback.showError(dialogCtx, 'يرجى إدخال اسم العميل');
               return;
             }
+            final phoneError = PhoneValidator.validate(phone, required: true);
+            if (phoneError != null) {
+              AppFeedback.showError(dialogCtx, phoneError);
+              return;
+            }
+            final normalizedPhone = PhoneValidator.normalize(phone);
             if (discount < 0 || discount > 100) {
               AppFeedback.showError(dialogCtx, 'نسبة الخصم يجب أن تكون بين 0% و 100%');
               return;
@@ -74,7 +81,7 @@ Future<void> showCustomerDialog(BuildContext context, {CustomerEntity? customer}
               final ok = await cubit.updateCustomer(
                 customer.copyWith(
                   name: name,
-                  phone: phone,
+                  phone: normalizedPhone,
                   loyaltyPoints: points,
                   discountPercent: discount,
                   customerType: selectedType,
@@ -99,7 +106,7 @@ Future<void> showCustomerDialog(BuildContext context, {CustomerEntity? customer}
                 CustomerEntity(
                   id: '',
                   name: name,
-                  phone: phone,
+                  phone: normalizedPhone,
                   loyaltyPoints: points,
                   discountPercent: discount,
                   customerType: selectedType,
@@ -166,6 +173,7 @@ Future<void> showCustomerDialog(BuildContext context, {CustomerEntity? customer}
                   TextField(
                     controller: phoneCtrl,
                     textInputAction: TextInputAction.next,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     decoration: InputDecoration(
                       labelText: 'رقم الهاتف *',
                       hintText: 'مثال: 01012345678',
