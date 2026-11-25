@@ -2715,6 +2715,322 @@ class OfflineSmartAssistantService {
     );
   }
 
+  /// Batch 3.1: Fast count of critical alerts (low-stock items + overdue installments).
+  Future<int> getCriticalAlertCount() async {
+    try {
+      final now = DateTime.now();
+      final products = await (_db.select(_db.products)
+            ..where((p) => p.deletedAt.isNull()))
+          .get();
+      final minStockByProd = {for (final p in products) p.id: p.minStock};
+      final variants = await (_db.select(_db.productVariants)
+            ..where((v) => v.deletedAt.isNull()))
+          .get();
+      int lowCount = 0;
+      for (final v in variants) {
+        final minS = minStockByProd[v.productId] ?? 5;
+        if (v.quantity <= minS) {
+          lowCount++;
+        }
+      }
+
+      final installments = await (_db.select(_db.customerInstallments)
+            ..where((i) =>
+                i.deletedAt.isNull() &
+                (i.status.equals('overdue') | i.status.equals('active'))))
+          .get();
+      int overdueCount = 0;
+      for (final inst in installments) {
+        if (inst.status == 'overdue' || inst.endDate.isBefore(now)) {
+          overdueCount++;
+        }
+      }
+
+      return lowCount + overdueCount;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  /// Batch 3.2a: Top-selling sizes & colors for a product (or overall).
+  Future<AssistantInsight> getTopVariantsByProductInsight(
+    String rawQuery,
+  ) async {
+    final cleanedTarget = rawQuery
+        .replaceFirst(
+          RegExp(r'^.*(?:بيتباع\s+في|اكتر\s+مقاس\s+ولون\s*(?:في)?|مقاسات\s+والوان\s*(?:في)?)\s*'),
+          '',
+        )
+        .trim();
+    final normTarget = normalizeArabic(cleanedTarget);
+    final since = DateTime.now().subtract(const Duration(days: 90));
+
+    final items = await (_db.select(_db.saleItems)
+          ..where((si) => si.createdAt.isBiggerOrEqualValue(since)))
+        .get();
+
+    final filtered = normTarget.isEmpty
+        ? items
+        : items
+            .where((si) => normalizeArabic(si.productName).contains(normTarget))
+            .toList();
+
+    if (filtered.isEmpty) {
+      return AssistantInsight(
+        id: 'top_variants_empty',
+        title: 'تحليل المقاسات والألوان الأكثر طلباً',
+        summary: normTarget.isEmpty
+            ? 'لا توجد بيانات مبيعات كافية خلال آخر 90 يوماً.'
+            : 'لم أجد مبيعات مطابقة للصنف "$cleanedTarget".',
+      );
+    }
+
+    final qtyByCombo = <String, int>{};
+    int totalQty = 0;
+    for (final si in filtered) {
+      final c = si.color.trim().isEmpty || si.color.trim() == '-'
+          ? 'لون قياسي'
+          : si.color.trim();
+      final s = si.size.trim().isEmpty || si.size.trim() == '-'
+          ? 'مقاس قياسي'
+          : 'مقاس ${si.size.trim()}';
+      final key = '$c - $s';
+      qtyByCombo[key] = (qtyByCombo[key] ?? 0) + si.qty;
+      totalQty += si.qty;
+    }
+
+    final sorted = qtyByCombo.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final top = sorted.first;
+    final topPct = totalQty > 0 ? (top.value / totalQty * 100).round() : 0;
+
+    return AssistantInsight(
+      id: 'top_variants_analysis',
+      title: normTarget.isEmpty
+          ? 'أكثر المقاسات والألوان مبيعاً'
+          : 'أكثر المقاسات والألوان طلباً في "$cleanedTarget"',
+      summary: 'الأكثر طلباً: ${top.key} (${top.value} قطعة — $topPct% من المبيعات)',
+      details: [
+        for (final e in sorted.take(5))
+          '${e.key}: ${e.value} قطعة (${totalQty > 0 ? (e.value / totalQty * 100).round() : 0}%)',
+      ],
+      actionLabel: 'فتح الشاشة الآن',
+      actionRoute: AssistantActionRoute.products,
+      requiredFeatureKey: FeatureKeys.inventory,
+    );
+  }
+
+  /// Batch 3.2b: Compare supplier purchase prices for a given product.
+  Future<AssistantInsight> getCheapestSupplierForProductInsight(
+    String rawQuery,
+  ) async {
+    final targetName = rawQuery
+        .replaceFirst(
+          RegExp(r'^.*(?:جبت\s+منه|ارخص\s+مورد\s*(?:لـ|ل)?|مورد\s+ارخص\s*(?:لـ|ل)?)\s*'),
+          '',
+        )
+        .trim();
+    final normTarget = normalizeArabic(targetName);
+    if (normTarget.isEmpty) {
+      return const AssistantInsight(
+        id: 'cheapest_supplier_prompt',
+        title: 'مقارنة أسعار الموردين',
+        summary: 'اذكر اسم الصنف بعد السؤال، مثال: "ارخص مورد جبت منه تيشيرت".',
+      );
+    }
+
+    final products = await (_db.select(_db.products)
+          ..where((p) => p.deletedAt.isNull()))
+        .get();
+    final matchedProdIds = products
+        .where((p) => normalizeArabic(p.name).contains(normTarget))
+        .map((p) => p.id)
+        .toSet();
+    if (matchedProdIds.isEmpty) {
+      return AssistantInsight(
+        id: 'cheapest_supplier_not_found',
+        title: 'مقارنة أسعار الموردين',
+        summary: 'لم يتم العثور على صنف باسم "$targetName".',
+      );
+    }
+
+    final variants = await (_db.select(_db.productVariants)
+          ..where((v) => v.productId.isIn(matchedProdIds) & v.deletedAt.isNull()))
+        .get();
+    final variantIds = variants.map((v) => v.id).toSet();
+
+    final pItems = await (_db.select(_db.purchaseItems)
+          ..where((pi) => pi.variantId.isIn(variantIds)))
+        .get();
+    if (pItems.isEmpty) {
+      return AssistantInsight(
+        id: 'cheapest_supplier_no_purchases',
+        title: 'مقارنة أسعار الموردين ($targetName)',
+        summary: 'لا توجد فواتير مشتريات مسجلة لهذا الصنف حتى الآن.',
+      );
+    }
+
+    final purchaseIds = pItems.map((pi) => pi.purchaseId).toSet();
+    final purchases = await (_db.select(_db.purchases)
+          ..where((p) => p.id.isIn(purchaseIds) & p.deletedAt.isNull()))
+        .get();
+    final purchaseById = {for (final p in purchases) p.id: p};
+
+    final suppliers = await (_db.select(_db.suppliers)
+          ..where((s) => s.deletedAt.isNull()))
+        .get();
+    final supplierById = {for (final s in suppliers) s.id: s.name};
+
+    final bestCostBySupplier = <String, int>{};
+    for (final pi in pItems) {
+      final pur = purchaseById[pi.purchaseId];
+      if (pur == null) continue;
+      final supName = supplierById[pur.supplierId] ?? pur.supplierId;
+      final prev = bestCostBySupplier[supName];
+      if (prev == null || pi.costPrice < prev) {
+        bestCostBySupplier[supName] = pi.costPrice;
+      }
+    }
+
+    if (bestCostBySupplier.isEmpty) {
+      return AssistantInsight(
+        id: 'cheapest_supplier_no_purchases',
+        title: 'مقارنة أسعار الموردين ($targetName)',
+        summary: 'لا توجد فواتير مشتريات نشطة لهذا الصنف.',
+      );
+    }
+
+    final ranked = bestCostBySupplier.entries.toList()
+      ..sort((a, b) => a.value.compareTo(b.value));
+    final cheapest = ranked.first;
+
+    return AssistantInsight(
+      id: 'cheapest_supplier_analysis',
+      title: 'مقارنة أسعار الموردين ($targetName)',
+      summary:
+          'أرخص مورد: ${cheapest.key} بسعر ${Money(cheapest.value).toDisplay()} ج.م للقطعة',
+      details: [
+        for (int i = 0; i < ranked.length; i++)
+          '${i + 1}. ${ranked[i].key}: ${Money(ranked[i].value).toDisplay()} ج.م',
+      ],
+      actionLabel: 'فتح الشاشة الآن',
+      actionRoute: AssistantActionRoute.purchases,
+      requiredFeatureKey: FeatureKeys.purchases,
+    );
+  }
+
+  /// Batch 3.2c: Peak days and hours analysis from Sales table.
+  Future<AssistantInsight> getPeakHoursAndDaysInsight() async {
+    final since = DateTime.now().subtract(const Duration(days: 60));
+    final salesRows = await (_db.select(_db.sales)
+          ..where((s) =>
+              s.date.isBiggerOrEqualValue(since) &
+              s.deletedAt.isNull() &
+              s.status.isNotValue('cancelled')))
+        .get();
+
+    if (salesRows.isEmpty) {
+      return const AssistantInsight(
+        id: 'peak_hours_empty',
+        title: 'تحليل ساعات وأيام الذروة',
+        summary: 'لا توجد فواتير مبيعات كافية في آخر 60 يوماً لتحديد أوقات الذروة.',
+      );
+    }
+
+    const weekdayNames = {
+      DateTime.saturday: 'السبت',
+      DateTime.sunday: 'الأحد',
+      DateTime.monday: 'الإثنين',
+      DateTime.tuesday: 'الثلاثاء',
+      DateTime.wednesday: 'الأربعاء',
+      DateTime.thursday: 'الخميس',
+      DateTime.friday: 'الجمعة',
+    };
+
+    final countByDay = <int, int>{};
+    final countByHour = <int, int>{};
+    for (final s in salesRows) {
+      countByDay[s.date.weekday] = (countByDay[s.date.weekday] ?? 0) + 1;
+      countByHour[s.date.hour] = (countByHour[s.date.hour] ?? 0) + 1;
+    }
+
+    final topDays = countByDay.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final topHours = countByHour.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    String fmtHour(int h) {
+      final period = h >= 12 ? 'م' : 'ص';
+      final h12 = h % 12 == 0 ? 12 : h % 12;
+      return '$h12 $period';
+    }
+
+    final bestDay = weekdayNames[topDays.first.key] ?? '';
+    final bestHour = fmtHour(topHours.first.key);
+
+    return AssistantInsight(
+      id: 'peak_hours_analysis',
+      title: 'تحليل ساعات وأيام الذروة (آخر 60 يوم)',
+      summary:
+          'أكثر يوم زحمة: $bestDay (${topDays.first.value} فاتورة) | ساعة الذروة: $bestHour (${topHours.first.value} فاتورة)',
+      details: [
+        'أعلى الأيام نشاطاً: ${topDays.take(3).map((e) => '${weekdayNames[e.key]} (${e.value})').join('، ')}',
+        'أعلى الساعات نشاطاً: ${topHours.take(3).map((e) => '${fmtHour(e.key)} (${e.value})').join('، ')}',
+        'نصيحة: ركّز تواجد الكاشيرات ونشر العروض قبل ساعة الذروة بساعة.',
+      ],
+      actionLabel: 'فتح الشاشة الآن',
+      actionRoute: AssistantActionRoute.reports,
+      requiredFeatureKey: FeatureKeys.reports,
+    );
+  }
+
+  /// Batch 3.2d: Today's AuditLogs & cancelled invoices detector.
+  Future<AssistantInsight> getTodayAuditsAndCancellationsInsight() async {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final todayEnd = todayStart.add(const Duration(days: 1));
+
+    final audits = await (_db.select(_db.auditLogs)
+          ..where((a) =>
+              a.createdAt.isBiggerOrEqualValue(todayStart) &
+              a.createdAt.isSmallerThanValue(todayEnd))
+          ..orderBy([(a) => OrderingTerm.desc(a.createdAt)]))
+        .get();
+
+    final cancelledSales = await (_db.select(_db.sales)
+          ..where((s) =>
+              s.date.isBiggerOrEqualValue(todayStart) &
+              s.date.isSmallerThanValue(todayEnd) &
+              s.status.equals('cancelled')))
+        .get();
+
+    final returnsToday = await (_db.select(_db.returns)
+          ..where((r) =>
+              r.date.isBiggerOrEqualValue(todayStart) &
+              r.date.isSmallerThanValue(todayEnd) &
+              r.deletedAt.isNull()))
+        .get();
+
+    final hasAlerts = cancelledSales.isNotEmpty || audits.isNotEmpty;
+    final details = <String>[
+      'تعديلات سجل الرقابة اليوم: ${audits.length} عملية.',
+      'الفواتير الملغاة اليوم: ${cancelledSales.length} فاتورة.',
+      'المرتجعات المسجلة اليوم: ${returnsToday.length} مرتجع.',
+      for (final a in audits.take(5))
+        '• ${a.action} (${a.entity}) بواسطة ${a.userId}${a.newValue != null ? ' -> ${a.newValue}' : ''}',
+    ];
+
+    return AssistantInsight(
+      id: 'today_audits_cancellations',
+      title: 'كاشف التعديلات والملغيات اليومية',
+      summary: hasAlerts
+          ? 'تم رصد ${audits.length} تعديل و${cancelledSales.length} فاتورة ملغاة اليوم.'
+          : 'لا توجد تعديلات أو فواتير ملغاة مسجلة اليوم.',
+      details: details,
+      isAlert: cancelledSales.isNotEmpty,
+    );
+  }
+
   /// Multi-turn conversation entry point supporting [AssistantActionDraft].
   Future<AssistantTurnResult> askWithDraft(
     String query, {
@@ -3870,6 +4186,29 @@ $cta${storePhone.isNotEmpty ? ' على: $storePhone' : ''}
     }
     if (q.contains('تذكير قسط') || q.contains('رساله قسط')) {
       results.add(await getInstallmentReminderInsight(query));
+    }
+
+    // Batch 3: Variants, Cheapest Supplier, Peak Hours, Today Audits
+    if (q.contains('مقاس ولون') ||
+        q.contains('اكتر مقاس') ||
+        q.contains('مقاسات والوان')) {
+      results.add(await getTopVariantsByProductInsight(query));
+    }
+    if (q.contains('ارخص مورد') || q.contains('جبت منه')) {
+      results.add(await getCheapestSupplierForProductInsight(query));
+    }
+    if (q.contains('ساعه زحمه') ||
+        q.contains('ساعات الذروه') ||
+        q.contains('ايام الذروه') ||
+        q.contains('اكتر يوم') ||
+        q.contains('زحمه')) {
+      results.add(await getPeakHoursAndDaysInsight());
+    }
+    if (q.contains('اتعدل النهارده') ||
+        q.contains('تعديلات النهارده') ||
+        q.contains('ملغيات') ||
+        q.contains('الفواتير الملغاه')) {
+      results.add(await getTodayAuditsAndCancellationsInsight());
     }
 
     // 4. Post & Ad Generator intents

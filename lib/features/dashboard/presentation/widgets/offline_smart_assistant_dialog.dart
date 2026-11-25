@@ -37,22 +37,30 @@ class _AssistantChatEntry {
 
 class OfflineSmartAssistantDialog extends StatefulWidget {
   final bool isBottomSheet;
+  final String? currentScreenTitle;
 
   const OfflineSmartAssistantDialog({
     super.key,
     this.isBottomSheet = false,
+    this.currentScreenTitle,
   });
 
-  static Future<void> show(BuildContext context) {
+  static Future<void> show(
+    BuildContext context, {
+    String? currentScreenTitle,
+  }) {
     final screenWidth = MediaQuery.sizeOf(context).width;
     if (screenWidth < 600) {
       return showModalBottomSheet<void>(
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (_) => const FractionallySizedBox(
+        builder: (_) => FractionallySizedBox(
           heightFactor: 0.88,
-          child: OfflineSmartAssistantDialog(isBottomSheet: true),
+          child: OfflineSmartAssistantDialog(
+            isBottomSheet: true,
+            currentScreenTitle: currentScreenTitle,
+          ),
         ),
       );
     }
@@ -71,7 +79,9 @@ class OfflineSmartAssistantDialog extends StatefulWidget {
               padding: const EdgeInsets.only(left: 20, bottom: 68, right: 20),
               child: Material(
                 color: Colors.transparent,
-                child: const OfflineSmartAssistantDialog(),
+                child: OfflineSmartAssistantDialog(
+                  currentScreenTitle: currentScreenTitle,
+                ),
               ),
             ),
           ),
@@ -383,6 +393,47 @@ class _OfflineSmartAssistantDialogState
     _loadInitialBriefing();
   }
 
+  List<String> _contextPromptsFor(String? title) {
+    if (title == null || title.trim().isEmpty) return const [];
+    final t = OfflineSmartAssistantService.normalizeArabic(title);
+    if (t.contains('منتجات') || t.contains('مخزون') || t.contains('اصناف')) {
+      return const [
+        'الأصناف قاربت تخلص',
+        'عدل سعر ',
+        'اكتر مقاس ولون بيتباع في ',
+        'ارخص مورد جبت منه ',
+      ];
+    }
+    if (t.contains('تقسيط') || t.contains('اقساط')) {
+      return const [
+        'الأقساط المتأخرة',
+        'تحصيل قسط ',
+        'اكتب رسالة تذكير قسط لـ ',
+      ];
+    }
+    if (t.contains('مشتريات')) {
+      return const [
+        'ارخص مورد جبت منه ',
+        'مستحقات الموردين',
+        'دفعت للمورد ',
+      ];
+    }
+    if (t.contains('مبيعات') || t.contains('فواتير') || t.contains('كاشير')) {
+      return const [
+        'تقرير قفلة اليوم',
+        'اكتر يوم وساعة زحمة',
+        'ايه اللي اتعدل النهارده',
+      ];
+    }
+    if (t.contains('مرتجع')) {
+      return const [
+        'ايه اللي اتعدل النهارده',
+        'المبيعات قليلة ليه؟',
+      ];
+    }
+    return const [];
+  }
+
   @override
   Widget build(BuildContext context) {
     const categorizedPrompts = <String, List<String>>{
@@ -573,6 +624,70 @@ class _OfflineSmartAssistantDialogState
                 ],
               ),
             ),
+
+            // Context-Aware Screen Prompts (Batch 3)
+            if (_contextPromptsFor(widget.currentScreenTitle).isNotEmpty)
+              Container(
+                key: const Key('assistant_context_prompts'),
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(10, 6, 10, 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.05),
+                  border: Border(
+                    bottom: BorderSide(color: AppColors.outlineVariant),
+                  ),
+                ),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      Text(
+                        '${widget.currentScreenTitle}:',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      for (final cp
+                          in _contextPromptsFor(widget.currentScreenTitle)) ...[
+                        ActionChip(
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                          visualDensity: VisualDensity.compact,
+                          backgroundColor: AppColors.surfaceContainerLowest,
+                          side: BorderSide(
+                            color: AppColors.primary.withValues(alpha: 0.35),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          label: Text(
+                            cp.trim(),
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          onPressed: () {
+                            if (cp.endsWith(' ')) {
+                              _queryCtrl.text = cp;
+                              _queryCtrl.selection = TextSelection.fromPosition(
+                                TextPosition(offset: cp.length),
+                              );
+                            } else {
+                              _runQuery(cp);
+                            }
+                          },
+                        ),
+                        const SizedBox(width: 5),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
 
             // Category Filter Tabs + Quick Prompt Chips
             Container(

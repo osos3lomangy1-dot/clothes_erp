@@ -1708,4 +1708,267 @@ void main() {
       expect(find.textContaining('ما السعر الجديد بالجنيه'), findsOneWidget);
     });
   });
+
+  group('Task 40.8: Batch 3 - Alert Count, 4 New Analytics & Context-Aware Prompts', () {
+    test('computes criticalAlertCount, top variants, cheapest supplier, peak hours, and today audits', () async {
+      final now = DateTime.now();
+      await db.into(db.categories).insert(
+            CategoriesCompanion.insert(
+              id: 'c_b3',
+              branchId: branchId,
+              name: 'ملابس',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.products).insert(
+            ProductsCompanion.insert(
+              id: 'p_b3',
+              branchId: branchId,
+              name: 'هودي قطن',
+              categoryId: 'c_b3',
+              minStock: const Value(5),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.productVariants).insert(
+            ProductVariantsCompanion.insert(
+              id: 'v_b3_1',
+              branchId: branchId,
+              productId: 'p_b3',
+              sku: 'HD-BLK-L',
+              color: 'أسود',
+              size: 'L',
+              quantity: const Value(2), // low stock -> 1 critical alert
+              costPrice: 15000,
+              sellPrice: 30000,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.productVariants).insert(
+            ProductVariantsCompanion.insert(
+              id: 'v_b3_2',
+              branchId: branchId,
+              productId: 'p_b3',
+              sku: 'HD-WHT-M',
+              color: 'أبيض',
+              size: 'M',
+              quantity: const Value(10),
+              costPrice: 15000,
+              sellPrice: 30000,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // Overdue installment -> +1 critical alert (total 2)
+      await db.into(db.customers).insert(
+            CustomersCompanion.insert(
+              id: 'cust_b3',
+              branchId: branchId,
+              name: 'كريم حسن',
+              phone: '01033445566',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.sales).insert(
+            SalesCompanion.insert(
+              id: 's_b3',
+              branchId: branchId,
+              shortRef: 'S-B3',
+              cashierId: 'admin',
+              subtotal: 120000,
+              discountType: 'none',
+              total: 120000,
+              paymentMethod: 'cash',
+              date: now,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.saleItems).insert(
+            SaleItemsCompanion.insert(
+              id: 'si_b3_1',
+              branchId: branchId,
+              saleId: 's_b3',
+              variantId: 'v_b3_1',
+              productName: 'هودي قطن',
+              color: 'أسود',
+              size: 'L',
+              qty: 4,
+              priceSnapshot: 30000,
+              costSnapshot: 15000,
+              lineTotal: 120000,
+              createdAt: now,
+            ),
+          );
+      await db.into(db.customerInstallments).insert(
+            CustomerInstallmentsCompanion.insert(
+              id: 'ci_b3',
+              branchId: branchId,
+              saleId: 's_b3',
+              customerId: 'cust_b3',
+              totalPiasters: 100000,
+              downPaymentPiasters: const Value(20000),
+              principalPiasters: 80000,
+              interestBp: 0,
+              monthlyAmountPiasters: 20000,
+              remainingPiasters: 80000,
+              durationMonths: 4,
+              startDate: now.subtract(const Duration(days: 40)),
+              endDate: now.subtract(const Duration(days: 3)),
+              status: const Value('overdue'),
+              createdBy: 'admin',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // 2 Suppliers with different purchase costs for v_b3_1
+      await db.into(db.suppliers).insert(
+            SuppliersCompanion.insert(
+              id: 'sup_a',
+              branchId: branchId,
+              name: 'مصنع الأمل',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.suppliers).insert(
+            SuppliersCompanion.insert(
+              id: 'sup_b',
+              branchId: branchId,
+              name: 'شركة الفتح',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.purchases).insert(
+            PurchasesCompanion.insert(
+              id: 'pur_a',
+              branchId: branchId,
+              supplierId: 'sup_a',
+              purchaseDate: now,
+              totalAmount: 180000,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.purchaseItems).insert(
+            PurchaseItemsCompanion.insert(
+              id: 'pi_a',
+              purchaseId: 'pur_a',
+              variantId: 'v_b3_1',
+              qty: 10,
+              costPrice: 18000,
+              totalCost: 180000,
+              createdAt: now,
+            ),
+          );
+      await db.into(db.purchases).insert(
+            PurchasesCompanion.insert(
+              id: 'pur_b',
+              branchId: branchId,
+              supplierId: 'sup_b',
+              purchaseDate: now,
+              totalAmount: 140000,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.purchaseItems).insert(
+            PurchaseItemsCompanion.insert(
+              id: 'pi_b',
+              purchaseId: 'pur_b',
+              variantId: 'v_b3_1',
+              qty: 10,
+              costPrice: 14000,
+              totalCost: 140000,
+              createdAt: now,
+            ),
+          );
+
+      // Today's AuditLog + cancelled sale
+      await db.into(db.auditLogs).insert(
+            AuditLogsCompanion.insert(
+              id: 'aud_b3',
+              branchId: branchId,
+              userId: 'admin_1',
+              action: 'update_price',
+              entity: 'product_variant',
+              entityId: 'v_b3_1',
+              newValue: const Value('300.00'),
+              createdAt: now,
+            ),
+          );
+      await db.into(db.sales).insert(
+            SalesCompanion.insert(
+              id: 's_b3_cancel',
+              branchId: branchId,
+              shortRef: 'S-CANC',
+              cashierId: 'admin',
+              subtotal: 5000,
+              discountType: 'none',
+              total: 5000,
+              paymentMethod: 'cash',
+              status: const Value('cancelled'),
+              date: now,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      expect(await assistantService.getCriticalAlertCount(), 2);
+
+      final varRes = await assistantService.ask('اكتر مقاس ولون بيتباع في هودي قطن');
+      final varIns = varRes.firstWhere((i) => i.id == 'top_variants_analysis');
+      expect(varIns.summary, contains('أسود - مقاس L'));
+
+      final supRes = await assistantService.ask('ارخص مورد جبت منه هودي قطن');
+      final supIns = supRes.firstWhere((i) => i.id == 'cheapest_supplier_analysis');
+      expect(supIns.summary, contains('شركة الفتح'));
+      expect(supIns.summary, contains('140.00'));
+
+      final peakRes = await assistantService.ask('اكتر يوم وساعة زحمة');
+      expect(peakRes.any((i) => i.id == 'peak_hours_analysis'), isTrue);
+
+      final audRes = await assistantService.ask('ايه اللي اتعدل النهارده');
+      final audIns = audRes.firstWhere((i) => i.id == 'today_audits_cancellations');
+      expect(audIns.isAlert, isTrue);
+      expect(audIns.summary, contains('1 تعديل'));
+      expect(audIns.summary, contains('1 فاتورة ملغاة'));
+    });
+
+    testWidgets('dialog shows context-aware prompts for currentScreenTitle', (tester) async {
+      tester.view.physicalSize = const Size(1280, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => OfflineSmartAssistantDialog.show(
+                  context,
+                  currentScreenTitle: 'المنتجات والمخزون',
+                ),
+                child: const Text('Open Ctx'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Ctx'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('assistant_context_prompts')), findsOneWidget);
+      expect(find.text('عدل سعر'), findsOneWidget);
+      expect(find.text('الأصناف قاربت تخلص'), findsWidgets);
+    });
+  });
 }

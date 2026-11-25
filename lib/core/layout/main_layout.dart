@@ -24,6 +24,7 @@ import '../../features/auth/presentation/cubits/auth_cubit.dart';
 import '../../features/auth/presentation/cubits/auth_state.dart';
 import '../../features/crash_logs/presentation/screens/crash_logs_screen.dart';
 import '../../features/customers/presentation/screens/customer_screen.dart';
+import '../../features/dashboard/data/services/offline_smart_assistant_service.dart';
 import '../../features/dashboard/presentation/cubits/dashboard_cubit.dart';
 import '../../features/dashboard/presentation/widgets/offline_smart_assistant_dialog.dart';
 import '../../features/delivery/presentation/screens/delivery_orders_screen.dart';
@@ -100,10 +101,13 @@ class _MainLayoutState extends State<MainLayout> {
       ? 'كاشير المطعم والصالة'
       : 'نقطة البيع (الكاشير)';
 
+  int _criticalAlertCount = 0;
+
   @override
   void initState() {
     super.initState();
     HardwareKeyboard.instance.addHandler(_handleGlobalHardwareKeys);
+    _refreshAssistantAlertCount();
     _currentScreen = widget.child;
     if (widget.currentRoute == '/pos' || widget.child is PosScreen) {
       _activeTitle = _posTitle;
@@ -1677,9 +1681,25 @@ class _MainLayoutState extends State<MainLayout> {
     await ShortcutsConfigDialog.show(context);
   }
 
+  Future<void> _refreshAssistantAlertCount() async {
+    if (!getIt.isRegistered<AppDatabase>()) return;
+    try {
+      final count =
+          await OfflineSmartAssistantService(getIt<AppDatabase>())
+              .getCriticalAlertCount();
+      if (mounted && count != _criticalAlertCount) {
+        setState(() => _criticalAlertCount = count);
+      }
+    } catch (_) {}
+  }
+
   Future<void> _openAssistantPopover() async {
     if (!_safeIsAdmin()) return;
-    await OfflineSmartAssistantDialog.show(context);
+    await OfflineSmartAssistantDialog.show(
+      context,
+      currentScreenTitle: _activeTitle,
+    );
+    _refreshAssistantAlertCount();
   }
 
   Widget _buildSidebarAssistantButton(bool collapsed) {
@@ -1689,31 +1709,63 @@ class _MainLayoutState extends State<MainLayout> {
         child: Center(
           child: Tooltip(
             message: 'المساعد الذكي (Ctrl+M)',
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                key: const Key('sidebar_assistant_btn'),
-                onTap: _openAssistantPopover,
-                customBorder: const CircleBorder(),
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [AppColors.primary, AppColors.secondary],
-                      begin: Alignment.topRight,
-                      end: Alignment.bottomLeft,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    key: const Key('sidebar_assistant_btn'),
+                    onTap: _openAssistantPopover,
+                    customBorder: const CircleBorder(),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [AppColors.primary, AppColors.secondary],
+                          begin: Alignment.topRight,
+                          end: Alignment.bottomLeft,
+                        ),
+                        border: Border.all(color: Colors.white30),
+                      ),
+                      child: const Icon(
+                        Icons.auto_awesome_rounded,
+                        color: Colors.white,
+                        size: 19,
+                      ),
                     ),
-                    border: Border.all(color: Colors.white30),
-                  ),
-                  child: const Icon(
-                    Icons.auto_awesome_rounded,
-                    color: Colors.white,
-                    size: 19,
                   ),
                 ),
-              ),
+                if (_criticalAlertCount > 0)
+                  Positioned(
+                    top: -3,
+                    right: -3,
+                    child: Container(
+                      key: const Key('sidebar_assistant_badge'),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 1,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.error,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: Colors.white, width: 1),
+                      ),
+                      child: Text(
+                        _criticalAlertCount > 99
+                            ? '99+'
+                            : '$_criticalAlertCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ),
@@ -1759,6 +1811,28 @@ class _MainLayoutState extends State<MainLayout> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                if (_criticalAlertCount > 0) ...[
+                  Container(
+                    key: const Key('sidebar_assistant_badge'),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.error,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      _criticalAlertCount > 99 ? '99+' : '$_criticalAlertCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                ],
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 6,
