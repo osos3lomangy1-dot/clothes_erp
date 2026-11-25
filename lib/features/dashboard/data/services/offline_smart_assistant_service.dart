@@ -5692,8 +5692,11 @@ class OfflineKnowledgeMatcher {
     final kb = await _loadKnowledgeBase();
     if (kb.topics.isEmpty) return const [];
 
-    final normQuery = OfflineSmartAssistantService.normalizeArabic(rawQuery);
-    final rawTokens = _tokenizeArabic(rawQuery);
+    final correctedQuery =
+        AssistantArabicNormalizer.correctTyposWithLevenshtein(rawQuery);
+    final normQuery =
+        OfflineSmartAssistantService.normalizeArabic(correctedQuery);
+    final rawTokens = _tokenizeArabic(correctedQuery);
     if (rawTokens.isEmpty) return const [];
 
     final queryTokens = <String>{};

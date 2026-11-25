@@ -109,6 +109,99 @@ class AssistantArabicNormalizer {
         .replaceAll(RegExp(r'\s+'), ' ');
   }
 
+  /// Computes Levenshtein edit distance between two normalized strings.
+  static int levenshteinDistance(String a, String b) {
+    if (a == b) return 0;
+    if (a.isEmpty) return b.length;
+    if (b.isEmpty) return a.length;
+
+    final prev = List<int>.generate(b.length + 1, (i) => i);
+    final curr = List<int>.filled(b.length + 1, 0);
+
+    for (var i = 0; i < a.length; i++) {
+      curr[0] = i + 1;
+      for (var j = 0; j < b.length; j++) {
+        final cost = a.codeUnitAt(i) == b.codeUnitAt(j) ? 0 : 1;
+        final del = prev[j + 1] + 1;
+        final ins = curr[j] + 1;
+        final sub = prev[j] + cost;
+        curr[j + 1] =
+            del < ins ? (del < sub ? del : sub) : (ins < sub ? ins : sub);
+      }
+      for (var j = 0; j <= b.length; j++) {
+        prev[j] = curr[j];
+      }
+    }
+    return prev[b.length];
+  }
+
+  static const _levenshteinVocab = <String, String>{
+    'منتج': 'منتج',
+    'مصروف': 'مصروف',
+    'مورد': 'مورد',
+    'عميل': 'عميل',
+    'زبون': 'زبون',
+    'فاتوره': 'فاتورة',
+    'رصيد': 'رصيد',
+    'كميه': 'كمية',
+    'تكلفه': 'تكلفة',
+    'كهرباء': 'كهرباء',
+    'ايجار': 'ايجار',
+    'زكاه': 'زكاة',
+    'الزكاه': 'الزكاة',
+    'مبيعات': 'مبيعات',
+    'مكسب': 'مكسب',
+    'خساره': 'خسارة',
+    'متاخر': 'متأخر',
+    'بوست': 'بوست',
+    'واتساب': 'واتساب',
+    'بضاعه': 'بضاعة',
+    'تفاوض': 'تفاوض',
+    'شراكه': 'شراكة',
+    'صيانه': 'صيانة',
+  };
+
+  static const _safeNonTypoWords = <String>{
+    'معروف',
+    'مبيعاتي',
+    'ساره',
+    'تصفيه',
+    'شراء',
+    'موردين',
+    'عملاء',
+    'زباين',
+  };
+
+  /// Corrects 1-character typos for core ERP & commerce tokens (length >= 4)
+  /// using same-length Levenshtein distance while skipping numbers & safe words.
+  static String correctTyposWithLevenshtein(String input) {
+    final words = input.split(RegExp(r'\s+'));
+    if (words.isEmpty) return input;
+
+    final corrected = <String>[];
+    for (final w in words) {
+      final normW = normalizeBasic(w);
+      if (normW.length < 4 ||
+          RegExp(r'\d').hasMatch(normW) ||
+          _levenshteinVocab.containsKey(normW) ||
+          _safeNonTypoWords.contains(normW)) {
+        corrected.add(w);
+        continue;
+      }
+
+      String? bestMatch;
+      for (final entry in _levenshteinVocab.entries) {
+        if (normW.length != entry.key.length) continue;
+        if (levenshteinDistance(normW, entry.key) == 1) {
+          bestMatch = entry.value;
+          break;
+        }
+      }
+      corrected.add(bestMatch ?? w);
+    }
+    return corrected.join(' ');
+  }
+
   /// Fixes common merchant typos & enclitics ("منتح" -> "منتج", "شوفلي" -> "شوف لي").
   static String normalizeMerchantColloquial(String input) {
     var s = Money.normalizeDigits(input).trim();
@@ -137,6 +230,7 @@ class AssistantArabicNormalizer {
     for (final (pat, rep) in typoReplacements) {
       s = s.replaceAll(RegExp(pat), rep);
     }
+    s = correctTyposWithLevenshtein(s);
     return s.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
@@ -496,7 +590,9 @@ class AssistantIntentScorer {
     if (q.contains('نايمه ليه') ||
         q.contains('المبيعات قليله') ||
         q.contains('ليه البيع') ||
-        q.contains('مبيعاتي نازله')) {
+        q.contains('مبيعاتي نازله') ||
+        q.contains('مبيعات نازله') ||
+        q.contains('نازله ليه')) {
       addScore(AssistantNluIntent.salesDiagnosis, 8.5);
     }
 

@@ -395,4 +395,56 @@ void main() {
       expect(accuracy, greaterThanOrEqualTo(95.0));
     });
   });
+
+  group('Task 41.3: Levenshtein Typo Tolerance & Commerce Encyclopedia Topics', () {
+    test('corrects 1-char typos via Levenshtein distance in NLU', () {
+      expect(
+        AssistantArabicNormalizer.levenshteinDistance('مننج', 'منتج'),
+        1,
+      );
+      final d1 = service.parseErpDraft('عايز اضيف مننج جديد');
+      expect(d1?.kind, AssistantCommandKind.addProduct);
+
+      final d2 = service.parseErpDraft('سجل مصرزف كهرباء 250');
+      expect(d2?.kind, AssistantCommandKind.recordExpense);
+      expect(d2?.fields['amountEgp'], 250.0);
+
+      final d3 = service.parseErpDraft('احسبلي الذكاة والذهب 4000');
+      expect(d3?.kind, AssistantCommandKind.calculateZakat);
+      expect(d3?.fields['goldPrice24'], 4000.0);
+    });
+
+    test('answers topics from Book of Commerce & 6-Book Encyclopedia with sector awareness', () async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+
+      final tMargin = await service.searchKnowledgeBase(
+        'الفرق بين الهامش Margin ونسبة الاضافة Markup',
+      );
+      expect(tMargin, isNotEmpty);
+      expect(tMargin.first.id, 'kb_book_margin_vs_markup');
+
+      final tLast = await service.searchKnowledgeBase(
+        'بروتوكول احتواء العميل الغاضب LAST',
+      );
+      expect(tLast, isNotEmpty);
+      expect(tLast.first.id, 'kb_enc2_last_angry_customer');
+
+      final tAbc = await service.searchKnowledgeBase('تصنيف ABC للمخزون');
+      expect(tAbc, isNotEmpty);
+      expect(tAbc.first.id, 'kb_book_abc_inventory_rescue');
+
+      final tSop = await service.searchKnowledgeBase(
+        'بناء دليل التشغيل SOP ونظام الفريق E-Myth',
+      );
+      expect(tSop, isNotEmpty);
+      expect(tSop.first.id, 'kb_enc5_emyth_sop_and_hiring');
+
+      final tFnb = await service.searchKnowledgeBase(
+        'اضبط Food Cost والهالك في المطعم ازاي',
+        activeSector: 'fnb',
+      );
+      expect(tFnb, isNotEmpty);
+      expect(tFnb.first.id, 'kb_enc6_fnb_food_cost_menu_waste');
+    });
+  });
 }
