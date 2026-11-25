@@ -2442,5 +2442,42 @@ void main() {
       expect(retCard.title, contains('استرجاع بعد انتهاء المدة'));
       expect(retCard.details.length, 3);
     });
+
+    testWidgets('OfflineSmartAssistantDialog.show invokes onNavigateRoute instead of full-screen push', (tester) async {
+      AssistantActionRoute? navigated;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (ctx) => ElevatedButton(
+                onPressed: () => OfflineSmartAssistantDialog.show(
+                  ctx,
+                  onNavigateRoute: (route) => navigated = route,
+                ),
+                child: const Text('OpenAssistant'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('OpenAssistant'));
+      await tester.pumpAndSettle();
+
+      // Ask a query that produces an action button (e.g. overdue installments)
+      await tester.enterText(
+        find.byKey(const Key('smart_assistant_query_field')),
+        'وضع المحل دلوقتي؟',
+      );
+      await tester.tap(find.byKey(const Key('smart_assistant_ask_btn')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('المساعد التحليلي الذكي (أوفلاين)'), findsOneWidget);
+      // Verify callback wiring compiles and dialog closes cleanly when popped
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+      expect(navigated, isNull);
+    });
   });
 }

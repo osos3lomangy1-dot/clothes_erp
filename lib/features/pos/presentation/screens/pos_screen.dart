@@ -902,31 +902,8 @@ class _PosViewState extends State<_PosView> {
   void _openShortcutsGuide() => _showShortcutsGuide();
 
   Map<ShortcutActivator, VoidCallback> _buildPosShortcuts() {
-    final Map<ShortcutActivator, VoidCallback> bindings = {
-      const SingleActivator(LogicalKeyboardKey.f2): () => _searchFocusNode.requestFocus(),
-      const SingleActivator(LogicalKeyboardKey.keyF, control: true): () => _searchFocusNode.requestFocus(),
-      const SingleActivator(LogicalKeyboardKey.f5): () => _cartPanelKey.currentState?.setPaymentMethod('cash'),
-      const SingleActivator(LogicalKeyboardKey.f6): () => _cartPanelKey.currentState?.setPaymentMethod('card'),
-      const SingleActivator(LogicalKeyboardKey.f10): () => _cartPanelKey.currentState?.addNewBillTab(),
-      const SingleActivator(LogicalKeyboardKey.f11): () => _cartPanelKey.currentState?.switchNextHeldBill(),
-      const SingleActivator(LogicalKeyboardKey.f12): () => _cartPanelKey.currentState?.triggerCheckout(),
-      const SingleActivator(LogicalKeyboardKey.keyD, control: true): () => _cartPanelKey.currentState?.focusDiscount(),
-      const SingleActivator(LogicalKeyboardKey.f1): _showShortcutsGuide,
-    };
-
-    if (getIt.isRegistered<ShortcutSettingsService>()) {
-      final s = getIt<ShortcutSettingsService>();
-      final act = s.getActivator;
-      bindings[act('completeSale')] = () => _cartPanelKey.currentState?.triggerCheckout();
-      bindings[act('holdBill')] = () => _cartPanelKey.currentState?.addNewBillTab();
-      bindings[act('recallBill')] = () => _cartPanelKey.currentState?.switchNextHeldBill();
-      bindings[act('quickPayCash')] = () => _cartPanelKey.currentState?.setPaymentMethod('cash');
-      bindings[act('quickPayCard')] = () => _cartPanelKey.currentState?.setPaymentMethod('card');
-      bindings[act('focusDiscount')] = () => _cartPanelKey.currentState?.focusDiscount();
-      bindings[act('quickSearch')] = () => _searchFocusNode.requestFocus();
-      bindings[act('openShortcuts')] = _showShortcutsGuide;
-    }
-    return bindings;
+    // Handled centrally by _handleHardwareScan to prevent duplicate key triggers.
+    return const {};
   }
 
   Widget _buildHotkeyFooterStrip() {
@@ -4535,8 +4512,16 @@ class _CartPanelState extends State<_CartPanel> {
     }
   }
 
+  DateTime? _lastBillTabAt;
+
   void addNewBillTab() {
     if (!mounted) return;
+    final now = DateTime.now();
+    if (_lastBillTabAt != null &&
+        now.difference(_lastBillTabAt!) < const Duration(milliseconds: 350)) {
+      return;
+    }
+    _lastBillTabAt = now;
     final posCubit = context.read<PosCubit>();
     _saveActiveBillState(posCubit.state);
 

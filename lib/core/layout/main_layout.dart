@@ -38,6 +38,7 @@ import '../../features/inventory/presentation/screens/inventory_logs_screen.dart
 import '../../features/inventory/presentation/screens/inventory_screen.dart';
 import '../../features/inventory/presentation/screens/stocktake_screen.dart';
 import '../../features/invoices/presentation/screens/invoices_screen.dart';
+import '../../features/invoices/presentation/screens/receipt_customizer_screen.dart';
 import '../../features/partners/presentation/screens/partners_screen.dart';
 import '../../features/pos/presentation/screens/pos_screen.dart';
 import '../../features/pre_orders/presentation/screens/pre_orders_screen.dart';
@@ -49,6 +50,7 @@ import '../../features/purchases/presentation/screens/create_purchase_screen.dar
 import '../../features/purchases/presentation/screens/purchases_screen.dart';
 import '../../features/reports/presentation/screens/reports_screen.dart';
 import '../../features/returns/presentation/screens/return_screen.dart';
+import '../../features/settings/presentation/screens/excel_migration_screen.dart';
 import '../../features/settings/presentation/screens/system_settings_screen.dart';
 import '../../features/shifts/presentation/screens/shift_screen.dart';
 
@@ -249,9 +251,13 @@ class _MainLayoutState extends State<MainLayout> {
     final shortcutsActivator = svc?.getActivator('openShortcuts') ??
         const SingleActivator(LogicalKeyboardKey.f1);
 
-    // 2. Open Shortcuts Guide (F1 by default)
-    if (shortcutsActivator.accepts(event, HardwareKeyboard.instance) ||
-        (!isCtrl && !isAlt && key == LogicalKeyboardKey.f1)) {
+    // 2. Open Shortcuts Guide (F1 by default) — let PosScreen handle F1 when active
+    final isPosActive = _activeTitle == 'نقطة البيع (الكاشير)' ||
+        _activeTitle == 'كاشير المطعم والصالة' ||
+        _currentScreen is PosScreen;
+    if (!isPosActive &&
+        (shortcutsActivator.accepts(event, HardwareKeyboard.instance) ||
+            (!isCtrl && !isAlt && key == LogicalKeyboardKey.f1))) {
       _openShortcutsGuide();
       return true;
     }
@@ -460,29 +466,9 @@ class _MainLayoutState extends State<MainLayout> {
     return ValueListenableBuilder<AppBrandingConfig>(
       valueListenable: AppBranding.notifier,
       builder: (context, branding, _) {
-        final svc = getIt.isRegistered<ShortcutSettingsService>() ? getIt<ShortcutSettingsService>() : null;
-        final posAct = svc?.getActivator('openPos') ?? const SingleActivator(LogicalKeyboardKey.keyP, alt: true);
-        final addProductAct = svc?.getActivator('openAddProduct') ?? const SingleActivator(LogicalKeyboardKey.keyA, alt: true);
-        final blindReceiveAct = svc?.getActivator('openBlindReceive') ?? const SingleActivator(LogicalKeyboardKey.keyR, alt: true);
-        final createPurchaseAct = svc?.getActivator('openCreatePurchase') ?? const SingleActivator(LogicalKeyboardKey.keyB, alt: true);
-        final shortcutsAct = svc?.getActivator('openShortcuts') ?? const SingleActivator(LogicalKeyboardKey.f1);
-        final cmdAct = svc?.getActivator('openCommandPalette') ?? const SingleActivator(LogicalKeyboardKey.keyK, control: true);
-
-        return CallbackShortcuts(
-          bindings: {
-            cmdAct: _openCommandPalette,
-            shortcutsAct: _openShortcutsGuide,
-            if (_safeIsAdmin())
-              const SingleActivator(LogicalKeyboardKey.keyM, control: true):
-                  _openAssistantPopover,
-            posAct: _openPos,
-            if (_canOpenAddProduct()) addProductAct: _openAddProductShortcut,
-            if (_canOpenBlindReceive()) blindReceiveAct: _openBlindReceiveShortcut,
-            if (_canOpenCreatePurchase()) createPurchaseAct: _openCreatePurchaseShortcut,
-          },
-          child: Focus(
-            autofocus: true,
-            child: Scaffold(
+        return Focus(
+          autofocus: true,
+          child: Scaffold(
               body: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -992,8 +978,7 @@ class _MainLayoutState extends State<MainLayout> {
             ],
           ),
         ),
-      ),
-    );
+      );
       },
     );
   }
@@ -1677,8 +1662,16 @@ class _MainLayoutState extends State<MainLayout> {
     }
   }
 
+  bool _isShortcutsGuideOpen = false;
+
   Future<void> _openShortcutsGuide() async {
-    await ShortcutsConfigDialog.show(context);
+    if (_isShortcutsGuideOpen) return;
+    _isShortcutsGuideOpen = true;
+    try {
+      await ShortcutsConfigDialog.show(context);
+    } finally {
+      _isShortcutsGuideOpen = false;
+    }
   }
 
   Future<void> _refreshAssistantAlertCount() async {
@@ -1693,13 +1686,51 @@ class _MainLayoutState extends State<MainLayout> {
     } catch (_) {}
   }
 
+  bool _isAssistantOpen = false;
+
+  void _navigateToAssistantRoute(AssistantActionRoute route) {
+    final (String title, Widget screen) = switch (route) {
+      AssistantActionRoute.reports => ('التقارير', const ReportsScreen()),
+      AssistantActionRoute.products => ('المنتجات', const ProductListScreen()),
+      AssistantActionRoute.purchases => ('المشتريات', const PurchasesScreen()),
+      AssistantActionRoute.installments => (
+        'الأقساط والذمم',
+        const InstallmentsListScreen(),
+      ),
+      AssistantActionRoute.expenses => ('المصروفات', const ExpensesScreen()),
+      AssistantActionRoute.settings => (
+        'إعدادات النظام',
+        const SystemSettingsScreen(),
+      ),
+      AssistantActionRoute.employees => ('الموظفين', const EmployeeListScreen()),
+      AssistantActionRoute.shifts => ('الورديات', const ShiftScreen()),
+      AssistantActionRoute.partners => ('الشركاء', const PartnersScreen()),
+      AssistantActionRoute.excelMigration => (
+        'مركز استيراد وتصدير Excel',
+        const ExcelMigrationScreen(userId: 'admin'),
+      ),
+      AssistantActionRoute.receiptCustomizer => (
+        'تصميم الفاتورة',
+        const ReceiptCustomizerScreen(),
+      ),
+      AssistantActionRoute.returns => ('المرتجعات', const ReturnScreen()),
+    };
+    _handleItemTap(title, screen, false, null);
+  }
+
   Future<void> _openAssistantPopover() async {
-    if (!_safeIsAdmin()) return;
-    await OfflineSmartAssistantDialog.show(
-      context,
-      currentScreenTitle: _activeTitle,
-    );
-    _refreshAssistantAlertCount();
+    if (_isAssistantOpen || !_safeIsAdmin()) return;
+    _isAssistantOpen = true;
+    try {
+      await OfflineSmartAssistantDialog.show(
+        context,
+        currentScreenTitle: _activeTitle,
+        onNavigateRoute: _navigateToAssistantRoute,
+      );
+      _refreshAssistantAlertCount();
+    } finally {
+      _isAssistantOpen = false;
+    }
   }
 
   Widget _buildSidebarAssistantButton(bool collapsed) {

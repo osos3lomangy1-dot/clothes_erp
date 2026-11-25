@@ -38,16 +38,19 @@ class _AssistantChatEntry {
 class OfflineSmartAssistantDialog extends StatefulWidget {
   final bool isBottomSheet;
   final String? currentScreenTitle;
+  final void Function(AssistantActionRoute route)? onNavigateRoute;
 
   const OfflineSmartAssistantDialog({
     super.key,
     this.isBottomSheet = false,
     this.currentScreenTitle,
+    this.onNavigateRoute,
   });
 
   static Future<void> show(
     BuildContext context, {
     String? currentScreenTitle,
+    void Function(AssistantActionRoute route)? onNavigateRoute,
   }) {
     final screenWidth = MediaQuery.sizeOf(context).width;
     if (screenWidth < 600) {
@@ -60,6 +63,7 @@ class OfflineSmartAssistantDialog extends StatefulWidget {
           child: OfflineSmartAssistantDialog(
             isBottomSheet: true,
             currentScreenTitle: currentScreenTitle,
+            onNavigateRoute: onNavigateRoute,
           ),
         ),
       );
@@ -81,6 +85,7 @@ class OfflineSmartAssistantDialog extends StatefulWidget {
                 color: Colors.transparent,
                 child: OfflineSmartAssistantDialog(
                   currentScreenTitle: currentScreenTitle,
+                  onNavigateRoute: onNavigateRoute,
                 ),
               ),
             ),
@@ -341,6 +346,11 @@ class _OfflineSmartAssistantDialogState
   }
 
   void _navigateToRoute(AssistantActionRoute route) {
+    if (widget.onNavigateRoute != null) {
+      Navigator.of(context).pop();
+      widget.onNavigateRoute!(route);
+      return;
+    }
     final Widget screen;
     switch (route) {
       case AssistantActionRoute.reports:

@@ -254,6 +254,47 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
     });
 
+    testWidgets('Pressing Ctrl+M opens OfflineSmartAssistantDialog only once', (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: BlocProvider<AuthCubit>.value(
+              value: _FakeAuthCubit(adminUser),
+              child: const MainLayout(
+                currentRoute: '/dashboard',
+                child: Scaffold(
+                  body: Center(child: Text('شاشة لوحة التحكم الحالية')),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Press Ctrl+M twice rapidly
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyM);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyM);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pumpAndSettle();
+
+      // Only one assistant dialog should be open
+      expect(find.text('المساعد التحليلي الذكي (أوفلاين)'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 100));
+    });
+
     testWidgets('Pressing Ctrl+K opens CommandPaletteDialog', (tester) async {
       tester.view.physicalSize = const Size(1280, 800);
       tester.view.devicePixelRatio = 1.0;
@@ -373,11 +414,14 @@ void main() {
       await tester.pumpAndSettle();
       expect(spyPosCubit.checkoutCalled, isTrue);
 
-      // 2. Press F10 -> Adds a new held bill tab
+      // 2. Press F10 -> Adds exactly one held bill tab (debounced against double trigger)
       expect(find.text('فاتورة 1'), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.f10);
+      await tester.pump();
       await tester.sendKeyEvent(LogicalKeyboardKey.f10);
       await tester.pumpAndSettle();
       expect(find.text('فاتورة 2'), findsOneWidget);
+      expect(find.text('فاتورة 3'), findsNothing);
 
       // 3. Press F6 -> Selects Card payment
       await tester.sendKeyEvent(LogicalKeyboardKey.f6);
