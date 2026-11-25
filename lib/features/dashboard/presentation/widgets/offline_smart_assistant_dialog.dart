@@ -36,12 +36,63 @@ class _AssistantChatEntry {
 }
 
 class OfflineSmartAssistantDialog extends StatefulWidget {
-  const OfflineSmartAssistantDialog({super.key});
+  final bool isBottomSheet;
+
+  const OfflineSmartAssistantDialog({
+    super.key,
+    this.isBottomSheet = false,
+  });
 
   static Future<void> show(BuildContext context) {
-    return showDialog<void>(
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    if (screenWidth < 600) {
+      return showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => const FractionallySizedBox(
+          heightFactor: 0.88,
+          child: OfflineSmartAssistantDialog(isBottomSheet: true),
+        ),
+      );
+    }
+
+    return showGeneralDialog<void>(
       context: context,
-      builder: (_) => const OfflineSmartAssistantDialog(),
+      barrierDismissible: true,
+      barrierLabel: 'إغلاق المساعد الذكي',
+      barrierColor: Colors.black.withValues(alpha: 0.18),
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (dialogContext, _, _) {
+        return SafeArea(
+          child: Align(
+            alignment: Alignment.bottomLeft,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 20, bottom: 68, right: 20),
+              child: Material(
+                color: Colors.transparent,
+                child: const OfflineSmartAssistantDialog(),
+              ),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (_, animation, _, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+        );
+        return FadeTransition(
+          opacity: curved,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.06),
+              end: Offset.zero,
+            ).animate(curved),
+            child: child,
+          ),
+        );
+      },
     );
   }
 
@@ -297,7 +348,12 @@ class _OfflineSmartAssistantDialogState
   Widget build(BuildContext context) {
     const quickPrompts = [
       'وضع المحل دلوقتي؟',
+      'الأقساط المتأخرة',
+      'اكتب بوست واتساب',
+      'اكتب بوست فيسبوك',
+      'استرجع العملاء الغائبين',
       'المبيعات قليلة ليه؟',
+      'الأصناف الراكدة',
       'أعمل عروض على إيه؟',
       'الخصم أم الباقة والهدية؟',
       'ترتيب المحل وعرض البضاعة',
@@ -305,237 +361,569 @@ class _OfflineSmartAssistantDialogState
       'توزيع السيولة 50/30/20',
       'صافي ربح اليوم ومقارنته بأمس',
       'أعلى 5 أصناف ربحاً',
-      'الأقساط المتأخرة',
       'مستحقات الموردين',
     ];
+
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.85;
+    final containerWidth = widget.isBottomSheet ? double.infinity : 390.0;
+    final containerHeight =
+        widget.isBottomSheet ? maxHeight : (maxHeight < 560 ? maxHeight : 560.0);
 
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.escape): () =>
             Navigator.of(context).pop(),
       },
-      child: AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.auto_awesome_rounded, color: AppColors.primary),
-            const SizedBox(width: 8),
-            const Expanded(
-              child: Text(
-                'المساعد التحليلي الذكي (أوفلاين)',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-              ),
-            ),
-            IconButton(
-              onPressed: () => Navigator.of(context).pop(),
-              icon: const Icon(Icons.close_rounded, size: 18),
+      child: Container(
+        key: const Key('smart_assistant_popover'),
+        width: containerWidth,
+        height: containerHeight,
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: widget.isBottomSheet
+              ? const BorderRadius.vertical(top: Radius.circular(20))
+              : BorderRadius.circular(18),
+          border: Border.all(color: AppColors.outlineVariant),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.16),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
             ),
           ],
         ),
-        content: SizedBox(
-          width: 660,
-          height: 520,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            // Gradient Header
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [AppColors.primary, AppColors.secondary],
+                  begin: Alignment.centerRight,
+                  end: Alignment.centerLeft,
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.auto_awesome_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'المساعد التحليلي الذكي (أوفلاين)',
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: const Text(
+                      'أوفلاين 100%',
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    constraints: const BoxConstraints(
+                      minWidth: 30,
+                      minHeight: 30,
+                    ),
+                    padding: EdgeInsets.zero,
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Quick Prompt Chips (Compact horizontal strip)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                border: Border(
+                  bottom: BorderSide(color: AppColors.outlineVariant),
+                ),
+              ),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    for (int i = 0; i < quickPrompts.length; i++) ...[
+                      if (i > 0) const SizedBox(width: 6),
+                      ActionChip(
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                        backgroundColor: AppColors.surfaceContainerLowest,
+                        side: BorderSide(color: AppColors.outlineVariant),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        label: Text(
+                          quickPrompts[i],
+                          style: const TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 10.5,
+                            color: AppColors.onSurface,
+                          ),
+                        ),
+                        onPressed: () => _runQuery(quickPrompts[i]),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+
+            // Chat Messages Feed
+            Expanded(
+              child: _isLoading && _history.isEmpty
+                  ? const Center(child: CircularProgressIndicator())
+                  : ListView.separated(
+                      controller: _scrollCtrl,
+                      padding: const EdgeInsets.all(12),
+                      itemCount: _history.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
+                      itemBuilder: (context, idx) {
+                        final entry = _history[_history.length - 1 - idx];
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (entry.userPrompt != null)
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 11,
+                                    vertical: 7,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary
+                                        .withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    entry.userPrompt!,
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.primary,
+                                      fontSize: 12.5,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            if (entry.headerLabel != null)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 6),
+                                child: Text(
+                                  entry.headerLabel!,
+                                  key: const Key(
+                                    'smart_assistant_briefing_header',
+                                  ),
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                            for (final item in entry.insights)
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.all(11),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: (item.isAlert
+                                            ? AppColors.warning
+                                            : AppColors.primary)
+                                        .withValues(alpha: 0.35),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item.title,
+                                      style: const TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.onSurfaceVariant,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      item.summary,
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: item.isAlert
+                                            ? AppColors.warning
+                                            : AppColors.primary,
+                                      ),
+                                    ),
+                                    if (item.details.isNotEmpty) ...[ 
+                                      const SizedBox(height: 5),
+                                      for (final line in item.details)
+                                        _buildDetailLine(
+                                          context,
+                                          line,
+                                          isPost: item.id.startsWith(
+                                                'promo_post',
+                                              ) ||
+                                              item.id.startsWith(
+                                                'customer_re_engagement',
+                                              ),
+                                          isSuggestion:
+                                              item.id == 'no_direct_match',
+                                        ),
+                                    ],
+                                    if (item.pendingCommand != null &&
+                                        !_resolvedCommands.contains(item)) ...[
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        children: [
+                                          ElevatedButton(
+                                            key: Key(
+                                              'assistant_confirm_${item.id}',
+                                            ),
+                                            onPressed: () =>
+                                                _confirmCommand(item),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor:
+                                                  AppColors.primary,
+                                              foregroundColor: Colors.white,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                                vertical: 6,
+                                              ),
+                                            ),
+                                            child: const Text(
+                                              'تأكيد التعديل',
+                                              style: TextStyle(
+                                                fontFamily: 'Cairo',
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          OutlinedButton(
+                                            key: Key(
+                                              'assistant_cancel_${item.id}',
+                                            ),
+                                            onPressed: () =>
+                                                _cancelCommand(item),
+                                            style: OutlinedButton.styleFrom(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                                vertical: 6,
+                                              ),
+                                            ),
+                                            child: const Text(
+                                              'إلغاء',
+                                              style: TextStyle(
+                                                fontFamily: 'Cairo',
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                    if (_canNavigate(item) &&
+                                        item.actionLabel != null) ...[
+                                      const SizedBox(height: 6),
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: TextButton.icon(
+                                          key: Key(
+                                            'assistant_action_${item.id}',
+                                          ),
+                                          onPressed: () => _navigateToRoute(
+                                            item.actionRoute!,
+                                          ),
+                                          icon: const Icon(
+                                            Icons.open_in_new_rounded,
+                                            size: 14,
+                                          ),
+                                          label: Text(
+                                            item.actionLabel!,
+                                            style: const TextStyle(
+                                              fontFamily: 'Cairo',
+                                              fontSize: 11.5,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+            ),
+
+            // Bottom Input Bar (Submits on Enter)
+            Container(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                border: Border(
+                  top: BorderSide(color: AppColors.outlineVariant),
+                ),
+              ),
+              child: Row(
                 children: [
                   Expanded(
                     child: TextField(
                       key: const Key('smart_assistant_query_field'),
                       controller: _queryCtrl,
                       onSubmitted: _runQuery,
-                      decoration: const InputDecoration(
+                      style: const TextStyle(fontFamily: 'Cairo', fontSize: 12.5),
+                      decoration: InputDecoration(
                         hintText:
                             'اسأل بالعامية أو اطلب تنفيذ إعداد أو ابحث عن صنف...',
-                        prefixIcon: Icon(Icons.search_rounded),
+                        hintStyle: const TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 11.5,
+                          color: AppColors.onSurfaceVariant,
+                        ),
+                        filled: true,
+                        fillColor: AppColors.surfaceContainerLowest,
                         isDense: true,
-                        border: OutlineInputBorder(),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 10,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide:
+                              BorderSide(color: AppColors.outlineVariant),
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  ElevatedButton(
-                    key: const Key('smart_assistant_ask_btn'),
-                    onPressed: () => _runQuery(_queryCtrl.text),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
+                  SizedBox(
+                    height: 38,
+                    child: ElevatedButton(
+                      key: const Key('smart_assistant_ask_btn'),
+                      onPressed: () => _runQuery(_queryCtrl.text),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text(
+                        'تحليل',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
-                    child: const Text('تحليل'),
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 6,
-                runSpacing: 4,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Renders one detail line.
+  /// * [isPost]: Shows a copy button for post/ad/message content lines.
+  /// * [isSuggestion]: Renders clickable chips for "did you mean" suggestions.
+  Widget _buildDetailLine(
+    BuildContext context,
+    String line, {
+    bool isPost = false,
+    bool isSuggestion = false,
+  }) {
+    // Detect if this detail line is an actual post body (contains ---\n)
+    final isPostBody = isPost && line.contains('---\n');
+
+    if (isSuggestion) {
+      // Strip bullet if present
+      final label = line.startsWith('• ') ? line.substring(2) : line;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: ActionChip(
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
+          backgroundColor: AppColors.primary.withValues(alpha: 0.08),
+          side: BorderSide(
+            color: AppColors.primary.withValues(alpha: 0.3),
+          ),
+          label: Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 11.5,
+              color: AppColors.primary,
+            ),
+          ),
+          onPressed: () => _runQuery(label),
+        ),
+      );
+    }
+
+    if (isPostBody) {
+      // Split "بوست واتساب | هامش الربح الأصلي: 30%\n---\nنص الإعلان"
+      final parts = line.split('\n---\n');
+      final header = parts[0].trim();
+      final body =
+          parts.length > 1 ? parts.sublist(1).join('\n---\n').trim() : line;
+
+      return Container(
+        margin: const EdgeInsets.only(top: 6),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.outlineVariant),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header row with platform label + copy button
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(10),
+                ),
+              ),
+              child: Row(
                 children: [
-                  for (final prompt in quickPrompts)
-                    ActionChip(
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      visualDensity: VisualDensity.compact,
-                      label: Text(prompt, style: const TextStyle(fontSize: 11)),
-                      onPressed: () => _runQuery(prompt),
+                  Expanded(
+                    child: Text(
+                      header,
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
                     ),
+                  ),
+                  InkWell(
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: body));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'تم نسخ البوست — الصقه في واتساب أو فيسبوك مباشرةً',
+                            style: TextStyle(fontFamily: 'Cairo'),
+                          ),
+                          duration: Duration(seconds: 2),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(6),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.copy_rounded,
+                            color: Colors.white,
+                            size: 12,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            'نسخ',
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: _isLoading && _history.isEmpty
-                    ? const Center(child: CircularProgressIndicator())
-                    : ListView.separated(
-                        controller: _scrollCtrl,
-                        itemCount: _history.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 14),
-                        itemBuilder: (context, idx) {
-                          final entry = _history[_history.length - 1 - idx];
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (entry.userPrompt != null)
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: Container(
-                                    margin: const EdgeInsets.only(bottom: 8),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary.withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Text(
-                                      entry.userPrompt!,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.primary,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              if (entry.headerLabel != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  child: Text(
-                                    entry.headerLabel!,
-                                    key: const Key('smart_assistant_briefing_header'),
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                      color: AppColors.primary,
-                                    ),
-                                  ),
-                                ),
-                              for (final item in entry.insights)
-                                Container(
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surface,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: (item.isAlert
-                                              ? AppColors.warning
-                                              : AppColors.primary)
-                                          .withValues(alpha: 0.35),
-                                    ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        item.title,
-                                        style: const TextStyle(
-                                          fontSize: 12.5,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.onSurfaceVariant,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        item.summary,
-                                        style: TextStyle(
-                                          fontSize: 14.5,
-                                          fontWeight: FontWeight.bold,
-                                          color: item.isAlert
-                                              ? AppColors.warning
-                                              : AppColors.primary,
-                                        ),
-                                      ),
-                                      if (item.details.isNotEmpty) ...[
-                                        const SizedBox(height: 6),
-                                        for (final line in item.details)
-                                          Padding(
-                                            padding: const EdgeInsets.only(top: 2),
-                                            child: Text(
-                                              '• $line',
-                                              style: const TextStyle(fontSize: 12),
-                                            ),
-                                          ),
-                                      ],
-                                      if (item.pendingCommand != null &&
-                                          !_resolvedCommands.contains(item)) ...[
-                                        const SizedBox(height: 10),
-                                        Row(
-                                          children: [
-                                            ElevatedButton(
-                                              key: Key(
-                                                'assistant_confirm_${item.id}',
-                                              ),
-                                              onPressed: () =>
-                                                  _confirmCommand(item),
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor:
-                                                    AppColors.primary,
-                                                foregroundColor: Colors.white,
-                                              ),
-                                              child: const Text('تأكيد التعديل'),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            OutlinedButton(
-                                              key: Key(
-                                                'assistant_cancel_${item.id}',
-                                              ),
-                                              onPressed: () =>
-                                                  _cancelCommand(item),
-                                              child: const Text('إلغاء'),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                      if (_canNavigate(item) &&
-                                          item.actionLabel != null) ...[
-                                        const SizedBox(height: 8),
-                                        Align(
-                                          alignment: Alignment.centerLeft,
-                                          child: TextButton.icon(
-                                            key: Key(
-                                              'assistant_action_${item.id}',
-                                            ),
-                                            onPressed: () => _navigateToRoute(
-                                              item.actionRoute!,
-                                            ),
-                                            icon: const Icon(
-                                              Icons.open_in_new_rounded,
-                                              size: 15,
-                                            ),
-                                            label: Text(item.actionLabel!),
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                            ],
-                          );
-                        },
-                      ),
+            ),
+            // Post body text — selectable for manual copy too
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: SelectableText(
+                body,
+                style: const TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: 11.5,
+                  color: AppColors.onSurface,
+                  height: 1.5,
+                ),
               ),
-            ],
-          ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Default: plain bullet line
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Text(
+        '• $line',
+        style: const TextStyle(
+          fontFamily: 'Cairo',
+          fontSize: 11.5,
+          color: AppColors.onSurface,
         ),
       ),
     );

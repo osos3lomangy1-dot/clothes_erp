@@ -25,6 +25,7 @@ import '../../features/auth/presentation/cubits/auth_state.dart';
 import '../../features/crash_logs/presentation/screens/crash_logs_screen.dart';
 import '../../features/customers/presentation/screens/customer_screen.dart';
 import '../../features/dashboard/presentation/cubits/dashboard_cubit.dart';
+import '../../features/dashboard/presentation/widgets/offline_smart_assistant_dialog.dart';
 import '../../features/delivery/presentation/screens/delivery_orders_screen.dart';
 import '../../features/wallets/presentation/screens/wallets_screen.dart';
 import '../../features/repair/presentation/screens/repair_center_screen.dart';
@@ -251,6 +252,14 @@ class _MainLayoutState extends State<MainLayout> {
       return true;
     }
 
+    // 2b. Open Floating Smart Assistant (Ctrl + M) for admin/manager only
+    if (isCtrl && !isAlt && key == LogicalKeyboardKey.keyM) {
+      if (_safeIsAdmin()) {
+        _openAssistantPopover();
+        return true;
+      }
+    }
+
     // 3. Jump to POS Screen (Alt + P by default)
     if (posActivator.accepts(event, HardwareKeyboard.instance) ||
         (isAlt && !isCtrl && key == LogicalKeyboardKey.keyP)) {
@@ -459,6 +468,9 @@ class _MainLayoutState extends State<MainLayout> {
           bindings: {
             cmdAct: _openCommandPalette,
             shortcutsAct: _openShortcutsGuide,
+            if (_safeIsAdmin())
+              const SingleActivator(LogicalKeyboardKey.keyM, control: true):
+                  _openAssistantPopover,
             posAct: _openPos,
             if (_canOpenAddProduct()) addProductAct: _openAddProductShortcut,
             if (_canOpenBlindReceive()) blindReceiveAct: _openBlindReceiveShortcut,
@@ -953,12 +965,28 @@ class _MainLayoutState extends State<MainLayout> {
                     child: Column(
                       children: [
                         Expanded(
-                          child: Navigator(
-                            key: _contentNavKey,
-                            onGenerateRoute: (settings) => MaterialPageRoute(
-                              settings: settings,
-                              builder: (_) => _currentScreen,
-                            ),
+                          child: Stack(
+                            children: [
+                              Navigator(
+                                key: _contentNavKey,
+                                onGenerateRoute: (settings) => MaterialPageRoute(
+                                  settings: settings,
+                                  builder: (_) => _currentScreen,
+                                ),
+                              ),
+                              BlocBuilder<AuthCubit, AuthState>(
+                                builder: (context, authState) {
+                                  if (!_isAdmin(authState)) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  return Positioned(
+                                    bottom: 14,
+                                    left: 16,
+                                    child: _buildFloatingAssistantBubble(),
+                                  );
+                                },
+                              ),
+                            ],
                           ),
                         ),
                         if (_activeTitle != 'نقطة البيع (الكاشير)' &&
@@ -1659,6 +1687,63 @@ class _MainLayoutState extends State<MainLayout> {
 
   Future<void> _openShortcutsGuide() async {
     await ShortcutsConfigDialog.show(context);
+  }
+
+  Future<void> _openAssistantPopover() async {
+    if (!_safeIsAdmin()) return;
+    await OfflineSmartAssistantDialog.show(context);
+  }
+
+  Widget _buildFloatingAssistantBubble() {
+    return Tooltip(
+      message: 'المساعد الذكي (Ctrl+M)',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: const Key('floating_assistant_bubble'),
+          onTap: _openAssistantPopover,
+          borderRadius: BorderRadius.circular(999),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.primary, AppColors.secondary],
+                begin: Alignment.centerRight,
+                end: Alignment.centerLeft,
+              ),
+              borderRadius: BorderRadius.circular(999),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.35),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.auto_awesome_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
+                SizedBox(width: 6),
+                Text(
+                  'المساعد الذكي',
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _navItem(

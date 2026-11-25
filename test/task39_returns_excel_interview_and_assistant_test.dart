@@ -119,8 +119,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('returns_split_view')), findsOneWidget);
-      expect(find.byKey(const Key('returns_empty_detail_placeholder')), findsOneWidget);
+      expect(find.byKey(const Key('returns_full_width_list')), findsOneWidget);
+      expect(find.byKey(const Key('returns_summary_cards')), findsOneWidget);
+      expect(find.text('اليوم'), findsOneWidget);
+      expect(find.text('آخر 7 أيام'), findsOneWidget);
+      expect(find.text('هذا الشهر'), findsOneWidget);
 
       // F2 focuses search, Esc clears search
       await tester.sendKeyEvent(LogicalKeyboardKey.f2);

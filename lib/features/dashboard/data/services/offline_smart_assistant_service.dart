@@ -1498,6 +1498,297 @@ class OfflineSmartAssistantService {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // POST & AD GENERATOR  (WhatsApp / Facebook / Instagram templates)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Generates ready-to-copy social-media posts using slow-moving / high-margin
+  /// products from the actual database.  Also accepts an optional [platform]
+  /// hint ('whatsapp', 'facebook', 'instagram') already extracted from the query.
+  Future<AssistantInsight> getPromoPostGeneratorInsight(String rawQuery) async {
+    // Detect requested platform from the query
+    final q = normalizeArabic(rawQuery);
+    final isInsta = q.contains('انستا') || q.contains('instagram') || q.contains('انستاجرام');
+    final isFb = q.contains('فيس') || q.contains('facebook') || q.contains('فيسبوك');
+    // Default to WhatsApp if nothing specified
+    final platform = isInsta ? 'instagram' : (isFb ? 'facebook' : 'whatsapp');
+
+    // Pull store name & phone from appMeta
+    String storeName = 'المحل';
+    String storePhone = '';
+    try {
+      final nameMeta = await (_db.select(_db.appMeta)
+            ..where((m) => m.key.equals(ReceiptSettingsService.keyStoreName)))
+          .getSingleOrNull();
+      if (nameMeta != null && nameMeta.value.trim().isNotEmpty) {
+        storeName = nameMeta.value.trim();
+      }
+      final phoneMeta = await (_db.select(_db.appMeta)
+            ..where((m) => m.key.equals(ReceiptSettingsService.keyStorePhone)))
+          .getSingleOrNull();
+      if (phoneMeta != null && phoneMeta.value.trim().isNotEmpty) {
+        storePhone = phoneMeta.value.trim();
+      }
+    } catch (_) {}
+
+    // Find stagnant products with the best margins (slow-movers, high profit)
+    final since = DateTime.now().subtract(const Duration(days: 30));
+    final recentItems = await (_db.select(_db.saleItems).join([
+      innerJoin(_db.sales, _db.sales.id.equalsExp(_db.saleItems.saleId)),
+    ])
+          ..where(
+            _db.sales.date.isBiggerOrEqualValue(since) &
+                _db.sales.deletedAt.isNull() &
+                _db.sales.status.isNotValue('cancelled'),
+          ))
+        .get();
+
+    final soldVariantIds = recentItems
+        .map((r) => r.readTable(_db.saleItems).variantId)
+        .toSet();
+
+    final allVariants = await (_db.select(_db.productVariants)
+          ..where(
+            (v) => v.deletedAt.isNull() & v.quantity.isBiggerThanValue(0),
+          ))
+        .get();
+
+    final allProducts = await (_db.select(_db.products)
+          ..where((p) => p.deletedAt.isNull()))
+        .get();
+    final productNames = {for (final p in allProducts) p.id: p.name};
+
+    // Pick stagnant variants with best margin %
+    final stagnant = allVariants
+        .where((v) => !soldVariantIds.contains(v.id) && v.costPrice > 0 && v.sellPrice > 0)
+        .toList()
+      ..sort((a, b) {
+        final mA = (a.sellPrice - a.costPrice) / a.sellPrice;
+        final mB = (b.sellPrice - b.costPrice) / b.sellPrice;
+        return mB.compareTo(mA);
+      });
+
+    final picks = stagnant.take(3).toList();
+
+    if (picks.isEmpty) {
+      return const AssistantInsight(
+        id: 'promo_post_no_data',
+        title: 'مولّد البوستات الإعلانية',
+        summary: 'لم أجد أصناف راكدة أو ذات هامش مناسب لعمل إعلان عليها الآن.',
+        details: [
+          'تأكد من إدخال المنتجات والتكاليف بشكل صحيح في شاشة المنتجات.',
+          'بعد إضافة المنتجات والمبيعات، سيقترح المساعد عليك أفضل الأصناف للترويج.',
+        ],
+      );
+    }
+
+    final String platformLabel;
+    final String platformEmoji;
+    final String cta; // call to action line
+    switch (platform) {
+      case 'facebook':
+        platformLabel = 'فيسبوك';
+        platformEmoji = '';
+        cta = 'تواصل معنا عبر الرسائل أو اتصل بنا مباشرةً';
+        break;
+      case 'instagram':
+        platformLabel = 'انستاجرام';
+        platformEmoji = '';
+        cta = 'راسلنا في الـ DM أو تواصل معنا مباشرةً';
+        break;
+      default:
+        platformLabel = 'واتساب';
+        platformEmoji = '';
+        cta = 'راسلنا مباشرةً على واتساب';
+    }
+
+    final posts = picks.map((v) {
+      final priceBefore = Money(v.sellPrice).toDisplay();
+      // Suggest a ~15% discount price as "after" price, rounded
+      final discountedPiasters = (v.sellPrice * 0.85).round();
+      final priceAfter = Money(discountedPiasters).toDisplay();
+      final margin = v.sellPrice > 0
+          ? ((v.sellPrice - v.costPrice) / v.sellPrice * 100).round()
+          : 0;
+
+      final resolvedName = productNames[v.productId] ?? v.sku;
+      final productTitle = resolvedName.trim().isNotEmpty ? resolvedName : 'صنف مميز';
+      final colorPart = v.color.trim().isNotEmpty && v.color.trim() != '-'
+          ? ' - لون ${v.color.trim()}'
+          : '';
+      final sizePart = v.size.trim().isNotEmpty && v.size.trim() != '-'
+          ? ' - مقاس ${v.size.trim()}'
+          : '';
+
+      final postBody = '''
+$platformEmoji عرض خاص من $storeName $platformEmoji
+━━━━━━━━━━━━━━━
+$productTitle$colorPart$sizePart
+السعر الأصلي: $priceBefore ج.م
+السعر بعد الخصم: $priceAfter ج.م (وفر ${(v.sellPrice - discountedPiasters) ~/ 100} ج.م!)
+━━━━━━━━━━━━━━━
+$cta${storePhone.isNotEmpty ? ' على: $storePhone' : ''}
+العرض لفترة محدودة - الكمية محدودة!'''
+          .trim();
+
+      return 'بوست $platformLabel | هامش الربح الأصلي: $margin%\n---\n$postBody';
+    }).toList();
+
+    return AssistantInsight(
+      id: 'promo_post_generator_$platform',
+      title: 'بوستات إعلانية جاهزة للنسخ ($platformLabel)',
+      summary:
+          'جاهز ${picks.length} بوست من أصناف راكدة بأعلى هامش ربح في محلك — انسخ واستخدم مباشرةً!',
+      details: [
+        ...posts,
+        'تلميح: اكتب "بوست فيسبوك" أو "بوست انستا" لتغيير المنصة.',
+        'تلميح: يمكنك تعديل اسم المحل والهاتف من إعدادات الفاتورة.',
+      ],
+    );
+  }
+
+  /// Generates WhatsApp re-engagement messages for customers who haven't bought recently.
+  Future<AssistantInsight> getCustomerReEngagementInsight() async {
+    String storeName = 'المحل';
+    String storePhone = '';
+    try {
+      final nameMeta = await (_db.select(_db.appMeta)
+            ..where((m) => m.key.equals(ReceiptSettingsService.keyStoreName)))
+          .getSingleOrNull();
+      if (nameMeta != null && nameMeta.value.trim().isNotEmpty) {
+        storeName = nameMeta.value.trim();
+      }
+      final phoneMeta = await (_db.select(_db.appMeta)
+            ..where((m) => m.key.equals(ReceiptSettingsService.keyStorePhone)))
+          .getSingleOrNull();
+      if (phoneMeta != null && phoneMeta.value.trim().isNotEmpty) {
+        storePhone = phoneMeta.value.trim();
+      }
+    } catch (_) {}
+
+    // Customers who bought > 60 days ago and not since
+    final cutoff = DateTime.now().subtract(const Duration(days: 60));
+    final recentSales = await (_db.select(_db.sales)
+          ..where(
+            (s) =>
+                s.date.isBiggerOrEqualValue(cutoff) &
+                s.deletedAt.isNull() &
+                s.status.isNotValue('cancelled'),
+          ))
+        .get();
+
+    final allSales = await (_db.select(_db.sales)
+          ..where(
+            (s) =>
+                s.deletedAt.isNull() &
+                s.status.isNotValue('cancelled') &
+                s.customerId.isNotNull(),
+          ))
+        .get();
+
+    final customers = await (_db.select(_db.customers)
+          ..where((c) => c.deletedAt.isNull()))
+        .get();
+    final customerNames = {for (final c in customers) c.id: c.name};
+
+    final recentCustomerIds =
+        recentSales.map((s) => s.customerId).whereType<String>().toSet();
+    final dormant = allSales
+        .where(
+          (s) =>
+              s.customerId != null &&
+              !recentCustomerIds.contains(s.customerId) &&
+              (customerNames[s.customerId]?.trim().isNotEmpty ?? false),
+        )
+        .map((s) => customerNames[s.customerId!]!)
+        .toSet()
+        .take(5)
+        .toList();
+
+    if (dormant.isEmpty) {
+      return const AssistantInsight(
+        id: 'customer_re_engagement_no_data',
+        title: 'استرداد العملاء الغائبين',
+        summary: 'لم أجد عملاء غائبين (+60 يوم) في سجل المبيعات.',
+        details: [
+          'تأكد من تسجيل أسماء العملاء عند البيع للاستفادة من هذه الميزة.',
+        ],
+      );
+    }
+
+    final phoneNote = storePhone.isNotEmpty ? 'على: $storePhone' : '';
+    final messages = dormant.map((name) {
+      return 'رسالة واتساب لـ $name:\n---\n'
+          'السلام عليكم $name،\n'
+          'إزيك؟ بنتوقع زيارتك في $storeName!\n'
+          'عندنا وصلت بضاعة جديدة وعروض حلوة مستنياك.\n'
+          '${storePhone.isNotEmpty ? "تواصل معنا $phoneNote" : "زورنا عندنا"}';
+    }).toList();
+
+    return AssistantInsight(
+      id: 'customer_re_engagement',
+      title: 'استرداد العملاء الغائبين (+60 يوم)',
+      summary:
+          'وجدت ${dormant.length} عميل لم يشتر منذ أكثر من شهرين — إليك رسائل واتساب جاهزة:',
+      details: [
+        ...messages,
+        'تلميح: اضغط على الرسالة لنسخها ثم أرسلها مباشرةً.',
+      ],
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SMART SUGGESTIONS (when no intent matched)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ignore: unused_element
+  List<String> _buildDidYouMeanSuggestions(String q) {
+    final suggestions = <String>[];
+
+    // Offer context-sensitive suggestions based on partial keywords
+    if (q.contains('بيع') || q.contains('مبيع')) {
+      suggestions.add('وضع المحل دلوقتي؟');
+      suggestions.add('المبيعات قليلة ليه؟');
+      suggestions.add('أعلى الأصناف مبيعاً');
+    }
+    if (q.contains('فلوس') || q.contains('كاش') || q.contains('نقد') || q.contains('مال')) {
+      suggestions.add('ربح النهارده كام؟');
+      suggestions.add('توزيع السيولة 50/30/20');
+    }
+    if (q.contains('بضاع') || q.contains('صنف') || q.contains('منتج')) {
+      suggestions.add('الأصناف الراكدة');
+      suggestions.add('الأصناف قاربت تخلص');
+      suggestions.add('أعمل إعلان على الراكد');
+    }
+    if (q.contains('اعلان') || q.contains('تسويق') || q.contains('ترويج') ||
+        q.contains('عرض') || q.contains('خصم')) {
+      suggestions.add('اكتب بوست واتساب');
+      suggestions.add('اكتب بوست فيسبوك');
+      suggestions.add('اعمل عروض على إيه؟');
+    }
+    if (q.contains('عميل') || q.contains('زبون')) {
+      suggestions.add('استرجع العملاء الغائبين');
+      suggestions.add('من العملاء المتعثرين في الأقساط؟');
+    }
+    if (q.contains('مصار') || q.contains('خسار') || q.contains('تكلف')) {
+      suggestions.add('تحليل هامش الربح والخسائر');
+      suggestions.add('مصاريف الشهر كام؟');
+    }
+
+    if (suggestions.isEmpty) {
+      suggestions.addAll([
+        'وضع المحل دلوقتي؟',
+        'ربح النهارده كام؟',
+        'اكتب بوست واتساب',
+        'الأصناف الراكدة',
+        'تضخم الأسعار — ماذا أفعل؟',
+        'ازاي أضيف كاشير؟',
+      ]);
+    }
+
+    return suggestions.take(6).toList();
+  }
+
   /// Automatic Daily Smart Briefing shown when the assistant opens.
   Future<List<AssistantInsight>> getDailyBriefing() async {
     return [
@@ -1535,55 +1826,128 @@ class OfflineSmartAssistantService {
       results.add(productMatch);
     }
 
-    // 4. Commerce, Marketing & Inflation Encyclopedia intents
+    // 4. Post & Ad Generator intents
+    final isPostRequest = q.contains('بوست') ||
+        q.contains('منشور') ||
+        q.contains('اعلان') ||
+        q.contains('اعمل اعلان') ||
+        q.contains('اكتب اعلان') ||
+        q.contains('واتساب') ||
+        q.contains('فيسبوك') ||
+        q.contains('انستا') ||
+        q.contains('انستاجرام') ||
+        q.contains('نص اعلاني') ||
+        q.contains('محتوي تسويقي') ||
+        q.contains('رسايل') ||
+        q.contains('ارسل للعملاء') ||
+        q.contains('اكتب نص') ||
+        q.contains('اعلن عن');
+    if (isPostRequest) {
+      results.add(await getPromoPostGeneratorInsight(query));
+    }
+
+    // Customer re-engagement intents
+    final isReEngagement = q.contains('استرجع العملاء') ||
+        q.contains('العملاء الغايبين') ||
+        q.contains('العملاء مش شاريين') ||
+        q.contains('عملاء قديمين') ||
+        q.contains('زبائن مش جايين') ||
+        q.contains('استعاده العملاء') ||
+        q.contains('رسايل واتساب للعملاء') ||
+        q.contains('تواصل مع العملاء');
+    if (isReEngagement) {
+      results.add(await getCustomerReEngagementInsight());
+    }
+
+    // 5. Commerce, Marketing & Inflation Encyclopedia intents
     if (q.contains('الفرق') ||
         q.contains('باقه') ||
         q.contains('هديه') ||
         q.contains('جذب عميل') ||
         q.contains('رفع الفاتوره') ||
         q.contains('دفتري') ||
-        q.contains('الربح والسيوله')) {
+        q.contains('الربح والسيوله') ||
+        q.contains('فرق بين الخصم') ||
+        q.contains('فرق بين الباقه') ||
+        q.contains('الفرق التسويقي') ||
+        q.contains('استراتيجيه') ||
+        q.contains('خطه تسويقيه')) {
       results.addAll(await getMarketingClarificationInsights(query));
     }
     if (q.contains('ترتيب المحل') ||
         q.contains('عرض البضاعه') ||
         q.contains('هندسه') ||
         q.contains('مستوي العين') ||
-        q.contains('الواجهه')) {
+        q.contains('الواجهه') ||
+        q.contains('ارتب المحل') ||
+        q.contains('شباك العرض') ||
+        q.contains('ترتيب الرفوف') ||
+        q.contains('عرض البضايع') ||
+        q.contains('تجميل المحل')) {
       results.add(await getVisualMerchandisingInsight());
     }
     if (q.contains('تضخم') ||
         q.contains('غلاء') ||
         q.contains('تكلفه الاستبدال') ||
-        q.contains('رفع الاسعار')) {
+        q.contains('رفع الاسعار') ||
+        q.contains('الاسعار زادت') ||
+        q.contains('كل حاجه غليت') ||
+        q.contains('المورد رفع') ||
+        q.contains('مش قادر اسعر') ||
+        q.contains('كيف اسعر') ||
+        q.contains('تسعير') ||
+        q.contains('سعر البيع') ||
+        q.contains('تكلفه الشراء')) {
       results.add(await getInflationCalculatorInsight(query));
     }
     if (q.contains('سيوله') ||
         q.contains('توسيع البضاعه') ||
         q.contains('بضاعه جديده') ||
         q.contains('50/30/20') ||
-        q.contains('اشتري بضاعه')) {
+        q.contains('اشتري بضاعه') ||
+        q.contains('معايا فلوس') ||
+        q.contains('عندي كاش') ||
+        q.contains('ناوي اشتري') ||
+        q.contains('في فرصه') ||
+        q.contains('ضخ فلوس') ||
+        q.contains('استثمار') ||
+        q.contains('توسعه')) {
       results.add(await getCashExpansionAdvisorInsight(query));
     }
 
-    // 5. Deepened Business Advisor intents
+    // 6. Deepened Business Advisor intents (expanded synonyms)
     if (q.contains('وضع المحل') ||
         q.contains('نبض المحل') ||
         q.contains('حاله المحل') ||
-        q.contains('ملخص دلوقتي')) {
+        q.contains('ملخص دلوقتي') ||
+        q.contains('احسسني') ||
+        q.contains('اخبرني عن') ||
+        q.contains('عامل ايه') ||
+        q.contains('شكل الدنيا عامله ايه')) {
       results.add(await getStorePulseInsight());
     }
     if (q.contains('المبيعات قليله') ||
         q.contains('قليله ليه') ||
         q.contains('انخفضت') ||
         q.contains('مقارنه الفترات') ||
-        q.contains('تشخيص')) {
+        q.contains('تشخيص') ||
+        q.contains('البيع واطي') ||
+        q.contains('البيع مش كويس') ||
+        q.contains('الناس مش شايله') ||
+        q.contains('ليه البيع وقف') ||
+        q.contains('مبيعاتي نازله') ||
+        q.contains('انا مش بكسب')) {
       results.add(await getSalesDiagnosisInsight());
     }
     if (q.contains('عروض') ||
         q.contains('تخفيضات') ||
         q.contains('تصريف') ||
-        q.contains('اوكازيون')) {
+        q.contains('اوكازيون') ||
+        q.contains('اعمل خصم') ||
+        q.contains('انزل سعر') ||
+        q.contains('اسيح البضاعه') ||
+        q.contains('خصومات') ||
+        q.contains('مواسم')) {
       results.add(await getPromotionsAdvisorInsight());
     }
 
@@ -1594,20 +1958,31 @@ class OfflineSmartAssistantService {
         q.contains('النهارده') ||
         q.contains('اليوم') ||
         q.contains('امبارح') ||
-        q.contains('امس')) {
+        q.contains('امس') ||
+        q.contains('صافي الربح') ||
+        q.contains('المكسب الصافي') ||
+        q.contains('كسبنا قد ايه')) {
       results.add(await getTodayProfitInsight());
     }
     if (q.contains('اعلي') ||
         q.contains('اكثر') ||
         q.contains('مبيعا') ||
-        q.contains('اصناف')) {
+        q.contains('اصناف') ||
+        q.contains('افضل منتج') ||
+        q.contains('اكتر بضاعه') ||
+        q.contains('بيتباع كتير') ||
+        q.contains('الاكثر طلبا')) {
       results.add(await getTopProfitableProductsInsight());
     }
     if (q.contains('راكد') ||
         q.contains('مركون') ||
         q.contains('مبيعتش') ||
         q.contains('مبتتباعش') ||
-        q.contains('بطي')) {
+        q.contains('بطي') ||
+        q.contains('مش بيتباع') ||
+        q.contains('قاعد في المخزن') ||
+        q.contains('محدش اشتراه') ||
+        q.contains('صنف واقف')) {
       results.add(await getStagnantProductsInsight());
     }
     if (q.contains('نفاد') ||
@@ -1615,19 +1990,30 @@ class OfflineSmartAssistantService {
         q.contains('ناقص') ||
         q.contains('خلص') ||
         q.contains('هيخلص') ||
-        q.contains('مخزون')) {
+        q.contains('مخزون') ||
+        q.contains('الكميه قليله') ||
+        q.contains('اوشك علي النفاد') ||
+        q.contains('عاوز اشتري')) {
       results.add(await getStockoutVelocityInsight());
     }
     if (q.contains('مصاريف') ||
         q.contains('مصروف') ||
         q.contains('صرفنا') ||
-        q.contains('ميزانيه')) {
+        q.contains('ميزانيه') ||
+        q.contains('المصروفات') ||
+        q.contains('الايجار') ||
+        q.contains('الكهربا') ||
+        q.contains('الرواتب') ||
+        q.contains('صرف قد ايه')) {
       results.add(await getMonthlyBudgetComparisonInsight());
     }
     if (q.contains('قسط') ||
         q.contains('اقساط') ||
         q.contains('متاخر') ||
-        q.contains('متعثر')) {
+        q.contains('متعثر') ||
+        q.contains('الديون') ||
+        q.contains('العملاء المديونين') ||
+        q.contains('مين محلوش')) {
       results.add(await getOverdueInstallmentsInsight());
     }
     if (q.contains('مورد') ||
@@ -1635,20 +2021,21 @@ class OfflineSmartAssistantService {
         q.contains('عليا') ||
         q.contains('مديون') ||
         q.contains('مستحقات') ||
-        q.contains('فلوس لمين')) {
+        q.contains('فلوس لمين') ||
+        q.contains('الموردين') ||
+        q.contains('ندفع لمين') ||
+        q.contains('فواتير المشتريات')) {
       results.add(await getSuppliersDuesInsight());
     }
 
     if (results.isEmpty) {
+      final suggestions = _buildDidYouMeanSuggestions(q);
       return [
-        const AssistantInsight(
+        AssistantInsight(
           id: 'no_direct_match',
-          title: 'ملخص تنفيذي سريع',
-          summary:
-              'لم أجد مطابقة مباشرة، إليك أحدث المؤشرات اليومية:',
-          details: [
-            'جرب: "وضع المحل دلوقتي؟"، "المبيعات قليلة ليه؟"، "أعمل عروض على إيه؟"، أو "ازاي أضيف كاشير؟".',
-          ],
+          title: 'لم أفهم سؤالك بالكامل — هل تقصد؟',
+          summary: 'جرب إحدى هذه الأسئلة أو اكتب بكلام مختلف:',
+          details: suggestions,
         ),
         await getTodayProfitInsight(),
         await getStockoutVelocityInsight(),

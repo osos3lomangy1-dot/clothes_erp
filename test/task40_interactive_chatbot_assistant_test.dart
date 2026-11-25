@@ -839,5 +839,211 @@ void main() {
       expect(exp.details.join(' '), contains('2000.00'));
       expect(exp.details.join(' '), contains('شراب رياضي سريع'));
     });
+
+    testWidgets('renders 390x560 Popover on desktop with Offline 100% badge and closes on Esc', (tester) async {
+      tester.view.physicalSize = const Size(1280, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => OfflineSmartAssistantDialog.show(context),
+                child: const Text('Open Popover'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Popover'));
+      await tester.pumpAndSettle();
+
+      final popoverFinder = find.byKey(const Key('smart_assistant_popover'));
+      expect(popoverFinder, findsOneWidget);
+      expect(find.text('أوفلاين 100%'), findsOneWidget);
+      final size = tester.getSize(popoverFinder);
+      expect(size.width, 390.0);
+      expect(size.height, 560.0);
+    });
+
+    test('generates WhatsApp & Facebook promo posts for stagnant high-margin items', () async {
+      final now = DateTime.now();
+      await db.into(db.appMeta).insertOnConflictUpdate(
+            AppMetaCompanion.insert(
+              key: ReceiptSettingsService.keyStoreName,
+              value: 'متجر النخبة',
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.appMeta).insertOnConflictUpdate(
+            AppMetaCompanion.insert(
+              key: ReceiptSettingsService.keyStorePhone,
+              value: '01099887766',
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.categories).insert(
+            CategoriesCompanion.insert(
+              id: 'c_post',
+              branchId: branchId,
+              name: 'ملابس',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.products).insert(
+            ProductsCompanion.insert(
+              id: 'p_post',
+              branchId: branchId,
+              name: 'جاكيت جلد فاخر',
+              categoryId: 'c_post',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.productVariants).insert(
+            ProductVariantsCompanion.insert(
+              id: 'v_post',
+              branchId: branchId,
+              productId: 'p_post',
+              sku: 'SKU-POST-1',
+              color: 'أسود',
+              size: 'L',
+              quantity: const Value(5),
+              costPrice: 50000,
+              sellPrice: 100000,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      final waRes = await assistantService.ask('اكتب بوست واتساب');
+      final waInsight = waRes.firstWhere((i) => i.id == 'promo_post_generator_whatsapp');
+      final waText = waInsight.details.join('\n');
+      expect(waText, contains('متجر النخبة'));
+      expect(waText, contains('جاكيت جلد فاخر'));
+      expect(waText, contains('1000.00'));
+      expect(waText, contains('850.00'));
+      expect(waText, contains('01099887766'));
+
+      final fbRes = await assistantService.ask('اعمل اعلان فيسبوك');
+      expect(fbRes.any((i) => i.id == 'promo_post_generator_facebook'), isTrue);
+    });
+
+    test('generates WhatsApp re-engagement messages for dormant customers (+60 days)', () async {
+      final oldDate = DateTime.now().subtract(const Duration(days: 75));
+      await db.into(db.customers).insert(
+            CustomersCompanion.insert(
+              id: 'cust_dormant',
+              branchId: branchId,
+              name: 'أحمد محمود',
+              phone: '01011223344',
+              createdAt: oldDate,
+              updatedAt: oldDate,
+            ),
+          );
+      await db.into(db.sales).insert(
+            SalesCompanion.insert(
+              id: 's_dormant',
+              branchId: branchId,
+              shortRef: 'S-DRM',
+              customerId: const Value('cust_dormant'),
+              cashierId: 'admin',
+              subtotal: 30000,
+              discountType: 'none',
+              total: 30000,
+              paymentMethod: 'cash',
+              date: oldDate,
+              createdAt: oldDate,
+              updatedAt: oldDate,
+            ),
+          );
+
+      final res = await assistantService.ask('استرجع العملاء الغائبين');
+      final insight = res.firstWhere((i) => i.id == 'customer_re_engagement');
+      expect(insight.details.join('\n'), contains('أحمد محمود'));
+    });
+
+    test('understands expanded Egyptian colloquial synonyms and returns smart suggestions on unknown query', () async {
+      final inflationRes = await assistantService.ask('كل حاجة غليت ومش قادر أسعر');
+      expect(inflationRes.any((i) => i.id == 'inflation_calculator'), isTrue);
+
+      final cashRes = await assistantService.ask('معايا فلوس 5000 وناوي أشتري بضاعة');
+      expect(cashRes.any((i) => i.id == 'cash_expansion_50_30_20'), isTrue);
+
+      final unknownRes = await assistantService.ask('اختبار عشوائي غير معروف');
+      final fallback = unknownRes.firstWhere((i) => i.id == 'no_direct_match');
+      expect(fallback.details, isNotEmpty);
+    });
+
+    testWidgets('shows copy button for generated social posts in assistant dialog', (tester) async {
+      final now = DateTime.now();
+      await db.into(db.categories).insert(
+            CategoriesCompanion.insert(
+              id: 'c_copy',
+              branchId: branchId,
+              name: 'ملابس',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.products).insert(
+            ProductsCompanion.insert(
+              id: 'p_copy',
+              branchId: branchId,
+              name: 'تيشيرت قطن',
+              categoryId: 'c_copy',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.productVariants).insert(
+            ProductVariantsCompanion.insert(
+              id: 'v_copy',
+              branchId: branchId,
+              productId: 'p_copy',
+              sku: 'SKU-CPY',
+              color: 'أبيض',
+              size: 'M',
+              quantity: const Value(4),
+              costPrice: 10000,
+              sellPrice: 20000,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      tester.view.physicalSize = const Size(1280, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => OfflineSmartAssistantDialog.show(context),
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('smart_assistant_query_field')),
+        'اكتب بوست واتساب',
+      );
+      await tester.tap(find.byKey(const Key('smart_assistant_ask_btn')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('نسخ'), findsWidgets);
+    });
   });
 }
