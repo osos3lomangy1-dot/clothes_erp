@@ -113,6 +113,7 @@ class _OfflineSmartAssistantDialogState
   String _selectedCategory = 'all';
   AssistantActionDraft? _activeDraft;
   bool _instantAdminMode = false;
+  String? _lastBarcodeProductName;
 
   bool _isCurrentUserAdmin() {
     try {
@@ -188,6 +189,11 @@ class _OfflineSmartAssistantDialogState
       if (!mounted) return;
       setState(() {
         _activeDraft = turn.activeDraft;
+        for (final ins in turn.insights) {
+          if (ins.id == 'barcode_lookup') {
+            _lastBarcodeProductName = ins.summary.split(' — ').first.trim();
+          }
+        }
         _history.add(
           _AssistantChatEntry(userPrompt: trimmed, insights: turn.insights),
         );
@@ -763,6 +769,9 @@ class _OfflineSmartAssistantDialogState
                                               ) ||
                                               item.id.startsWith(
                                                 'customer_re_engagement',
+                                              ) ||
+                                              item.id.startsWith(
+                                                'installment_reminder',
                                               ),
                                           isSuggestion:
                                               item.id == 'no_direct_match',
@@ -848,6 +857,50 @@ class _OfflineSmartAssistantDialogState
                                         ),
                                       ),
                                     ],
+                                    if (item.id == 'eod_report') ...[
+                                      const SizedBox(height: 6),
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: TextButton.icon(
+                                          key: const Key(
+                                            'assistant_copy_eod_btn',
+                                          ),
+                                          onPressed: () {
+                                            final text = [
+                                              item.title,
+                                              item.summary,
+                                              ...item.details,
+                                            ].join('\n');
+                                            Clipboard.setData(
+                                              ClipboardData(text: text),
+                                            );
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  'تم نسخ تقرير قفلة اليوم للواتساب',
+                                                  style: TextStyle(
+                                                    fontFamily: 'Cairo',
+                                                  ),
+                                                ),
+                                                duration: Duration(seconds: 2),
+                                              ),
+                                            );
+                                          },
+                                          icon: const Icon(
+                                            Icons.copy_rounded,
+                                            size: 14,
+                                          ),
+                                          label: const Text(
+                                            'نسخ لواتساب',
+                                            style: TextStyle(
+                                              fontFamily: 'Cairo',
+                                              fontSize: 11.5,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                     if (item.followUpPrompts.isNotEmpty) ...[
                                       const SizedBox(height: 6),
                                       Wrap(
@@ -877,8 +930,24 @@ class _OfflineSmartAssistantDialogState
                                                   fontWeight: FontWeight.w600,
                                                 ),
                                               ),
-                                              onPressed: () =>
-                                                  _runQuery(nextPrompt),
+                                              onPressed: () {
+                                                if (nextPrompt == 'عدل السعر' &&
+                                                    _lastBarcodeProductName !=
+                                                        null) {
+                                                  _runQuery(
+                                                    'عدل سعر $_lastBarcodeProductName',
+                                                  );
+                                                } else if (nextPrompt ==
+                                                        'زود الرصيد' &&
+                                                    _lastBarcodeProductName !=
+                                                        null) {
+                                                  _runQuery(
+                                                    'زود رصيد $_lastBarcodeProductName',
+                                                  );
+                                                } else {
+                                                  _runQuery(nextPrompt);
+                                                }
+                                              },
                                             ),
                                         ],
                                       ),

@@ -35,6 +35,8 @@ enum AssistantCommandKind {
   updateProductPriceOrStock,
   recordExpense,
   paySupplier,
+  addCustomer,
+  collectInstallment,
 }
 
 class AssistantPendingCommand {
@@ -1174,8 +1176,21 @@ class OfflineSmartAssistantService {
     required String userRole,
     required FeatureGate gate,
   }) async {
-    if (userRole.toLowerCase() != 'admin') {
-      throw Exception('غير مصرح: تنفيذ تعديلات الإعدادات متاح لحساب المدير (admin) فقط');
+    final isAdmin = userRole.toLowerCase() == 'admin';
+    if (!isAdmin) {
+      if (cmd.kind == AssistantCommandKind.addCustomer) {
+        final custEnabled = await gate.isEnabled(FeatureKeys.customers);
+        if (!custEnabled || !CashierPermissionsService.current.allowManageCustomers) {
+          throw Exception('غير مصرح: إضافة العملاء متاحة للمدير أو الكاشير المصرح له فقط');
+        }
+      } else if (cmd.kind == AssistantCommandKind.collectInstallment) {
+        final instEnabled = await gate.isEnabled(FeatureKeys.installments);
+        if (!instEnabled) {
+          throw Exception('غير مصرح: تحصيل الأقساط غير مفعل أو متاح للمدير فقط');
+        }
+      } else {
+        throw Exception('غير مصرح: تنفيذ تعديلات الإعدادات متاح لحساب المدير (admin) فقط');
+      }
     }
 
     switch (cmd.kind) {
@@ -1236,7 +1251,135 @@ class OfflineSmartAssistantService {
         return _execRecordExpense(cmd.payload, userId: userId);
       case AssistantCommandKind.paySupplier:
         return _execPaySupplier(cmd.payload, userId: userId);
+      case AssistantCommandKind.addCustomer:
+        return _execAddCustomer(cmd.payload, userId: userId);
+      case AssistantCommandKind.collectInstallment:
+        return _execCollectInstallment(cmd.payload, userId: userId);
     }
+  }
+
+  Future<String> _execAddCustomer(
+    Map<String, dynamic> payload, {
+    required String userId,
+  }) async {
+    final name = (payload['customerName'] as String? ?? '').trim();
+    final phone = Money.normalizeDigits(payload['phone'] as String? ?? '').trim();
+    if (name.isEmpty || phone.isEmpty) {
+      throw Exception('اسم العميل ورقم الهاتف مطلوبان');
+    }
+    final now = DateTime.now();
+    return _db.transaction(() async {
+      final branchId = await _resolveBranchId();
+      final custId = _genId('cust');
+      await _db.into(_db.customers).insert(
+            CustomersCompanion.insert(
+              id: custId,
+              branchId: branchId,
+              name: name,
+              phone: phone,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await _insertAudit(
+        branchId: branchId,
+        userId: userId,
+        action: 'assistant_add_customer',
+        entity: 'customer',
+        entityId: custId,
+        newValue: '$name ($phone)',
+        now: now,
+      );
+      return 'تمت إضافة العميل "$name" ($phone) بنجاح.';
+    });
+  }
+
+  Future<String> _execCollectInstallment(
+    Map<String, dynamic> payload, {
+    required String userId,
+  }) async {
+    final customerName = (payload['customerName'] as String? ?? '').trim();
+    final amountEgp = (payload['amountEgp'] as num?)?.toDouble() ?? 0;
+    if (customerName.isEmpty || amountEgp <= 0) {
+      throw Exception('بيانات تحصيل القسط غير مكتملة');
+    }
+    final amountPiasters = (amountEgp * 100).round();
+    final now = DateTime.now();
+
+    return _db.transaction(() async {
+      final branchId = await _resolveBranchId();
+      final customers = await (_db.select(_db.customers)
+            ..where((c) => c.deletedAt.isNull()))
+          .get();
+      final norm = normalizeArabic(customerName);
+      Customer? targetCust;
+      for (final c in customers) {
+        if (normalizeArabic(c.name) == norm ||
+            normalizeArabic(c.name).contains(norm)) {
+          targetCust = c;
+          break;
+        }
+      }
+      if (targetCust == null) {
+        throw Exception('لم يتم العثور على عميل باسم "$customerName"');
+      }
+
+      final plans = await (_db.select(_db.customerInstallments)
+            ..where((i) =>
+                i.customerId.equals(targetCust!.id) &
+                i.deletedAt.isNull() &
+                (i.status.equals('overdue') | i.status.equals('active'))))
+          .get();
+      if (plans.isEmpty) {
+        throw Exception('لا توجد عقود تقسيط نشطة أو متأخرة للعميل "${targetCust.name}"');
+      }
+
+      plans.sort((a, b) {
+        if (a.status == 'overdue' && b.status != 'overdue') return -1;
+        if (b.status == 'overdue' && a.status != 'overdue') return 1;
+        return a.endDate.compareTo(b.endDate);
+      });
+      final plan = plans.first;
+      final newRemaining = (plan.remainingPiasters - amountPiasters)
+          .clamp(0, plan.totalPiasters);
+      final newStatus = newRemaining == 0 ? 'completed' : 'active';
+      final payId = _genId('ipay');
+
+      await _db.into(_db.installmentPayments).insert(
+            InstallmentPaymentsCompanion.insert(
+              id: payId,
+              branchId: branchId,
+              customerInstallmentId: plan.id,
+              amountPiasters: amountPiasters,
+              paymentMethod: 'cash',
+              paidAt: now,
+              notes: const Value('تحصيل قسط عبر المساعد الذكي'),
+              recordedBy: userId,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await (_db.update(_db.customerInstallments)
+            ..where((i) => i.id.equals(plan.id)))
+          .write(
+        CustomerInstallmentsCompanion(
+          remainingPiasters: Value(newRemaining),
+          status: Value(newStatus),
+          updatedAt: Value(now),
+        ),
+      );
+      await _insertAudit(
+        branchId: branchId,
+        userId: userId,
+        action: 'assistant_collect_installment',
+        entity: 'customer_installment',
+        entityId: plan.id,
+        oldValue: Money(plan.remainingPiasters).toDisplay(),
+        newValue: Money(newRemaining).toDisplay(),
+        now: now,
+      );
+      return 'تم تحصيل قسط ${Money(amountPiasters).toDisplay()} ج.م من "${targetCust.name}"؛ المتبقي: ${Money(newRemaining).toDisplay()} ج.م.';
+    });
   }
 
   Future<String> _resolveBranchId() async {
@@ -1797,6 +1940,63 @@ class OfflineSmartAssistantService {
     final normalizedDigits = Money.normalizeDigits(rawQuery).trim();
     final q = normalizeArabic(normalizedDigits);
 
+    // 0. Add Customer: "ضيف عميل [اسم] [رقم هاتف]"
+    if (q.startsWith('ضيف عميل') ||
+        q.startsWith('اضف عميل') ||
+        q.startsWith('اضافه عميل') ||
+        q.startsWith('عميل جديد')) {
+      final body = normalizedDigits
+          .replaceFirst(
+            RegExp(r'^(?:ضيف\s+عميل|اضف\s+عميل|أضف\s+عميل|اضافه\s+عميل|إضافة\s+عميل|عميل\s+جديد)\s*'),
+            '',
+          )
+          .trim();
+      final phoneMatch = RegExp(r'(\+?\d{8,15})$').firstMatch(body);
+      String? phone;
+      String? custName;
+      if (phoneMatch != null) {
+        phone = phoneMatch.group(1)!.trim();
+        custName = body.substring(0, phoneMatch.start).trim();
+      } else if (body.isNotEmpty) {
+        custName = body;
+      }
+      final fields = <String, dynamic>{
+        if (custName != null && custName.isNotEmpty) 'customerName': custName,
+        if (phone != null && phone.isNotEmpty) 'phone': phone,
+      };
+      return _finalizeDraft(AssistantCommandKind.addCustomer, fields);
+    }
+
+    // 0b. Collect Installment: "العميل [اسم] دفع قسط [مبلغ]" / "تحصيل قسط [اسم] [مبلغ]"
+    if (q.contains('دفع قسط') || q.startsWith('تحصيل قسط')) {
+      String body = normalizedDigits;
+      double? amount;
+      String? custName;
+      final custPayMatch = RegExp(
+        r'^(?:العميل\s+)?(.+?)\s+دفع\s+قسط(?:\s+(\d+(?:\.\d+)?))?',
+      ).firstMatch(body);
+      if (custPayMatch != null) {
+        custName = custPayMatch.group(1)?.trim();
+        if (custPayMatch.group(2) != null) {
+          amount = double.tryParse(custPayMatch.group(2)!);
+        }
+      } else {
+        body = body.replaceFirst(RegExp(r'^تحصيل\s+قسط\s*'), '').trim();
+        final amtMatch = RegExp(r'(\d+(?:\.\d+)?)\s*(?:ج\.?م|جنيه)?$').firstMatch(body);
+        if (amtMatch != null) {
+          amount = double.tryParse(amtMatch.group(1)!);
+          custName = body.substring(0, amtMatch.start).trim();
+        } else if (body.isNotEmpty) {
+          custName = body;
+        }
+      }
+      final fields = <String, dynamic>{
+        if (custName != null && custName.isNotEmpty) 'customerName': custName,
+        if (amount != null && amount > 0) 'amountEgp': amount,
+      };
+      return _finalizeDraft(AssistantCommandKind.collectInstallment, fields);
+    }
+
     // 1. Pay Supplier: "دفعت للمورد [اسم] [مبلغ]" / "سداد مورد [اسم] [مبلغ]"
     if (q.startsWith('دفعت للمورد') ||
         q.startsWith('دفعت لمورد') ||
@@ -2105,6 +2305,44 @@ class OfflineSmartAssistantService {
         }
         return AssistantActionDraft(kind: kind, fields: fields);
 
+      case AssistantCommandKind.addCustomer:
+        if ((fields['customerName'] as String? ?? '').isEmpty) {
+          return AssistantActionDraft(
+            kind: kind,
+            fields: fields,
+            missingField: 'customerName',
+            promptForMissing: 'ما اسم العميل الجديد؟',
+          );
+        }
+        if ((fields['phone'] as String? ?? '').isEmpty) {
+          return AssistantActionDraft(
+            kind: kind,
+            fields: fields,
+            missingField: 'phone',
+            promptForMissing: 'ما رقم هاتف العميل؟',
+          );
+        }
+        return AssistantActionDraft(kind: kind, fields: fields);
+
+      case AssistantCommandKind.collectInstallment:
+        if ((fields['customerName'] as String? ?? '').isEmpty) {
+          return AssistantActionDraft(
+            kind: kind,
+            fields: fields,
+            missingField: 'customerName',
+            promptForMissing: 'ما اسم العميل الذي سدد القسط؟',
+          );
+        }
+        if ((fields['amountEgp'] as num? ?? 0) <= 0) {
+          return AssistantActionDraft(
+            kind: kind,
+            fields: fields,
+            missingField: 'amountEgp',
+            promptForMissing: 'كم مبلغ القسط المحصل بالجنيه؟',
+          );
+        }
+        return AssistantActionDraft(kind: kind, fields: fields);
+
       default:
         return AssistantActionDraft(kind: kind, fields: fields);
     }
@@ -2237,6 +2475,36 @@ class OfflineSmartAssistantService {
             payload: Map<String, dynamic>.from(f),
           ),
         );
+      case AssistantCommandKind.addCustomer:
+        final cust = f['customerName'];
+        final phone = f['phone'];
+        return AssistantInsight(
+          id: 'cmd_add_customer',
+          title: 'تأكيد إضافة عميل جديد',
+          summary: 'إضافة العميل "$cust" برقم هاتف "$phone".',
+          details: const ['يتطلب التنفيذ صلاحية مدير أو كاشير مصرح له.'],
+          pendingCommand: AssistantPendingCommand(
+            kind: AssistantCommandKind.addCustomer,
+            title: 'إضافة عميل',
+            description: '$cust',
+            payload: Map<String, dynamic>.from(f),
+          ),
+        );
+      case AssistantCommandKind.collectInstallment:
+        final cust = f['customerName'];
+        final amt = (f['amountEgp'] as num).toDouble();
+        return AssistantInsight(
+          id: 'cmd_collect_installment',
+          title: 'تأكيد تحصيل قسط عميل',
+          summary: 'تحصيل قسط بقيمة ${amt.toStringAsFixed(2)} ج.م من العميل "$cust".',
+          details: const ['سيتم تحديث المتبقي في عقد التقسيط وتسجيل الدفعة.'],
+          pendingCommand: AssistantPendingCommand(
+            kind: AssistantCommandKind.collectInstallment,
+            title: 'تحصيل قسط',
+            description: '$cust',
+            payload: Map<String, dynamic>.from(f),
+          ),
+        );
       default:
         return const AssistantInsight(
           id: 'cmd_unknown',
@@ -2244,6 +2512,207 @@ class OfflineSmartAssistantService {
           summary: 'تعذر تجهيز الأمر للتنفيذ.',
         );
     }
+  }
+
+  /// Batch 2.1c: WhatsApp Installment Reminder for a customer.
+  Future<AssistantInsight> getInstallmentReminderInsight(
+    String rawQuery,
+  ) async {
+    String storeName = 'المحل';
+    try {
+      final nameMeta = await (_db.select(_db.appMeta)
+            ..where((m) => m.key.equals(ReceiptSettingsService.keyStoreName)))
+          .getSingleOrNull();
+      if (nameMeta != null && nameMeta.value.trim().isNotEmpty) {
+        storeName = nameMeta.value.trim();
+      }
+    } catch (_) {}
+
+    final targetName = rawQuery
+        .replaceFirst(
+          RegExp(r'^.*?(?:تذكير\s+قسط\s+(?:لـ\s*|ل|الي|إلى\s+)?|رساله\s+قسط\s+(?:لـ\s*|ل)?)'),
+          '',
+        )
+        .trim();
+
+    String resolvedName = targetName.isNotEmpty ? targetName : 'العميل الكريم';
+    String amountLine = '';
+
+    if (targetName.isNotEmpty) {
+      final customers = await (_db.select(_db.customers)
+            ..where((c) => c.deletedAt.isNull()))
+          .get();
+      final norm = normalizeArabic(targetName);
+      Customer? matched;
+      for (final c in customers) {
+        if (normalizeArabic(c.name) == norm ||
+            normalizeArabic(c.name).contains(norm)) {
+          matched = c;
+          break;
+        }
+      }
+      if (matched != null) {
+        resolvedName = matched.name;
+        final plans = await (_db.select(_db.customerInstallments)
+              ..where((i) =>
+                  i.customerId.equals(matched!.id) &
+                  i.deletedAt.isNull() &
+                  (i.status.equals('overdue') | i.status.equals('active'))))
+            .get();
+        if (plans.isNotEmpty) {
+          final p = plans.first;
+          amountLine =
+              '\nقيمة القسط الشهري: ${Money(p.monthlyAmountPiasters).toDisplay()} ج.م | المتبقي: ${Money(p.remainingPiasters).toDisplay()} ج.م.';
+        }
+      }
+    }
+
+    final msg = 'تذكير قسط للعميل $resolvedName\n---\n'
+        'السلام عليكم $resolvedName،\n'
+        'تحية طيبة من $storeName. نود تذكيركم بموعد سداد القسط المستحق.$amountLine\n'
+        'يسعدنا تواصلكم أو تشريفكم بالفرع في أقرب وقت. شكراً لتعاونكم.';
+
+    return AssistantInsight(
+      id: 'installment_reminder',
+      title: 'رسالة تذكير قسط جاهزة للواتساب',
+      summary: 'رسالة تذكير مهذبة للعميل "$resolvedName" — اضغط نسخ للإرسال:',
+      details: [msg],
+    );
+  }
+
+  /// Batch 2.2: End-of-Day Report ("تقرير قفلة اليوم") with WhatsApp copy support.
+  Future<AssistantInsight> getEndOfDayReportInsight() async {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final todayEnd = todayStart.add(const Duration(days: 1));
+
+    final salesRows = await (_db.select(_db.sales)
+          ..where((s) =>
+              s.date.isBiggerOrEqualValue(todayStart) &
+              s.date.isSmallerThanValue(todayEnd) &
+              s.deletedAt.isNull() &
+              s.status.isNotValue('cancelled')))
+        .get();
+    final totalSales = salesRows.fold<int>(0, (s, r) => s + r.total);
+    final cashSales = salesRows
+        .where((s) => s.paymentMethod.toLowerCase() == 'cash')
+        .fold<int>(0, (s, r) => s + r.total);
+
+    final netProfit = await _computeNetProfitForRange(todayStart, todayEnd);
+
+    final returnsRows = await (_db.select(_db.returns)
+          ..where((r) =>
+              r.date.isBiggerOrEqualValue(todayStart) &
+              r.date.isSmallerThanValue(todayEnd) &
+              r.deletedAt.isNull()))
+        .get();
+    final totalReturns = returnsRows.fold<int>(0, (s, r) => s + r.refundAmount);
+    final cashReturns = returnsRows
+        .where((r) => r.paymentMethod.toLowerCase() == 'cash')
+        .fold<int>(0, (s, r) => s + r.refundAmount);
+
+    final expensesRows = await (_db.select(_db.expenses)
+          ..where((e) =>
+              e.expenseDate.isBiggerOrEqualValue(todayStart) &
+              e.expenseDate.isSmallerThanValue(todayEnd) &
+              e.deletedAt.isNull()))
+        .get();
+    final totalExpenses = expensesRows.fold<int>(0, (s, e) => s + e.amount);
+
+    final openShift = await (_db.select(_db.shifts)
+          ..where((s) => s.closedAt.isNull() & s.deletedAt.isNull())
+          ..orderBy([(s) => OrderingTerm.desc(s.openedAt)])
+          ..limit(1))
+        .getSingleOrNull();
+    final drawerExpected =
+        (openShift?.openingBalance ?? 0) + cashSales - cashReturns - totalExpenses;
+
+    // Low stock
+    final products = await (_db.select(_db.products)
+          ..where((p) => p.deletedAt.isNull()))
+        .get();
+    final prodMap = {for (final p in products) p.id: p};
+    final variants = await (_db.select(_db.productVariants)
+          ..where((v) => v.deletedAt.isNull()))
+        .get();
+    final lowNames = <String>[];
+    for (final v in variants) {
+      final p = prodMap[v.productId];
+      if (p != null && v.quantity <= p.minStock && !lowNames.contains(p.name)) {
+        lowNames.add('${p.name} (${v.quantity})');
+      }
+      if (lowNames.length >= 3) break;
+    }
+
+    final dateStr =
+        '${now.year}/${now.month.toString().padLeft(2, '0')}/${now.day.toString().padLeft(2, '0')}';
+
+    return AssistantInsight(
+      id: 'eod_report',
+      title: 'تقرير قفلة اليوم ($dateStr)',
+      summary:
+          'مبيعات اليوم: ${Money(totalSales).toDisplay()} ج.م | صافي الربح: ${Money(netProfit).toDisplay()} ج.م',
+      details: [
+        'عدد الفواتير: ${salesRows.length} فاتورة | إجمالي المبيعات: ${Money(totalSales).toDisplay()} ج.م',
+        'صافي الربح: ${Money(netProfit).toDisplay()} ج.م',
+        'المرتجعات: ${Money(totalReturns).toDisplay()} ج.م (${returnsRows.length} مرتجع)',
+        'المصروفات: ${Money(totalExpenses).toDisplay()} ج.م',
+        'المتبقي المتوقع بالدرج: ${Money(drawerExpected).toDisplay()} ج.م',
+        lowNames.isEmpty
+            ? 'النواقص: لا توجد نواقص حرجة اليوم.'
+            : 'أهم النواقص: ${lowNames.join('، ')}',
+      ],
+      actionLabel: 'فتح الشاشة الآن',
+      actionRoute: AssistantActionRoute.shifts,
+      requiredFeatureKey: FeatureKeys.shifts,
+    );
+  }
+
+  /// Batch 2.3: Barcode / SKU lookup inside chat with quick price/stock follow-ups.
+  Future<AssistantInsight?> searchByBarcodeOrSkuInsight(String rawQuery) async {
+    final code = Money.normalizeDigits(rawQuery).trim();
+    if (code.length < 3 || code.contains(' ')) return null;
+    final lowerCode = code.toLowerCase();
+
+    final variants = await (_db.select(_db.productVariants)
+          ..where((v) => v.deletedAt.isNull()))
+        .get();
+    ProductVariant? matched;
+    for (final v in variants) {
+      if (v.sku.trim().toLowerCase() == lowerCode || v.id.toLowerCase() == lowerCode) {
+        matched = v;
+        break;
+      }
+    }
+    if (matched == null) return null;
+
+    final prod = await (_db.select(_db.products)
+          ..where((p) => p.id.equals(matched!.productId)))
+        .getSingleOrNull();
+    final prodName = prod?.name ?? matched.sku;
+
+    final since = DateTime.now().subtract(const Duration(days: 30));
+    final recentSales = await (_db.select(_db.saleItems)
+          ..where((si) =>
+              si.variantId.equals(matched!.id) &
+              si.createdAt.isBiggerOrEqualValue(since)))
+        .get();
+    final sold30d = recentSales.fold<int>(0, (sum, r) => sum + r.qty);
+
+    return AssistantInsight(
+      id: 'barcode_lookup',
+      title: 'بطاقة الصنف بالباركود (${matched.sku})',
+      summary:
+          '$prodName — البيع: ${Money(matched.sellPrice).toDisplay()} ج.م | الرصيد: ${matched.quantity}',
+      details: [
+        'التكلفة: ${Money(matched.costPrice).toDisplay()} ج.م | هامش القطعة: ${Money(matched.sellPrice - matched.costPrice).toDisplay()} ج.م',
+        'الرصيد الحالي: ${matched.quantity} قطعة | مبيعات آخر 30 يوم: $sold30d قطعة',
+      ],
+      followUpPrompts: const [
+        'عدل السعر',
+        'زود الرصيد',
+      ],
+    );
   }
 
   /// Multi-turn conversation entry point supporting [AssistantActionDraft].
@@ -3382,10 +3851,25 @@ $cta${storePhone.isNotEmpty ? ' على: $storePhone' : ''}
 
     final results = <AssistantInsight>[];
 
-    // 3. Direct product lookup
-    final productMatch = await searchProductByNameInsight(query);
-    if (productMatch != null) {
-      results.add(productMatch);
+    // 3. Direct barcode / SKU or product lookup
+    final barcodeMatch = await searchByBarcodeOrSkuInsight(query);
+    if (barcodeMatch != null) {
+      results.add(barcodeMatch);
+    } else {
+      final productMatch = await searchProductByNameInsight(query);
+      if (productMatch != null) {
+        results.add(productMatch);
+      }
+    }
+
+    // Batch 2: End-of-Day Report & WhatsApp Installment Reminder
+    if (q.contains('تقرير قفله اليوم') ||
+        q.contains('قفله اليوم') ||
+        q.contains('ملخص قفله')) {
+      results.add(await getEndOfDayReportInsight());
+    }
+    if (q.contains('تذكير قسط') || q.contains('رساله قسط')) {
+      results.add(await getInstallmentReminderInsight(query));
     }
 
     // 4. Post & Ad Generator intents

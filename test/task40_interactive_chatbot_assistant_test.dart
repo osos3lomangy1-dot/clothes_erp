@@ -1436,4 +1436,276 @@ void main() {
       expect(exps.first.amount, 30000);
     });
   });
+
+  group('Task 40.7: Batch 2 - Customers, Installments, EOD Report & Barcode Lookup', () {
+    test('adds customer, collects installment with AuditLog, enforces FeatureGate, and generates WhatsApp reminder', () async {
+      final now = DateTime.now();
+
+      // Unauthorized cashier cannot addCustomer or collectInstallment
+      await CashierPermissionsService.save(
+        gate,
+        CashierPermissionsService.current.copyWith(allowManageCustomers: false),
+        userId: 'admin_1',
+      );
+      final addTurn = await assistantService.askWithDraft('ضيف عميل سارة علي 01022334455');
+      expect(addTurn.insights.first.pendingCommand?.kind, AssistantCommandKind.addCustomer);
+      await expectLater(
+        assistantService.executeCommand(
+          addTurn.insights.first.pendingCommand!,
+          userId: 'cashier_1',
+          userRole: 'cashier',
+          gate: gate,
+        ),
+        throwsException,
+      );
+
+      // Admin adds customer
+      await assistantService.executeCommand(
+        addTurn.insights.first.pendingCommand!,
+        userId: 'admin_1',
+        userRole: 'admin',
+        gate: gate,
+      );
+      final custs = await db.select(db.customers).get();
+      expect(custs.any((c) => c.name == 'سارة علي' && c.phone == '01022334455'), isTrue);
+      final sara = custs.firstWhere((c) => c.name == 'سارة علي');
+
+      // Seed an overdue installment contract for Sara
+      await db.into(db.sales).insert(
+            SalesCompanion.insert(
+              id: 's_sara',
+              branchId: branchId,
+              shortRef: 'S-SARA',
+              customerId: Value(sara.id),
+              cashierId: 'admin_1',
+              subtotal: 100000,
+              discountType: 'none',
+              total: 100000,
+              paymentMethod: 'installment',
+              date: now,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.customerInstallments).insert(
+            CustomerInstallmentsCompanion.insert(
+              id: 'ci_sara',
+              branchId: branchId,
+              saleId: 's_sara',
+              customerId: sara.id,
+              totalPiasters: 100000,
+              downPaymentPiasters: const Value(20000),
+              principalPiasters: 80000,
+              interestBp: 0,
+              monthlyAmountPiasters: 20000,
+              remainingPiasters: 80000,
+              durationMonths: 4,
+              startDate: now.subtract(const Duration(days: 40)),
+              endDate: now.subtract(const Duration(days: 5)),
+              status: const Value('overdue'),
+              createdBy: 'admin_1',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // Cashier blocked when FeatureKeys.installments is false
+      final payTurn = await assistantService.askWithDraft('العميل سارة علي دفع قسط 250');
+      expect(payTurn.insights.first.pendingCommand?.kind, AssistantCommandKind.collectInstallment);
+      await expectLater(
+        assistantService.executeCommand(
+          payTurn.insights.first.pendingCommand!,
+          userId: 'cashier_1',
+          userRole: 'cashier',
+          gate: gate,
+        ),
+        throwsException,
+      );
+
+      // Admin collects installment
+      await assistantService.executeCommand(
+        payTurn.insights.first.pendingCommand!,
+        userId: 'admin_1',
+        userRole: 'admin',
+        gate: gate,
+      );
+      final updatedPlan = await (db.select(db.customerInstallments)
+            ..where((i) => i.id.equals('ci_sara')))
+          .getSingle();
+      expect(updatedPlan.remainingPiasters, 55000); // 800 - 250 = 550 EGP
+      expect((await db.select(db.installmentPayments).get()).length, 1);
+
+      // WhatsApp reminder message
+      final remRes = await assistantService.ask('اكتب رسالة تذكير قسط لـ سارة علي');
+      final rem = remRes.firstWhere((i) => i.id == 'installment_reminder');
+      expect(rem.details.first, contains('سارة علي'));
+      expect(rem.details.first, contains('550.00'));
+    });
+
+    test('computes End-of-Day report and Barcode/SKU lookup with 30d sales', () async {
+      final now = DateTime.now();
+      await db.into(db.categories).insert(
+            CategoriesCompanion.insert(
+              id: 'c_b2',
+              branchId: branchId,
+              name: 'إلكترونيات',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.products).insert(
+            ProductsCompanion.insert(
+              id: 'p_b2',
+              branchId: branchId,
+              name: 'باور بانك 20000',
+              categoryId: 'c_b2',
+              minStock: const Value(5),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.productVariants).insert(
+            ProductVariantsCompanion.insert(
+              id: 'v_b2',
+              branchId: branchId,
+              productId: 'p_b2',
+              sku: 'SKU-BAR-99',
+              color: 'أسود',
+              size: '-',
+              quantity: const Value(3),
+              costPrice: 30000,
+              sellPrice: 50000,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.sales).insert(
+            SalesCompanion.insert(
+              id: 's_b2',
+              branchId: branchId,
+              shortRef: 'S-B2',
+              cashierId: 'admin',
+              subtotal: 100000,
+              discountType: 'none',
+              total: 100000,
+              paymentMethod: 'cash',
+              date: now,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.saleItems).insert(
+            SaleItemsCompanion.insert(
+              id: 'si_b2',
+              branchId: branchId,
+              saleId: 's_b2',
+              variantId: 'v_b2',
+              productName: 'باور بانك 20000',
+              color: 'أسود',
+              size: '-',
+              qty: 2,
+              priceSnapshot: 50000,
+              costSnapshot: 30000,
+              lineTotal: 100000,
+              createdAt: now,
+            ),
+          );
+
+      // EOD report
+      final eodRes = await assistantService.ask('تقرير قفلة اليوم');
+      final eod = eodRes.firstWhere((i) => i.id == 'eod_report');
+      expect(eod.summary, contains('1000.00'));
+      expect(eod.details.join('\n'), contains('المتبقي المتوقع بالدرج'));
+      expect(eod.details.join('\n'), contains('باور بانك 20000'));
+
+      // Barcode / SKU lookup
+      final barRes = await assistantService.ask('SKU-BAR-99');
+      final bar = barRes.firstWhere((i) => i.id == 'barcode_lookup');
+      expect(bar.summary, contains('باور بانك 20000'));
+      expect(bar.summary, contains('500.00'));
+      expect(bar.details.join('\n'), contains('مبيعات آخر 30 يوم: 2'));
+      expect(bar.followUpPrompts, containsAll(['عدل السعر', 'زود الرصيد']));
+    });
+
+    testWidgets('dialog shows WhatsApp copy button for EOD report and quick barcode follow-ups', (tester) async {
+      tester.view.physicalSize = const Size(1280, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final now = DateTime.now();
+      await db.into(db.categories).insert(
+            CategoriesCompanion.insert(
+              id: 'c_w2',
+              branchId: branchId,
+              name: 'ملابس',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.products).insert(
+            ProductsCompanion.insert(
+              id: 'p_w2',
+              branchId: branchId,
+              name: 'كوتشي رياضي',
+              categoryId: 'c_w2',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.productVariants).insert(
+            ProductVariantsCompanion.insert(
+              id: 'v_w2',
+              branchId: branchId,
+              productId: 'p_w2',
+              sku: '622112233',
+              color: 'أبيض',
+              size: '42',
+              quantity: const Value(8),
+              costPrice: 20000,
+              sellPrice: 40000,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => OfflineSmartAssistantDialog.show(context),
+                child: const Text('Open B2'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open B2'));
+      await tester.pumpAndSettle();
+
+      // EOD report has "نسخ لواتساب"
+      await tester.enterText(
+        find.byKey(const Key('smart_assistant_query_field')),
+        'تقرير قفلة اليوم',
+      );
+      await tester.tap(find.byKey(const Key('smart_assistant_ask_btn')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('assistant_copy_eod_btn')), findsOneWidget);
+
+      // Barcode scan shows follow-ups and tapping "عدل السعر" starts price draft
+      await tester.enterText(
+        find.byKey(const Key('smart_assistant_query_field')),
+        '622112233',
+      );
+      await tester.tap(find.byKey(const Key('smart_assistant_ask_btn')));
+      await tester.pumpAndSettle();
+      expect(find.text('عدل السعر'), findsOneWidget);
+      expect(find.text('زود الرصيد'), findsOneWidget);
+
+      await tester.tap(find.text('عدل السعر'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('ما السعر الجديد بالجنيه'), findsOneWidget);
+    });
+  });
 }
