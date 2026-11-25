@@ -299,6 +299,10 @@ class _OfflineSmartAssistantDialogState
       'وضع المحل دلوقتي؟',
       'المبيعات قليلة ليه؟',
       'أعمل عروض على إيه؟',
+      'الخصم أم الباقة والهدية؟',
+      'ترتيب المحل وعرض البضاعة',
+      'حاسبة التضخم 20%',
+      'توزيع السيولة 50/30/20',
       'صافي ربح اليوم ومقارنته بأمس',
       'أعلى 5 أصناف ربحاً',
       'الأقساط المتأخرة',
@@ -364,11 +368,13 @@ class _OfflineSmartAssistantDialogState
               const SizedBox(height: 10),
               Wrap(
                 spacing: 6,
-                runSpacing: 6,
+                runSpacing: 4,
                 children: [
                   for (final prompt in quickPrompts)
                     ActionChip(
-                      label: Text(prompt, style: const TextStyle(fontSize: 11.5)),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                      label: Text(prompt, style: const TextStyle(fontSize: 11)),
                       onPressed: () => _runQuery(prompt),
                     ),
                 ],

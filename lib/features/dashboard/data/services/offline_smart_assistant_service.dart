@@ -777,7 +777,19 @@ class OfflineSmartAssistantService {
       );
     }
 
-    if (q.contains('خصم') || q.contains('منع الخصم') || q.contains('تعديل السعر')) {
+    final isEncyclopediaQuery = q.contains('فرق') ||
+        q.contains('باقه') ||
+        q.contains('هديه') ||
+        q.contains('تضخم') ||
+        q.contains('غلاء') ||
+        q.contains('استبدال') ||
+        q.contains('ترتيب المحل') ||
+        q.contains('عرض البضاعه') ||
+        q.contains('سيوله') ||
+        q.contains('50/30/20');
+
+    if (!isEncyclopediaQuery &&
+        (q.contains('خصم') || q.contains('منع الخصم') || q.contains('تعديل السعر'))) {
       return const AssistantInsight(
         id: 'howto_discount_guard',
         title: 'دليل: منع الخصم اليدوي أو تعديل السعر للكاشير',
@@ -901,7 +913,8 @@ class OfflineSmartAssistantService {
       );
     }
 
-    if (q.contains('سعر') || q.contains('صنف') || q.contains('منتج')) {
+    if (!isEncyclopediaQuery &&
+        (q.contains('سعر') || q.contains('صنف') || q.contains('منتج'))) {
       return const AssistantInsight(
         id: 'howto_products',
         title: 'دليل: إضافة صنف أو تعديل السعر الرسمي',
@@ -1126,6 +1139,365 @@ class OfflineSmartAssistantService {
     }
   }
 
+  /// 1. Marketing & Finance Clarifications (Discount vs Bundle vs Gift, Funnel, Profit vs Cash)
+  Future<List<AssistantInsight>> getMarketingClarificationInsights(
+    String rawQuery,
+  ) async {
+    final q = normalizeArabic(rawQuery);
+    final insights = <AssistantInsight>[];
+
+    final askPromo = q.contains('خصم') ||
+        q.contains('باقه') ||
+        q.contains('هديه') ||
+        q.contains('عروض');
+    final askFunnel = q.contains('جذب') ||
+        q.contains('رفع الفاتوره') ||
+        q.contains('استرجاع') ||
+        q.contains('تكرار');
+    final askProfitVsCash = q.contains('ربح') ||
+        q.contains('دفتري') ||
+        q.contains('سيوله') ||
+        q.contains('الدرج');
+    final askAll = !askPromo && !askFunnel && !askProfitVsCash;
+
+    if (askPromo || askAll) {
+      insights.add(
+        const AssistantInsight(
+          id: 'encyclopedia_promo_diff',
+          title: 'موسوعة التجارة: الخصم مقابل الباقة مقابل الهدية',
+          summary:
+              'الخصم يقلل الهامش، الباقة تصرف الراكد، والهدية تحافظ على هيبة السعر.',
+          details: [
+            'الخصم المباشر (%): يجذب السعر فقط ويحرق هامش الربح؛ استخدمه فقط لتصريف بضاعة راكدة أو موسم منتهٍ.',
+            'الباقة (Bundle): اجمع صنفاً سريع الدوران مع صنف بطيء بسعر مجمّع؛ ترفع قيمة الفاتورة وتصرف المخزون دون تدمير سعر القطعة.',
+            'الهدية (Gift): تكلفك "سعر التكلفة" فقط وليس سعر البيع، وتحافظ على القيمة المعلنة لصنفك الأساسي أمام العميل.',
+          ],
+        ),
+      );
+    }
+
+    if (askFunnel || askAll) {
+      insights.add(
+        const AssistantInsight(
+          id: 'encyclopedia_funnel_diff',
+          title: 'موسوعة التجارة: جذب العميل مقابل رفع الفاتورة مقابل الاسترجاع',
+          summary:
+              'كل مرحلة لها أداة مختلفة: الجذب بالواجهة، الرفع بالبدائل، والاسترجاع بالمتابعة.',
+          details: [
+            'جذب عميل جديد (Acquisition): يعتمد على صنف واجهة بسعر مغرٍ يدفع العميل لدخول المحل (هدفه عدد الفواتير).',
+            'رفع الفاتورة (Upsell / Cross-sell): اقتراح مكملات أو مقاس/فئة أعلى أثناء البيع لزيادة متوسط الفاتورة (AOV).',
+            'الاسترجاع والاحتفاظ (Retention): تسجيل العميل ونقاط الولاء وخدمة ما بعد البيع؛ تكلفة بيعه مرة ثانية أقل 5 مرات من جذب عميل جديد.',
+          ],
+        ),
+      );
+    }
+
+    if (askProfitVsCash || askAll) {
+      final variants = await (_db.select(_db.productVariants)
+            ..where((v) => v.deletedAt.isNull() & v.quantity.isBiggerThanValue(0)))
+          .get();
+      int stockCostPiasters = 0;
+      for (final v in variants) {
+        stockCostPiasters += v.quantity * v.costPrice;
+      }
+      final installments = await (_db.select(_db.customerInstallments)
+            ..where((i) =>
+                i.deletedAt.isNull() &
+                (i.status.equals('active') | i.status.equals('overdue'))))
+          .get();
+      int receivablesPiasters = 0;
+      for (final i in installments) {
+        receivablesPiasters += i.remainingPiasters;
+      }
+
+      insights.add(
+        AssistantInsight(
+          id: 'encyclopedia_profit_vs_cash',
+          title: 'موسوعة التجارة: صافي الربح الدفتري مقابل السيولة في الدرج',
+          summary:
+              'الربح الدفتري يقيس نجاح البيع، بينما السيولة تقيس الكاش المتاح الآن.',
+          details: [
+            'صافي الربح الدفتري = مبيعات الفترة - تكلفة البضاعة المباعة - المصروفات (حتى لو كان البيع آجلاً أو تقسيطاً).',
+            'السيولة في الدرج تنقص عندما تحوّل الكاش إلى بضاعة جديدة أو أقساط عند العملاء أو سداد موردين.',
+            'وضع محلك الآن: لديك مخزون بالتكلفة بقيمة ${Money(stockCostPiasters).toDisplay()} ج.م ومستحقات تقسيط ${Money(receivablesPiasters).toDisplay()} ج.م.',
+          ],
+          actionLabel: 'فتح الشاشة الآن',
+          actionRoute: AssistantActionRoute.reports,
+          requiredFeatureKey: FeatureKeys.reports,
+        ),
+      );
+    }
+
+    return insights;
+  }
+
+  /// 2. Visual Merchandising tailored to the store activity and top-margin items.
+  Future<AssistantInsight> getVisualMerchandisingInsight() async {
+    final activityMeta = await (_db.select(_db.appMeta)
+          ..where((m) => m.key.equals(ReceiptSettingsService.keyStoreActivity)))
+        .getSingleOrNull();
+    final mobileMeta = await (_db.select(_db.appMeta)
+          ..where((m) => m.key.equals('feature.${FeatureKeys.mobileImeiUsed}')))
+        .getSingleOrNull();
+    final dineInMeta = await (_db.select(_db.appMeta)
+          ..where((m) => m.key.equals('feature.dineIn')))
+        .getSingleOrNull();
+
+    final activityText = normalizeArabic(activityMeta?.value ?? '');
+    String sector = 'عام';
+    if (mobileMeta?.value == 'true' ||
+        activityText.contains('موبايل') ||
+        activityText.contains('الكترون') ||
+        activityText.contains('هواتف')) {
+      sector = 'موبايلات وإلكترونيات';
+    } else if (dineInMeta?.value == 'true' ||
+        activityText.contains('مطعم') ||
+        activityText.contains('كافيه')) {
+      sector = 'مطاعم وكافيهات';
+    } else if (activityText.contains('ملابس') ||
+        activityText.contains('ازياء') ||
+        activityText.contains('احذيه')) {
+      sector = 'ملابس وأزياء';
+    } else if (activityText.contains('سوبر') ||
+        activityText.contains('بقاله') ||
+        activityText.contains('غذائ')) {
+      sector = 'سوبر ماركت ومواد غذائية';
+    }
+
+    final variants = await (_db.select(_db.productVariants)
+          ..where((v) => v.deletedAt.isNull() & v.quantity.isBiggerThanValue(0)))
+        .get();
+    final products = await (_db.select(_db.products)
+          ..where((p) => p.deletedAt.isNull()))
+        .get();
+    final productNames = {for (final p in products) p.id: p.name};
+
+    final sortedByProfit = [...variants]
+      ..sort((a, b) => (b.sellPrice - b.costPrice).compareTo(a.sellPrice - a.costPrice));
+    final topProfitNames = <String>[];
+    for (final v in sortedByProfit) {
+      final name = productNames[v.productId] ?? v.sku;
+      if (!topProfitNames.contains(name)) {
+        topProfitNames.add('$name (ربح ${Money(v.sellPrice - v.costPrice).toDisplay()} ج.م)');
+      }
+      if (topProfitNames.length >= 2) break;
+    }
+
+    final String windowTip;
+    final String depthTip;
+    final String checkoutTip;
+    switch (sector) {
+      case 'ملابس وأزياء':
+        windowTip = 'الواجهة: اعرض طقماً كاملاً متناسق الألوان (بنطلون + تيشيرت + حذاء) لإلهام العميل وبيع أكثر من قطعة.';
+        depthTip = 'العمق: ضع الأساسيات (الجينز السادة والبيزيك والمقاسات الكبيرة) في آخر المحل ليمر العميل بكل المعروضات.';
+        checkoutTip = 'الكاشير: ضع الشرابات، الأحزمة، والبرفانات الصغيرة لرفع قيمة الفاتورة في اللحظة الأخيرة.';
+        break;
+      case 'موبايلات وإلكترونيات':
+        windowTip = 'الواجهة: أبرز أحدث الأجهزة وعروض الاستبدال/التقسيط بأسعار واضحة لجذب المارة.';
+        depthTip = 'العمق: ضع أجهزة الفئة الاقتصادية والطلبات المتكررة في العمق مع طاولة تجربة مضاءة جيداً.';
+        checkoutTip = 'الكاشير: ضع الاسكرينات، الجرابات، الكابلات الأصلية، والشواحن لأنها صاحبة أعلى هامش ربح سريع.';
+        break;
+      case 'مطاعم وكافيهات':
+        windowTip = 'الواجهة: أبرز وجبات الكومبو وأسرع العروض اليومية لجذب الزبون المستعجل.';
+        depthTip = 'العمق: نظم منطقة التحضير أو الاستلام بحيث يرى الزبون الأصناف المميزة أثناء الانتظار.';
+        checkoutTip = 'الكاشير: اعرض الحلويات الصغيرة، المشروبات المعبأة، والإضافات السريعة لزيادة متوسط الفاتورة.';
+        break;
+      case 'سوبر ماركت ومواد غذائية':
+        windowTip = 'الواجهة: اعرض العروض الأسبوعية والسلع الموسمية في مدخل الممر الأول.';
+        depthTip = 'العمق: ضع السلع الأساسية اليومية (الألبان، الخبز، المخبوزات) في آخر المحل لإجبار العميل على المرور بباقي الأرفف.';
+        checkoutTip = 'الكاشير: ضع الشوكولاتة، العلكة، البطاريات، والمناديل الجيبية عند نقطة الحساب.';
+        break;
+      default:
+        windowTip = 'الواجهة: اعرض 3 منتجات جذابة بصرياً وبأسعار واضحة تمثل هوية المحل وتجذب دخول المارة.';
+        depthTip = 'العمق: ضع السلع الأساسية التي يطلبها العميل بالاسم في آخر المحل لزيادة فرص مشاهدته لبقية الأصناف.';
+        checkoutTip = 'الكاشير: ضع الرفايع والمكملات منخفضة السعر وسريعة القرار لرفع متوسط الفاتورة.';
+    }
+
+    final eyeLevelTip = topProfitNames.isEmpty
+        ? 'مستوى العين (120-160 سم): خصص هذا الرف لأعلى الأصناف هامش ربح وليس فقط الأرخص.'
+        : 'مستوى العين (للأعلى ربحاً في محلك): اعرض ${topProfitNames.join(' و ')} في مستوى النظر مباشرة.';
+
+    return AssistantInsight(
+      id: 'visual_merchandising',
+      title: 'هندسة ترتيب المحل وعرض البضاعة ($sector)',
+      summary: 'توزيع ذكي لـ 4 مناطق يرفع المبيعات دون إنفاق جنيه واحد على الإعلانات:',
+      details: [
+        windowTip,
+        eyeLevelTip,
+        depthTip,
+        checkoutTip,
+      ],
+      actionLabel: 'فتح الشاشة الآن',
+      actionRoute: AssistantActionRoute.products,
+      requiredFeatureKey: FeatureKeys.inventory,
+    );
+  }
+
+  /// 3. Inflation & Replacement Cost Calculator using top-selling store product.
+  Future<AssistantInsight> getInflationCalculatorInsight(
+    String rawQuery,
+  ) async {
+    final normalized = Money.normalizeDigits(rawQuery);
+    double inflationRate = 15.0;
+    final pctMatch = RegExp(r'(\d+(?:\.\d+)?)\s*%').firstMatch(normalized) ??
+        RegExp(r'(?:بنسبه|تضخم|غلاء|زياده)\s+(\d+(?:\.\d+)?)').firstMatch(normalized);
+    if (pctMatch != null) {
+      final parsed = double.tryParse(pctMatch.group(1)!);
+      if (parsed != null && parsed > 0 && parsed <= 500) {
+        inflationRate = parsed;
+      }
+    }
+    final factor = 1.0 + (inflationRate / 100.0);
+
+    final since = DateTime.now().subtract(const Duration(days: 30));
+    final recentItems = await (_db.select(_db.saleItems)
+          ..where((si) => si.createdAt.isBiggerOrEqualValue(since)))
+        .get();
+
+    String? topProductName;
+    int currentCostPiasters = 0;
+    int currentSellPiasters = 0;
+
+    if (recentItems.isNotEmpty) {
+      final qtyByVariant = <String, int>{};
+      final latestItemByVariant = <String, SaleItem>{};
+      for (final item in recentItems) {
+        qtyByVariant[item.variantId] =
+            (qtyByVariant[item.variantId] ?? 0) + item.qty;
+        latestItemByVariant[item.variantId] = item;
+      }
+      final topEntry = qtyByVariant.entries.reduce(
+        (a, b) => a.value >= b.value ? a : b,
+      );
+      final sample = latestItemByVariant[topEntry.key]!;
+      topProductName = sample.productName;
+      currentCostPiasters = sample.costSnapshot;
+      currentSellPiasters = sample.priceSnapshot;
+    } else {
+      final variants = await (_db.select(_db.productVariants)
+            ..where((v) => v.deletedAt.isNull() & v.sellPrice.isBiggerThanValue(0)))
+          .get();
+      if (variants.isNotEmpty) {
+        final v = variants.first;
+        final prod = await (_db.select(_db.products)
+              ..where((p) => p.id.equals(v.productId)))
+            .getSingleOrNull();
+        topProductName = prod?.name ?? v.sku;
+        currentCostPiasters = v.costPrice;
+        currentSellPiasters = v.sellPrice;
+      }
+    }
+
+    final details = <String>[
+      'قاعدة تكلفة الاستبدال: لا تسعّر على فاتورة الشراء القديمة؛ سعّر على تكلفة إعادة شراء القطعة اليوم حتى لا يتآكل رأس مالك.',
+    ];
+
+    if (topProductName != null && currentSellPiasters > 0) {
+      final newCostPiasters = (currentCostPiasters * factor).round();
+      final protectedSellPiasters = (currentSellPiasters * factor).round();
+      final marginLostIfNotRaised = newCostPiasters - currentCostPiasters;
+      details.addAll([
+        'مثال عملي على أعلى صنف في محلك ($topProductName):',
+        'التكلفة الحالية: ${Money(currentCostPiasters).toDisplay()} ج.م -> تكلفة الاستبدال بعد +${inflationRate.toStringAsFixed(0)}%: ${Money(newCostPiasters).toDisplay()} ج.م.',
+        'السعر الحالي: ${Money(currentSellPiasters).toDisplay()} ج.م -> السعر المحمي المقترح: ${Money(protectedSellPiasters).toDisplay()} ج.م (لحماية ${Money(marginLostIfNotRaised).toDisplay()} ج.م من تآكل رأس المال في كل قطعة).',
+      ]);
+    } else {
+      details.add(
+        'مثال توضيحي: صنف تكلفته 100 ج.م ويُباع بـ 150 ج.م، عند تضخم ${inflationRate.toStringAsFixed(0)}% تصبح تكلفة استبداله ${(100 * factor).toStringAsFixed(0)} ج.م وسعره المحمي ${(150 * factor).toStringAsFixed(0)} ج.م.',
+      );
+    }
+
+    return AssistantInsight(
+      id: 'inflation_calculator',
+      title: 'حاسبة التضخم وقاعدة تكلفة الاستبدال (${inflationRate.toStringAsFixed(0)}%)',
+      summary:
+          'لحماية رأس المال في التضخم، يجب أن يغطي سعر البيع تكلفة الاستبدال الجديدة وليس القديمة.',
+      details: details,
+      actionLabel: 'فتح الشاشة الآن',
+      actionRoute: AssistantActionRoute.products,
+      requiredFeatureKey: FeatureKeys.inventory,
+    );
+  }
+
+  /// 4. Cash Expansion & 50/30/20 Inventory Allocation Advisor.
+  Future<AssistantInsight> getCashExpansionAdvisorInsight(
+    String rawQuery,
+  ) async {
+    final normalized = Money.normalizeDigits(rawQuery);
+    int? budgetPiasters;
+    final numMatch = RegExp(r'(\d{3,9})').firstMatch(normalized);
+    if (numMatch != null) {
+      final parsedEgp = int.tryParse(numMatch.group(1)!);
+      if (parsedEgp != null && parsedEgp > 0) {
+        budgetPiasters = parsedEgp * 100;
+      }
+    }
+
+    final since = DateTime.now().subtract(const Duration(days: 30));
+    final recentItems = await (_db.select(_db.saleItems)
+          ..where((si) => si.createdAt.isBiggerOrEqualValue(since)))
+        .get();
+    final soldVariantIds = <String>{};
+    final qtyByProductName = <String, int>{};
+    for (final item in recentItems) {
+      soldVariantIds.add(item.variantId);
+      qtyByProductName[item.productName] =
+          (qtyByProductName[item.productName] ?? 0) + item.qty;
+    }
+
+    final variants = await (_db.select(_db.productVariants)
+          ..where((v) => v.deletedAt.isNull() & v.quantity.isBiggerThanValue(0)))
+        .get();
+    int totalStockCost = 0;
+    int stagnantStockCost = 0;
+    for (final v in variants) {
+      final val = v.quantity * v.costPrice;
+      totalStockCost += val;
+      if (!soldVariantIds.contains(v.id)) {
+        stagnantStockCost += val;
+      }
+    }
+
+    final stagnantPct = totalStockCost > 0
+        ? (stagnantStockCost / totalStockCost) * 100.0
+        : 0.0;
+    final highStagnant = stagnantPct >= 25.0;
+
+    final fastMovers = qtyByProductName.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final fastMoverNames = fastMovers.take(3).map((e) => '${e.key} (${e.value} قطعة)').toList();
+
+    String fmtShare(int pct) {
+      if (budgetPiasters == null) return '$pct%';
+      final share = (budgetPiasters * pct / 100).round();
+      return '$pct% (${Money(share).toDisplay()} ج.م)';
+    }
+
+    final details = <String>[
+      highStagnant
+          ? 'تحذير مهم: نسبة المخزون الراكد لديك ${stagnantPct.toStringAsFixed(1)}% (${Money(stagnantStockCost).toDisplay()} ج.م من أصل ${Money(totalStockCost).toDisplay()} ج.م). لا تضخ كل السيولة قبل تصريف الراكد بباقات أو عروض!'
+          : 'فحص المخزون: نسبة الراكد ${stagnantPct.toStringAsFixed(1)}% (في النطاق الآمن؛ إجمالي المخزون بالتكلفة ${Money(totalStockCost).toDisplay()} ج.م).',
+      fastMoverNames.isEmpty
+          ? '${fmtShare(50)} على أسرع الأصناف دوراناً في المحل لضمان عودة الكاش سريعاً.'
+          : '${fmtShare(50)} على أسرع الأصناف دوراناً في محلك: ${fastMoverNames.join('، ')}.',
+      '${fmtShare(30)} لاختبار بضاعة وموديلات جديدة بكميات تجريبية صغيرة.',
+      '${fmtShare(20)} احتياطي تشغيل وسيولة طوارئ للمصروفات وتقلبات السوق.',
+    ];
+
+    return AssistantInsight(
+      id: 'cash_expansion_50_30_20',
+      title: 'مستشار ضخ السيولة وتوسيع البضاعة (50 / 30 / 20)',
+      summary: highStagnant
+          ? 'تنبيه: مخزونك الراكد مرتفع (${stagnantPct.toStringAsFixed(1)}%) — وزّع السيولة بحذر!'
+          : 'خطة توزيع السيولة المتوازنة لحماية التدفق النقدي وتسريع الدوران:',
+      details: details,
+      isAlert: highStagnant,
+      actionLabel: 'فتح الشاشة الآن',
+      actionRoute: AssistantActionRoute.purchases,
+      requiredFeatureKey: FeatureKeys.purchases,
+    );
+  }
+
   /// Automatic Daily Smart Briefing shown when the assistant opens.
   Future<List<AssistantInsight>> getDailyBriefing() async {
     return [
@@ -1163,7 +1535,38 @@ class OfflineSmartAssistantService {
       results.add(productMatch);
     }
 
-    // 4. Deepened Business Advisor intents
+    // 4. Commerce, Marketing & Inflation Encyclopedia intents
+    if (q.contains('الفرق') ||
+        q.contains('باقه') ||
+        q.contains('هديه') ||
+        q.contains('جذب عميل') ||
+        q.contains('رفع الفاتوره') ||
+        q.contains('دفتري') ||
+        q.contains('الربح والسيوله')) {
+      results.addAll(await getMarketingClarificationInsights(query));
+    }
+    if (q.contains('ترتيب المحل') ||
+        q.contains('عرض البضاعه') ||
+        q.contains('هندسه') ||
+        q.contains('مستوي العين') ||
+        q.contains('الواجهه')) {
+      results.add(await getVisualMerchandisingInsight());
+    }
+    if (q.contains('تضخم') ||
+        q.contains('غلاء') ||
+        q.contains('تكلفه الاستبدال') ||
+        q.contains('رفع الاسعار')) {
+      results.add(await getInflationCalculatorInsight(query));
+    }
+    if (q.contains('سيوله') ||
+        q.contains('توسيع البضاعه') ||
+        q.contains('بضاعه جديده') ||
+        q.contains('50/30/20') ||
+        q.contains('اشتري بضاعه')) {
+      results.add(await getCashExpansionAdvisorInsight(query));
+    }
+
+    // 5. Deepened Business Advisor intents
     if (q.contains('وضع المحل') ||
         q.contains('نبض المحل') ||
         q.contains('حاله المحل') ||

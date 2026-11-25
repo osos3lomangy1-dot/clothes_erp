@@ -557,4 +557,287 @@ void main() {
       expect(ReceiptSettingsService.current.storeName, isNot('محل تجربة'));
     });
   });
+
+  group('Task 40.5: Commerce, Marketing & Inflation Encyclopedia', () {
+    test('clarifies promo diffs, funnel stages, and profit vs drawer cash with DB metrics', () async {
+      final now = DateTime.now();
+      await db.into(db.categories).insert(
+            CategoriesCompanion.insert(
+              id: 'c_enc',
+              branchId: branchId,
+              name: 'ملابس',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.products).insert(
+            ProductsCompanion.insert(
+              id: 'p_enc',
+              branchId: branchId,
+              name: 'بنطلون جينز',
+              categoryId: 'c_enc',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.productVariants).insert(
+            ProductVariantsCompanion.insert(
+              id: 'v_enc',
+              branchId: branchId,
+              productId: 'p_enc',
+              sku: 'JNS-1',
+              color: 'أزرق',
+              size: '32',
+              quantity: const Value(5),
+              costPrice: 15000,
+              sellPrice: 30000,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      final promoAsk = await assistantService.ask('الفرق بين الخصم والباقة والهدية');
+      expect(promoAsk.any((i) => i.id == 'encyclopedia_promo_diff'), isTrue);
+
+      final funnelAsk = await assistantService.ask('الفرق بين جذب عميل ورفع الفاتورة والاسترجاع');
+      expect(funnelAsk.any((i) => i.id == 'encyclopedia_funnel_diff'), isTrue);
+
+      final cashAsk = await assistantService.ask('الفرق بين صافي الربح الدفتري والسيولة في الدرج');
+      final profitVsCash = cashAsk.firstWhere((i) => i.id == 'encyclopedia_profit_vs_cash');
+      expect(profitVsCash.details.join(' '), contains('750.00'));
+    });
+
+    test('builds Visual Merchandising tailored to store activity and top-profit items', () async {
+      final now = DateTime.now();
+      await db.into(db.appMeta).insert(
+            AppMetaCompanion.insert(
+              key: ReceiptSettingsService.keyStoreActivity,
+              value: 'موبايلات وإلكترونيات',
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.categories).insert(
+            CategoriesCompanion.insert(
+              id: 'c_mob',
+              branchId: branchId,
+              name: 'موبايلات',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.products).insert(
+            ProductsCompanion.insert(
+              id: 'p_mob',
+              branchId: branchId,
+              name: 'سماعة برو',
+              categoryId: 'c_mob',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.productVariants).insert(
+            ProductVariantsCompanion.insert(
+              id: 'v_mob',
+              branchId: branchId,
+              productId: 'p_mob',
+              sku: 'POD-1',
+              color: 'أبيض',
+              size: 'قياسي',
+              quantity: const Value(4),
+              costPrice: 20000,
+              sellPrice: 50000,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      final res = await assistantService.ask('هندسة ترتيب المحل وعرض البضاعة');
+      final vm = res.firstWhere((i) => i.id == 'visual_merchandising');
+      expect(vm.title, contains('موبايلات وإلكترونيات'));
+      expect(vm.details.join(' '), contains('الواجهة'));
+      expect(vm.details.join(' '), contains('سماعة برو'));
+      expect(vm.details.join(' '), contains('العمق'));
+      expect(vm.details.join(' '), contains('الكاشير'));
+    });
+
+    test('calculates Inflation & Replacement Cost protected pricing on top-selling product', () async {
+      final now = DateTime.now();
+      await db.into(db.categories).insert(
+            CategoriesCompanion.insert(
+              id: 'c_inf',
+              branchId: branchId,
+              name: 'ملابس',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.products).insert(
+            ProductsCompanion.insert(
+              id: 'p_inf',
+              branchId: branchId,
+              name: 'قميص كلاسيك',
+              categoryId: 'c_inf',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.productVariants).insert(
+            ProductVariantsCompanion.insert(
+              id: 'v_inf',
+              branchId: branchId,
+              productId: 'p_inf',
+              sku: 'SH-1',
+              color: 'أبيض',
+              size: 'L',
+              quantity: const Value(10),
+              costPrice: 10000,
+              sellPrice: 20000,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.sales).insert(
+            SalesCompanion.insert(
+              id: 's_inf',
+              branchId: branchId,
+              shortRef: 'S-INF',
+              cashierId: 'admin',
+              subtotal: 20000,
+              discountType: 'none',
+              total: 20000,
+              paymentMethod: 'cash',
+              date: now,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.saleItems).insert(
+            SaleItemsCompanion.insert(
+              id: 'si_inf',
+              branchId: branchId,
+              saleId: 's_inf',
+              variantId: 'v_inf',
+              productName: 'قميص كلاسيك',
+              color: 'أبيض',
+              size: 'L',
+              qty: 3,
+              priceSnapshot: 20000,
+              costSnapshot: 10000,
+              lineTotal: 60000,
+              createdAt: now,
+            ),
+          );
+
+      final res = await assistantService.ask('غلاء الأسعار وتضخم 20%');
+      final inf = res.firstWhere((i) => i.id == 'inflation_calculator');
+      expect(inf.title, contains('20%'));
+      expect(inf.details.join(' '), contains('تكلفة الاستبدال'));
+      expect(inf.details.join(' '), contains('قميص كلاسيك'));
+      expect(inf.details.join(' '), contains('120.00'));
+      expect(inf.details.join(' '), contains('240.00'));
+    });
+
+    test('warns on high stagnant stock and computes 50/30/20 cash expansion plan', () async {
+      final now = DateTime.now();
+      await db.into(db.categories).insert(
+            CategoriesCompanion.insert(
+              id: 'c_exp',
+              branchId: branchId,
+              name: 'ملابس',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.products).insert(
+            ProductsCompanion.insert(
+              id: 'p_fast',
+              branchId: branchId,
+              name: 'شراب رياضي سريع',
+              categoryId: 'c_exp',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.productVariants).insert(
+            ProductVariantsCompanion.insert(
+              id: 'v_fast',
+              branchId: branchId,
+              productId: 'p_fast',
+              sku: 'SCK-1',
+              color: 'أسود',
+              size: 'قياسي',
+              quantity: const Value(5),
+              costPrice: 1000,
+              sellPrice: 2500,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.products).insert(
+            ProductsCompanion.insert(
+              id: 'p_stag',
+              branchId: branchId,
+              name: 'معطف ثقيل راكد',
+              categoryId: 'c_exp',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.productVariants).insert(
+            ProductVariantsCompanion.insert(
+              id: 'v_stag',
+              branchId: branchId,
+              productId: 'p_stag',
+              sku: 'CT-1',
+              color: 'بني',
+              size: 'XL',
+              quantity: const Value(10),
+              costPrice: 50000,
+              sellPrice: 80000,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.sales).insert(
+            SalesCompanion.insert(
+              id: 's_fast',
+              branchId: branchId,
+              shortRef: 'S-FST',
+              cashierId: 'admin',
+              subtotal: 12500,
+              discountType: 'none',
+              total: 12500,
+              paymentMethod: 'cash',
+              date: now,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.saleItems).insert(
+            SaleItemsCompanion.insert(
+              id: 'si_fast',
+              branchId: branchId,
+              saleId: 's_fast',
+              variantId: 'v_fast',
+              productName: 'شراب رياضي سريع',
+              color: 'أسود',
+              size: 'قياسي',
+              qty: 5,
+              priceSnapshot: 2500,
+              costSnapshot: 1000,
+              lineTotal: 12500,
+              createdAt: now,
+            ),
+          );
+
+      final res = await assistantService.ask('عندي سيولة 10000 عايز اشتري بضاعة جديدة');
+      final exp = res.firstWhere((i) => i.id == 'cash_expansion_50_30_20');
+      expect(exp.isAlert, isTrue);
+      expect(exp.details.join(' '), contains('تحذير'));
+      expect(exp.details.join(' '), contains('5000.00'));
+      expect(exp.details.join(' '), contains('3000.00'));
+      expect(exp.details.join(' '), contains('2000.00'));
+      expect(exp.details.join(' '), contains('شراب رياضي سريع'));
+    });
+  });
 }
