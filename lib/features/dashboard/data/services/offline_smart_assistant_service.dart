@@ -59,6 +59,7 @@ class AssistantInsight {
   final AssistantActionRoute? actionRoute;
   final String? requiredFeatureKey;
   final AssistantPendingCommand? pendingCommand;
+  final List<String> followUpPrompts;
 
   const AssistantInsight({
     required this.id,
@@ -70,6 +71,7 @@ class AssistantInsight {
     this.actionRoute,
     this.requiredFeatureKey,
     this.pendingCommand,
+    this.followUpPrompts = const [],
   });
 }
 
@@ -1558,7 +1560,7 @@ class OfflineSmartAssistantService {
         .get();
     final productNames = {for (final p in allProducts) p.id: p.name};
 
-    // Pick stagnant variants with best margin %
+    // Pick stagnant variants with best margin %, or fallback to best-margin active stock
     final stagnant = allVariants
         .where((v) => !soldVariantIds.contains(v.id) && v.costPrice > 0 && v.sellPrice > 0)
         .toList()
@@ -1568,43 +1570,52 @@ class OfflineSmartAssistantService {
         return mB.compareTo(mA);
       });
 
-    final picks = stagnant.take(3).toList();
+    final usingFallback = stagnant.isEmpty;
+    final candidates = usingFallback
+        ? (allVariants.where((v) => v.costPrice > 0 && v.sellPrice > 0).toList()
+          ..sort((a, b) {
+            final mA = (a.sellPrice - a.costPrice) / a.sellPrice;
+            final mB = (b.sellPrice - b.costPrice) / b.sellPrice;
+            return mB.compareTo(mA);
+          }))
+        : stagnant;
+
+    final picks = candidates.take(3).toList();
 
     if (picks.isEmpty) {
       return const AssistantInsight(
         id: 'promo_post_no_data',
         title: 'مولّد البوستات الإعلانية',
-        summary: 'لم أجد أصناف راكدة أو ذات هامش مناسب لعمل إعلان عليها الآن.',
+        summary: 'لم أجد أصنافاً برصيد متاح وسعر وتكلفة مسجلين لعمل إعلان عليها الآن.',
         details: [
-          'تأكد من إدخال المنتجات والتكاليف بشكل صحيح في شاشة المنتجات.',
-          'بعد إضافة المنتجات والمبيعات، سيقترح المساعد عليك أفضل الأصناف للترويج.',
+          'تأكد من إدخال المنتجات والتكاليف والكميات في شاشة المنتجات.',
+          'بعد إضافة المنتجات، سيقترح المساعد عليك أفضل الأصناف للترويج فوراً.',
         ],
+        followUpPrompts: ['ازاي اضيف منتج جديد؟', 'وضع المحل دلوقتي؟'],
       );
     }
 
+    final isBundleStyle = q.contains('باقه') || q.contains('2+1') || q.contains('قطعتين');
+    final isNewArrivalStyle = q.contains('جديد') || q.contains('كولكشن') || q.contains('وصل');
+
     final String platformLabel;
-    final String platformEmoji;
     final String cta; // call to action line
     switch (platform) {
       case 'facebook':
         platformLabel = 'فيسبوك';
-        platformEmoji = '';
         cta = 'تواصل معنا عبر الرسائل أو اتصل بنا مباشرةً';
         break;
       case 'instagram':
         platformLabel = 'انستاجرام';
-        platformEmoji = '';
         cta = 'راسلنا في الـ DM أو تواصل معنا مباشرةً';
         break;
       default:
         platformLabel = 'واتساب';
-        platformEmoji = '';
         cta = 'راسلنا مباشرةً على واتساب';
     }
 
     final posts = picks.map((v) {
       final priceBefore = Money(v.sellPrice).toDisplay();
-      // Suggest a ~15% discount price as "after" price, rounded
       final discountedPiasters = (v.sellPrice * 0.85).round();
       final priceAfter = Money(discountedPiasters).toDisplay();
       final margin = v.sellPrice > 0
@@ -1620,8 +1631,33 @@ class OfflineSmartAssistantService {
           ? ' - مقاس ${v.size.trim()}'
           : '';
 
-      final postBody = '''
-$platformEmoji عرض خاص من $storeName $platformEmoji
+      final String postBody;
+      if (isBundleStyle) {
+        final twoPrice = Money((v.sellPrice * 1.8).round()).toDisplay();
+        postBody = '''
+عرض التوفير من $storeName
+━━━━━━━━━━━━━━━
+$productTitle$colorPart$sizePart
+سعر القطعة: $priceBefore ج.م
+عرض القطعتين معاً: $twoPrice ج.م فقط (وفر ${(v.sellPrice * 2 - (v.sellPrice * 1.8).round()) ~/ 100} ج.م!)
+━━━━━━━━━━━━━━━
+$cta${storePhone.isNotEmpty ? ' على: $storePhone' : ''}
+العرض ساري حتى نفاد الكمية!'''
+            .trim();
+      } else if (isNewArrivalStyle) {
+        postBody = '''
+وصل حديثاً في $storeName
+━━━━━━━━━━━━━━━
+$productTitle$colorPart$sizePart
+جودة ممتازة ومتوفر الآن بكميات محدودة
+السعر: $priceBefore ج.م
+━━━━━━━━━━━━━━━
+$cta${storePhone.isNotEmpty ? ' على: $storePhone' : ''}
+احجز قطعتك الآن قبل نفاد المقاسات!'''
+            .trim();
+      } else {
+        postBody = '''
+عرض خاص من $storeName
 ━━━━━━━━━━━━━━━
 $productTitle$colorPart$sizePart
 السعر الأصلي: $priceBefore ج.م
@@ -1629,7 +1665,8 @@ $productTitle$colorPart$sizePart
 ━━━━━━━━━━━━━━━
 $cta${storePhone.isNotEmpty ? ' على: $storePhone' : ''}
 العرض لفترة محدودة - الكمية محدودة!'''
-          .trim();
+            .trim();
+      }
 
       return 'بوست $platformLabel | هامش الربح الأصلي: $margin%\n---\n$postBody';
     }).toList();
@@ -1637,12 +1674,17 @@ $cta${storePhone.isNotEmpty ? ' على: $storePhone' : ''}
     return AssistantInsight(
       id: 'promo_post_generator_$platform',
       title: 'بوستات إعلانية جاهزة للنسخ ($platformLabel)',
-      summary:
-          'جاهز ${picks.length} بوست من أصناف راكدة بأعلى هامش ربح في محلك — انسخ واستخدم مباشرةً!',
+      summary: usingFallback
+          ? 'جاهز ${picks.length} بوست لأعلى الأصناف ربحية في محلك — انسخ واستخدم مباشرةً!'
+          : 'جاهز ${picks.length} بوست من أصناف راكدة بأعلى هامش ربح في محلك — انسخ واستخدم مباشرةً!',
       details: [
         ...posts,
-        'تلميح: اكتب "بوست فيسبوك" أو "بوست انستا" لتغيير المنصة.',
-        'تلميح: يمكنك تعديل اسم المحل والهاتف من إعدادات الفاتورة.',
+        'تلميح: جرب "بوست باقة فيسبوك" أو "بوست كولكشن جديد انستا" لتغيير الأسلوب والمنصة.',
+      ],
+      followUpPrompts: const [
+        'اكتب بوست باقة فيسبوك',
+        'اكتب بوست كولكشن جديد',
+        'استرجع العملاء الغائبين',
       ],
     );
   }
@@ -1789,6 +1831,361 @@ $cta${storePhone.isNotEmpty ? ' على: $storePhone' : ''}
     return suggestions.take(6).toList();
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // DEEP FINANCIAL, TEAM, PRICING & SEASONAL ADVISORS (100% Offline)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Detects margin leaks: excessive invoice/line discounts and items sold at
+  /// very thin (<10%) or negative margin over the last 30 days.
+  Future<AssistantInsight> getMarginLeakInsight() async {
+    final since = DateTime.now().subtract(const Duration(days: 30));
+    final salesRows = await (_db.select(_db.sales)
+          ..where((s) =>
+              s.date.isBiggerOrEqualValue(since) &
+              s.deletedAt.isNull() &
+              s.status.isNotValue('cancelled')))
+        .get();
+
+    if (salesRows.isEmpty) {
+      return const AssistantInsight(
+        id: 'margin_leak_no_data',
+        title: 'كاشف تسرب الأرباح والخصومات',
+        summary: 'لا توجد مبيعات في آخر 30 يوماً لتحليل تسرب الأرباح.',
+        details: ['ابدأ بتسجيل الفواتير ليقوم المساعد بمراقبة الخصومات والهوامش تلقائياً.'],
+      );
+    }
+
+    final saleIds = salesRows.map((s) => s.id).toList();
+    final items = await (_db.select(_db.saleItems)
+          ..where((i) => i.saleId.isIn(saleIds)))
+        .get();
+
+    final invoiceDiscounts = salesRows.fold<int>(0, (sum, s) => sum + s.discountAmount);
+    final lineDiscounts = items.fold<int>(0, (sum, i) => sum + i.lineDiscount);
+    final totalDiscounts = invoiceDiscounts + lineDiscounts;
+    final grossSubtotal = salesRows.fold<int>(0, (sum, s) => sum + s.subtotal);
+    final discountRatio = grossSubtotal > 0 ? (totalDiscounts / grossSubtotal) * 100 : 0.0;
+
+    final leakyItems = <String>[];
+    int lossCount = 0;
+    for (final item in items) {
+      if (item.priceSnapshot <= 0) continue;
+      final effectiveUnit = item.qty > 0
+          ? (item.lineTotal / item.qty).round()
+          : item.priceSnapshot;
+      if (effectiveUnit <= item.costSnapshot) {
+        lossCount++;
+        leakyItems.add(
+          '${item.productName}: بيع بسعر ${Money(effectiveUnit).toDisplay()} ج.م (التكلفة ${Money(item.costSnapshot).toDisplay()} ج.م)',
+        );
+      } else {
+        final marginPct = ((effectiveUnit - item.costSnapshot) / effectiveUnit) * 100;
+        if (marginPct < 10 && leakyItems.length < 5) {
+          leakyItems.add(
+            '${item.productName}: هامش ضعيف ${marginPct.toStringAsFixed(1)}% (بيع ${Money(effectiveUnit).toDisplay()} / تكلفة ${Money(item.costSnapshot).toDisplay()})',
+          );
+        }
+      }
+    }
+
+    final hasAlert = discountRatio >= 8.0 || lossCount > 0;
+    final details = <String>[
+      'إجمالي الخصومات الممنوحة (30 يوم): ${Money(totalDiscounts).toDisplay()} ج.م (${discountRatio.toStringAsFixed(1)}% من إجمالي المبيعات).',
+      if (lossCount > 0) 'تنبيه حرج: يوجد $lossCount حركة بيع بسعر التكلفة أو أقل!',
+      ...leakyItems.take(5),
+      hasAlert
+          ? 'التوصية: فعّل قيود الخصم اليدوي للكاشير وراجع تسعير الأصناف منخفضة الهامش.'
+          : 'أداء التسعير ممتاز: نسبة الخصومات منضبطة ولا يوجد تسرب حاد في الهوامش.',
+    ];
+
+    return AssistantInsight(
+      id: 'margin_leak_detector',
+      title: 'كاشف تسرب الأرباح والخصومات (آخر 30 يوم)',
+      summary: hasAlert
+          ? 'تحذير: تسرب ربح محتمل — خصومات ${Money(totalDiscounts).toDisplay()} ج.م${lossCount > 0 ? " و$lossCount بيع بخسارة" : ""}'
+          : 'الهوامش محمية: إجمالي الخصومات ${Money(totalDiscounts).toDisplay()} ج.م (${discountRatio.toStringAsFixed(1)}%)',
+      details: details,
+      isAlert: hasAlert,
+      actionLabel: 'فتح التقارير التحليلية',
+      actionRoute: AssistantActionRoute.reports,
+      requiredFeatureKey: FeatureKeys.reports,
+      followUpPrompts: const [
+        'لو عملت خصم 15% أحتاج أبيع كام؟',
+        'قارن أداء الكاشيرات',
+        'امنع الخصم اليدوي للكاشير',
+      ],
+    );
+  }
+
+  /// Calculates Monthly & Daily Break-Even sales target from actual operating
+  /// expenses and real average gross margin %.
+  Future<AssistantInsight> getBreakEvenInsight() async {
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month, 1);
+    final monthEnd = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
+    final todayStart = DateTime(now.year, now.month, now.day);
+
+    final monthExpensesRows = await (_db.select(_db.expenses)
+          ..where((e) =>
+              e.kind.equals('operating') &
+              e.expenseDate.isBiggerOrEqualValue(monthStart) &
+              e.expenseDate.isSmallerOrEqualValue(monthEnd) &
+              e.deletedAt.isNull()))
+        .get();
+    final monthlyExpenses =
+        monthExpensesRows.fold<int>(0, (sum, e) => sum + e.amount);
+
+    final since30 = now.subtract(const Duration(days: 30));
+    final recentSales = await (_db.select(_db.sales)
+          ..where((s) =>
+              s.date.isBiggerOrEqualValue(since30) &
+              s.deletedAt.isNull() &
+              s.status.isNotValue('cancelled')))
+        .get();
+
+    int rev30 = 0;
+    int cost30 = 0;
+    if (recentSales.isNotEmpty) {
+      final ids = recentSales.map((s) => s.id).toList();
+      final items = await (_db.select(_db.saleItems)
+            ..where((i) => i.saleId.isIn(ids)))
+          .get();
+      rev30 = recentSales.fold<int>(0, (s, r) => s + r.total);
+      cost30 = items.fold<int>(0, (s, i) => s + (i.costSnapshot * i.qty));
+    }
+
+    final double marginRatio = rev30 > 0 && rev30 > cost30
+        ? (rev30 - cost30) / rev30
+        : 0.30; // safe 30% fallback if no history
+    final marginPct = (marginRatio * 100).toStringAsFixed(1);
+
+    final monthlyBreakEven =
+        marginRatio > 0 ? (monthlyExpenses / marginRatio).round() : 0;
+    final dailyBreakEven = (monthlyBreakEven / 30).round();
+
+    final todaySalesRows = await (_db.select(_db.sales)
+          ..where((s) =>
+              s.date.isBiggerOrEqualValue(todayStart) &
+              s.date.isSmallerOrEqualValue(monthEnd) &
+              s.deletedAt.isNull() &
+              s.status.isNotValue('cancelled')))
+        .get();
+    final todayRev = todaySalesRows.fold<int>(0, (s, r) => s + r.total);
+    final reachedDaily = todayRev >= dailyBreakEven;
+    final remaining = dailyBreakEven > todayRev ? dailyBreakEven - todayRev : 0;
+
+    return AssistantInsight(
+      id: 'break_even_calculator',
+      title: 'حاسبة نقطة التعادل (Break-Even Point)',
+      summary: monthlyExpenses == 0
+          ? 'لم تسجل مصاريف تشغيل هذا الشهر بعد (متوسط هامش الربح الحالي $marginPct%).'
+          : reachedDaily
+              ? 'ممتاز: مبيعات اليوم (${Money(todayRev).toDisplay()} ج.م) تجاوزت تعادل اليوم (${Money(dailyBreakEven).toDisplay()} ج.م)!'
+              : 'مطلوب ${Money(remaining).toDisplay()} ج.م إضافية اليوم للوصول لنقطة التعادل اليومية.',
+      details: [
+        'مصاريف التشغيل المسجلة هذا الشهر: ${Money(monthlyExpenses).toDisplay()} ج.م.',
+        'متوسط هامش الربح الفعلي بالمحل: $marginPct%${rev30 == 0 ? " (تقديري لعدم وجود مبيعات سابقة)" : ""}.',
+        'هدف المبيعات الشهري لتغطية المصاريف (التعادل): ${Money(monthlyBreakEven).toDisplay()} ج.م.',
+        'هدف المبيعات اليومي (التعادل): ${Money(dailyBreakEven).toDisplay()} ج.م — مبيعات اليوم حتى الآن: ${Money(todayRev).toDisplay()} ج.م.',
+      ],
+      isAlert: monthlyExpenses > 0 && !reachedDaily,
+      actionLabel: 'إدارة المصروفات',
+      actionRoute: AssistantActionRoute.expenses,
+      requiredFeatureKey: FeatureKeys.expenses,
+      followUpPrompts: const [
+        'وضع المحل دلوقتي؟',
+        'كاشف تسرب الأرباح',
+        'مصاريف الشهر كام؟',
+      ],
+    );
+  }
+
+  /// Evaluates cashier/staff performance over the last 30 days.
+  Future<AssistantInsight> getCashierPerformanceInsight() async {
+    final since = DateTime.now().subtract(const Duration(days: 30));
+    final salesRows = await (_db.select(_db.sales)
+          ..where((s) =>
+              s.date.isBiggerOrEqualValue(since) &
+              s.deletedAt.isNull() &
+              s.status.isNotValue('cancelled')))
+        .get();
+
+    if (salesRows.isEmpty) {
+      return const AssistantInsight(
+        id: 'cashier_performance_no_data',
+        title: 'تقييم أداء الكاشيرات',
+        summary: 'لا توجد فواتير مسجلة في آخر 30 يوماً لتقييم أداء الكاشيرات.',
+      );
+    }
+
+    final users = await _db.select(_db.users).get();
+    final userNames = {for (final u in users) u.id: u.displayName};
+
+    final stats = <String, ({int count, int total, int subtotal, int discount})>{};
+    for (final s in salesRows) {
+      final cur = stats[s.cashierId] ?? (count: 0, total: 0, subtotal: 0, discount: 0);
+      stats[s.cashierId] = (
+        count: cur.count + 1,
+        total: cur.total + s.total,
+        subtotal: cur.subtotal + s.subtotal,
+        discount: cur.discount + s.discountAmount,
+      );
+    }
+
+    final ranked = stats.entries.toList()
+      ..sort((a, b) => b.value.total.compareTo(a.value.total));
+
+    final lines = ranked.map((e) {
+      final name = userNames[e.key] ?? e.key;
+      final avgBasket = e.value.count > 0 ? (e.value.total / e.value.count).round() : 0;
+      final discPct = e.value.subtotal > 0
+          ? (e.value.discount / e.value.subtotal) * 100
+          : 0.0;
+      return '$name: ${Money(e.value.total).toDisplay()} ج.م (${e.value.count} فاتورة | متوسط ${Money(avgBasket).toDisplay()} ج.م | خصومات ${discPct.toStringAsFixed(1)}%)';
+    }).toList();
+
+    final topName = userNames[ranked.first.key] ?? ranked.first.key;
+
+    return AssistantInsight(
+      id: 'cashier_performance',
+      title: 'تقييم أداء الكاشيرات والفريق (آخر 30 يوم)',
+      summary: 'الأعلى مبيعاً: $topName بإجمالي ${Money(ranked.first.value.total).toDisplay()} ج.م.',
+      details: lines,
+      actionLabel: 'إدارة الموظفين والصلاحيات',
+      actionRoute: AssistantActionRoute.employees,
+      requiredFeatureKey: FeatureKeys.employees,
+      followUpPrompts: const [
+        'كاشف تسرب الأرباح',
+        'امنع الخصم اليدوي للكاشير',
+      ],
+    );
+  }
+
+  /// Simulates "What-If" pricing/discount scenarios using real DB average margin.
+  Future<AssistantInsight> getWhatIfPricingInsight(String rawQuery) async {
+    final q = normalizeArabic(rawQuery);
+    final numMatch = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(q);
+    final pct = numMatch != null
+        ? (double.tryParse(numMatch.group(1)!) ?? 10.0).clamp(1.0, 90.0)
+        : 10.0;
+    final isPriceIncrease = q.contains('زود') || q.contains('رفع') || q.contains('زياده السعر');
+
+    final since30 = DateTime.now().subtract(const Duration(days: 30));
+    final recentSales = await (_db.select(_db.sales)
+          ..where((s) =>
+              s.date.isBiggerOrEqualValue(since30) &
+              s.deletedAt.isNull() &
+              s.status.isNotValue('cancelled')))
+        .get();
+
+    double marginPct = 30.0;
+    if (recentSales.isNotEmpty) {
+      final ids = recentSales.map((s) => s.id).toList();
+      final items = await (_db.select(_db.saleItems)
+            ..where((i) => i.saleId.isIn(ids)))
+          .get();
+      final rev = recentSales.fold<int>(0, (s, r) => s + r.total);
+      final cost = items.fold<int>(0, (s, i) => s + (i.costSnapshot * i.qty));
+      if (rev > 0 && rev > cost) {
+        marginPct = ((rev - cost) / rev) * 100.0;
+      }
+    }
+
+    if (isPriceIncrease) {
+      final allowedDropPct = (pct / (marginPct + pct)) * 100.0;
+      return AssistantInsight(
+        id: 'what_if_price_increase',
+        title: 'محاكاة "ماذا لو؟" — زيادة السعر بنسبة ${pct.toStringAsFixed(0)}%',
+        summary:
+            'بمتوسط هامش ربحك الحالي (${marginPct.toStringAsFixed(1)}%)، زيادة السعر ${pct.toStringAsFixed(0)}% تحمي ربحك حتى لو انخفضت الكمية بنسبة ${allowedDropPct.toStringAsFixed(1)}%.',
+        details: [
+          'الربح لكل قطعة يرتفع فوراً، فلا تتردد في تعديل أسعار الأصناف سريعة الدوران لمواكبة التضخم.',
+          'نصيحة: ارفع السعر تدريجياً أو قدّم قيمة مضافة (تغليف/ضمان) مع الزيادة.',
+        ],
+        followUpPrompts: const [
+          'حاسبة التضخم 20%',
+          'لو عملت خصم 15% أحتاج أبيع كام؟',
+        ],
+      );
+    }
+
+    if (pct >= marginPct) {
+      return AssistantInsight(
+        id: 'what_if_discount_loss',
+        title: 'محاكاة "ماذا لو؟" — خصم ${pct.toStringAsFixed(0)}%',
+        summary:
+            'تحذير حرج: خصم ${pct.toStringAsFixed(0)}% أكبر من أو يساوي هامش ربحك (${marginPct.toStringAsFixed(1)}%) — ستبيع بخسارة صافية!',
+        details: [
+          'بدلاً من خصم عام ${pct.toStringAsFixed(0)}%، استخدم "باقة التوفير" (اشتري 2 بسعر مخفض) أو "هدية منخفضة التكلفة".',
+          'الحد الأقصى للخصم الآمن دون خسارة هو أقل من ${(marginPct - 5).clamp(1, 80).toStringAsFixed(0)}%.',
+        ],
+        isAlert: true,
+        followUpPrompts: const [
+          'الخصم أم الباقة والهدية؟',
+          'اكتب بوست باقة فيسبوك',
+        ],
+      );
+    }
+
+    final requiredBoostPct = (pct / (marginPct - pct)) * 100.0;
+    return AssistantInsight(
+      id: 'what_if_discount_safe',
+      title: 'محاكاة "ماذا لو؟" — خصم ${pct.toStringAsFixed(0)}%',
+      summary:
+          'بهامش ربحك الحالي (${marginPct.toStringAsFixed(1)}%)، خصم ${pct.toStringAsFixed(0)}% يتطلب زيادة عدد المبيعات بنسبة ${requiredBoostPct.toStringAsFixed(1)}% لتحقيق نفس الربح!',
+      details: [
+        'مثال عملي: لو كنت تبيع 100 قطعة شهرياً، تحتاج لبيع ${(100 + requiredBoostPct).round()} قطعة بالخصم لتجني نفس صافي الربح.',
+        'لذلك: لا تطبق الخصم على كل المحل — طبقه فقط على الأصناف الراكدة أو في باقات لرفع قيمة الفاتورة.',
+      ],
+      followUpPrompts: const [
+        'أعمل عروض على إيه؟',
+        'اكتب بوست واتساب',
+        'الخصم أم الباقة والهدية؟',
+      ],
+    );
+  }
+
+  /// Provides practical seasonal & growth playbooks offline.
+  AssistantInsight getSeasonalMarketingPlanInsight(String rawQuery) {
+    final q = normalizeArabic(rawQuery);
+    String title = 'خطة تسويق عملية لزيادة المبيعات هذا الأسبوع';
+    List<String> steps = const [
+      '1. قاعدة الـ 48 ساعة للراكد: اختر أبطأ 3 أصناف واكتب لها بوست واتساب/فيسبوك بعرض باقة (اشتري قطعتين بخصم).',
+      '2. قاعدة الكاشير (Upsell): درّب الكاشير على عرض صنف مكمل صغير (شراب/إكسسوار/جراب) قبل إغلاق كل فاتورة لرفع المتوسط 15-20%.',
+      '3. استرداد العملاء القدامى: أرسل رسالة واتساب شخصية لآخر 10 عملاء لم يزوروا المحل منذ شهرين.',
+      '4. عرض الواجهة: ضع أحدث موديل ملفت في الواجهة، وأعلى صنف ربحاً في مستوى العين مباشرة.',
+    ];
+
+    if (q.contains('عيد') || q.contains('رمضان') || q.contains('موسم')) {
+      title = 'خطة المواسم والأعياد لزيادة الدوران والربحية';
+      steps = const [
+        '1. قبل الموسم بأسبوعين: جهّز مخزونك من الأسرع دوراناً (50% من السيولة) وتأكد من عدم نفاد المقاسات الأساسية.',
+        '2. عروض العائلة والهدايا: اجمع 3 منتجات في "بوكس/باقة جاهزة" بسعر واحد مغرٍ بدل خصم النسبة المئوية.',
+        '3. رسائل تذكير مبكرة: راسل عملاءك الدائمين على واتساب قبل الزحمة بـ 5 أيام بميزة "الحجز المسبق أو الأولوية".',
+        '4. في ذروة الموسم: قلّل الخصومات اليدوية تماماً وركز على السرعة وتوافر المقاسات.',
+      ];
+    } else if (q.contains('نهايه الشهر') || q.contains('مرتبات') || q.contains('اخر الشهر')) {
+      title = 'تكتيك نهاية الشهر وأيام القبض (Payday Campaign)';
+      steps = const [
+        '1. أيام 25 إلى 5 في الشهر هي أعلى أيام السيولة — أطلق حملة البوستات ورسائل الواتساب في يوم 27 صباحاً.',
+        '2. ركّز في الإعلانات على الأصناف متوسطة وعالية السعر أو نظام التقسيط إن كان مفعلاً.',
+        '3. قدّم ميزة "توصيل مجاني" أو "هدية فورية" للفاتورة فوق حد معين لرفع قيمة السلة.',
+      ];
+    }
+
+    return AssistantInsight(
+      id: 'seasonal_marketing_plan',
+      title: title,
+      summary: 'خطوات عملية مجربة يمكنك تطبيقها اليوم في محلك بدون تكلفة إعلانات مدفوعة:',
+      details: steps,
+      followUpPrompts: const [
+        'اكتب بوست واتساب',
+        'استرجع العملاء الغائبين',
+        'ترتيب المحل وعرض البضاعة',
+      ],
+    );
+  }
+
   /// Automatic Daily Smart Briefing shown when the assistant opens.
   Future<List<AssistantInsight>> getDailyBriefing() async {
     return [
@@ -1857,6 +2254,49 @@ $cta${storePhone.isNotEmpty ? ' على: $storePhone' : ''}
         q.contains('تواصل مع العملاء');
     if (isReEngagement) {
       results.add(await getCustomerReEngagementInsight());
+    }
+
+    // 4b. Margin Leak, Break-Even, Cashier Performance, What-If & Seasonal Plan
+    if (q.contains('تسرب') ||
+        q.contains('تحليل هامش') ||
+        q.contains('خصومات مبالغ') ||
+        q.contains('الخصومات اللي اتعملت') ||
+        q.contains('بخسر في ايه')) {
+      results.add(await getMarginLeakInsight());
+    }
+    if (q.contains('نقطه التعادل') ||
+        q.contains('التعادل') ||
+        q.contains('اغطي مصاريفي') ||
+        q.contains('تغطيه المصاريف') ||
+        q.contains('ابيع بكام')) {
+      results.add(await getBreakEvenInsight());
+    }
+    if (q.contains('اداء الكاشير') ||
+        q.contains('تقييم الكاشير') ||
+        q.contains('قارن الكاشير') ||
+        q.contains('احسن كاشير') ||
+        q.contains('اداء الموظفين') ||
+        q.contains('شغل الكاشيرات')) {
+      results.add(await getCashierPerformanceInsight());
+    }
+    if (q.contains('ماذا لو') ||
+        q.contains('لو عملت خصم') ||
+        q.contains('لو زودت السعر') ||
+        q.contains('لو رفعت السعر') ||
+        q.contains('لو نزلت السعر') ||
+        q.contains('احتاج ابيع كام')) {
+      results.add(await getWhatIfPricingInsight(query));
+    }
+    if (q.contains('خطه تسويق') ||
+        q.contains('ازاي ازود المبيعات') ||
+        q.contains('ازود مبيعاتي') ||
+        q.contains('ازود البيع') ||
+        q.contains('موسم') ||
+        q.contains('عيد') ||
+        q.contains('رمضان') ||
+        q.contains('نهايه الشهر') ||
+        q.contains('مرتبات')) {
+      results.add(getSeasonalMarketingPlanInsight(query));
     }
 
     // 5. Commerce, Marketing & Inflation Encyclopedia intents

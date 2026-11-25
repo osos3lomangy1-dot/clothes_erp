@@ -1045,5 +1045,189 @@ void main() {
 
       expect(find.text('نسخ'), findsWidgets);
     });
+
+    test('computes Margin Leak, Break-Even, Cashier Performance, What-If Pricing & Seasonal Plan', () async {
+      final now = DateTime.now();
+      await db.into(db.users).insert(
+            UsersCompanion.insert(
+              id: 'cashier_ali',
+              branchId: branchId,
+              username: 'ali',
+              displayName: 'علي حسن',
+              role: 'cashier',
+              passwordHash: 'h',
+              passwordSalt: 's',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.expenses).insert(
+            ExpensesCompanion.insert(
+              id: 'exp_rent',
+              branchId: branchId,
+              category: 'إيجار',
+              kind: const Value('operating'),
+              amount: 300000, // 3000 EGP
+              expenseDate: now,
+              userId: 'admin_1',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.sales).insert(
+            SalesCompanion.insert(
+              id: 's_leak',
+              branchId: branchId,
+              shortRef: 'S-LK1',
+              cashierId: 'cashier_ali',
+              subtotal: 100000,
+              discountType: 'fixed',
+              discountValue: const Value(15000),
+              discountAmount: const Value(15000), // 15% discount
+              total: 85000,
+              paymentMethod: 'cash',
+              date: now,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.saleItems).insert(
+            SaleItemsCompanion.insert(
+              id: 'si_leak',
+              branchId: branchId,
+              saleId: 's_leak',
+              variantId: 'v_lk1',
+              productName: 'بنطلون جينز',
+              color: 'أزرق',
+              size: '32',
+              qty: 1,
+              priceSnapshot: 100000,
+              costSnapshot: 50000,
+              lineDiscount: const Value(0),
+              lineTotal: 85000,
+              createdAt: now,
+            ),
+          );
+
+      final leakRes = await assistantService.ask('كاشف تسرب الأرباح');
+      final leak = leakRes.firstWhere((i) => i.id == 'margin_leak_detector');
+      expect(leak.isAlert, isTrue);
+      expect(leak.details.join(' '), contains('150.00'));
+
+      final beRes = await assistantService.ask('نقطة التعادل');
+      final be = beRes.firstWhere((i) => i.id == 'break_even_calculator');
+      expect(be.details.join(' '), contains('3000.00'));
+
+      final cashierRes = await assistantService.ask('أداء الكاشيرات');
+      final cashier = cashierRes.firstWhere((i) => i.id == 'cashier_performance');
+      expect(cashier.details.join(' '), contains('علي حسن'));
+
+      final whatIfSafe = await assistantService.ask('لو عملت خصم 15% أحتاج أبيع كام؟');
+      expect(whatIfSafe.any((i) => i.id == 'what_if_discount_safe'), isTrue);
+
+      final whatIfLoss = await assistantService.ask('لو عملت خصم 50%');
+      expect(whatIfLoss.any((i) => i.id == 'what_if_discount_loss'), isTrue);
+
+      final planRes = await assistantService.ask('خطة تسويق للعيد');
+      final plan = planRes.firstWhere((i) => i.id == 'seasonal_marketing_plan');
+      expect(plan.title, contains('المواسم'));
+    });
+
+    test('promo post generator falls back to active stock and supports bundle style', () async {
+      final now = DateTime.now();
+      await db.into(db.products).insert(
+            ProductsCompanion.insert(
+              id: 'p_active',
+              branchId: branchId,
+              name: 'قميص كتان صيفي',
+              categoryId: 'cat_clothes',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.productVariants).insert(
+            ProductVariantsCompanion.insert(
+              id: 'v_active',
+              branchId: branchId,
+              productId: 'p_active',
+              sku: 'SKU-ACT',
+              color: 'بيج',
+              size: 'XL',
+              quantity: const Value(10),
+              costPrice: 20000,
+              sellPrice: 40000,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.sales).insert(
+            SalesCompanion.insert(
+              id: 's_act',
+              branchId: branchId,
+              shortRef: 'S-ACT',
+              cashierId: 'admin_1',
+              subtotal: 40000,
+              discountType: 'none',
+              total: 40000,
+              paymentMethod: 'cash',
+              date: now,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db.into(db.saleItems).insert(
+            SaleItemsCompanion.insert(
+              id: 'si_act',
+              branchId: branchId,
+              saleId: 's_act',
+              variantId: 'v_active',
+              productName: 'قميص كتان صيفي',
+              color: 'بيج',
+              size: 'XL',
+              qty: 1,
+              priceSnapshot: 40000,
+              costSnapshot: 20000,
+              lineTotal: 40000,
+              createdAt: now,
+            ),
+          );
+
+      // Even though v_active is NOT stagnant, post generator should still produce a bundle post
+      final res = await assistantService.ask('اكتب بوست باقة فيسبوك');
+      final post = res.firstWhere((i) => i.id == 'promo_post_generator_facebook');
+      expect(post.details.join('\n'), contains('قميص كتان صيفي'));
+      expect(post.details.join('\n'), contains('عرض القطعتين معاً'));
+    });
+
+    testWidgets('dialog shows category tabs, reset button, and follow-up chips', (tester) async {
+      tester.view.physicalSize = const Size(1280, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => OfflineSmartAssistantDialog.show(context),
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('تحليل المحل'), findsOneWidget);
+      expect(find.text('تسويق وبوستات'), findsOneWidget);
+      expect(find.text('تسعير وموسوعة'), findsOneWidget);
+      expect(find.byKey(const Key('smart_assistant_reset_btn')), findsOneWidget);
+
+      await tester.tap(find.text('تسويق وبوستات'));
+      await tester.pumpAndSettle();
+      expect(find.text('خطة تسويق لزيادة المبيعات'), findsOneWidget);
+    });
   });
 }

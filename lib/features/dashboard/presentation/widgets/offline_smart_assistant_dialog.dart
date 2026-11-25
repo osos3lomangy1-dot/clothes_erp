@@ -110,6 +110,7 @@ class _OfflineSmartAssistantDialogState
       Set<AssistantInsight>.identity();
   Map<String, bool> _enabledFeatures = const {};
   bool _isLoading = true;
+  String _selectedCategory = 'all';
 
   @override
   void initState() {
@@ -344,25 +345,54 @@ class _OfflineSmartAssistantDialogState
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
   }
 
+  void _resetChat() {
+    setState(() {
+      _history.clear();
+      _resolvedCommands.clear();
+      _isLoading = true;
+    });
+    _loadInitialBriefing();
+  }
+
   @override
   Widget build(BuildContext context) {
-    const quickPrompts = [
-      'وضع المحل دلوقتي؟',
-      'الأقساط المتأخرة',
-      'اكتب بوست واتساب',
-      'اكتب بوست فيسبوك',
-      'استرجع العملاء الغائبين',
-      'المبيعات قليلة ليه؟',
-      'الأصناف الراكدة',
-      'أعمل عروض على إيه؟',
-      'الخصم أم الباقة والهدية؟',
-      'ترتيب المحل وعرض البضاعة',
-      'حاسبة التضخم 20%',
-      'توزيع السيولة 50/30/20',
-      'صافي ربح اليوم ومقارنته بأمس',
-      'أعلى 5 أصناف ربحاً',
-      'مستحقات الموردين',
-    ];
+    const categorizedPrompts = <String, List<String>>{
+      'analytics': [
+        'وضع المحل دلوقتي؟',
+        'صافي ربح اليوم ومقارنته بأمس',
+        'نقطة التعادل اليومية',
+        'كاشف تسرب الأرباح',
+        'أداء الكاشيرات',
+        'المبيعات قليلة ليه؟',
+        'الأصناف الراكدة',
+        'أعلى 5 أصناف ربحاً',
+        'الأقساط المتأخرة',
+        'مستحقات الموردين',
+      ],
+      'marketing': [
+        'اكتب بوست واتساب',
+        'اكتب بوست باقة فيسبوك',
+        'اكتب بوست كولكشن جديد انستا',
+        'استرجع العملاء الغائبين',
+        'خطة تسويق لزيادة المبيعات',
+        'أعمل عروض على إيه؟',
+        'ترتيب المحل وعرض البضاعة',
+      ],
+      'pricing': [
+        'لو عملت خصم 15% أحتاج أبيع كام؟',
+        'حاسبة التضخم 20%',
+        'توزيع السيولة 50/30/20',
+        'الخصم أم الباقة والهدية؟',
+      ],
+    };
+
+    final quickPrompts = _selectedCategory == 'all'
+        ? [
+            ...categorizedPrompts['analytics']!,
+            ...categorizedPrompts['marketing']!,
+            ...categorizedPrompts['pricing']!,
+          ]
+        : categorizedPrompts[_selectedCategory]!;
 
     final maxHeight = MediaQuery.sizeOf(context).height * 0.85;
     final containerWidth = widget.isBottomSheet ? double.infinity : 390.0;
@@ -446,6 +476,21 @@ class _OfflineSmartAssistantDialogState
                   ),
                   const SizedBox(width: 4),
                   IconButton(
+                    key: const Key('smart_assistant_reset_btn'),
+                    constraints: const BoxConstraints(
+                      minWidth: 30,
+                      minHeight: 30,
+                    ),
+                    padding: EdgeInsets.zero,
+                    tooltip: 'بدء محادثة جديدة',
+                    onPressed: _resetChat,
+                    icon: const Icon(
+                      Icons.refresh_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                  IconButton(
                     constraints: const BoxConstraints(
                       minWidth: 30,
                       minHeight: 30,
@@ -462,41 +507,94 @@ class _OfflineSmartAssistantDialogState
               ),
             ),
 
-            // Quick Prompt Chips (Compact horizontal strip)
+            // Category Filter Tabs + Quick Prompt Chips
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              padding: const EdgeInsets.fromLTRB(10, 6, 10, 7),
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 border: Border(
                   bottom: BorderSide(color: AppColors.outlineVariant),
                 ),
               ),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    for (int i = 0; i < quickPrompts.length; i++) ...[
-                      if (i > 0) const SizedBox(width: 6),
-                      ActionChip(
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        visualDensity: VisualDensity.compact,
-                        backgroundColor: AppColors.surfaceContainerLowest,
-                        side: BorderSide(color: AppColors.outlineVariant),
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        label: Text(
-                          quickPrompts[i],
-                          style: const TextStyle(
-                            fontFamily: 'Cairo',
-                            fontSize: 10.5,
-                            color: AppColors.onSurface,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (final cat in const [
+                          ('all', 'الكل'),
+                          ('analytics', 'تحليل المحل'),
+                          ('marketing', 'تسويق وبوستات'),
+                          ('pricing', 'تسعير وموسوعة'),
+                        ]) ...[
+                          Padding(
+                            padding: const EdgeInsets.only(left: 6),
+                            child: ChoiceChip(
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                              visualDensity: VisualDensity.compact,
+                              label: Text(
+                                cat.$2,
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 10.5,
+                                  fontWeight: _selectedCategory == cat.$1
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  color: _selectedCategory == cat.$1
+                                      ? Colors.white
+                                      : AppColors.onSurface,
+                                ),
+                              ),
+                              selected: _selectedCategory == cat.$1,
+                              selectedColor: AppColors.primary,
+                              backgroundColor:
+                                  AppColors.surfaceContainerLowest,
+                              side: BorderSide(
+                                color: _selectedCategory == cat.$1
+                                    ? AppColors.primary
+                                    : AppColors.outlineVariant,
+                              ),
+                              onSelected: (_) =>
+                                  setState(() => _selectedCategory = cat.$1),
+                            ),
                           ),
-                        ),
-                        onPressed: () => _runQuery(quickPrompts[i]),
-                      ),
-                    ],
-                  ],
-                ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (int i = 0; i < quickPrompts.length; i++) ...[
+                          if (i > 0) const SizedBox(width: 6),
+                          ActionChip(
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: VisualDensity.compact,
+                            backgroundColor: AppColors.surfaceContainerLowest,
+                            side: BorderSide(color: AppColors.outlineVariant),
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            label: Text(
+                              quickPrompts[i],
+                              style: const TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 10.5,
+                                color: AppColors.onSurface,
+                              ),
+                            ),
+                            onPressed: () => _runQuery(quickPrompts[i]),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
 
@@ -687,6 +785,41 @@ class _OfflineSmartAssistantDialogState
                                             ),
                                           ),
                                         ),
+                                      ),
+                                    ],
+                                    if (item.followUpPrompts.isNotEmpty) ...[
+                                      const SizedBox(height: 6),
+                                      Wrap(
+                                        spacing: 6,
+                                        runSpacing: 4,
+                                        children: [
+                                          for (final nextPrompt
+                                              in item.followUpPrompts)
+                                            ActionChip(
+                                              materialTapTargetSize:
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
+                                              visualDensity:
+                                                  VisualDensity.compact,
+                                              backgroundColor: AppColors.primary
+                                                  .withValues(alpha: 0.08),
+                                              side: BorderSide(
+                                                color: AppColors.primary
+                                                    .withValues(alpha: 0.25),
+                                              ),
+                                              label: Text(
+                                                nextPrompt,
+                                                style: TextStyle(
+                                                  fontFamily: 'Cairo',
+                                                  fontSize: 10.5,
+                                                  color: AppColors.primary,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                              onPressed: () =>
+                                                  _runQuery(nextPrompt),
+                                            ),
+                                        ],
                                       ),
                                     ],
                                   ],
