@@ -12,7 +12,10 @@ import 'package:clothes_erp/core/database/app_database.dart';
 import 'package:clothes_erp/core/database/branch_provider.dart';
 import 'package:clothes_erp/core/database/tx_writer.dart';
 import 'package:clothes_erp/core/di/injection.dart';
+import 'package:clothes_erp/core/features/feature_gate.dart';
 import 'package:clothes_erp/core/services/excel_workbook_service.dart';
+import 'package:clothes_erp/features/auth/data/datasources/auth_local_data_source.dart';
+import 'package:clothes_erp/features/auth/data/models/user_model.dart';
 import 'package:clothes_erp/features/dashboard/data/services/offline_smart_assistant_service.dart';
 import 'package:clothes_erp/features/dashboard/presentation/widgets/offline_smart_assistant_dialog.dart';
 import 'package:clothes_erp/features/dashboard/presentation/widgets/store_financial_interview_dialog.dart';
@@ -20,6 +23,17 @@ import 'package:clothes_erp/features/partners/domain/entities/partner_entity.dar
 import 'package:clothes_erp/features/returns/presentation/cubits/returns_cubit.dart';
 import 'package:clothes_erp/features/returns/presentation/cubits/returns_state.dart';
 import 'package:clothes_erp/features/returns/presentation/screens/return_screen.dart';
+
+class _FakeAuthLocalDataSource implements AuthLocalDataSource {
+  @override
+  Future<void> cacheUser(UserModel user) async {}
+
+  @override
+  Future<void> clearCache() async {}
+
+  @override
+  Future<UserModel?> getCachedUser() async => null;
+}
 
 class _StubReturnsCubit extends Cubit<ReturnsState> implements ReturnsCubit {
   _StubReturnsCubit() : super(const ReturnsState());
@@ -324,8 +338,20 @@ void main() {
             ),
           );
 
+      await db.into(db.suppliers).insert(
+            SuppliersCompanion.insert(
+              id: 'sup1',
+              branchId: branchId,
+              name: 'شركة النيل للموبايلات',
+              balance: const Value(350000),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
       final profit = await assistantService.getTodayProfitInsight();
       expect(profit.summary, contains('-')); // 250 - 100 - 2000 = -1850
+      expect(profit.details.join(' '), contains('أمس'));
 
       final top = await assistantService.getTopProfitableProductsInsight();
       expect(top.summary, contains('سماعة بلوتوث'));
@@ -335,9 +361,28 @@ void main() {
 
       final budget = await assistantService.getMonthlyBudgetComparisonInsight();
       expect(budget.summary, contains('20%'));
+
+      final dues = await assistantService.getSuppliersDuesInsight();
+      expect(dues.summary, contains('3500'));
+
+      // Arabic NLU + Egyptian colloquialism + direct product lookup
+      final nluProfit = await assistantService.ask('كسبت كام النهارده');
+      expect(nluProfit.any((i) => i.id == 'today_profit'), isTrue);
+
+      final nluSuppliers = await assistantService.ask('علينا كام للموردين');
+      expect(nluSuppliers.any((i) => i.id == 'suppliers_dues'), isTrue);
+
+      final nluProduct = await assistantService.ask('سعر وربح سماعه بلوتوث');
+      expect(nluProduct.any((i) => i.id == 'product_lookup'), isTrue);
+
+      final briefing = await assistantService.getDailyBriefing();
+      expect(briefing.length, greaterThanOrEqualTo(4));
     });
 
-    testWidgets('OfflineSmartAssistantDialog renders prompt chips and updates insights', (tester) async {
+    testWidgets('OfflineSmartAssistantDialog renders Daily Briefing, prompt chips, and respects FeatureGate for action buttons', (tester) async {
+      final gate = FeatureGate(db, _FakeAuthLocalDataSource(), tx, bp);
+      getIt.registerSingleton<FeatureGate>(gate);
+
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -355,9 +400,15 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('المساعد التحليلي الذكي (أوفلاين)'), findsOneWidget);
-      await tester.tap(find.text('الأقساط المتأخرة'));
+      expect(find.byKey(const Key('smart_assistant_briefing_header')), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(ActionChip, 'الأقساط المتأخرة'));
       await tester.pumpAndSettle();
-      expect(find.text('لا توجد عقود تقسيط متأخرة'), findsOneWidget);
+      expect(find.text('لا توجد عقود تقسيط متأخرة'), findsAtLeastNWidgets(2));
+      // FeatureKeys.installments defaults to false, so action button must be hidden
+      expect(find.byKey(const Key('assistant_action_overdue_installments')), findsNothing);
+
+      gate.dispose();
     });
   });
 }

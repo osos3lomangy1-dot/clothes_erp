@@ -56,7 +56,8 @@ class ExcelWorkbookService {
     if (override != null && override.trim().isNotEmpty) {
       return override.trim();
     }
-    final svc = _activitySettingsService ??
+    final svc =
+        _activitySettingsService ??
         (getIt.isRegistered<ActivitySettingsService>()
             ? getIt<ActivitySettingsService>()
             : null);
@@ -129,10 +130,7 @@ class ExcelWorkbookService {
             arabicLabel: 'اللون',
             hint: 'الافتراضي: افتراضي',
           ),
-          ExcelFieldSpec(
-            key: 'costPrice',
-            arabicLabel: 'سعر التكلفة (ج.م)',
-          ),
+          ExcelFieldSpec(key: 'costPrice', arabicLabel: 'سعر التكلفة (ج.م)'),
           ExcelFieldSpec(
             key: 'sellPrice',
             arabicLabel: 'سعر البيع القطاعي (ج.م)',
@@ -146,10 +144,7 @@ class ExcelWorkbookService {
             key: 'quantity',
             arabicLabel: 'الكمية / الرصيد الحالي',
           ),
-          ExcelFieldSpec(
-            key: 'minStock',
-            arabicLabel: 'حد الطلب للتنبيه',
-          ),
+          ExcelFieldSpec(key: 'minStock', arabicLabel: 'حد الطلب للتنبيه'),
         ];
       case ExcelImportEntity.customers:
         return const [
@@ -168,14 +163,8 @@ class ExcelWorkbookService {
             key: 'customerType',
             arabicLabel: 'نوع العميل (قطاعي / جملة)',
           ),
-          ExcelFieldSpec(
-            key: 'discountPercent',
-            arabicLabel: 'نسبة الخصم (%)',
-          ),
-          ExcelFieldSpec(
-            key: 'loyaltyPoints',
-            arabicLabel: 'نقاط الولاء',
-          ),
+          ExcelFieldSpec(key: 'discountPercent', arabicLabel: 'نسبة الخصم (%)'),
+          ExcelFieldSpec(key: 'loyaltyPoints', arabicLabel: 'نقاط الولاء'),
         ];
       case ExcelImportEntity.suppliers:
         return const [
@@ -184,18 +173,12 @@ class ExcelWorkbookService {
             arabicLabel: 'اسم المورد',
             required: true,
           ),
-          ExcelFieldSpec(
-            key: 'phone',
-            arabicLabel: 'رقم الهاتف',
-          ),
+          ExcelFieldSpec(key: 'phone', arabicLabel: 'رقم الهاتف'),
           ExcelFieldSpec(
             key: 'companyName',
             arabicLabel: 'اسم الشركة / المصنع',
           ),
-          ExcelFieldSpec(
-            key: 'address',
-            arabicLabel: 'العنوان',
-          ),
+          ExcelFieldSpec(key: 'address', arabicLabel: 'العنوان'),
           ExcelFieldSpec(
             key: 'balance',
             arabicLabel: 'الرصيد المستحق للمورد (ج.م)',
@@ -261,10 +244,7 @@ class ExcelWorkbookService {
             key: 'expenseDate',
             arabicLabel: 'تاريخ المصروف (YYYY-MM-DD)',
           ),
-          ExcelFieldSpec(
-            key: 'notes',
-            arabicLabel: 'ملاحظات',
-          ),
+          ExcelFieldSpec(key: 'notes', arabicLabel: 'ملاحظات'),
         ];
       case ExcelImportEntity.historicalSales:
         return const [
@@ -361,8 +341,9 @@ class ExcelWorkbookService {
     final instMap = {for (final i in installments) i.id: i};
 
     // Only keep sale items belonging to non-deleted sales
-    final validSaleItems =
-        saleItems.where((i) => saleMap.containsKey(i.saleId)).toList();
+    final validSaleItems = saleItems
+        .where((i) => saleMap.containsKey(i.saleId))
+        .toList();
 
     final excel = Excel.createExcel();
     final headerStyle = _headerStyle();
@@ -401,11 +382,11 @@ class ExcelWorkbookService {
     final retEnd = returns.length + 1;
 
     // ─── Sheet 1: الملخص_التنفيذي (Live Linked Dashboard) ───────────────────
-    _appendStyledHeader(
-      dashSheet,
-      const ['المؤشر المالي / التشغيلي', 'القيمة (مربوطة بالمعادلات)', 'الوحدة / البيان'],
-      accentHeaderStyle,
-    );
+    _appendStyledHeader(dashSheet, const [
+      'المؤشر المالي / التشغيلي',
+      'القيمة (مربوطة بالمعادلات)',
+      'الوحدة / البيان',
+    ], accentHeaderStyle);
 
     final dashRows = <(String, CellValue, String)>[
       (
@@ -512,11 +493,7 @@ class ExcelWorkbookService {
 
     for (var i = 0; i < dashRows.length; i++) {
       final r = dashRows[i];
-      dashSheet.appendRow([
-        TextCellValue(r.$1),
-        r.$2,
-        TextCellValue(r.$3),
-      ]);
+      dashSheet.appendRow([TextCellValue(r.$1), r.$2, TextCellValue(r.$3)]);
       // Highlight key profit rows (row index 3 = Gross Profit, 5 = Net Profit)
       if (i == 2 || i == 4) {
         _styleRow(dashSheet, i + 1, 3, highlightStyle);
@@ -525,31 +502,29 @@ class ExcelWorkbookService {
     _setColumnWidths(dashSheet, const [38, 24, 34]);
 
     // ─── Sheet 2: المنتجات_والمخزون ──────────────────────────────────────────
-    _appendStyledHeader(
-      prodSheet,
-      const [
-        'اسم المنتج',
-        'التصنيف',
-        'كود الصنف (SKU)',
-        'المقاس',
-        'اللون',
-        'سعر التكلفة (ج.م)',
-        'سعر البيع (ج.م)',
-        'سعر الجملة (ج.م)',
-        'الكمية',
-        'حد الطلب',
-        'قيمة المخزون بالتكلفة (ج.م)',
-        'قيمة المخزون بالبيع (ج.م)',
-      ],
-      headerStyle,
-    );
+    _appendStyledHeader(prodSheet, const [
+      'اسم المنتج',
+      'التصنيف',
+      'كود الصنف (SKU)',
+      'المقاس',
+      'اللون',
+      'سعر التكلفة (ج.م)',
+      'سعر البيع (ج.م)',
+      'سعر الجملة (ج.م)',
+      'الكمية',
+      'حد الطلب',
+      'قيمة المخزون بالتكلفة (ج.م)',
+      'قيمة المخزون بالبيع (ج.م)',
+    ], headerStyle);
     for (var i = 0; i < variants.length; i++) {
       final v = variants[i];
       final prod = prodMap[v.productId];
       final rowNum = i + 2;
       prodSheet.appendRow([
         TextCellValue(prod?.name ?? v.productId),
-        TextCellValue(prod != null ? (catMap[prod.categoryId] ?? 'عام') : 'عام'),
+        TextCellValue(
+          prod != null ? (catMap[prod.categoryId] ?? 'عام') : 'عام',
+        ),
         TextCellValue(v.sku),
         TextCellValue(v.size),
         TextCellValue(v.color),
@@ -562,23 +537,32 @@ class ExcelWorkbookService {
         FormulaCellValue('G$rowNum*I$rowNum'),
       ]);
     }
-    _setColumnWidths(prodSheet, const [26, 18, 20, 12, 14, 16, 16, 16, 12, 12, 22, 22]);
+    _setColumnWidths(prodSheet, const [
+      26,
+      18,
+      20,
+      12,
+      14,
+      16,
+      16,
+      16,
+      12,
+      12,
+      22,
+      22,
+    ]);
 
     // ─── Sheet 3: العملاء (Linked to Sales & Installments) ──────────────────
-    _appendStyledHeader(
-      custSheet,
-      const [
-        'هاتف العميل',
-        'اسم العميل',
-        'النوع',
-        'نسبة الخصم (%)',
-        'نقاط الولاء',
-        'عدد الفواتير',
-        'إجمالي المشتريات (ج.م)',
-        'متبقي التقسيط (ج.م)',
-      ],
-      headerStyle,
-    );
+    _appendStyledHeader(custSheet, const [
+      'هاتف العميل',
+      'اسم العميل',
+      'النوع',
+      'نسبة الخصم (%)',
+      'نقاط الولاء',
+      'عدد الفواتير',
+      'إجمالي المشتريات (ج.م)',
+      'متبقي التقسيط (ج.م)',
+    ], headerStyle);
     for (var i = 0; i < customers.length; i++) {
       final c = customers[i];
       final rowNum = i + 2;
@@ -606,19 +590,15 @@ class ExcelWorkbookService {
     _setColumnWidths(custSheet, const [18, 24, 12, 15, 14, 14, 20, 20]);
 
     // ─── Sheet 4: الموردين (Linked to Purchases) ────────────────────────────
-    _appendStyledHeader(
-      supSheet,
-      const [
-        'اسم المورد',
-        'الهاتف',
-        'الشركة',
-        'العنوان',
-        'الرصيد المستحق (ج.م)',
-        'عدد فواتير الشراء',
-        'إجمالي المشتريات (ج.م)',
-      ],
-      headerStyle,
-    );
+    _appendStyledHeader(supSheet, const [
+      'اسم المورد',
+      'الهاتف',
+      'الشركة',
+      'العنوان',
+      'الرصيد المستحق (ج.م)',
+      'عدد فواتير الشراء',
+      'إجمالي المشتريات (ج.م)',
+    ], headerStyle);
     for (var i = 0; i < suppliers.length; i++) {
       final s = suppliers[i];
       final rowNum = i + 2;
@@ -630,7 +610,9 @@ class ExcelWorkbookService {
         DoubleCellValue(s.balance / 100.0),
         purchases.isEmpty
             ? IntCellValue(0)
-            : FormulaCellValue("COUNTIF('$sheetPurchases'!C2:C$purEnd,A$rowNum)"),
+            : FormulaCellValue(
+                "COUNTIF('$sheetPurchases'!C2:C$purEnd,A$rowNum)",
+              ),
         purchases.isEmpty
             ? DoubleCellValue(0.0)
             : FormulaCellValue(
@@ -641,18 +623,14 @@ class ExcelWorkbookService {
     _setColumnWidths(supSheet, const [24, 18, 22, 26, 20, 16, 20]);
 
     // ─── Sheet 5: الشركاء (Live Linked to Dashboard Net Profit) ──────────────
-    _appendStyledHeader(
-      partnerSheet,
-      const [
-        'اسم الشريك',
-        'الهاتف',
-        'نسبة الشراكة (%)',
-        'رأس المال المساهم (ج.م)',
-        'المسحوبات من الأرباح (ج.م)',
-        'نصيب الربح التقديري (ج.م)',
-      ],
-      headerStyle,
-    );
+    _appendStyledHeader(partnerSheet, const [
+      'اسم الشريك',
+      'الهاتف',
+      'نسبة الشراكة (%)',
+      'رأس المال المساهم (ج.م)',
+      'المسحوبات من الأرباح (ج.م)',
+      'نصيب الربح التقديري (ج.م)',
+    ], headerStyle);
     for (var i = 0; i < partners.length; i++) {
       final p = partners[i];
       final rowNum = i + 2;
@@ -668,23 +646,19 @@ class ExcelWorkbookService {
     _setColumnWidths(partnerSheet, const [24, 18, 16, 22, 22, 24]);
 
     // ─── Sheet 6: الفواتير ──────────────────────────────────────────────────
-    _appendStyledHeader(
-      salesSheet,
-      const [
-        'رقم الفاتورة',
-        'التاريخ والوقت',
-        'اسم العميل',
-        'هاتف العميل',
-        'الكاشير',
-        'المبلغ قبل الخصم (ج.م)',
-        'الخصم (ج.م)',
-        'الصافي النهائي (ج.م)',
-        'طريقة الدفع',
-        'الحالة',
-        'ملاحظات',
-      ],
-      headerStyle,
-    );
+    _appendStyledHeader(salesSheet, const [
+      'رقم الفاتورة',
+      'التاريخ والوقت',
+      'اسم العميل',
+      'هاتف العميل',
+      'الكاشير',
+      'المبلغ قبل الخصم (ج.م)',
+      'الخصم (ج.م)',
+      'الصافي النهائي (ج.م)',
+      'طريقة الدفع',
+      'الحالة',
+      'ملاحظات',
+    ], headerStyle);
     for (final s in sales) {
       final cust = s.customerId != null ? custMap[s.customerId] : null;
       salesSheet.appendRow([
@@ -701,28 +675,36 @@ class ExcelWorkbookService {
         TextCellValue(s.note ?? ''),
       ]);
     }
-    _setColumnWidths(salesSheet, const [18, 20, 22, 16, 18, 18, 14, 18, 16, 12, 24]);
+    _setColumnWidths(salesSheet, const [
+      18,
+      20,
+      22,
+      16,
+      18,
+      18,
+      14,
+      18,
+      16,
+      12,
+      24,
+    ]);
 
     // ─── Sheet 7: تفاصيل_الفواتير (Linked to Sales & Products) ───────────────
-    _appendStyledHeader(
-      itemsSheet,
-      const [
-        'رقم الفاتورة',
-        'التاريخ',
-        'كود الصنف (SKU)',
-        'اسم المنتج',
-        'اللون',
-        'المقاس',
-        'الكمية',
-        'سعر بيع الوحدة (ج.م)',
-        'تكلفة الوحدة (ج.م)',
-        'خصم السطر (ج.م)',
-        'صافي السطر (ج.م)',
-        'إجمالي التكلفة (ج.م)',
-        'ربح السطر (ج.م)',
-      ],
-      headerStyle,
-    );
+    _appendStyledHeader(itemsSheet, const [
+      'رقم الفاتورة',
+      'التاريخ',
+      'كود الصنف (SKU)',
+      'اسم المنتج',
+      'اللون',
+      'المقاس',
+      'الكمية',
+      'سعر بيع الوحدة (ج.م)',
+      'تكلفة الوحدة (ج.م)',
+      'خصم السطر (ج.م)',
+      'صافي السطر (ج.م)',
+      'إجمالي التكلفة (ج.م)',
+      'ربح السطر (ج.م)',
+    ], headerStyle);
     for (var i = 0; i < validSaleItems.length; i++) {
       final item = validSaleItems[i];
       final sale = saleMap[item.saleId];
@@ -738,36 +720,48 @@ class ExcelWorkbookService {
         IntCellValue(item.qty),
         DoubleCellValue(item.priceSnapshot / 100.0),
         DoubleCellValue(item.costSnapshot / 100.0),
-        DoubleCellValue((item.lineDiscount + item.promotionDiscountPiasters) / 100.0),
+        DoubleCellValue(
+          (item.lineDiscount + item.promotionDiscountPiasters) / 100.0,
+        ),
         DoubleCellValue(item.lineTotal / 100.0),
         FormulaCellValue('G$rowNum*I$rowNum'),
         FormulaCellValue('K$rowNum-L$rowNum'),
       ]);
     }
-    _setColumnWidths(itemsSheet, const [18, 20, 18, 24, 12, 12, 10, 18, 16, 14, 16, 18, 16]);
+    _setColumnWidths(itemsSheet, const [
+      18,
+      20,
+      18,
+      24,
+      12,
+      12,
+      10,
+      18,
+      16,
+      14,
+      16,
+      18,
+      16,
+    ]);
 
     // ─── Sheet 8: عقود_التقسيط (Linked to Installment Payments) ─────────────
-    _appendStyledHeader(
-      instSheet,
-      const [
-        'رقم العقد',
-        'رقم الفاتورة',
-        'اسم العميل',
-        'هاتف العميل',
-        'إجمالي الفاتورة (ج.م)',
-        'المقدم (ج.م)',
-        'المبلغ الممول (ج.م)',
-        'نسبة الفائدة (%)',
-        'عدد الشهور',
-        'القسط الشهري (ج.م)',
-        'إجمالي المسدد (ج.م)',
-        'المتبقي الحالي (ج.م)',
-        'تاريخ البداية',
-        'تاريخ النهاية',
-        'الحالة',
-      ],
-      headerStyle,
-    );
+    _appendStyledHeader(instSheet, const [
+      'رقم العقد',
+      'رقم الفاتورة',
+      'اسم العميل',
+      'هاتف العميل',
+      'إجمالي الفاتورة (ج.م)',
+      'المقدم (ج.م)',
+      'المبلغ الممول (ج.م)',
+      'نسبة الفائدة (%)',
+      'عدد الشهور',
+      'القسط الشهري (ج.م)',
+      'إجمالي المسدد (ج.م)',
+      'المتبقي الحالي (ج.م)',
+      'تاريخ البداية',
+      'تاريخ النهاية',
+      'الحالة',
+    ], headerStyle);
     for (var i = 0; i < installments.length; i++) {
       final c = installments[i];
       final cust = custMap[c.customerId];
@@ -795,22 +789,34 @@ class ExcelWorkbookService {
         TextCellValue(_formatInstallmentStatus(c.status)),
       ]);
     }
-    _setColumnWidths(instSheet, const [20, 18, 22, 16, 18, 14, 18, 14, 12, 16, 18, 18, 14, 14, 12]);
+    _setColumnWidths(instSheet, const [
+      20,
+      18,
+      22,
+      16,
+      18,
+      14,
+      18,
+      14,
+      12,
+      16,
+      18,
+      18,
+      14,
+      14,
+      12,
+    ]);
 
     // ─── Sheet 9: دفعات_التقسيط ─────────────────────────────────────────────
-    _appendStyledHeader(
-      paySheet,
-      const [
-        'رقم العقد',
-        'اسم العميل',
-        'تاريخ الدفع',
-        'المبلغ (ج.م)',
-        'طريقة الدفع',
-        'رقم الإيصال',
-        'ملاحظات',
-      ],
-      headerStyle,
-    );
+    _appendStyledHeader(paySheet, const [
+      'رقم العقد',
+      'اسم العميل',
+      'تاريخ الدفع',
+      'المبلغ (ج.م)',
+      'طريقة الدفع',
+      'رقم الإيصال',
+      'ملاحظات',
+    ], headerStyle);
     for (final p in installmentPayments) {
       final contract = instMap[p.customerInstallmentId];
       final cust = contract != null ? custMap[contract.customerId] : null;
@@ -827,18 +833,14 @@ class ExcelWorkbookService {
     _setColumnWidths(paySheet, const [20, 22, 20, 16, 14, 18, 26]);
 
     // ─── Sheet 10: المصروفات ────────────────────────────────────────────────
-    _appendStyledHeader(
-      expSheet,
-      const [
-        'التاريخ',
-        'البند',
-        'التصنيف',
-        'المبلغ (ج.م)',
-        'الملاحظات',
-        'المسجل',
-      ],
-      headerStyle,
-    );
+    _appendStyledHeader(expSheet, const [
+      'التاريخ',
+      'البند',
+      'التصنيف',
+      'المبلغ (ج.م)',
+      'الملاحظات',
+      'المسجل',
+    ], headerStyle);
     for (final e in expenses) {
       expSheet.appendRow([
         TextCellValue(_formatDate(e.expenseDate)),
@@ -854,21 +856,17 @@ class ExcelWorkbookService {
     _setColumnWidths(expSheet, const [14, 22, 16, 16, 28, 18]);
 
     // ─── Sheet 11: المشتريات ────────────────────────────────────────────────
-    _appendStyledHeader(
-      purSheet,
-      const [
-        'رقم فاتورة الشراء',
-        'التاريخ',
-        'اسم المورد',
-        'الحالة',
-        'الإجمالي (ج.م)',
-        'المدفوع (ج.م)',
-        'المتبقي (ج.م)',
-        'حالة الدفع',
-        'ملاحظات',
-      ],
-      headerStyle,
-    );
+    _appendStyledHeader(purSheet, const [
+      'رقم فاتورة الشراء',
+      'التاريخ',
+      'اسم المورد',
+      'الحالة',
+      'الإجمالي (ج.م)',
+      'المدفوع (ج.م)',
+      'المتبقي (ج.م)',
+      'حالة الدفع',
+      'ملاحظات',
+    ], headerStyle);
     for (var i = 0; i < purchases.length; i++) {
       final p = purchases[i];
       final rowNum = i + 2;
@@ -887,19 +885,15 @@ class ExcelWorkbookService {
     _setColumnWidths(purSheet, const [18, 14, 22, 14, 16, 16, 16, 14, 26]);
 
     // ─── Sheet 12: المرتجعات ────────────────────────────────────────────────
-    _appendStyledHeader(
-      retSheet,
-      const [
-        'رقم المرتجع',
-        'رقم الفاتورة الأصلية',
-        'التاريخ',
-        'السبب',
-        'المبلغ المسترد (ج.م)',
-        'طريقة الاسترداد',
-        'الكاشير',
-      ],
-      headerStyle,
-    );
+    _appendStyledHeader(retSheet, const [
+      'رقم المرتجع',
+      'رقم الفاتورة الأصلية',
+      'التاريخ',
+      'السبب',
+      'المبلغ المسترد (ج.م)',
+      'طريقة الاسترداد',
+      'الكاشير',
+    ], headerStyle);
     for (final r in returns) {
       final sale = r.saleId != null ? saleMap[r.saleId] : null;
       retSheet.appendRow([
@@ -984,19 +978,36 @@ class ExcelWorkbookService {
       excel.delete('Sheet1');
     }
 
-    _appendStyledHeader(
-      infoSheet,
-      const ['خطوة', 'التعليمات والإرشادات لنقل بيانات محلك إلى بيعة'],
-      accentHeaderStyle,
-    );
+    _appendStyledHeader(infoSheet, const [
+      'خطوة',
+      'التعليمات والإرشادات لنقل بيانات محلك إلى بيعة',
+    ], accentHeaderStyle);
     final instructions = const [
-      ('1', 'املأ الشيتات التي تحتاجها فقط (المنتجات والمخزون، العملاء، الموردين، عقود التقسيط).'),
-      ('2', 'لا تغيّر أسماء الشيتات في القالب ليتم التعرف عليها تلقائياً، واحذف صفوف الأمثلة قبل الاستيراد أو عدّلها.'),
+      (
+        '1',
+        'املأ الشيتات التي تحتاجها فقط (المنتجات والمخزون، العملاء، الموردين، عقود التقسيط).',
+      ),
+      (
+        '2',
+        'لا تغيّر أسماء الشيتات في القالب ليتم التعرف عليها تلقائياً، واحذف صفوف الأمثلة قبل الاستيراد أو عدّلها.',
+      ),
       ('3', 'الأسعار كلها بالجنيه المصري (مثال: 350 أو 350.50).'),
-      ('4', 'في شيت المنتجات: إذا تركت عمود SKU فارغاً سيولّد النظام كوداً فريداً تلقائياً.'),
-      ('5', 'في شيت العملاء: رقم الهاتف هو مفتاح الربط الفريد؛ اكتب نوع العميل (قطاعي) أو (جملة).'),
-      ('6', 'في شيت عقود التقسيط: اربط كل عقد برقم هاتف العميل، وإذا لم يكن العميل مسجلاً فسيتم إنشاؤه تلقائياً.'),
-      ('7', 'هل لديك ملف إكسيل جاهز بأسماء أعمدة مختلفة؟ يمكنك رفعه مباشرة باستخدام «ربط الأعمدة التفاعلي» بدون تعديله!'),
+      (
+        '4',
+        'في شيت المنتجات: إذا تركت عمود SKU فارغاً سيولّد النظام كوداً فريداً تلقائياً.',
+      ),
+      (
+        '5',
+        'في شيت العملاء: رقم الهاتف هو مفتاح الربط الفريد؛ اكتب نوع العميل (قطاعي) أو (جملة).',
+      ),
+      (
+        '6',
+        'في شيت عقود التقسيط: اربط كل عقد برقم هاتف العميل، وإذا لم يكن العميل مسجلاً فسيتم إنشاؤه تلقائياً.',
+      ),
+      (
+        '7',
+        'هل لديك ملف إكسيل جاهز بأسماء أعمدة مختلفة؟ يمكنك رفعه مباشرة باستخدام «ربط الأعمدة التفاعلي» بدون تعديله!',
+      ),
     ];
     for (final row in instructions) {
       infoSheet.appendRow([TextCellValue(row.$1), TextCellValue(row.$2)]);
@@ -1004,22 +1015,18 @@ class ExcelWorkbookService {
     _setColumnWidths(infoSheet, const [10, 82]);
 
     // Products template
-    _appendStyledHeader(
-      prodSheet,
-      const [
-        'اسم المنتج',
-        'التصنيف',
-        'كود الصنف (SKU)',
-        'المقاس',
-        'اللون',
-        'سعر التكلفة (ج.م)',
-        'سعر البيع (ج.م)',
-        'سعر الجملة (ج.م)',
-        'الكمية',
-        'حد الطلب',
-      ],
-      headerStyle,
-    );
+    _appendStyledHeader(prodSheet, const [
+      'اسم المنتج',
+      'التصنيف',
+      'كود الصنف (SKU)',
+      'المقاس',
+      'اللون',
+      'سعر التكلفة (ج.م)',
+      'سعر البيع (ج.م)',
+      'سعر الجملة (ج.م)',
+      'الكمية',
+      'حد الطلب',
+    ], headerStyle);
     prodSheet.appendRow([
       TextCellValue('تيشيرت بولو قطن'),
       TextCellValue('تيشيرتات'),
@@ -1047,17 +1054,13 @@ class ExcelWorkbookService {
     _setColumnWidths(prodSheet, const [24, 16, 18, 12, 14, 16, 16, 16, 12, 12]);
 
     // Customers template
-    _appendStyledHeader(
-      custSheet,
-      const [
-        'اسم العميل',
-        'هاتف العميل',
-        'النوع',
-        'نسبة الخصم (%)',
-        'نقاط الولاء',
-      ],
-      headerStyle,
-    );
+    _appendStyledHeader(custSheet, const [
+      'اسم العميل',
+      'هاتف العميل',
+      'النوع',
+      'نسبة الخصم (%)',
+      'نقاط الولاء',
+    ], headerStyle);
     custSheet.appendRow([
       TextCellValue('أحمد محمود'),
       TextCellValue('01012345678'),
@@ -1075,17 +1078,13 @@ class ExcelWorkbookService {
     _setColumnWidths(custSheet, const [24, 18, 14, 16, 14]);
 
     // Suppliers template
-    _appendStyledHeader(
-      supSheet,
-      const [
-        'اسم المورد',
-        'الهاتف',
-        'الشركة',
-        'العنوان',
-        'الرصيد المستحق (ج.م)',
-      ],
-      headerStyle,
-    );
+    _appendStyledHeader(supSheet, const [
+      'اسم المورد',
+      'الهاتف',
+      'الشركة',
+      'العنوان',
+      'الرصيد المستحق (ج.م)',
+    ], headerStyle);
     supSheet.appendRow([
       TextCellValue('مصنع النيل للملابس'),
       TextCellValue('01234567890'),
@@ -1096,21 +1095,17 @@ class ExcelWorkbookService {
     _setColumnWidths(supSheet, const [24, 18, 22, 24, 20]);
 
     // Installments template
-    _appendStyledHeader(
-      instSheet,
-      const [
-        'هاتف العميل',
-        'اسم العميل',
-        'إجمالي الفاتورة (ج.م)',
-        'المقدم (ج.م)',
-        'نسبة الفائدة (%)',
-        'عدد الشهور',
-        'المتبقي الحالي (ج.م)',
-        'تاريخ البداية',
-        'الحالة',
-      ],
-      headerStyle,
-    );
+    _appendStyledHeader(instSheet, const [
+      'هاتف العميل',
+      'اسم العميل',
+      'إجمالي الفاتورة (ج.م)',
+      'المقدم (ج.م)',
+      'نسبة الفائدة (%)',
+      'عدد الشهور',
+      'المتبقي الحالي (ج.م)',
+      'تاريخ البداية',
+      'الحالة',
+    ], headerStyle);
     instSheet.appendRow([
       TextCellValue('01012345678'),
       TextCellValue('أحمد محمود'),
@@ -1167,7 +1162,9 @@ class ExcelWorkbookService {
       // Trim trailing empty columns
       while (headers.isNotEmpty &&
           headers.last.startsWith('عمود ') &&
-          sheet.rows.skip(1).every(
+          sheet.rows
+              .skip(1)
+              .every(
                 (r) =>
                     headers.length - 1 >= r.length ||
                     _cellText(r[headers.length - 1]).isEmpty,
@@ -1216,8 +1213,9 @@ class ExcelWorkbookService {
       map[spec.key] = null;
     }
 
-    final normalizedHeaders =
-        sheet.headers.map((h) => _normalizeHeader(h)).toList();
+    final normalizedHeaders = sheet.headers
+        .map((h) => _normalizeHeader(h))
+        .toList();
 
     for (var i = 0; i < normalizedHeaders.length; i++) {
       final h = normalizedHeaders[i];
@@ -1226,8 +1224,23 @@ class ExcelWorkbookService {
       switch (entity) {
         case ExcelImportEntity.products:
           if (map['productName'] == null &&
-              _matchesAny(h, ['منتج', 'صنف', 'موديل', 'product', 'item', 'name']) &&
-              !_matchesAny(h, ['كود', 'sku', 'barcode', 'باركود', 'تصنيف', 'عميل', 'مورد'])) {
+              _matchesAny(h, [
+                'منتج',
+                'صنف',
+                'موديل',
+                'product',
+                'item',
+                'name',
+              ]) &&
+              !_matchesAny(h, [
+                'كود',
+                'sku',
+                'barcode',
+                'باركود',
+                'تصنيف',
+                'عميل',
+                'مورد',
+              ])) {
             map['productName'] = i;
           } else if (map['categoryName'] == null &&
               _matchesAny(h, ['تصنيف', 'قسم', 'فئة', 'category', 'dept'])) {
@@ -1249,11 +1262,28 @@ class ExcelWorkbookService {
               _matchesAny(h, ['جملة', 'جمله', 'wholesale'])) {
             map['wholesalePrice'] = i;
           } else if (map['sellPrice'] == null &&
-              _matchesAny(h, ['بيع', 'قطاعي', 'سعر', 'sell', 'sale', 'retail', 'price']) &&
+              _matchesAny(h, [
+                'بيع',
+                'قطاعي',
+                'سعر',
+                'sell',
+                'sale',
+                'retail',
+                'price',
+              ]) &&
               !_matchesAny(h, ['تكلفة', 'جملة', 'جمله', 'قيمة المخزون'])) {
             map['sellPrice'] = i;
           } else if (map['quantity'] == null &&
-              _matchesAny(h, ['كمية', 'كميه', 'جرد', 'رصيد', 'مخزون', 'qty', 'quantity', 'stock']) &&
+              _matchesAny(h, [
+                'كمية',
+                'كميه',
+                'جرد',
+                'رصيد',
+                'مخزون',
+                'qty',
+                'quantity',
+                'stock',
+              ]) &&
               !_matchesAny(h, ['قيمة', 'حد'])) {
             map['quantity'] = i;
           } else if (map['minStock'] == null &&
@@ -1264,7 +1294,15 @@ class ExcelWorkbookService {
 
         case ExcelImportEntity.customers:
           if (map['phone'] == null &&
-              _matchesAny(h, ['هاتف', 'موبايل', 'تليفون', 'جوال', 'phone', 'mobile', 'tel'])) {
+              _matchesAny(h, [
+                'هاتف',
+                'موبايل',
+                'تليفون',
+                'جوال',
+                'phone',
+                'mobile',
+                'tel',
+              ])) {
             map['phone'] = i;
           } else if (map['name'] == null &&
               _matchesAny(h, ['اسم', 'عميل', 'customer', 'client', 'name'])) {
@@ -1308,7 +1346,13 @@ class ExcelWorkbookService {
               _matchesAny(h, ['اسم', 'عميل', 'customer', 'name'])) {
             map['customerName'] = i;
           } else if (map['total'] == null &&
-              _matchesAny(h, ['اجمالي', 'إجمالي', 'قيمة العقد', 'فاتورة', 'total']) &&
+              _matchesAny(h, [
+                'اجمالي',
+                'إجمالي',
+                'قيمة العقد',
+                'فاتورة',
+                'total',
+              ]) &&
               !_matchesAny(h, ['مسدد', 'رقم', 'number', 'id'])) {
             map['total'] = i;
           } else if (map['downPayment'] == null &&
@@ -1318,13 +1362,26 @@ class ExcelWorkbookService {
               _matchesAny(h, ['فائدة', 'فائده', 'نسبة', 'interest', 'rate'])) {
             map['interestPercent'] = i;
           } else if (map['durationMonths'] == null &&
-              _matchesAny(h, ['شهور', 'أشهر', 'اشهر', 'مدة', 'months', 'duration'])) {
+              _matchesAny(h, [
+                'شهور',
+                'أشهر',
+                'اشهر',
+                'مدة',
+                'months',
+                'duration',
+              ])) {
             map['durationMonths'] = i;
           } else if (map['remaining'] == null &&
               _matchesAny(h, ['متبقي', 'باقي', 'remaining', 'balance'])) {
             map['remaining'] = i;
           } else if (map['startDate'] == null &&
-              _matchesAny(h, ['تاريخ البداية', 'بداية', 'تاريخ', 'start', 'date']) &&
+              _matchesAny(h, [
+                'تاريخ البداية',
+                'بداية',
+                'تاريخ',
+                'start',
+                'date',
+              ]) &&
               !_matchesAny(h, ['نهاية', 'end'])) {
             map['startDate'] = i;
           } else if (map['status'] == null &&
@@ -1335,7 +1392,14 @@ class ExcelWorkbookService {
 
         case ExcelImportEntity.expenses:
           if (map['category'] == null &&
-              _matchesAny(h, ['بند', 'تصنيف', 'مصروف', 'نوع', 'category', 'title'])) {
+              _matchesAny(h, [
+                'بند',
+                'تصنيف',
+                'مصروف',
+                'نوع',
+                'category',
+                'title',
+              ])) {
             map['category'] = i;
           } else if (map['amount'] == null &&
               _matchesAny(h, ['مبلغ', 'قيمة', 'قيمة المصروف', 'amount'])) {
@@ -1354,13 +1418,12 @@ class ExcelWorkbookService {
               _matchesAny(h, ['اجمالي', 'إجمالي', 'مبلغ', 'total', 'amount'])) {
             map['total'] = i;
           } else if (map['shortRef'] == null &&
-              _matchesAny(h, ['رقم', 'مرجع', 'ref', 'invoice', 'فاتورة'])) {
+              _matchesAny(h, ['رقم', 'فاتورة', 'مرجع', 'ref', 'invoice'])) {
             map['shortRef'] = i;
           } else if (map['paymentMethod'] == null &&
               _matchesAny(h, ['دفع', 'طريقة', 'payment', 'method'])) {
             map['paymentMethod'] = i;
-          } else if (map['date'] == null &&
-              _matchesAny(h, ['تاريخ', 'date'])) {
+          } else if (map['date'] == null && _matchesAny(h, ['تاريخ', 'date'])) {
             map['date'] = i;
           } else if (map['customerName'] == null &&
               _matchesAny(h, ['عميل', 'زبون', 'customer'])) {
@@ -1632,9 +1695,10 @@ class ExcelWorkbookService {
       final size = _valueAt(row, colMap['size']);
       final color = _valueAt(row, colMap['color']);
       final costVal = _parseDouble(_valueAt(row, colMap['costPrice']));
-      final sellVal =
-          cSell != null ? _parseDouble(_valueAt(row, cSell)) : 0.0;
-      final wholesaleVal = _parseDouble(_valueAt(row, colMap['wholesalePrice']));
+      final sellVal = cSell != null ? _parseDouble(_valueAt(row, cSell)) : 0.0;
+      final wholesaleVal = _parseDouble(
+        _valueAt(row, colMap['wholesalePrice']),
+      );
       final qtyVal = _parseInt(_valueAt(row, colMap['quantity']));
       final minVal = _parseInt(_valueAt(row, colMap['minStock']), fallback: 5);
 
@@ -1733,7 +1797,8 @@ class ExcelWorkbookService {
             entity: ExcelImportEntity.customers,
             sheetName: sheetName,
             rowNumber: rowNum,
-            message: 'هاتف العميل ($name) مفقود — تم تعبئته بقيمة افتراضية ($phone).',
+            message:
+                'هاتف العميل ($name) مفقود — تم تعبئته بقيمة افتراضية ($phone).',
             severity: ExcelIssueSeverity.warning,
           ),
         );
@@ -1756,12 +1821,14 @@ class ExcelWorkbookService {
       final rawType = _valueAt(row, colMap['customerType']).toLowerCase();
       final customerType =
           (rawType.contains('جمل') || rawType.contains('wholesale'))
-              ? 'wholesale'
-              : 'retail';
-      final discount = _parseInt(_valueAt(row, colMap['discountPercent']))
-          .clamp(0, 100);
-      final points = _parseInt(_valueAt(row, colMap['loyaltyPoints']))
-          .clamp(0, 100000000);
+          ? 'wholesale'
+          : 'retail';
+      final discount = _parseInt(
+        _valueAt(row, colMap['discountPercent']),
+      ).clamp(0, 100);
+      final points = _parseInt(
+        _valueAt(row, colMap['loyaltyPoints']),
+      ).clamp(0, 100000000);
 
       final parsed = MigrationCustomerRow(
         rowNumber: rowNum,
@@ -1857,7 +1924,8 @@ class ExcelWorkbookService {
         balancePiasters: (balanceVal * 100).round(),
       );
 
-      final existing = supplierByKey[nameKey] ??
+      final existing =
+          supplierByKey[nameKey] ??
           (phoneRaw.isNotEmpty ? supplierByKey['phone:$phoneRaw'] : null);
       if (existing != null) {
         conflicts.add(
@@ -1910,8 +1978,9 @@ class ExcelWorkbookService {
       final custName = _valueAt(row, colMap['customerName']);
       final totalVal = _parseDouble(_valueAt(row, cTotal));
       final downVal = _parseDouble(_valueAt(row, colMap['downPayment']));
-      final interestPct =
-          _parseDouble(_valueAt(row, colMap['interestPercent']));
+      final interestPct = _parseDouble(
+        _valueAt(row, colMap['interestPercent']),
+      );
       final duration = _parseInt(_valueAt(row, cDuration));
       final remainingVal = _parseDouble(_valueAt(row, cRemaining));
       final startDate =
@@ -1935,7 +2004,8 @@ class ExcelWorkbookService {
             entity: ExcelImportEntity.installments,
             sheetName: sheetName,
             rowNumber: rowNum,
-            message: 'إجمالي العقد أو المقدم غير صالح (يجب أن يكون المقدم <= الإجمالي).',
+            message:
+                'إجمالي العقد أو المقدم غير صالح (يجب أن يكون المقدم <= الإجمالي).',
           ),
         );
         continue;
@@ -2153,9 +2223,11 @@ class ExcelWorkbookService {
 
       final payRaw = _valueAt(row, colMap['paymentMethod']).toLowerCase();
       final paymentMethod =
-          (payRaw.contains('card') || payRaw.contains('فيزا') || payRaw.contains('بطاقة'))
-              ? 'card'
-              : 'cash';
+          (payRaw.contains('card') ||
+              payRaw.contains('فيزا') ||
+              payRaw.contains('بطاقة'))
+          ? 'card'
+          : 'cash';
 
       final parsedDate = _parseDate(_valueAt(row, colMap['date']));
       if (parsedDate == null && lenientMode) {
@@ -2197,7 +2269,9 @@ class ExcelWorkbookService {
   }) async {
     final branchId = await _branchProvider.getBranchId();
     final now = DateTime.now();
-    final resolvedActivityType = await _resolveDefaultActivityType(defaultActivityType);
+    final resolvedActivityType = await _resolveDefaultActivityType(
+      defaultActivityType,
+    );
 
     int productsAdded = 0;
     int productsUpdated = 0;
@@ -2232,7 +2306,9 @@ class ExcelWorkbookService {
         final cached = catByName[key];
         if (cached != null) return cached;
         final id = _uuid.v4();
-        await _db.into(_db.categories).insert(
+        await _db
+            .into(_db.categories)
+            .insert(
               CategoriesCompanion.insert(
                 id: id,
                 branchId: branchId,
@@ -2254,7 +2330,9 @@ class ExcelWorkbookService {
         final cached = prodByKey[key];
         if (cached != null) return cached;
         final id = _uuid.v4();
-        await _db.into(_db.products).insert(
+        await _db
+            .into(_db.products)
+            .insert(
               ProductsCompanion.insert(
                 id: id,
                 branchId: branchId,
@@ -2280,7 +2358,9 @@ class ExcelWorkbookService {
         );
         final variantId = _uuid.v4();
 
-        await _db.into(_db.productVariants).insert(
+        await _db
+            .into(_db.productVariants)
+            .insert(
               ProductVariantsCompanion.insert(
                 id: variantId,
                 branchId: branchId,
@@ -2298,7 +2378,9 @@ class ExcelWorkbookService {
             );
 
         if (row.quantity > 0) {
-          await _db.into(_db.inventoryLogs).insert(
+          await _db
+              .into(_db.inventoryLogs)
+              .insert(
                 InventoryLogsCompanion.insert(
                   id: _uuid.v4(),
                   branchId: branchId,
@@ -2326,9 +2408,9 @@ class ExcelWorkbookService {
             : c.row.quantity;
         final delta = newQty - c.existingQty;
 
-        await (_db.update(_db.productVariants)
-              ..where((v) => v.id.equals(c.existingVariantId)))
-            .write(
+        await (_db.update(
+          _db.productVariants,
+        )..where((v) => v.id.equals(c.existingVariantId))).write(
           ProductVariantsCompanion(
             costPrice: drift.Value(c.row.costPricePiasters),
             sellPrice: drift.Value(c.row.sellPricePiasters),
@@ -2339,7 +2421,9 @@ class ExcelWorkbookService {
         );
 
         if (delta != 0) {
-          await _db.into(_db.inventoryLogs).insert(
+          await _db
+              .into(_db.inventoryLogs)
+              .insert(
                 InventoryLogsCompanion.insert(
                   id: _uuid.v4(),
                   branchId: branchId,
@@ -2366,9 +2450,9 @@ class ExcelWorkbookService {
         // Guard against soft-deleted row with same UNIQUE phone
         final existingAny = customerIdByPhone[row.phone];
         if (existingAny != null) {
-          await (_db.update(_db.customers)
-                ..where((c) => c.id.equals(existingAny)))
-              .write(
+          await (_db.update(
+            _db.customers,
+          )..where((c) => c.id.equals(existingAny))).write(
             CustomersCompanion(
               name: drift.Value(row.name),
               customerType: drift.Value(row.customerType),
@@ -2383,7 +2467,9 @@ class ExcelWorkbookService {
         }
 
         final id = _uuid.v4();
-        await _db.into(_db.customers).insert(
+        await _db
+            .into(_db.customers)
+            .insert(
               CustomersCompanion.insert(
                 id: id,
                 branchId: branchId,
@@ -2405,9 +2491,9 @@ class ExcelWorkbookService {
           customersSkipped++;
           continue;
         }
-        await (_db.update(_db.customers)
-              ..where((t) => t.id.equals(c.existingCustomerId)))
-            .write(
+        await (_db.update(
+          _db.customers,
+        )..where((t) => t.id.equals(c.existingCustomerId))).write(
           CustomersCompanion(
             name: drift.Value(c.row.name),
             customerType: drift.Value(c.row.customerType),
@@ -2421,7 +2507,9 @@ class ExcelWorkbookService {
 
       // ── 5. Suppliers (New + Conflicts) ───────────────────────────────────
       for (final row in preview.newSuppliers) {
-        await _db.into(_db.suppliers).insert(
+        await _db
+            .into(_db.suppliers)
+            .insert(
               SuppliersCompanion.insert(
                 id: _uuid.v4(),
                 branchId: branchId,
@@ -2442,9 +2530,9 @@ class ExcelWorkbookService {
           suppliersSkipped++;
           continue;
         }
-        await (_db.update(_db.suppliers)
-              ..where((t) => t.id.equals(c.existingSupplierId)))
-            .write(
+        await (_db.update(
+          _db.suppliers,
+        )..where((t) => t.id.equals(c.existingSupplierId))).write(
           SuppliersCompanion(
             phone: drift.Value(c.row.phone),
             companyName: drift.Value(c.row.companyName),
@@ -2461,7 +2549,9 @@ class ExcelWorkbookService {
         String? customerId = customerIdByPhone[row.customerPhone];
         if (customerId == null) {
           customerId = _uuid.v4();
-          await _db.into(_db.customers).insert(
+          await _db
+              .into(_db.customers)
+              .insert(
                 CustomersCompanion.insert(
                   id: customerId,
                   branchId: branchId,
@@ -2479,11 +2569,15 @@ class ExcelWorkbookService {
         final interestAmount = (principal * row.interestBp / 10000).round();
         final financedTotal = principal + interestAmount;
         final monthlyAmount = (financedTotal / row.durationMonths).round();
-        final endDate =
-            InstallmentCalculator.addMonths(row.startDate, row.durationMonths);
+        final endDate = InstallmentCalculator.addMonths(
+          row.startDate,
+          row.durationMonths,
+        );
         final contractId = _uuid.v4();
 
-        await _db.into(_db.customerInstallments).insert(
+        await _db
+            .into(_db.customerInstallments)
+            .insert(
               CustomerInstallmentsCompanion.insert(
                 id: contractId,
                 branchId: branchId,
@@ -2511,7 +2605,9 @@ class ExcelWorkbookService {
 
       // 5. Expenses
       for (final row in preview.newExpenses) {
-        await _db.into(_db.expenses).insert(
+        await _db
+            .into(_db.expenses)
+            .insert(
               ExpensesCompanion.insert(
                 id: _uuid.v4(),
                 branchId: branchId,
@@ -2528,7 +2624,9 @@ class ExcelWorkbookService {
 
       // 6. Historical Sales
       for (final row in preview.newHistoricalSales) {
-        await _db.into(_db.sales).insert(
+        await _db
+            .into(_db.sales)
+            .insert(
               SalesCompanion.insert(
                 id: _uuid.v4(),
                 branchId: branchId,
@@ -2649,7 +2747,15 @@ class ExcelWorkbookService {
     List<String> headers,
   ) {
     final s = _normalizeHeader(sheetName);
-    if (_matchesAny(s, ['منتج', 'مخزون', 'اصناف', 'أصناف', 'product', 'inventory', 'stock'])) {
+    if (_matchesAny(s, [
+      'منتج',
+      'مخزون',
+      'اصناف',
+      'أصناف',
+      'product',
+      'inventory',
+      'stock',
+    ])) {
       return ExcelImportEntity.products;
     }
     if (_matchesAny(s, ['عملاء', 'عميل', 'زبائن', 'customer', 'client'])) {
@@ -2671,7 +2777,13 @@ class ExcelWorkbookService {
 
     // Fallback: inspect headers for arbitrary single-sheet shop files
     final joined = headers.map(_normalizeHeader).join(' ');
-    if (_matchesAny(joined, ['sku', 'مقاس', 'تكلفة', 'سعر البيع', 'سعر الجملة'])) {
+    if (_matchesAny(joined, [
+      'sku',
+      'مقاس',
+      'تكلفة',
+      'سعر البيع',
+      'سعر الجملة',
+    ])) {
       return ExcelImportEntity.products;
     }
     if (_matchesAny(joined, ['عدد الشهور', 'القسط', 'المقدم']) &&
@@ -2689,25 +2801,25 @@ class ExcelWorkbookService {
   }
 
   CellStyle _headerStyle() => CellStyle(
-        bold: true,
-        fontColorHex: ExcelColor.white,
-        backgroundColorHex: ExcelColor.fromHexString('#0A2E5C'),
-        horizontalAlign: HorizontalAlign.Center,
-        verticalAlign: VerticalAlign.Center,
-      );
+    bold: true,
+    fontColorHex: ExcelColor.white,
+    backgroundColorHex: ExcelColor.fromHexString('#0A2E5C'),
+    horizontalAlign: HorizontalAlign.Center,
+    verticalAlign: VerticalAlign.Center,
+  );
 
   CellStyle _accentHeaderStyle() => CellStyle(
-        bold: true,
-        fontColorHex: ExcelColor.white,
-        backgroundColorHex: ExcelColor.fromHexString('#1FB5A8'),
-        horizontalAlign: HorizontalAlign.Center,
-        verticalAlign: VerticalAlign.Center,
-      );
+    bold: true,
+    fontColorHex: ExcelColor.white,
+    backgroundColorHex: ExcelColor.fromHexString('#1FB5A8'),
+    horizontalAlign: HorizontalAlign.Center,
+    verticalAlign: VerticalAlign.Center,
+  );
 
   CellStyle _highlightRowStyle() => CellStyle(
-        bold: true,
-        backgroundColorHex: ExcelColor.fromHexString('#E6F7F5'),
-      );
+    bold: true,
+    backgroundColorHex: ExcelColor.fromHexString('#E6F7F5'),
+  );
 
   void _appendStyledHeader(Sheet sheet, List<String> titles, CellStyle style) {
     sheet.appendRow(titles.map((t) => TextCellValue(t)).toList());
@@ -2734,8 +2846,7 @@ class ExcelWorkbookService {
     return _cellText(row[colIndex]);
   }
 
-  bool _isRowEmpty(List<Data?> row) =>
-      row.every((c) => _cellText(c).isEmpty);
+  bool _isRowEmpty(List<Data?> row) => row.every((c) => _cellText(c).isEmpty);
 
   String _cellText(Data? data) {
     final val = data?.value;
@@ -2801,11 +2912,9 @@ class ExcelWorkbookService {
   }
 
   double _parseDouble(String raw) {
-    final cleaned = _toWesternDigits(raw)
-        .replaceAll(',', '')
-        .replaceAll('ج.م', '')
-        .replaceAll('%', '')
-        .trim();
+    final cleaned = _toWesternDigits(
+      raw,
+    ).replaceAll(',', '').replaceAll('ج.م', '').replaceAll('%', '').trim();
     if (cleaned.isEmpty) return 0.0;
     return double.tryParse(cleaned) ?? 0.0;
   }

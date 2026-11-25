@@ -9,6 +9,8 @@ import '../../../../core/features/feature_gate.dart';
 import '../../../../core/layout/main_layout.dart';
 import '../../../../core/services/app_update_service.dart';
 import '../../../../core/utils/money.dart';
+import '../../../auth/presentation/cubits/auth_cubit.dart';
+import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../../employees/presentation/screens/employee_list_screen.dart';
 import '../../../inventory/presentation/screens/blind_receive_screen.dart';
 import '../../../partners/presentation/screens/partners_screen.dart';
@@ -361,14 +363,27 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
             ],
           ),
           actions: [
-            IconButton(
-              key: const Key('open_smart_assistant_btn'),
-              tooltip: 'المساعد التحليلي الذكي (أوفلاين)',
-              onPressed: () => OfflineSmartAssistantDialog.show(context),
-              icon: Icon(
-                Icons.auto_awesome_rounded,
-                color: AppColors.primary,
-              ),
+            Builder(
+              builder: (authCtx) {
+                bool isAdminOrManager = true;
+                try {
+                  final authState = authCtx.watch<AuthCubit>().state;
+                  if (authState is AuthAuthenticated) {
+                    final r = authState.user.role.toLowerCase();
+                    isAdminOrManager = r == 'admin' || r == 'manager' || r == 'owner';
+                  }
+                } catch (_) {}
+                if (!isAdminOrManager) return const SizedBox.shrink();
+                return IconButton(
+                  key: const Key('open_smart_assistant_btn'),
+                  tooltip: 'المساعد التحليلي الذكي (أوفلاين)',
+                  onPressed: () => OfflineSmartAssistantDialog.show(authCtx),
+                  icon: Icon(
+                    Icons.auto_awesome_rounded,
+                    color: AppColors.primary,
+                  ),
+                );
+              },
             ),
             Builder(
               builder: (innerCtx) {
