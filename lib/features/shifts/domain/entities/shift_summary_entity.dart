@@ -13,8 +13,9 @@ class ShiftSummaryEntity extends Equatable {
   final int tipsPool; // in piasters (staff tips pool collected during this shift)
   final int walletNetCash; // in piasters (net cash delta from mobile wallets)
   final int walletCommissions; // in piasters (wallet commission profit in shift)
+  final int repairCollectedCash; // in piasters (deposits + delivery collections in shift)
   final int totalSalesCount;
-  final int expectedCashInDrawer; // in piasters: openingBalance + cashSales + cashInstallments + walletNetCash - cashReturns - cashExpenses
+  final int expectedCashInDrawer; // in piasters: openingBalance + cashSales + cashInstallments + walletNetCash + repairCollectedCash - cashReturns - cashExpenses
 
   const ShiftSummaryEntity({
     required this.shift,
@@ -28,6 +29,7 @@ class ShiftSummaryEntity extends Equatable {
     this.tipsPool = 0,
     this.walletNetCash = 0,
     this.walletCommissions = 0,
+    this.repairCollectedCash = 0,
     required this.totalSalesCount,
     required this.expectedCashInDrawer,
   });
@@ -48,6 +50,7 @@ class ShiftSummaryEntity extends Equatable {
         tipsPool,
         walletNetCash,
         walletCommissions,
+        repairCollectedCash,
         totalSalesCount,
         expectedCashInDrawer,
       ];

@@ -229,6 +229,8 @@ import 'package:clothes_erp/features/purchases/presentation/cubits/purchases_cub
     as _i378;
 import 'package:clothes_erp/features/purchases/presentation/cubits/suppliers_cubit.dart'
     as _i573;
+import 'package:clothes_erp/features/repair/data/services/mobile_repair_service.dart'
+    as _i849;
 import 'package:clothes_erp/features/reports/data/datasources/reports_local_data_source.dart'
     as _i1045;
 import 'package:clothes_erp/features/reports/data/repositories/reports_repository_impl.dart'
@@ -484,6 +486,13 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i880.DeviceSerialService>(
       () => _i880.DeviceSerialService(
+        gh<_i110.AppDatabase>(),
+        gh<_i254.BranchProvider>(),
+        gh<_i874.TxWriter>(),
+      ),
+    );
+    gh.lazySingleton<_i849.MobileRepairService>(
+      () => _i849.MobileRepairService(
         gh<_i110.AppDatabase>(),
         gh<_i254.BranchProvider>(),
         gh<_i874.TxWriter>(),

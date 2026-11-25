@@ -202,7 +202,7 @@ void main() {
     final appDb = AppDatabase(NativeDatabase(dbFile));
     final versionRow = await appDb.customSelect('PRAGMA user_version;').getSingle();
     final newVersion = versionRow.data.values.first as int;
-    expect(newVersion, 13);
+    expect(newVersion, 14);
 
     // 4. Verify that historical migration tables and columns exist
     final variantCheck = await appDb.customSelect('SELECT wholesale_price FROM product_variants WHERE id = "v1"').getSingle();
@@ -399,10 +399,10 @@ void main() {
       excludeVolatileColumns: true,
     );
 
-    // Run production AppDatabase migration from V6 to V13
+    // Run production AppDatabase migration from V6 to V14
     final appDb = AppDatabase(NativeDatabase(dbFile));
     final vRow = await appDb.customSelect('PRAGMA user_version;').getSingle();
-    expect(vRow.data.values.first, 13);
+    expect(vRow.data.values.first, 14);
 
     // Verify cash_movements & sale_payments backfilled
     final spRow = await appDb.customSelect('SELECT method, amount_piasters FROM sale_payments WHERE sale_id = "s6"').getSingle();

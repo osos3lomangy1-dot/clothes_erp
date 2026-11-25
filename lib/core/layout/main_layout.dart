@@ -27,6 +27,7 @@ import '../../features/customers/presentation/screens/customer_screen.dart';
 import '../../features/dashboard/presentation/cubits/dashboard_cubit.dart';
 import '../../features/delivery/presentation/screens/delivery_orders_screen.dart';
 import '../../features/wallets/presentation/screens/wallets_screen.dart';
+import '../../features/repair/presentation/screens/repair_center_screen.dart';
 import '../../features/employees/presentation/screens/employee_list_screen.dart';
 import '../../features/expenses/presentation/screens/expenses_screen.dart';
 import '../../features/installments/presentation/screens/installments_list_screen.dart';
@@ -706,6 +707,16 @@ class _MainLayoutState extends State<MainLayout> {
                                                   Icons.account_balance_wallet_rounded,
                                                   'المحافظ الإلكترونية والتحويلات',
                                                   const WalletsScreen(),
+                                                  isSubItem: true,
+                                                ),
+                                              if (_featureEnabled(
+                                                features,
+                                                FeatureKeys.mobileRepair,
+                                              ))
+                                                _navItem(
+                                                  Icons.build_circle_rounded,
+                                                  'مركز الصيانة وتذاكر الإصلاح',
+                                                  const RepairCenterScreen(),
                                                   isSubItem: true,
                                                 ),
                                             ],
@@ -1501,6 +1512,20 @@ class _MainLayoutState extends State<MainLayout> {
           onSelect: () => _handleItemTap(
             'المحافظ الإلكترونية والتحويلات',
             const WalletsScreen(),
+            false,
+            null,
+          ),
+        ),
+      if (_featureEnabled(_latestFeatures, FeatureKeys.mobileRepair))
+        CommandPaletteItem(
+          id: 'nav_mobile_repair',
+          title: 'مركز الصيانة وتذاكر الإصلاح',
+          category: 'شاشات النظام',
+          icon: Icons.build_circle_rounded,
+          subtitle: 'استلام أجهزة الصيانة، قطع الغيار، التسليم والتحصيل',
+          onSelect: () => _handleItemTap(
+            'مركز الصيانة وتذاكر الإصلاح',
+            const RepairCenterScreen(),
             false,
             null,
           ),

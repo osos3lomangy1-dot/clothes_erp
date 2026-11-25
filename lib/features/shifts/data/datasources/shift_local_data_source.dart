@@ -271,6 +271,13 @@ class ShiftLocalDataSourceImpl implements ShiftLocalDataSource {
             m.direction == 'in')
         .fold<int>(0, (s, m) => s + m.amountPiasters);
 
+    final repairCollectedCash = movements
+        .where((m) =>
+            m.method == 'cash' &&
+            ((m.notes?.contains('عربون صيانة') ?? false) ||
+                (m.notes?.contains('تحصيل صيانة') ?? false)))
+        .fold<int>(0, (s, m) => s + (m.direction == 'in' ? m.amountPiasters : -m.amountPiasters));
+
     return ShiftSummaryEntity(
       shift: shiftEntity,
       cashSales: effectiveCashSales,
@@ -283,6 +290,7 @@ class ShiftLocalDataSourceImpl implements ShiftLocalDataSource {
       tipsPool: tipsPool,
       walletNetCash: walletNetCash,
       walletCommissions: walletCommissions,
+      repairCollectedCash: repairCollectedCash,
       totalSalesCount: sales.length,
       expectedCashInDrawer: expectedCash,
     );

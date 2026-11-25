@@ -15,8 +15,8 @@ void main() {
       await db.close();
     });
 
-    test('schemaVersion must be 13', () {
-      expect(db.schemaVersion, equals(13));
+    test('schemaVersion must be 14', () {
+      expect(db.schemaVersion, equals(14));
     });
 
     test('Insert and query goods_receipts and goods_receipt_items in schema v5', () async {

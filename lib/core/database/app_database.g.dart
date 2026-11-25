@@ -24990,6 +24990,1799 @@ class WalletTransactionsCompanion extends UpdateCompanion<WalletTransaction> {
   }
 }
 
+class $RepairTicketsTable extends RepairTickets
+    with TableInfo<$RepairTicketsTable, RepairTicket> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RepairTicketsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ticketNumberMeta = const VerificationMeta(
+    'ticketNumber',
+  );
+  @override
+  late final GeneratedColumn<String> ticketNumber = GeneratedColumn<String>(
+    'ticket_number',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _customerIdMeta = const VerificationMeta(
+    'customerId',
+  );
+  @override
+  late final GeneratedColumn<String> customerId = GeneratedColumn<String>(
+    'customer_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _customerNameMeta = const VerificationMeta(
+    'customerName',
+  );
+  @override
+  late final GeneratedColumn<String> customerName = GeneratedColumn<String>(
+    'customer_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _customerPhoneMeta = const VerificationMeta(
+    'customerPhone',
+  );
+  @override
+  late final GeneratedColumn<String> customerPhone = GeneratedColumn<String>(
+    'customer_phone',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _deviceModelMeta = const VerificationMeta(
+    'deviceModel',
+  );
+  @override
+  late final GeneratedColumn<String> deviceModel = GeneratedColumn<String>(
+    'device_model',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _imeiMeta = const VerificationMeta('imei');
+  @override
+  late final GeneratedColumn<String> imei = GeneratedColumn<String>(
+    'imei',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _issueDescriptionMeta = const VerificationMeta(
+    'issueDescription',
+  );
+  @override
+  late final GeneratedColumn<String> issueDescription = GeneratedColumn<String>(
+    'issue_description',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _intakeConditionMeta = const VerificationMeta(
+    'intakeCondition',
+  );
+  @override
+  late final GeneratedColumn<String> intakeCondition = GeneratedColumn<String>(
+    'intake_condition',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _passcodeOrPatternMeta = const VerificationMeta(
+    'passcodeOrPattern',
+  );
+  @override
+  late final GeneratedColumn<String> passcodeOrPattern =
+      GeneratedColumn<String>(
+        'passcode_or_pattern',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _estimatedCostMeta = const VerificationMeta(
+    'estimatedCost',
+  );
+  @override
+  late final GeneratedColumn<int> estimatedCost = GeneratedColumn<int>(
+    'estimated_cost',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _depositPaidMeta = const VerificationMeta(
+    'depositPaid',
+  );
+  @override
+  late final GeneratedColumn<int> depositPaid = GeneratedColumn<int>(
+    'deposit_paid',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _finalCostMeta = const VerificationMeta(
+    'finalCost',
+  );
+  @override
+  late final GeneratedColumn<int> finalCost = GeneratedColumn<int>(
+    'final_cost',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _partsCostMeta = const VerificationMeta(
+    'partsCost',
+  );
+  @override
+  late final GeneratedColumn<int> partsCost = GeneratedColumn<int>(
+    'parts_cost',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  static const VerificationMeta _technicianNameMeta = const VerificationMeta(
+    'technicianName',
+  );
+  @override
+  late final GeneratedColumn<String> technicianName = GeneratedColumn<String>(
+    'technician_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _shiftIdMeta = const VerificationMeta(
+    'shiftId',
+  );
+  @override
+  late final GeneratedColumn<String> shiftId = GeneratedColumn<String>(
+    'shift_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _deliveredAtMeta = const VerificationMeta(
+    'deliveredAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deliveredAt = GeneratedColumn<DateTime>(
+    'delivered_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    branchId,
+    ticketNumber,
+    customerId,
+    customerName,
+    customerPhone,
+    deviceModel,
+    imei,
+    issueDescription,
+    intakeCondition,
+    passcodeOrPattern,
+    estimatedCost,
+    depositPaid,
+    finalCost,
+    partsCost,
+    status,
+    technicianName,
+    shiftId,
+    deliveredAt,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'repair_tickets';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RepairTicket> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_branchIdMeta);
+    }
+    if (data.containsKey('ticket_number')) {
+      context.handle(
+        _ticketNumberMeta,
+        ticketNumber.isAcceptableOrUnknown(
+          data['ticket_number']!,
+          _ticketNumberMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_ticketNumberMeta);
+    }
+    if (data.containsKey('customer_id')) {
+      context.handle(
+        _customerIdMeta,
+        customerId.isAcceptableOrUnknown(data['customer_id']!, _customerIdMeta),
+      );
+    }
+    if (data.containsKey('customer_name')) {
+      context.handle(
+        _customerNameMeta,
+        customerName.isAcceptableOrUnknown(
+          data['customer_name']!,
+          _customerNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_customerNameMeta);
+    }
+    if (data.containsKey('customer_phone')) {
+      context.handle(
+        _customerPhoneMeta,
+        customerPhone.isAcceptableOrUnknown(
+          data['customer_phone']!,
+          _customerPhoneMeta,
+        ),
+      );
+    }
+    if (data.containsKey('device_model')) {
+      context.handle(
+        _deviceModelMeta,
+        deviceModel.isAcceptableOrUnknown(
+          data['device_model']!,
+          _deviceModelMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_deviceModelMeta);
+    }
+    if (data.containsKey('imei')) {
+      context.handle(
+        _imeiMeta,
+        imei.isAcceptableOrUnknown(data['imei']!, _imeiMeta),
+      );
+    }
+    if (data.containsKey('issue_description')) {
+      context.handle(
+        _issueDescriptionMeta,
+        issueDescription.isAcceptableOrUnknown(
+          data['issue_description']!,
+          _issueDescriptionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_issueDescriptionMeta);
+    }
+    if (data.containsKey('intake_condition')) {
+      context.handle(
+        _intakeConditionMeta,
+        intakeCondition.isAcceptableOrUnknown(
+          data['intake_condition']!,
+          _intakeConditionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('passcode_or_pattern')) {
+      context.handle(
+        _passcodeOrPatternMeta,
+        passcodeOrPattern.isAcceptableOrUnknown(
+          data['passcode_or_pattern']!,
+          _passcodeOrPatternMeta,
+        ),
+      );
+    }
+    if (data.containsKey('estimated_cost')) {
+      context.handle(
+        _estimatedCostMeta,
+        estimatedCost.isAcceptableOrUnknown(
+          data['estimated_cost']!,
+          _estimatedCostMeta,
+        ),
+      );
+    }
+    if (data.containsKey('deposit_paid')) {
+      context.handle(
+        _depositPaidMeta,
+        depositPaid.isAcceptableOrUnknown(
+          data['deposit_paid']!,
+          _depositPaidMeta,
+        ),
+      );
+    }
+    if (data.containsKey('final_cost')) {
+      context.handle(
+        _finalCostMeta,
+        finalCost.isAcceptableOrUnknown(data['final_cost']!, _finalCostMeta),
+      );
+    }
+    if (data.containsKey('parts_cost')) {
+      context.handle(
+        _partsCostMeta,
+        partsCost.isAcceptableOrUnknown(data['parts_cost']!, _partsCostMeta),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('technician_name')) {
+      context.handle(
+        _technicianNameMeta,
+        technicianName.isAcceptableOrUnknown(
+          data['technician_name']!,
+          _technicianNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('shift_id')) {
+      context.handle(
+        _shiftIdMeta,
+        shiftId.isAcceptableOrUnknown(data['shift_id']!, _shiftIdMeta),
+      );
+    }
+    if (data.containsKey('delivered_at')) {
+      context.handle(
+        _deliveredAtMeta,
+        deliveredAt.isAcceptableOrUnknown(
+          data['delivered_at']!,
+          _deliveredAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RepairTicket map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RepairTicket(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      )!,
+      ticketNumber: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}ticket_number'],
+      )!,
+      customerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}customer_id'],
+      ),
+      customerName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}customer_name'],
+      )!,
+      customerPhone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}customer_phone'],
+      )!,
+      deviceModel: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}device_model'],
+      )!,
+      imei: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}imei'],
+      ),
+      issueDescription: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}issue_description'],
+      )!,
+      intakeCondition: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}intake_condition'],
+      ),
+      passcodeOrPattern: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}passcode_or_pattern'],
+      ),
+      estimatedCost: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}estimated_cost'],
+      )!,
+      depositPaid: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}deposit_paid'],
+      )!,
+      finalCost: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}final_cost'],
+      )!,
+      partsCost: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}parts_cost'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      technicianName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}technician_name'],
+      ),
+      shiftId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}shift_id'],
+      ),
+      deliveredAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}delivered_at'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+    );
+  }
+
+  @override
+  $RepairTicketsTable createAlias(String alias) {
+    return $RepairTicketsTable(attachedDatabase, alias);
+  }
+}
+
+class RepairTicket extends DataClass implements Insertable<RepairTicket> {
+  final String id;
+  final String branchId;
+  final String ticketNumber;
+  final String? customerId;
+  final String customerName;
+  final String customerPhone;
+  final String deviceModel;
+  final String? imei;
+  final String issueDescription;
+  final String? intakeCondition;
+  final String? passcodeOrPattern;
+  final int estimatedCost;
+  final int depositPaid;
+  final int finalCost;
+  final int partsCost;
+  final String status;
+  final String? technicianName;
+  final String? shiftId;
+  final DateTime? deliveredAt;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  const RepairTicket({
+    required this.id,
+    required this.branchId,
+    required this.ticketNumber,
+    this.customerId,
+    required this.customerName,
+    required this.customerPhone,
+    required this.deviceModel,
+    this.imei,
+    required this.issueDescription,
+    this.intakeCondition,
+    this.passcodeOrPattern,
+    required this.estimatedCost,
+    required this.depositPaid,
+    required this.finalCost,
+    required this.partsCost,
+    required this.status,
+    this.technicianName,
+    this.shiftId,
+    this.deliveredAt,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['branch_id'] = Variable<String>(branchId);
+    map['ticket_number'] = Variable<String>(ticketNumber);
+    if (!nullToAbsent || customerId != null) {
+      map['customer_id'] = Variable<String>(customerId);
+    }
+    map['customer_name'] = Variable<String>(customerName);
+    map['customer_phone'] = Variable<String>(customerPhone);
+    map['device_model'] = Variable<String>(deviceModel);
+    if (!nullToAbsent || imei != null) {
+      map['imei'] = Variable<String>(imei);
+    }
+    map['issue_description'] = Variable<String>(issueDescription);
+    if (!nullToAbsent || intakeCondition != null) {
+      map['intake_condition'] = Variable<String>(intakeCondition);
+    }
+    if (!nullToAbsent || passcodeOrPattern != null) {
+      map['passcode_or_pattern'] = Variable<String>(passcodeOrPattern);
+    }
+    map['estimated_cost'] = Variable<int>(estimatedCost);
+    map['deposit_paid'] = Variable<int>(depositPaid);
+    map['final_cost'] = Variable<int>(finalCost);
+    map['parts_cost'] = Variable<int>(partsCost);
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || technicianName != null) {
+      map['technician_name'] = Variable<String>(technicianName);
+    }
+    if (!nullToAbsent || shiftId != null) {
+      map['shift_id'] = Variable<String>(shiftId);
+    }
+    if (!nullToAbsent || deliveredAt != null) {
+      map['delivered_at'] = Variable<DateTime>(deliveredAt);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    return map;
+  }
+
+  RepairTicketsCompanion toCompanion(bool nullToAbsent) {
+    return RepairTicketsCompanion(
+      id: Value(id),
+      branchId: Value(branchId),
+      ticketNumber: Value(ticketNumber),
+      customerId: customerId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(customerId),
+      customerName: Value(customerName),
+      customerPhone: Value(customerPhone),
+      deviceModel: Value(deviceModel),
+      imei: imei == null && nullToAbsent ? const Value.absent() : Value(imei),
+      issueDescription: Value(issueDescription),
+      intakeCondition: intakeCondition == null && nullToAbsent
+          ? const Value.absent()
+          : Value(intakeCondition),
+      passcodeOrPattern: passcodeOrPattern == null && nullToAbsent
+          ? const Value.absent()
+          : Value(passcodeOrPattern),
+      estimatedCost: Value(estimatedCost),
+      depositPaid: Value(depositPaid),
+      finalCost: Value(finalCost),
+      partsCost: Value(partsCost),
+      status: Value(status),
+      technicianName: technicianName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(technicianName),
+      shiftId: shiftId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(shiftId),
+      deliveredAt: deliveredAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deliveredAt),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory RepairTicket.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RepairTicket(
+      id: serializer.fromJson<String>(json['id']),
+      branchId: serializer.fromJson<String>(json['branchId']),
+      ticketNumber: serializer.fromJson<String>(json['ticketNumber']),
+      customerId: serializer.fromJson<String?>(json['customerId']),
+      customerName: serializer.fromJson<String>(json['customerName']),
+      customerPhone: serializer.fromJson<String>(json['customerPhone']),
+      deviceModel: serializer.fromJson<String>(json['deviceModel']),
+      imei: serializer.fromJson<String?>(json['imei']),
+      issueDescription: serializer.fromJson<String>(json['issueDescription']),
+      intakeCondition: serializer.fromJson<String?>(json['intakeCondition']),
+      passcodeOrPattern: serializer.fromJson<String?>(
+        json['passcodeOrPattern'],
+      ),
+      estimatedCost: serializer.fromJson<int>(json['estimatedCost']),
+      depositPaid: serializer.fromJson<int>(json['depositPaid']),
+      finalCost: serializer.fromJson<int>(json['finalCost']),
+      partsCost: serializer.fromJson<int>(json['partsCost']),
+      status: serializer.fromJson<String>(json['status']),
+      technicianName: serializer.fromJson<String?>(json['technicianName']),
+      shiftId: serializer.fromJson<String?>(json['shiftId']),
+      deliveredAt: serializer.fromJson<DateTime?>(json['deliveredAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'branchId': serializer.toJson<String>(branchId),
+      'ticketNumber': serializer.toJson<String>(ticketNumber),
+      'customerId': serializer.toJson<String?>(customerId),
+      'customerName': serializer.toJson<String>(customerName),
+      'customerPhone': serializer.toJson<String>(customerPhone),
+      'deviceModel': serializer.toJson<String>(deviceModel),
+      'imei': serializer.toJson<String?>(imei),
+      'issueDescription': serializer.toJson<String>(issueDescription),
+      'intakeCondition': serializer.toJson<String?>(intakeCondition),
+      'passcodeOrPattern': serializer.toJson<String?>(passcodeOrPattern),
+      'estimatedCost': serializer.toJson<int>(estimatedCost),
+      'depositPaid': serializer.toJson<int>(depositPaid),
+      'finalCost': serializer.toJson<int>(finalCost),
+      'partsCost': serializer.toJson<int>(partsCost),
+      'status': serializer.toJson<String>(status),
+      'technicianName': serializer.toJson<String?>(technicianName),
+      'shiftId': serializer.toJson<String?>(shiftId),
+      'deliveredAt': serializer.toJson<DateTime?>(deliveredAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+    };
+  }
+
+  RepairTicket copyWith({
+    String? id,
+    String? branchId,
+    String? ticketNumber,
+    Value<String?> customerId = const Value.absent(),
+    String? customerName,
+    String? customerPhone,
+    String? deviceModel,
+    Value<String?> imei = const Value.absent(),
+    String? issueDescription,
+    Value<String?> intakeCondition = const Value.absent(),
+    Value<String?> passcodeOrPattern = const Value.absent(),
+    int? estimatedCost,
+    int? depositPaid,
+    int? finalCost,
+    int? partsCost,
+    String? status,
+    Value<String?> technicianName = const Value.absent(),
+    Value<String?> shiftId = const Value.absent(),
+    Value<DateTime?> deliveredAt = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+  }) => RepairTicket(
+    id: id ?? this.id,
+    branchId: branchId ?? this.branchId,
+    ticketNumber: ticketNumber ?? this.ticketNumber,
+    customerId: customerId.present ? customerId.value : this.customerId,
+    customerName: customerName ?? this.customerName,
+    customerPhone: customerPhone ?? this.customerPhone,
+    deviceModel: deviceModel ?? this.deviceModel,
+    imei: imei.present ? imei.value : this.imei,
+    issueDescription: issueDescription ?? this.issueDescription,
+    intakeCondition: intakeCondition.present
+        ? intakeCondition.value
+        : this.intakeCondition,
+    passcodeOrPattern: passcodeOrPattern.present
+        ? passcodeOrPattern.value
+        : this.passcodeOrPattern,
+    estimatedCost: estimatedCost ?? this.estimatedCost,
+    depositPaid: depositPaid ?? this.depositPaid,
+    finalCost: finalCost ?? this.finalCost,
+    partsCost: partsCost ?? this.partsCost,
+    status: status ?? this.status,
+    technicianName: technicianName.present
+        ? technicianName.value
+        : this.technicianName,
+    shiftId: shiftId.present ? shiftId.value : this.shiftId,
+    deliveredAt: deliveredAt.present ? deliveredAt.value : this.deliveredAt,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+  );
+  RepairTicket copyWithCompanion(RepairTicketsCompanion data) {
+    return RepairTicket(
+      id: data.id.present ? data.id.value : this.id,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      ticketNumber: data.ticketNumber.present
+          ? data.ticketNumber.value
+          : this.ticketNumber,
+      customerId: data.customerId.present
+          ? data.customerId.value
+          : this.customerId,
+      customerName: data.customerName.present
+          ? data.customerName.value
+          : this.customerName,
+      customerPhone: data.customerPhone.present
+          ? data.customerPhone.value
+          : this.customerPhone,
+      deviceModel: data.deviceModel.present
+          ? data.deviceModel.value
+          : this.deviceModel,
+      imei: data.imei.present ? data.imei.value : this.imei,
+      issueDescription: data.issueDescription.present
+          ? data.issueDescription.value
+          : this.issueDescription,
+      intakeCondition: data.intakeCondition.present
+          ? data.intakeCondition.value
+          : this.intakeCondition,
+      passcodeOrPattern: data.passcodeOrPattern.present
+          ? data.passcodeOrPattern.value
+          : this.passcodeOrPattern,
+      estimatedCost: data.estimatedCost.present
+          ? data.estimatedCost.value
+          : this.estimatedCost,
+      depositPaid: data.depositPaid.present
+          ? data.depositPaid.value
+          : this.depositPaid,
+      finalCost: data.finalCost.present ? data.finalCost.value : this.finalCost,
+      partsCost: data.partsCost.present ? data.partsCost.value : this.partsCost,
+      status: data.status.present ? data.status.value : this.status,
+      technicianName: data.technicianName.present
+          ? data.technicianName.value
+          : this.technicianName,
+      shiftId: data.shiftId.present ? data.shiftId.value : this.shiftId,
+      deliveredAt: data.deliveredAt.present
+          ? data.deliveredAt.value
+          : this.deliveredAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RepairTicket(')
+          ..write('id: $id, ')
+          ..write('branchId: $branchId, ')
+          ..write('ticketNumber: $ticketNumber, ')
+          ..write('customerId: $customerId, ')
+          ..write('customerName: $customerName, ')
+          ..write('customerPhone: $customerPhone, ')
+          ..write('deviceModel: $deviceModel, ')
+          ..write('imei: $imei, ')
+          ..write('issueDescription: $issueDescription, ')
+          ..write('intakeCondition: $intakeCondition, ')
+          ..write('passcodeOrPattern: $passcodeOrPattern, ')
+          ..write('estimatedCost: $estimatedCost, ')
+          ..write('depositPaid: $depositPaid, ')
+          ..write('finalCost: $finalCost, ')
+          ..write('partsCost: $partsCost, ')
+          ..write('status: $status, ')
+          ..write('technicianName: $technicianName, ')
+          ..write('shiftId: $shiftId, ')
+          ..write('deliveredAt: $deliveredAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hashAll([
+    id,
+    branchId,
+    ticketNumber,
+    customerId,
+    customerName,
+    customerPhone,
+    deviceModel,
+    imei,
+    issueDescription,
+    intakeCondition,
+    passcodeOrPattern,
+    estimatedCost,
+    depositPaid,
+    finalCost,
+    partsCost,
+    status,
+    technicianName,
+    shiftId,
+    deliveredAt,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  ]);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RepairTicket &&
+          other.id == this.id &&
+          other.branchId == this.branchId &&
+          other.ticketNumber == this.ticketNumber &&
+          other.customerId == this.customerId &&
+          other.customerName == this.customerName &&
+          other.customerPhone == this.customerPhone &&
+          other.deviceModel == this.deviceModel &&
+          other.imei == this.imei &&
+          other.issueDescription == this.issueDescription &&
+          other.intakeCondition == this.intakeCondition &&
+          other.passcodeOrPattern == this.passcodeOrPattern &&
+          other.estimatedCost == this.estimatedCost &&
+          other.depositPaid == this.depositPaid &&
+          other.finalCost == this.finalCost &&
+          other.partsCost == this.partsCost &&
+          other.status == this.status &&
+          other.technicianName == this.technicianName &&
+          other.shiftId == this.shiftId &&
+          other.deliveredAt == this.deliveredAt &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
+}
+
+class RepairTicketsCompanion extends UpdateCompanion<RepairTicket> {
+  final Value<String> id;
+  final Value<String> branchId;
+  final Value<String> ticketNumber;
+  final Value<String?> customerId;
+  final Value<String> customerName;
+  final Value<String> customerPhone;
+  final Value<String> deviceModel;
+  final Value<String?> imei;
+  final Value<String> issueDescription;
+  final Value<String?> intakeCondition;
+  final Value<String?> passcodeOrPattern;
+  final Value<int> estimatedCost;
+  final Value<int> depositPaid;
+  final Value<int> finalCost;
+  final Value<int> partsCost;
+  final Value<String> status;
+  final Value<String?> technicianName;
+  final Value<String?> shiftId;
+  final Value<DateTime?> deliveredAt;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<int> rowid;
+  const RepairTicketsCompanion({
+    this.id = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.ticketNumber = const Value.absent(),
+    this.customerId = const Value.absent(),
+    this.customerName = const Value.absent(),
+    this.customerPhone = const Value.absent(),
+    this.deviceModel = const Value.absent(),
+    this.imei = const Value.absent(),
+    this.issueDescription = const Value.absent(),
+    this.intakeCondition = const Value.absent(),
+    this.passcodeOrPattern = const Value.absent(),
+    this.estimatedCost = const Value.absent(),
+    this.depositPaid = const Value.absent(),
+    this.finalCost = const Value.absent(),
+    this.partsCost = const Value.absent(),
+    this.status = const Value.absent(),
+    this.technicianName = const Value.absent(),
+    this.shiftId = const Value.absent(),
+    this.deliveredAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RepairTicketsCompanion.insert({
+    required String id,
+    required String branchId,
+    required String ticketNumber,
+    this.customerId = const Value.absent(),
+    required String customerName,
+    this.customerPhone = const Value.absent(),
+    required String deviceModel,
+    this.imei = const Value.absent(),
+    required String issueDescription,
+    this.intakeCondition = const Value.absent(),
+    this.passcodeOrPattern = const Value.absent(),
+    this.estimatedCost = const Value.absent(),
+    this.depositPaid = const Value.absent(),
+    this.finalCost = const Value.absent(),
+    this.partsCost = const Value.absent(),
+    this.status = const Value.absent(),
+    this.technicianName = const Value.absent(),
+    this.shiftId = const Value.absent(),
+    this.deliveredAt = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       branchId = Value(branchId),
+       ticketNumber = Value(ticketNumber),
+       customerName = Value(customerName),
+       deviceModel = Value(deviceModel),
+       issueDescription = Value(issueDescription),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<RepairTicket> custom({
+    Expression<String>? id,
+    Expression<String>? branchId,
+    Expression<String>? ticketNumber,
+    Expression<String>? customerId,
+    Expression<String>? customerName,
+    Expression<String>? customerPhone,
+    Expression<String>? deviceModel,
+    Expression<String>? imei,
+    Expression<String>? issueDescription,
+    Expression<String>? intakeCondition,
+    Expression<String>? passcodeOrPattern,
+    Expression<int>? estimatedCost,
+    Expression<int>? depositPaid,
+    Expression<int>? finalCost,
+    Expression<int>? partsCost,
+    Expression<String>? status,
+    Expression<String>? technicianName,
+    Expression<String>? shiftId,
+    Expression<DateTime>? deliveredAt,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (branchId != null) 'branch_id': branchId,
+      if (ticketNumber != null) 'ticket_number': ticketNumber,
+      if (customerId != null) 'customer_id': customerId,
+      if (customerName != null) 'customer_name': customerName,
+      if (customerPhone != null) 'customer_phone': customerPhone,
+      if (deviceModel != null) 'device_model': deviceModel,
+      if (imei != null) 'imei': imei,
+      if (issueDescription != null) 'issue_description': issueDescription,
+      if (intakeCondition != null) 'intake_condition': intakeCondition,
+      if (passcodeOrPattern != null) 'passcode_or_pattern': passcodeOrPattern,
+      if (estimatedCost != null) 'estimated_cost': estimatedCost,
+      if (depositPaid != null) 'deposit_paid': depositPaid,
+      if (finalCost != null) 'final_cost': finalCost,
+      if (partsCost != null) 'parts_cost': partsCost,
+      if (status != null) 'status': status,
+      if (technicianName != null) 'technician_name': technicianName,
+      if (shiftId != null) 'shift_id': shiftId,
+      if (deliveredAt != null) 'delivered_at': deliveredAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RepairTicketsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? branchId,
+    Value<String>? ticketNumber,
+    Value<String?>? customerId,
+    Value<String>? customerName,
+    Value<String>? customerPhone,
+    Value<String>? deviceModel,
+    Value<String?>? imei,
+    Value<String>? issueDescription,
+    Value<String?>? intakeCondition,
+    Value<String?>? passcodeOrPattern,
+    Value<int>? estimatedCost,
+    Value<int>? depositPaid,
+    Value<int>? finalCost,
+    Value<int>? partsCost,
+    Value<String>? status,
+    Value<String?>? technicianName,
+    Value<String?>? shiftId,
+    Value<DateTime?>? deliveredAt,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<int>? rowid,
+  }) {
+    return RepairTicketsCompanion(
+      id: id ?? this.id,
+      branchId: branchId ?? this.branchId,
+      ticketNumber: ticketNumber ?? this.ticketNumber,
+      customerId: customerId ?? this.customerId,
+      customerName: customerName ?? this.customerName,
+      customerPhone: customerPhone ?? this.customerPhone,
+      deviceModel: deviceModel ?? this.deviceModel,
+      imei: imei ?? this.imei,
+      issueDescription: issueDescription ?? this.issueDescription,
+      intakeCondition: intakeCondition ?? this.intakeCondition,
+      passcodeOrPattern: passcodeOrPattern ?? this.passcodeOrPattern,
+      estimatedCost: estimatedCost ?? this.estimatedCost,
+      depositPaid: depositPaid ?? this.depositPaid,
+      finalCost: finalCost ?? this.finalCost,
+      partsCost: partsCost ?? this.partsCost,
+      status: status ?? this.status,
+      technicianName: technicianName ?? this.technicianName,
+      shiftId: shiftId ?? this.shiftId,
+      deliveredAt: deliveredAt ?? this.deliveredAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
+    }
+    if (ticketNumber.present) {
+      map['ticket_number'] = Variable<String>(ticketNumber.value);
+    }
+    if (customerId.present) {
+      map['customer_id'] = Variable<String>(customerId.value);
+    }
+    if (customerName.present) {
+      map['customer_name'] = Variable<String>(customerName.value);
+    }
+    if (customerPhone.present) {
+      map['customer_phone'] = Variable<String>(customerPhone.value);
+    }
+    if (deviceModel.present) {
+      map['device_model'] = Variable<String>(deviceModel.value);
+    }
+    if (imei.present) {
+      map['imei'] = Variable<String>(imei.value);
+    }
+    if (issueDescription.present) {
+      map['issue_description'] = Variable<String>(issueDescription.value);
+    }
+    if (intakeCondition.present) {
+      map['intake_condition'] = Variable<String>(intakeCondition.value);
+    }
+    if (passcodeOrPattern.present) {
+      map['passcode_or_pattern'] = Variable<String>(passcodeOrPattern.value);
+    }
+    if (estimatedCost.present) {
+      map['estimated_cost'] = Variable<int>(estimatedCost.value);
+    }
+    if (depositPaid.present) {
+      map['deposit_paid'] = Variable<int>(depositPaid.value);
+    }
+    if (finalCost.present) {
+      map['final_cost'] = Variable<int>(finalCost.value);
+    }
+    if (partsCost.present) {
+      map['parts_cost'] = Variable<int>(partsCost.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (technicianName.present) {
+      map['technician_name'] = Variable<String>(technicianName.value);
+    }
+    if (shiftId.present) {
+      map['shift_id'] = Variable<String>(shiftId.value);
+    }
+    if (deliveredAt.present) {
+      map['delivered_at'] = Variable<DateTime>(deliveredAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RepairTicketsCompanion(')
+          ..write('id: $id, ')
+          ..write('branchId: $branchId, ')
+          ..write('ticketNumber: $ticketNumber, ')
+          ..write('customerId: $customerId, ')
+          ..write('customerName: $customerName, ')
+          ..write('customerPhone: $customerPhone, ')
+          ..write('deviceModel: $deviceModel, ')
+          ..write('imei: $imei, ')
+          ..write('issueDescription: $issueDescription, ')
+          ..write('intakeCondition: $intakeCondition, ')
+          ..write('passcodeOrPattern: $passcodeOrPattern, ')
+          ..write('estimatedCost: $estimatedCost, ')
+          ..write('depositPaid: $depositPaid, ')
+          ..write('finalCost: $finalCost, ')
+          ..write('partsCost: $partsCost, ')
+          ..write('status: $status, ')
+          ..write('technicianName: $technicianName, ')
+          ..write('shiftId: $shiftId, ')
+          ..write('deliveredAt: $deliveredAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $RepairTicketPartsTable extends RepairTicketParts
+    with TableInfo<$RepairTicketPartsTable, RepairTicketPart> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RepairTicketPartsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ticketIdMeta = const VerificationMeta(
+    'ticketId',
+  );
+  @override
+  late final GeneratedColumn<String> ticketId = GeneratedColumn<String>(
+    'ticket_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _variantIdMeta = const VerificationMeta(
+    'variantId',
+  );
+  @override
+  late final GeneratedColumn<String> variantId = GeneratedColumn<String>(
+    'variant_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _partNameMeta = const VerificationMeta(
+    'partName',
+  );
+  @override
+  late final GeneratedColumn<String> partName = GeneratedColumn<String>(
+    'part_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _qtyMeta = const VerificationMeta('qty');
+  @override
+  late final GeneratedColumn<int> qty = GeneratedColumn<int>(
+    'qty',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _unitCostMeta = const VerificationMeta(
+    'unitCost',
+  );
+  @override
+  late final GeneratedColumn<int> unitCost = GeneratedColumn<int>(
+    'unit_cost',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _unitPriceMeta = const VerificationMeta(
+    'unitPrice',
+  );
+  @override
+  late final GeneratedColumn<int> unitPrice = GeneratedColumn<int>(
+    'unit_price',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    branchId,
+    ticketId,
+    variantId,
+    partName,
+    qty,
+    unitCost,
+    unitPrice,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'repair_ticket_parts';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RepairTicketPart> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_branchIdMeta);
+    }
+    if (data.containsKey('ticket_id')) {
+      context.handle(
+        _ticketIdMeta,
+        ticketId.isAcceptableOrUnknown(data['ticket_id']!, _ticketIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_ticketIdMeta);
+    }
+    if (data.containsKey('variant_id')) {
+      context.handle(
+        _variantIdMeta,
+        variantId.isAcceptableOrUnknown(data['variant_id']!, _variantIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_variantIdMeta);
+    }
+    if (data.containsKey('part_name')) {
+      context.handle(
+        _partNameMeta,
+        partName.isAcceptableOrUnknown(data['part_name']!, _partNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_partNameMeta);
+    }
+    if (data.containsKey('qty')) {
+      context.handle(
+        _qtyMeta,
+        qty.isAcceptableOrUnknown(data['qty']!, _qtyMeta),
+      );
+    }
+    if (data.containsKey('unit_cost')) {
+      context.handle(
+        _unitCostMeta,
+        unitCost.isAcceptableOrUnknown(data['unit_cost']!, _unitCostMeta),
+      );
+    }
+    if (data.containsKey('unit_price')) {
+      context.handle(
+        _unitPriceMeta,
+        unitPrice.isAcceptableOrUnknown(data['unit_price']!, _unitPriceMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RepairTicketPart map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RepairTicketPart(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      )!,
+      ticketId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}ticket_id'],
+      )!,
+      variantId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}variant_id'],
+      )!,
+      partName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}part_name'],
+      )!,
+      qty: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}qty'],
+      )!,
+      unitCost: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}unit_cost'],
+      )!,
+      unitPrice: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}unit_price'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $RepairTicketPartsTable createAlias(String alias) {
+    return $RepairTicketPartsTable(attachedDatabase, alias);
+  }
+}
+
+class RepairTicketPart extends DataClass
+    implements Insertable<RepairTicketPart> {
+  final String id;
+  final String branchId;
+  final String ticketId;
+  final String variantId;
+  final String partName;
+  final int qty;
+  final int unitCost;
+  final int unitPrice;
+  final DateTime createdAt;
+  const RepairTicketPart({
+    required this.id,
+    required this.branchId,
+    required this.ticketId,
+    required this.variantId,
+    required this.partName,
+    required this.qty,
+    required this.unitCost,
+    required this.unitPrice,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['branch_id'] = Variable<String>(branchId);
+    map['ticket_id'] = Variable<String>(ticketId);
+    map['variant_id'] = Variable<String>(variantId);
+    map['part_name'] = Variable<String>(partName);
+    map['qty'] = Variable<int>(qty);
+    map['unit_cost'] = Variable<int>(unitCost);
+    map['unit_price'] = Variable<int>(unitPrice);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  RepairTicketPartsCompanion toCompanion(bool nullToAbsent) {
+    return RepairTicketPartsCompanion(
+      id: Value(id),
+      branchId: Value(branchId),
+      ticketId: Value(ticketId),
+      variantId: Value(variantId),
+      partName: Value(partName),
+      qty: Value(qty),
+      unitCost: Value(unitCost),
+      unitPrice: Value(unitPrice),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory RepairTicketPart.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RepairTicketPart(
+      id: serializer.fromJson<String>(json['id']),
+      branchId: serializer.fromJson<String>(json['branchId']),
+      ticketId: serializer.fromJson<String>(json['ticketId']),
+      variantId: serializer.fromJson<String>(json['variantId']),
+      partName: serializer.fromJson<String>(json['partName']),
+      qty: serializer.fromJson<int>(json['qty']),
+      unitCost: serializer.fromJson<int>(json['unitCost']),
+      unitPrice: serializer.fromJson<int>(json['unitPrice']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'branchId': serializer.toJson<String>(branchId),
+      'ticketId': serializer.toJson<String>(ticketId),
+      'variantId': serializer.toJson<String>(variantId),
+      'partName': serializer.toJson<String>(partName),
+      'qty': serializer.toJson<int>(qty),
+      'unitCost': serializer.toJson<int>(unitCost),
+      'unitPrice': serializer.toJson<int>(unitPrice),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  RepairTicketPart copyWith({
+    String? id,
+    String? branchId,
+    String? ticketId,
+    String? variantId,
+    String? partName,
+    int? qty,
+    int? unitCost,
+    int? unitPrice,
+    DateTime? createdAt,
+  }) => RepairTicketPart(
+    id: id ?? this.id,
+    branchId: branchId ?? this.branchId,
+    ticketId: ticketId ?? this.ticketId,
+    variantId: variantId ?? this.variantId,
+    partName: partName ?? this.partName,
+    qty: qty ?? this.qty,
+    unitCost: unitCost ?? this.unitCost,
+    unitPrice: unitPrice ?? this.unitPrice,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  RepairTicketPart copyWithCompanion(RepairTicketPartsCompanion data) {
+    return RepairTicketPart(
+      id: data.id.present ? data.id.value : this.id,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      ticketId: data.ticketId.present ? data.ticketId.value : this.ticketId,
+      variantId: data.variantId.present ? data.variantId.value : this.variantId,
+      partName: data.partName.present ? data.partName.value : this.partName,
+      qty: data.qty.present ? data.qty.value : this.qty,
+      unitCost: data.unitCost.present ? data.unitCost.value : this.unitCost,
+      unitPrice: data.unitPrice.present ? data.unitPrice.value : this.unitPrice,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RepairTicketPart(')
+          ..write('id: $id, ')
+          ..write('branchId: $branchId, ')
+          ..write('ticketId: $ticketId, ')
+          ..write('variantId: $variantId, ')
+          ..write('partName: $partName, ')
+          ..write('qty: $qty, ')
+          ..write('unitCost: $unitCost, ')
+          ..write('unitPrice: $unitPrice, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    branchId,
+    ticketId,
+    variantId,
+    partName,
+    qty,
+    unitCost,
+    unitPrice,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RepairTicketPart &&
+          other.id == this.id &&
+          other.branchId == this.branchId &&
+          other.ticketId == this.ticketId &&
+          other.variantId == this.variantId &&
+          other.partName == this.partName &&
+          other.qty == this.qty &&
+          other.unitCost == this.unitCost &&
+          other.unitPrice == this.unitPrice &&
+          other.createdAt == this.createdAt);
+}
+
+class RepairTicketPartsCompanion extends UpdateCompanion<RepairTicketPart> {
+  final Value<String> id;
+  final Value<String> branchId;
+  final Value<String> ticketId;
+  final Value<String> variantId;
+  final Value<String> partName;
+  final Value<int> qty;
+  final Value<int> unitCost;
+  final Value<int> unitPrice;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const RepairTicketPartsCompanion({
+    this.id = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.ticketId = const Value.absent(),
+    this.variantId = const Value.absent(),
+    this.partName = const Value.absent(),
+    this.qty = const Value.absent(),
+    this.unitCost = const Value.absent(),
+    this.unitPrice = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RepairTicketPartsCompanion.insert({
+    required String id,
+    required String branchId,
+    required String ticketId,
+    required String variantId,
+    required String partName,
+    this.qty = const Value.absent(),
+    this.unitCost = const Value.absent(),
+    this.unitPrice = const Value.absent(),
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       branchId = Value(branchId),
+       ticketId = Value(ticketId),
+       variantId = Value(variantId),
+       partName = Value(partName),
+       createdAt = Value(createdAt);
+  static Insertable<RepairTicketPart> custom({
+    Expression<String>? id,
+    Expression<String>? branchId,
+    Expression<String>? ticketId,
+    Expression<String>? variantId,
+    Expression<String>? partName,
+    Expression<int>? qty,
+    Expression<int>? unitCost,
+    Expression<int>? unitPrice,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (branchId != null) 'branch_id': branchId,
+      if (ticketId != null) 'ticket_id': ticketId,
+      if (variantId != null) 'variant_id': variantId,
+      if (partName != null) 'part_name': partName,
+      if (qty != null) 'qty': qty,
+      if (unitCost != null) 'unit_cost': unitCost,
+      if (unitPrice != null) 'unit_price': unitPrice,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RepairTicketPartsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? branchId,
+    Value<String>? ticketId,
+    Value<String>? variantId,
+    Value<String>? partName,
+    Value<int>? qty,
+    Value<int>? unitCost,
+    Value<int>? unitPrice,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return RepairTicketPartsCompanion(
+      id: id ?? this.id,
+      branchId: branchId ?? this.branchId,
+      ticketId: ticketId ?? this.ticketId,
+      variantId: variantId ?? this.variantId,
+      partName: partName ?? this.partName,
+      qty: qty ?? this.qty,
+      unitCost: unitCost ?? this.unitCost,
+      unitPrice: unitPrice ?? this.unitPrice,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
+    }
+    if (ticketId.present) {
+      map['ticket_id'] = Variable<String>(ticketId.value);
+    }
+    if (variantId.present) {
+      map['variant_id'] = Variable<String>(variantId.value);
+    }
+    if (partName.present) {
+      map['part_name'] = Variable<String>(partName.value);
+    }
+    if (qty.present) {
+      map['qty'] = Variable<int>(qty.value);
+    }
+    if (unitCost.present) {
+      map['unit_cost'] = Variable<int>(unitCost.value);
+    }
+    if (unitPrice.present) {
+      map['unit_price'] = Variable<int>(unitPrice.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RepairTicketPartsCompanion(')
+          ..write('id: $id, ')
+          ..write('branchId: $branchId, ')
+          ..write('ticketId: $ticketId, ')
+          ..write('variantId: $variantId, ')
+          ..write('partName: $partName, ')
+          ..write('qty: $qty, ')
+          ..write('unitCost: $unitCost, ')
+          ..write('unitPrice: $unitPrice, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -25047,6 +26840,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CashWalletsTable cashWallets = $CashWalletsTable(this);
   late final $WalletTransactionsTable walletTransactions =
       $WalletTransactionsTable(this);
+  late final $RepairTicketsTable repairTickets = $RepairTicketsTable(this);
+  late final $RepairTicketPartsTable repairTicketParts =
+      $RepairTicketPartsTable(this);
   late final Index idxInventoryLogsVariantIdCreatedAt = Index(
     'idx_inventory_logs_variantId_createdAt',
     'CREATE INDEX idx_inventory_logs_variantId_createdAt ON inventory_logs (variant_id, created_at)',
@@ -25097,6 +26893,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     deviceSerialUnits,
     cashWallets,
     walletTransactions,
+    repairTickets,
+    repairTicketParts,
     idxInventoryLogsVariantIdCreatedAt,
     idxSyncQueueStatusCreatedAt,
   ];
@@ -38483,6 +40281,842 @@ typedef $$WalletTransactionsTableProcessedTableManager =
       WalletTransaction,
       PrefetchHooks Function()
     >;
+typedef $$RepairTicketsTableCreateCompanionBuilder =
+    RepairTicketsCompanion Function({
+      required String id,
+      required String branchId,
+      required String ticketNumber,
+      Value<String?> customerId,
+      required String customerName,
+      Value<String> customerPhone,
+      required String deviceModel,
+      Value<String?> imei,
+      required String issueDescription,
+      Value<String?> intakeCondition,
+      Value<String?> passcodeOrPattern,
+      Value<int> estimatedCost,
+      Value<int> depositPaid,
+      Value<int> finalCost,
+      Value<int> partsCost,
+      Value<String> status,
+      Value<String?> technicianName,
+      Value<String?> shiftId,
+      Value<DateTime?> deliveredAt,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+typedef $$RepairTicketsTableUpdateCompanionBuilder =
+    RepairTicketsCompanion Function({
+      Value<String> id,
+      Value<String> branchId,
+      Value<String> ticketNumber,
+      Value<String?> customerId,
+      Value<String> customerName,
+      Value<String> customerPhone,
+      Value<String> deviceModel,
+      Value<String?> imei,
+      Value<String> issueDescription,
+      Value<String?> intakeCondition,
+      Value<String?> passcodeOrPattern,
+      Value<int> estimatedCost,
+      Value<int> depositPaid,
+      Value<int> finalCost,
+      Value<int> partsCost,
+      Value<String> status,
+      Value<String?> technicianName,
+      Value<String?> shiftId,
+      Value<DateTime?> deliveredAt,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+
+class $$RepairTicketsTableFilterComposer
+    extends Composer<_$AppDatabase, $RepairTicketsTable> {
+  $$RepairTicketsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ticketNumber => $composableBuilder(
+    column: $table.ticketNumber,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customerId => $composableBuilder(
+    column: $table.customerId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customerName => $composableBuilder(
+    column: $table.customerName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customerPhone => $composableBuilder(
+    column: $table.customerPhone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deviceModel => $composableBuilder(
+    column: $table.deviceModel,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get imei => $composableBuilder(
+    column: $table.imei,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get issueDescription => $composableBuilder(
+    column: $table.issueDescription,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get intakeCondition => $composableBuilder(
+    column: $table.intakeCondition,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get passcodeOrPattern => $composableBuilder(
+    column: $table.passcodeOrPattern,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get estimatedCost => $composableBuilder(
+    column: $table.estimatedCost,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get depositPaid => $composableBuilder(
+    column: $table.depositPaid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get finalCost => $composableBuilder(
+    column: $table.finalCost,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get partsCost => $composableBuilder(
+    column: $table.partsCost,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get technicianName => $composableBuilder(
+    column: $table.technicianName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get shiftId => $composableBuilder(
+    column: $table.shiftId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deliveredAt => $composableBuilder(
+    column: $table.deliveredAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RepairTicketsTableOrderingComposer
+    extends Composer<_$AppDatabase, $RepairTicketsTable> {
+  $$RepairTicketsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ticketNumber => $composableBuilder(
+    column: $table.ticketNumber,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get customerId => $composableBuilder(
+    column: $table.customerId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get customerName => $composableBuilder(
+    column: $table.customerName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get customerPhone => $composableBuilder(
+    column: $table.customerPhone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deviceModel => $composableBuilder(
+    column: $table.deviceModel,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get imei => $composableBuilder(
+    column: $table.imei,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get issueDescription => $composableBuilder(
+    column: $table.issueDescription,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get intakeCondition => $composableBuilder(
+    column: $table.intakeCondition,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get passcodeOrPattern => $composableBuilder(
+    column: $table.passcodeOrPattern,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get estimatedCost => $composableBuilder(
+    column: $table.estimatedCost,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get depositPaid => $composableBuilder(
+    column: $table.depositPaid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get finalCost => $composableBuilder(
+    column: $table.finalCost,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get partsCost => $composableBuilder(
+    column: $table.partsCost,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get technicianName => $composableBuilder(
+    column: $table.technicianName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get shiftId => $composableBuilder(
+    column: $table.shiftId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deliveredAt => $composableBuilder(
+    column: $table.deliveredAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RepairTicketsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RepairTicketsTable> {
+  $$RepairTicketsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<String> get ticketNumber => $composableBuilder(
+    column: $table.ticketNumber,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get customerId => $composableBuilder(
+    column: $table.customerId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get customerName => $composableBuilder(
+    column: $table.customerName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get customerPhone => $composableBuilder(
+    column: $table.customerPhone,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get deviceModel => $composableBuilder(
+    column: $table.deviceModel,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get imei =>
+      $composableBuilder(column: $table.imei, builder: (column) => column);
+
+  GeneratedColumn<String> get issueDescription => $composableBuilder(
+    column: $table.issueDescription,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get intakeCondition => $composableBuilder(
+    column: $table.intakeCondition,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get passcodeOrPattern => $composableBuilder(
+    column: $table.passcodeOrPattern,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get estimatedCost => $composableBuilder(
+    column: $table.estimatedCost,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get depositPaid => $composableBuilder(
+    column: $table.depositPaid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get finalCost =>
+      $composableBuilder(column: $table.finalCost, builder: (column) => column);
+
+  GeneratedColumn<int> get partsCost =>
+      $composableBuilder(column: $table.partsCost, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get technicianName => $composableBuilder(
+    column: $table.technicianName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get shiftId =>
+      $composableBuilder(column: $table.shiftId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deliveredAt => $composableBuilder(
+    column: $table.deliveredAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+}
+
+class $$RepairTicketsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RepairTicketsTable,
+          RepairTicket,
+          $$RepairTicketsTableFilterComposer,
+          $$RepairTicketsTableOrderingComposer,
+          $$RepairTicketsTableAnnotationComposer,
+          $$RepairTicketsTableCreateCompanionBuilder,
+          $$RepairTicketsTableUpdateCompanionBuilder,
+          (
+            RepairTicket,
+            BaseReferences<_$AppDatabase, $RepairTicketsTable, RepairTicket>,
+          ),
+          RepairTicket,
+          PrefetchHooks Function()
+        > {
+  $$RepairTicketsTableTableManager(_$AppDatabase db, $RepairTicketsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RepairTicketsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RepairTicketsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RepairTicketsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> branchId = const Value.absent(),
+                Value<String> ticketNumber = const Value.absent(),
+                Value<String?> customerId = const Value.absent(),
+                Value<String> customerName = const Value.absent(),
+                Value<String> customerPhone = const Value.absent(),
+                Value<String> deviceModel = const Value.absent(),
+                Value<String?> imei = const Value.absent(),
+                Value<String> issueDescription = const Value.absent(),
+                Value<String?> intakeCondition = const Value.absent(),
+                Value<String?> passcodeOrPattern = const Value.absent(),
+                Value<int> estimatedCost = const Value.absent(),
+                Value<int> depositPaid = const Value.absent(),
+                Value<int> finalCost = const Value.absent(),
+                Value<int> partsCost = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> technicianName = const Value.absent(),
+                Value<String?> shiftId = const Value.absent(),
+                Value<DateTime?> deliveredAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RepairTicketsCompanion(
+                id: id,
+                branchId: branchId,
+                ticketNumber: ticketNumber,
+                customerId: customerId,
+                customerName: customerName,
+                customerPhone: customerPhone,
+                deviceModel: deviceModel,
+                imei: imei,
+                issueDescription: issueDescription,
+                intakeCondition: intakeCondition,
+                passcodeOrPattern: passcodeOrPattern,
+                estimatedCost: estimatedCost,
+                depositPaid: depositPaid,
+                finalCost: finalCost,
+                partsCost: partsCost,
+                status: status,
+                technicianName: technicianName,
+                shiftId: shiftId,
+                deliveredAt: deliveredAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String branchId,
+                required String ticketNumber,
+                Value<String?> customerId = const Value.absent(),
+                required String customerName,
+                Value<String> customerPhone = const Value.absent(),
+                required String deviceModel,
+                Value<String?> imei = const Value.absent(),
+                required String issueDescription,
+                Value<String?> intakeCondition = const Value.absent(),
+                Value<String?> passcodeOrPattern = const Value.absent(),
+                Value<int> estimatedCost = const Value.absent(),
+                Value<int> depositPaid = const Value.absent(),
+                Value<int> finalCost = const Value.absent(),
+                Value<int> partsCost = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> technicianName = const Value.absent(),
+                Value<String?> shiftId = const Value.absent(),
+                Value<DateTime?> deliveredAt = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RepairTicketsCompanion.insert(
+                id: id,
+                branchId: branchId,
+                ticketNumber: ticketNumber,
+                customerId: customerId,
+                customerName: customerName,
+                customerPhone: customerPhone,
+                deviceModel: deviceModel,
+                imei: imei,
+                issueDescription: issueDescription,
+                intakeCondition: intakeCondition,
+                passcodeOrPattern: passcodeOrPattern,
+                estimatedCost: estimatedCost,
+                depositPaid: depositPaid,
+                finalCost: finalCost,
+                partsCost: partsCost,
+                status: status,
+                technicianName: technicianName,
+                shiftId: shiftId,
+                deliveredAt: deliveredAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RepairTicketsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RepairTicketsTable,
+      RepairTicket,
+      $$RepairTicketsTableFilterComposer,
+      $$RepairTicketsTableOrderingComposer,
+      $$RepairTicketsTableAnnotationComposer,
+      $$RepairTicketsTableCreateCompanionBuilder,
+      $$RepairTicketsTableUpdateCompanionBuilder,
+      (
+        RepairTicket,
+        BaseReferences<_$AppDatabase, $RepairTicketsTable, RepairTicket>,
+      ),
+      RepairTicket,
+      PrefetchHooks Function()
+    >;
+typedef $$RepairTicketPartsTableCreateCompanionBuilder =
+    RepairTicketPartsCompanion Function({
+      required String id,
+      required String branchId,
+      required String ticketId,
+      required String variantId,
+      required String partName,
+      Value<int> qty,
+      Value<int> unitCost,
+      Value<int> unitPrice,
+      required DateTime createdAt,
+      Value<int> rowid,
+    });
+typedef $$RepairTicketPartsTableUpdateCompanionBuilder =
+    RepairTicketPartsCompanion Function({
+      Value<String> id,
+      Value<String> branchId,
+      Value<String> ticketId,
+      Value<String> variantId,
+      Value<String> partName,
+      Value<int> qty,
+      Value<int> unitCost,
+      Value<int> unitPrice,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+class $$RepairTicketPartsTableFilterComposer
+    extends Composer<_$AppDatabase, $RepairTicketPartsTable> {
+  $$RepairTicketPartsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ticketId => $composableBuilder(
+    column: $table.ticketId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get variantId => $composableBuilder(
+    column: $table.variantId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get partName => $composableBuilder(
+    column: $table.partName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get qty => $composableBuilder(
+    column: $table.qty,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get unitCost => $composableBuilder(
+    column: $table.unitCost,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get unitPrice => $composableBuilder(
+    column: $table.unitPrice,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RepairTicketPartsTableOrderingComposer
+    extends Composer<_$AppDatabase, $RepairTicketPartsTable> {
+  $$RepairTicketPartsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ticketId => $composableBuilder(
+    column: $table.ticketId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get variantId => $composableBuilder(
+    column: $table.variantId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get partName => $composableBuilder(
+    column: $table.partName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get qty => $composableBuilder(
+    column: $table.qty,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get unitCost => $composableBuilder(
+    column: $table.unitCost,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get unitPrice => $composableBuilder(
+    column: $table.unitPrice,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RepairTicketPartsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RepairTicketPartsTable> {
+  $$RepairTicketPartsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<String> get ticketId =>
+      $composableBuilder(column: $table.ticketId, builder: (column) => column);
+
+  GeneratedColumn<String> get variantId =>
+      $composableBuilder(column: $table.variantId, builder: (column) => column);
+
+  GeneratedColumn<String> get partName =>
+      $composableBuilder(column: $table.partName, builder: (column) => column);
+
+  GeneratedColumn<int> get qty =>
+      $composableBuilder(column: $table.qty, builder: (column) => column);
+
+  GeneratedColumn<int> get unitCost =>
+      $composableBuilder(column: $table.unitCost, builder: (column) => column);
+
+  GeneratedColumn<int> get unitPrice =>
+      $composableBuilder(column: $table.unitPrice, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$RepairTicketPartsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RepairTicketPartsTable,
+          RepairTicketPart,
+          $$RepairTicketPartsTableFilterComposer,
+          $$RepairTicketPartsTableOrderingComposer,
+          $$RepairTicketPartsTableAnnotationComposer,
+          $$RepairTicketPartsTableCreateCompanionBuilder,
+          $$RepairTicketPartsTableUpdateCompanionBuilder,
+          (
+            RepairTicketPart,
+            BaseReferences<
+              _$AppDatabase,
+              $RepairTicketPartsTable,
+              RepairTicketPart
+            >,
+          ),
+          RepairTicketPart,
+          PrefetchHooks Function()
+        > {
+  $$RepairTicketPartsTableTableManager(
+    _$AppDatabase db,
+    $RepairTicketPartsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RepairTicketPartsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RepairTicketPartsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RepairTicketPartsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> branchId = const Value.absent(),
+                Value<String> ticketId = const Value.absent(),
+                Value<String> variantId = const Value.absent(),
+                Value<String> partName = const Value.absent(),
+                Value<int> qty = const Value.absent(),
+                Value<int> unitCost = const Value.absent(),
+                Value<int> unitPrice = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RepairTicketPartsCompanion(
+                id: id,
+                branchId: branchId,
+                ticketId: ticketId,
+                variantId: variantId,
+                partName: partName,
+                qty: qty,
+                unitCost: unitCost,
+                unitPrice: unitPrice,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String branchId,
+                required String ticketId,
+                required String variantId,
+                required String partName,
+                Value<int> qty = const Value.absent(),
+                Value<int> unitCost = const Value.absent(),
+                Value<int> unitPrice = const Value.absent(),
+                required DateTime createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => RepairTicketPartsCompanion.insert(
+                id: id,
+                branchId: branchId,
+                ticketId: ticketId,
+                variantId: variantId,
+                partName: partName,
+                qty: qty,
+                unitCost: unitCost,
+                unitPrice: unitPrice,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RepairTicketPartsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RepairTicketPartsTable,
+      RepairTicketPart,
+      $$RepairTicketPartsTableFilterComposer,
+      $$RepairTicketPartsTableOrderingComposer,
+      $$RepairTicketPartsTableAnnotationComposer,
+      $$RepairTicketPartsTableCreateCompanionBuilder,
+      $$RepairTicketPartsTableUpdateCompanionBuilder,
+      (
+        RepairTicketPart,
+        BaseReferences<
+          _$AppDatabase,
+          $RepairTicketPartsTable,
+          RepairTicketPart
+        >,
+      ),
+      RepairTicketPart,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -38561,4 +41195,8 @@ class $AppDatabaseManager {
       $$CashWalletsTableTableManager(_db, _db.cashWallets);
   $$WalletTransactionsTableTableManager get walletTransactions =>
       $$WalletTransactionsTableTableManager(_db, _db.walletTransactions);
+  $$RepairTicketsTableTableManager get repairTickets =>
+      $$RepairTicketsTableTableManager(_db, _db.repairTickets);
+  $$RepairTicketPartsTableTableManager get repairTicketParts =>
+      $$RepairTicketPartsTableTableManager(_db, _db.repairTicketParts);
 }

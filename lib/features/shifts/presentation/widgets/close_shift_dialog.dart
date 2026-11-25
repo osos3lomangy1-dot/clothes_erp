@@ -285,6 +285,14 @@ class _CloseShiftDialogState extends State<CloseShiftDialog> {
                             color: AppColors.primary,
                           ),
                         ],
+                        if (widget.summary.repairCollectedCash != 0) ...[
+                          const Divider(height: 14),
+                          _rowDetail(
+                            'تحصيلات الصيانة (كاش):',
+                            '${widget.summary.repairCollectedCash >= 0 ? '+' : '-'}${Money(widget.summary.repairCollectedCash.abs()).toDisplay()} ج.م',
+                            color: AppColors.primary,
+                          ),
+                        ],
                         if (widget.summary.cashReturns > 0) ...[
                           const Divider(height: 14),
                           _rowDetail('مرتجعات نقدية:', '-${Money(widget.summary.cashReturns).toDisplay()} ج.م', color: Colors.orange.shade800),

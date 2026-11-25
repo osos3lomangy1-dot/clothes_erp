@@ -832,6 +832,65 @@ class WalletTransactions extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+class RepairTickets extends Table {
+  TextColumn get id => text()();
+  TextColumn get branchId => text()();
+  TextColumn get ticketNumber => text()();
+  TextColumn get customerId => text().nullable()();
+  TextColumn get customerName => text()();
+  TextColumn get customerPhone => text().withDefault(const Constant(''))();
+  TextColumn get deviceModel => text()();
+  TextColumn get imei => text().nullable()();
+  TextColumn get issueDescription => text()();
+  TextColumn get intakeCondition => text().nullable()();
+  TextColumn get passcodeOrPattern => text().nullable()();
+  IntColumn get estimatedCost => integer().withDefault(const Constant(0))();
+  IntColumn get depositPaid => integer().withDefault(const Constant(0))();
+  IntColumn get finalCost => integer().withDefault(const Constant(0))();
+  IntColumn get partsCost => integer().withDefault(const Constant(0))();
+  TextColumn get status => text().withDefault(const Constant('pending'))();
+  TextColumn get technicianName => text().nullable()();
+  TextColumn get shiftId => text().nullable()();
+  DateTimeColumn get deliveredAt => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  List<String> get customConstraints => [
+    "CHECK (status IN ('pending', 'diagnosing', 'in_progress', 'ready', 'delivered', 'cancelled'))",
+    'CHECK (estimated_cost >= 0)',
+    'CHECK (deposit_paid >= 0)',
+    'CHECK (final_cost >= 0)',
+    'CHECK (parts_cost >= 0)',
+  ];
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class RepairTicketParts extends Table {
+  TextColumn get id => text()();
+  TextColumn get branchId => text()();
+  TextColumn get ticketId => text()();
+  TextColumn get variantId => text()();
+  TextColumn get partName => text()();
+  IntColumn get qty => integer().withDefault(const Constant(1))();
+  IntColumn get unitCost => integer().withDefault(const Constant(0))();
+  IntColumn get unitPrice => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  List<String> get customConstraints => [
+    'CHECK (qty > 0)',
+    'CHECK (unit_cost >= 0)',
+    'CHECK (unit_price >= 0)',
+  ];
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     Users,
@@ -871,13 +930,15 @@ class WalletTransactions extends Table {
     DeviceSerialUnits,
     CashWallets,
     WalletTransactions,
+    RepairTickets,
+    RepairTicketParts,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   /// Checkpoints committed WAL frames into the main database file.
   /// Called after POS checkout to guarantee zero receipt loss on sudden power cuts.
@@ -1267,6 +1328,23 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
+  @visibleForTesting
+  Future<void> migrateToV14(Migrator m) async {
+    final repairTables = await customSelect(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='repair_tickets'",
+    ).get();
+    if (repairTables.isEmpty) {
+      await m.createTable(repairTickets);
+    }
+
+    final partsTables = await customSelect(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='repair_ticket_parts'",
+    ).get();
+    if (partsTables.isEmpty) {
+      await m.createTable(repairTicketParts);
+    }
+  }
+
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (Migrator m) async {
@@ -1378,6 +1456,10 @@ class AppDatabase extends _$AppDatabase {
           await migrateToV13(m);
         }
 
+        if (from < 14 && to >= 14) {
+          await migrateToV14(m);
+        }
+
         // Commit target user_version inside the transaction to eliminate the post-commit window
         await m.database.customStatement('PRAGMA user_version = $to;');
       });
@@ -1437,6 +1519,8 @@ class AppDatabase extends _$AppDatabase {
       await createTableIfNotExists('device_serial_units', deviceSerialUnits);
       await createTableIfNotExists('cash_wallets', cashWallets);
       await createTableIfNotExists('wallet_transactions', walletTransactions);
+      await createTableIfNotExists('repair_tickets', repairTickets);
+      await createTableIfNotExists('repair_ticket_parts', repairTicketParts);
       try {
         await customStatement(
           'CREATE UNIQUE INDEX IF NOT EXISTS idx_device_serial_imei_unique ON device_serial_units(imei) WHERE deleted_at IS NULL',

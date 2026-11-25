@@ -61,6 +61,7 @@ class FeatureKeys {
   static const delivery = 'delivery';
   static const mobileImeiUsed = 'mobileImeiUsed';
   static const mobileWallets = 'mobileWallets';
+  static const mobileRepair = 'mobileRepair';
 
   static const definitions = <FeatureDefinition>[
     FeatureDefinition(
@@ -256,6 +257,12 @@ class FeatureKeys {
     FeatureDefinition(
       key: mobileWallets,
       label: 'المحافظ الإلكترونية وشحن الكاش والتحويلات',
+      coreAlwaysEnabled: false,
+      defaultEnabled: false,
+    ),
+    FeatureDefinition(
+      key: mobileRepair,
+      label: 'مركز الصيانة وتذاكر الإصلاح',
       coreAlwaysEnabled: false,
       defaultEnabled: false,
     ),

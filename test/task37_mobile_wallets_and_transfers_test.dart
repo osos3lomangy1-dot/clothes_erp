@@ -72,8 +72,8 @@ void main() {
       expect(await featureGate.isEnabled(FeatureKeys.mobileWallets), isTrue);
     });
 
-    test('AppDatabase schemaVersion is 13 and migrateToV13 creates wallet tables', () async {
-      expect(db.schemaVersion, 13);
+    test('AppDatabase schemaVersion is >= 13 and migrateToV13 creates wallet tables', () async {
+      expect(db.schemaVersion, greaterThanOrEqualTo(13));
 
       final raw = sq.sqlite3.openInMemory();
       final v12Db = AppDatabase(NativeDatabase.opened(raw));

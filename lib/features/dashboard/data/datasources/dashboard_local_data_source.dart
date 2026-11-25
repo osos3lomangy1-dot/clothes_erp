@@ -85,8 +85,20 @@ class DashboardLocalDataSourceImpl implements DashboardLocalDataSource {
     final int todayWalletCommissions =
         todayWalletRows.fold<int>(0, (sum, w) => sum + w.commission);
 
+    final todayRepairRows = await (_db.select(_db.repairTickets)
+          ..where((r) =>
+              r.status.equals('delivered') &
+              r.deliveredAt.isBiggerOrEqualValue(startOfDay) &
+              r.deliveredAt.isSmallerOrEqualValue(endOfDay) &
+              r.deletedAt.isNull()))
+        .get();
+    final int todayRepairProfit = todayRepairRows.fold<int>(
+      0,
+      (sum, r) => sum + (r.finalCost - r.partsCost),
+    );
+
     final int todayEstimatedNetProfit =
-        todaySales - todayCost - todayExpenses + todayWalletCommissions;
+        todaySales - todayCost - todayExpenses + todayWalletCommissions + todayRepairProfit;
 
     // 3. Today Returns
     final returnRows = await (_db.select(_db.returns)
@@ -371,8 +383,19 @@ class DashboardLocalDataSourceImpl implements DashboardLocalDataSource {
         .get();
     final int yesterdayWalletCommissions =
         yesterdayWalletRows.fold<int>(0, (sum, w) => sum + w.commission);
+    final yesterdayRepairRows = await (_db.select(_db.repairTickets)
+          ..where((r) =>
+              r.status.equals('delivered') &
+              r.deliveredAt.isBiggerOrEqualValue(yesterdayStart) &
+              r.deliveredAt.isSmallerOrEqualValue(yesterdayEnd) &
+              r.deletedAt.isNull()))
+        .get();
+    final int yesterdayRepairProfit = yesterdayRepairRows.fold<int>(
+      0,
+      (sum, r) => sum + (r.finalCost - r.partsCost),
+    );
     final int yesterdayNetProfit =
-        yesterdaySales - yesterdayCost - yesterdayExpenses + yesterdayWalletCommissions;
+        yesterdaySales - yesterdayCost - yesterdayExpenses + yesterdayWalletCommissions + yesterdayRepairProfit;
 
     final stockRows = await (_db.select(_db.productVariants).join([
       innerJoin(_db.products, _db.products.id.equalsExp(_db.productVariants.productId)),

@@ -78,7 +78,21 @@ class ReportsLocalDataSourceImpl implements ReportsLocalDataSource {
       }
     }
 
-    final totalProfit = totalRevenue - totalCost;
+    final deliveredRepairs = await (_db.select(_db.repairTickets)
+          ..where((r) =>
+              r.status.equals('delivered') &
+              r.deliveredAt.isBiggerOrEqualValue(start) &
+              r.deliveredAt.isSmallerOrEqualValue(end) &
+              r.deletedAt.isNull()))
+        .get();
+    final int repairRevenue =
+        deliveredRepairs.fold<int>(0, (sum, r) => sum + r.finalCost);
+    final int repairPartsCost =
+        deliveredRepairs.fold<int>(0, (sum, r) => sum + r.partsCost);
+
+    final int effectiveTotalRevenue = totalRevenue + repairRevenue;
+    final int effectiveTotalCost = totalCost + repairPartsCost;
+    final totalProfit = effectiveTotalRevenue - effectiveTotalCost;
 
     // 3. Calculate expenses in this period (operating expenses only)
     final expensesQuery = _db.select(_db.expenses)
@@ -277,7 +291,19 @@ class ReportsLocalDataSourceImpl implements ReportsLocalDataSource {
               e.deletedAt.isNull()))
         .get();
     final int prevExpenses = prevExpenseRows.fold<int>(0, (sum, e) => sum + e.amount);
-    final int previousNetProfit = previousTotalRevenue - prevCost - prevExpenses;
+    final prevDeliveredRepairs = await (_db.select(_db.repairTickets)
+          ..where((r) =>
+              r.status.equals('delivered') &
+              r.deliveredAt.isBiggerOrEqualValue(prevRange.start) &
+              r.deliveredAt.isSmallerOrEqualValue(prevRange.end) &
+              r.deletedAt.isNull()))
+        .get();
+    final int prevRepairProfit = prevDeliveredRepairs.fold<int>(
+      0,
+      (sum, r) => sum + (r.finalCost - r.partsCost),
+    );
+    final int previousNetProfit =
+        previousTotalRevenue - prevCost - prevExpenses + prevRepairProfit;
 
     // 4d. Inventory cost capital (active stock * costPrice)
     final stockRows = await (_db.select(_db.productVariants).join([
@@ -331,8 +357,8 @@ class ReportsLocalDataSourceImpl implements ReportsLocalDataSource {
     return SalesReportEntity(
       startDate: startDate,
       endDate: endDate,
-      totalRevenue: totalRevenue,
-      totalCost: totalCost,
+      totalRevenue: effectiveTotalRevenue,
+      totalCost: effectiveTotalCost,
       totalProfit: totalProfit,
       totalExpenses: totalExpenses,
       totalReturns: totalReturns,
