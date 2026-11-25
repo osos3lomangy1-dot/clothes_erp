@@ -29,6 +29,12 @@ enum AssistantCommandKind {
   toggleAllowManualDiscount,
   toggleAutoBackup,
   updateStoreName,
+  updateStorePhone,
+  recordPurchase,
+  addProduct,
+  updateProductPriceOrStock,
+  recordExpense,
+  paySupplier,
 }
 
 class AssistantPendingCommand {
@@ -38,6 +44,7 @@ class AssistantPendingCommand {
   final bool? boolValue;
   final String? stringValue;
   final bool touchesFeatureGate;
+  final Map<String, dynamic> payload;
 
   const AssistantPendingCommand({
     required this.kind,
@@ -46,6 +53,33 @@ class AssistantPendingCommand {
     this.boolValue,
     this.stringValue,
     this.touchesFeatureGate = false,
+    this.payload = const {},
+  });
+}
+
+class AssistantActionDraft {
+  final AssistantCommandKind kind;
+  final Map<String, dynamic> fields;
+  final String? missingField;
+  final String? promptForMissing;
+
+  const AssistantActionDraft({
+    required this.kind,
+    this.fields = const {},
+    this.missingField,
+    this.promptForMissing,
+  });
+
+  bool get isComplete => missingField == null;
+}
+
+class AssistantTurnResult {
+  final List<AssistantInsight> insights;
+  final AssistantActionDraft? activeDraft;
+
+  const AssistantTurnResult({
+    required this.insights,
+    this.activeDraft,
   });
 }
 
@@ -947,6 +981,28 @@ class OfflineSmartAssistantService {
       );
     }
 
+    final phoneMatch = RegExp(
+      r'(?:تغيير|تعديل) (?:رقم )?(?:هاتف|تليفون|موبايل)(?: المحل| المتجر| الفاتوره)?(?: الي)?\s+([+\d\s-]+)$',
+    ).firstMatch(q);
+    if (phoneMatch != null) {
+      final rawPhone = Money.normalizeDigits(phoneMatch.group(1)!).trim();
+      if (rawPhone.isNotEmpty) {
+        return AssistantInsight(
+          id: 'cmd_update_phone',
+          title: 'تأكيد تعديل رقم هاتف الفاتورة',
+          summary: 'هل تريد تغيير رقم هاتف المتجر في الفواتير إلى "$rawPhone"؟',
+          details: const ['يتطلب التنفيذ صلاحية مدير (Admin).'],
+          pendingCommand: AssistantPendingCommand(
+            kind: AssistantCommandKind.updateStorePhone,
+            title: 'تغيير رقم هاتف الفاتورة',
+            description: rawPhone,
+            stringValue: rawPhone,
+            touchesFeatureGate: false,
+          ),
+        );
+      }
+    }
+
     return null;
   }
 
@@ -1086,6 +1142,28 @@ class OfflineSmartAssistantService {
       }
     }
 
+    final phoneMatch = RegExp(
+      r'(?:تغيير|تعديل) (?:رقم )?(?:هاتف|تليفون|موبايل)(?: المحل| المتجر| الفاتوره)?(?: الي)?\s+([+\d\s-]+)$',
+    ).firstMatch(q);
+    if (phoneMatch != null) {
+      final rawPhone = Money.normalizeDigits(phoneMatch.group(1)!).trim();
+      if (rawPhone.isNotEmpty) {
+        return AssistantInsight(
+          id: 'cmd_update_phone',
+          title: 'تأكيد تعديل رقم هاتف الفاتورة',
+          summary: 'هل تريد تغيير رقم هاتف المتجر في الفواتير إلى "$rawPhone"؟',
+          details: const ['يتطلب التنفيذ صلاحية مدير (Admin).'],
+          pendingCommand: AssistantPendingCommand(
+            kind: AssistantCommandKind.updateStorePhone,
+            title: 'تغيير رقم هاتف الفاتورة',
+            description: rawPhone,
+            stringValue: rawPhone,
+            touchesFeatureGate: false,
+          ),
+        );
+      }
+    }
+
     return null;
   }
 
@@ -1138,7 +1216,1084 @@ class OfflineSmartAssistantService {
         );
         await ReceiptSettingsService.save(updated, gate, userId: userId);
         return 'تم تحديث اسم المتجر إلى "$newName" بنجاح.';
+      case AssistantCommandKind.updateStorePhone:
+        final newPhone = (cmd.stringValue ?? '').trim();
+        if (newPhone.isEmpty) {
+          throw Exception('رقم الهاتف لا يمكن أن يكون فارغاً');
+        }
+        final updated = ReceiptSettingsService.current.copyWith(
+          storePhone: newPhone,
+        );
+        await ReceiptSettingsService.save(updated, gate, userId: userId);
+        return 'تم تحديث رقم هاتف الفاتورة إلى "$newPhone" بنجاح.';
+      case AssistantCommandKind.recordPurchase:
+        return _execRecordPurchase(cmd.payload, userId: userId);
+      case AssistantCommandKind.addProduct:
+        return _execAddProduct(cmd.payload, userId: userId);
+      case AssistantCommandKind.updateProductPriceOrStock:
+        return _execUpdateProductPriceOrStock(cmd.payload, userId: userId);
+      case AssistantCommandKind.recordExpense:
+        return _execRecordExpense(cmd.payload, userId: userId);
+      case AssistantCommandKind.paySupplier:
+        return _execPaySupplier(cmd.payload, userId: userId);
     }
+  }
+
+  Future<String> _resolveBranchId() async {
+    final row = await (_db.select(_db.appMeta)
+          ..where((m) => m.key.equals('branch.active_id')))
+        .getSingleOrNull();
+    final val = row?.value.trim() ?? '';
+    return val.isNotEmpty ? val : 'branch_main';
+  }
+
+  String _genId(String prefix) {
+    final us = DateTime.now().microsecondsSinceEpoch;
+    return '${prefix}_$us';
+  }
+
+  Future<String> _ensureDefaultCategoryId(String branchId, DateTime now) async {
+    final existing = await (_db.select(_db.categories)
+          ..where((c) => c.deletedAt.isNull()))
+        .get();
+    if (existing.isNotEmpty) return existing.first.id;
+    final catId = _genId('cat');
+    await _db.into(_db.categories).insert(
+          CategoriesCompanion.insert(
+            id: catId,
+            branchId: branchId,
+            name: 'عام',
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+    return catId;
+  }
+
+  Future<void> _insertAudit({
+    required String branchId,
+    required String userId,
+    required String action,
+    required String entity,
+    required String entityId,
+    String? oldValue,
+    String? newValue,
+    required DateTime now,
+  }) async {
+    await _db.into(_db.auditLogs).insert(
+          AuditLogsCompanion.insert(
+            id: _genId('aud'),
+            branchId: branchId,
+            userId: userId,
+            action: action,
+            entity: entity,
+            entityId: entityId,
+            oldValue: Value(oldValue),
+            newValue: Value(newValue),
+            createdAt: now,
+          ),
+        );
+  }
+
+  Future<String> _execRecordPurchase(
+    Map<String, dynamic> payload, {
+    required String userId,
+  }) async {
+    final productName = (payload['productName'] as String? ?? '').trim();
+    final supplierName = (payload['supplierName'] as String? ?? '').trim();
+    final costEgp = (payload['costEgp'] as num?)?.toDouble() ?? 0;
+    final qty = (payload['qty'] as num?)?.toInt() ?? 0;
+    final isCredit = payload['paymentType'] == 'credit';
+
+    if (productName.isEmpty || supplierName.isEmpty || costEgp <= 0 || qty <= 0) {
+      throw Exception('بيانات فاتورة الشراء غير مكتملة');
+    }
+
+    final costPiasters = (costEgp * 100).round();
+    final totalPiasters = costPiasters * qty;
+    final now = DateTime.now();
+
+    return _db.transaction(() async {
+      final branchId = await _resolveBranchId();
+
+      // Match or create supplier
+      final suppliers = await (_db.select(_db.suppliers)
+            ..where((s) => s.deletedAt.isNull()))
+          .get();
+      final normSup = normalizeArabic(supplierName);
+      Supplier? matchedSup;
+      for (final s in suppliers) {
+        if (normalizeArabic(s.name) == normSup ||
+            normalizeArabic(s.name).contains(normSup)) {
+          matchedSup = s;
+          break;
+        }
+      }
+      final String supplierId;
+      if (matchedSup != null) {
+        supplierId = matchedSup.id;
+        if (isCredit) {
+          await (_db.update(_db.suppliers)
+                ..where((s) => s.id.equals(supplierId)))
+              .write(
+            SuppliersCompanion(
+              balance: Value(matchedSup.balance + totalPiasters),
+              updatedAt: Value(now),
+            ),
+          );
+        }
+      } else {
+        supplierId = _genId('sup');
+        await _db.into(_db.suppliers).insert(
+              SuppliersCompanion.insert(
+                id: supplierId,
+                branchId: branchId,
+                name: supplierName,
+                balance: Value(isCredit ? totalPiasters : 0),
+                createdAt: now,
+                updatedAt: now,
+              ),
+            );
+      }
+
+      // Match or create product + variant
+      final products = await (_db.select(_db.products)
+            ..where((p) => p.deletedAt.isNull()))
+          .get();
+      final normProd = normalizeArabic(productName);
+      Product? matchedProd;
+      for (final p in products) {
+        if (normalizeArabic(p.name) == normProd ||
+            normalizeArabic(p.name).contains(normProd)) {
+          matchedProd = p;
+          break;
+        }
+      }
+
+      final String variantId;
+      if (matchedProd != null) {
+        final variants = await (_db.select(_db.productVariants)
+              ..where((v) =>
+                  v.productId.equals(matchedProd!.id) & v.deletedAt.isNull()))
+            .get();
+        if (variants.isNotEmpty) {
+          final v = variants.first;
+          variantId = v.id;
+          await (_db.update(_db.productVariants)
+                ..where((t) => t.id.equals(variantId)))
+              .write(
+            ProductVariantsCompanion(
+              quantity: Value(v.quantity + qty),
+              costPrice: Value(costPiasters),
+              updatedAt: Value(now),
+            ),
+          );
+        } else {
+          variantId = _genId('var');
+          await _db.into(_db.productVariants).insert(
+                ProductVariantsCompanion.insert(
+                  id: variantId,
+                  branchId: branchId,
+                  productId: matchedProd.id,
+                  sku: 'SKU-${now.millisecondsSinceEpoch}',
+                  color: '-',
+                  size: '-',
+                  quantity: Value(qty),
+                  costPrice: costPiasters,
+                  sellPrice: (costPiasters * 1.3).round(),
+                  createdAt: now,
+                  updatedAt: now,
+                ),
+              );
+        }
+      } else {
+        final catId = await _ensureDefaultCategoryId(branchId, now);
+        final prodId = _genId('prd');
+        await _db.into(_db.products).insert(
+              ProductsCompanion.insert(
+                id: prodId,
+                branchId: branchId,
+                name: productName,
+                categoryId: catId,
+                createdAt: now,
+                updatedAt: now,
+              ),
+            );
+        variantId = _genId('var');
+        await _db.into(_db.productVariants).insert(
+              ProductVariantsCompanion.insert(
+                id: variantId,
+                branchId: branchId,
+                productId: prodId,
+                sku: 'SKU-${now.millisecondsSinceEpoch}',
+                color: '-',
+                size: '-',
+                quantity: Value(qty),
+                costPrice: costPiasters,
+                sellPrice: (costPiasters * 1.3).round(),
+                createdAt: now,
+                updatedAt: now,
+              ),
+            );
+      }
+
+      // Insert Purchase & PurchaseItem
+      final purchaseId = _genId('pur');
+      await _db.into(_db.purchases).insert(
+            PurchasesCompanion.insert(
+              id: purchaseId,
+              branchId: branchId,
+              supplierId: supplierId,
+              invoiceNumber: Value('PUR-${now.millisecondsSinceEpoch % 100000}'),
+              purchaseDate: now,
+              totalAmount: totalPiasters,
+              paidAmount: Value(isCredit ? 0 : totalPiasters),
+              status: const Value('received'),
+              paymentStatus: Value(isCredit ? 'unpaid' : 'paid'),
+              notes: const Value('تم التسجيل عبر المساعد الذكي'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await _db.into(_db.purchaseItems).insert(
+            PurchaseItemsCompanion.insert(
+              id: _genId('pi'),
+              purchaseId: purchaseId,
+              variantId: variantId,
+              qty: qty,
+              costPrice: costPiasters,
+              totalCost: totalPiasters,
+              createdAt: now,
+            ),
+          );
+
+      // Stock movement (InventoryLogs) + AuditLog
+      await _db.into(_db.inventoryLogs).insert(
+            InventoryLogsCompanion.insert(
+              id: _genId('inv'),
+              branchId: branchId,
+              variantId: variantId,
+              type: 'purchase',
+              qtyDelta: qty,
+              refType: 'purchase',
+              refId: Value(purchaseId),
+              reason: Value('شراء من $supplierName'),
+              userId: userId,
+              createdAt: now,
+            ),
+          );
+      await _insertAudit(
+        branchId: branchId,
+        userId: userId,
+        action: 'assistant_record_purchase',
+        entity: 'purchase',
+        entityId: purchaseId,
+        newValue:
+            '$productName x$qty @ ${Money(costPiasters).toDisplay()} (${isCredit ? 'credit' : 'cash'})',
+        now: now,
+      );
+
+      return 'تم تسجيل فاتورة شراء "$productName" ($qty قطعة من $supplierName) بإجمالي ${Money(totalPiasters).toDisplay()} ج.م (${isCredit ? 'آجل على حساب المورد' : 'نقدي'}).';
+    });
+  }
+
+  Future<String> _execAddProduct(
+    Map<String, dynamic> payload, {
+    required String userId,
+  }) async {
+    final name = (payload['productName'] as String? ?? '').trim();
+    final costEgp = (payload['costEgp'] as num?)?.toDouble() ?? 0;
+    final sellEgp = (payload['sellEgp'] as num?)?.toDouble() ?? 0;
+    final qty = (payload['qty'] as num?)?.toInt() ?? 0;
+
+    if (name.isEmpty || costEgp < 0 || sellEgp <= 0 || qty < 0) {
+      throw Exception('بيانات الصنف الجديد غير مكتملة');
+    }
+
+    final costPiasters = (costEgp * 100).round();
+    final sellPiasters = (sellEgp * 100).round();
+    final now = DateTime.now();
+
+    return _db.transaction(() async {
+      final branchId = await _resolveBranchId();
+      final catId = await _ensureDefaultCategoryId(branchId, now);
+      final prodId = _genId('prd');
+      final varId = _genId('var');
+
+      await _db.into(_db.products).insert(
+            ProductsCompanion.insert(
+              id: prodId,
+              branchId: branchId,
+              name: name,
+              categoryId: catId,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await _db.into(_db.productVariants).insert(
+            ProductVariantsCompanion.insert(
+              id: varId,
+              branchId: branchId,
+              productId: prodId,
+              sku: 'SKU-${now.millisecondsSinceEpoch}',
+              color: '-',
+              size: '-',
+              quantity: Value(qty),
+              costPrice: costPiasters,
+              sellPrice: sellPiasters,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      if (qty > 0) {
+        await _db.into(_db.inventoryLogs).insert(
+              InventoryLogsCompanion.insert(
+                id: _genId('inv'),
+                branchId: branchId,
+                variantId: varId,
+                type: 'initial_stock',
+                qtyDelta: qty,
+                refType: 'product',
+                refId: Value(prodId),
+                reason: const Value('إضافة صنف عبر المساعد الذكي'),
+                userId: userId,
+                createdAt: now,
+              ),
+            );
+      }
+      await _insertAudit(
+        branchId: branchId,
+        userId: userId,
+        action: 'assistant_add_product',
+        entity: 'product',
+        entityId: prodId,
+        newValue:
+            '$name | تكلفة: ${Money(costPiasters).toDisplay()} | بيع: ${Money(sellPiasters).toDisplay()} | كمية: $qty',
+        now: now,
+      );
+
+      return 'تمت إضافة الصنف "$name" (تكلفة ${Money(costPiasters).toDisplay()}، بيع ${Money(sellPiasters).toDisplay()} ج.م، رصيد $qty) بنجاح.';
+    });
+  }
+
+  Future<String> _execUpdateProductPriceOrStock(
+    Map<String, dynamic> payload, {
+    required String userId,
+  }) async {
+    final mode = (payload['mode'] as String? ?? 'price').trim();
+    final productName = (payload['productName'] as String? ?? '').trim();
+    final numVal = (payload['value'] as num?)?.toDouble() ?? 0;
+
+    if (productName.isEmpty) {
+      throw Exception('اسم الصنف مطلوب');
+    }
+
+    final now = DateTime.now();
+    return _db.transaction(() async {
+      final branchId = await _resolveBranchId();
+      final products = await (_db.select(_db.products)
+            ..where((p) => p.deletedAt.isNull()))
+          .get();
+      final norm = normalizeArabic(productName);
+      Product? targetProd;
+      for (final p in products) {
+        if (normalizeArabic(p.name) == norm ||
+            normalizeArabic(p.name).contains(norm)) {
+          targetProd = p;
+          break;
+        }
+      }
+      if (targetProd == null) {
+        throw Exception('لم يتم العثور على صنف باسم "$productName"');
+      }
+
+      final variants = await (_db.select(_db.productVariants)
+            ..where((v) =>
+                v.productId.equals(targetProd!.id) & v.deletedAt.isNull()))
+          .get();
+      if (variants.isEmpty) {
+        throw Exception('لا توجد وحدات متاحة للصنف "${targetProd.name}"');
+      }
+      final v = variants.first;
+
+      if (mode == 'price') {
+        final newSellPiasters = (numVal * 100).round();
+        if (newSellPiasters <= 0) {
+          throw Exception('سعر البيع يجب أن يكون أكبر من صفر');
+        }
+        await (_db.update(_db.productVariants)
+              ..where((t) => t.id.equals(v.id)))
+            .write(
+          ProductVariantsCompanion(
+            sellPrice: Value(newSellPiasters),
+            updatedAt: Value(now),
+          ),
+        );
+        await _insertAudit(
+          branchId: branchId,
+          userId: userId,
+          action: 'assistant_update_price',
+          entity: 'product_variant',
+          entityId: v.id,
+          oldValue: Money(v.sellPrice).toDisplay(),
+          newValue: Money(newSellPiasters).toDisplay(),
+          now: now,
+        );
+        return 'تم تعديل سعر بيع "${targetProd.name}" إلى ${Money(newSellPiasters).toDisplay()} ج.م.';
+      } else {
+        final delta = numVal.round();
+        final nextQty = v.quantity + delta;
+        if (nextQty < 0) {
+          throw Exception('الرصيد الناتج لا يمكن أن يكون سالباً');
+        }
+        await (_db.update(_db.productVariants)
+              ..where((t) => t.id.equals(v.id)))
+            .write(
+          ProductVariantsCompanion(
+            quantity: Value(nextQty),
+            updatedAt: Value(now),
+          ),
+        );
+        await _db.into(_db.inventoryLogs).insert(
+              InventoryLogsCompanion.insert(
+                id: _genId('inv'),
+                branchId: branchId,
+                variantId: v.id,
+                type: 'adjustment',
+                qtyDelta: delta,
+                refType: 'product',
+                refId: Value(targetProd.id),
+                reason: const Value('تعديل رصيد عبر المساعد الذكي'),
+                userId: userId,
+                createdAt: now,
+              ),
+            );
+        await _insertAudit(
+          branchId: branchId,
+          userId: userId,
+          action: 'assistant_adjust_stock',
+          entity: 'product_variant',
+          entityId: v.id,
+          oldValue: '${v.quantity}',
+          newValue: '$nextQty',
+          now: now,
+        );
+        return 'تم تحديث رصيد "${targetProd.name}" إلى $nextQty قطعة.';
+      }
+    });
+  }
+
+  Future<String> _execRecordExpense(
+    Map<String, dynamic> payload, {
+    required String userId,
+  }) async {
+    final category = (payload['category'] as String? ?? '').trim();
+    final amountEgp = (payload['amountEgp'] as num?)?.toDouble() ?? 0;
+    if (category.isEmpty || amountEgp <= 0) {
+      throw Exception('بيانات المصروف غير مكتملة');
+    }
+    final amountPiasters = (amountEgp * 100).round();
+    final now = DateTime.now();
+
+    return _db.transaction(() async {
+      final branchId = await _resolveBranchId();
+      final expId = _genId('exp');
+      await _db.into(_db.expenses).insert(
+            ExpensesCompanion.insert(
+              id: expId,
+              branchId: branchId,
+              category: category,
+              amount: amountPiasters,
+              kind: const Value('operating'),
+              note: const Value('تم التسجيل عبر المساعد الذكي'),
+              userId: userId,
+              expenseDate: now,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await _insertAudit(
+        branchId: branchId,
+        userId: userId,
+        action: 'assistant_record_expense',
+        entity: 'expense',
+        entityId: expId,
+        newValue: '$category: ${Money(amountPiasters).toDisplay()}',
+        now: now,
+      );
+      return 'تم تسجيل مصروف "$category" بمبلغ ${Money(amountPiasters).toDisplay()} ج.م بنجاح.';
+    });
+  }
+
+  Future<String> _execPaySupplier(
+    Map<String, dynamic> payload, {
+    required String userId,
+  }) async {
+    final supplierName = (payload['supplierName'] as String? ?? '').trim();
+    final amountEgp = (payload['amountEgp'] as num?)?.toDouble() ?? 0;
+    if (supplierName.isEmpty || amountEgp <= 0) {
+      throw Exception('بيانات سداد المورد غير مكتملة');
+    }
+    final amountPiasters = (amountEgp * 100).round();
+    final now = DateTime.now();
+
+    return _db.transaction(() async {
+      final branchId = await _resolveBranchId();
+      final suppliers = await (_db.select(_db.suppliers)
+            ..where((s) => s.deletedAt.isNull()))
+          .get();
+      final norm = normalizeArabic(supplierName);
+      Supplier? targetSup;
+      for (final s in suppliers) {
+        if (normalizeArabic(s.name) == norm ||
+            normalizeArabic(s.name).contains(norm)) {
+          targetSup = s;
+          break;
+        }
+      }
+      if (targetSup == null) {
+        throw Exception('لم يتم العثور على مورد باسم "$supplierName"');
+      }
+
+      final newBalance = targetSup.balance - amountPiasters;
+      final payId = _genId('spay');
+      await _db.into(_db.supplierPayments).insert(
+            SupplierPaymentsCompanion.insert(
+              id: payId,
+              branchId: branchId,
+              supplierId: targetSup.id,
+              amount: amountPiasters,
+              paymentDate: now,
+              paymentMethod: const Value('cash'),
+              notes: const Value('سداد عبر المساعد الذكي'),
+              createdBy: userId,
+              createdAt: now,
+            ),
+          );
+      await (_db.update(_db.suppliers)
+            ..where((s) => s.id.equals(targetSup!.id)))
+          .write(
+        SuppliersCompanion(
+          balance: Value(newBalance),
+          updatedAt: Value(now),
+        ),
+      );
+      await _insertAudit(
+        branchId: branchId,
+        userId: userId,
+        action: 'assistant_pay_supplier',
+        entity: 'supplier_payment',
+        entityId: payId,
+        oldValue: Money(targetSup.balance).toDisplay(),
+        newValue: Money(newBalance).toDisplay(),
+        now: now,
+      );
+      return 'تم تسجيل سداد ${Money(amountPiasters).toDisplay()} ج.م للمورد "${targetSup.name}"؛ الرصيد الحالي: ${Money(newBalance).toDisplay()} ج.م.';
+    });
+  }
+
+  /// Parses ERP operational commands into a (possibly incomplete) [AssistantActionDraft].
+  AssistantActionDraft? parseErpDraft(String rawQuery) {
+    final normalizedDigits = Money.normalizeDigits(rawQuery).trim();
+    final q = normalizeArabic(normalizedDigits);
+
+    // 1. Pay Supplier: "دفعت للمورد [اسم] [مبلغ]" / "سداد مورد [اسم] [مبلغ]"
+    if (q.startsWith('دفعت للمورد') ||
+        q.startsWith('دفعت لمورد') ||
+        q.startsWith('سداد مورد') ||
+        q.startsWith('سدد للمورد')) {
+      final body = normalizedDigits
+          .replaceFirst(
+            RegExp(r'^(?:دفعت\s+(?:للمورد|لمورد)|سداد\s+مورد|سدد\s+للمورد)\s*'),
+            '',
+          )
+          .trim();
+      final amtMatch = RegExp(r'(\d+(?:\.\d+)?)\s*(?:ج\.?م|جنيه)?$').firstMatch(body);
+      double? amount;
+      String? supName;
+      if (amtMatch != null) {
+        amount = double.tryParse(amtMatch.group(1)!);
+        supName = body.substring(0, amtMatch.start).trim();
+      } else if (body.isNotEmpty) {
+        supName = body;
+      }
+      final fields = <String, dynamic>{
+        if (supName != null && supName.isNotEmpty) 'supplierName': supName,
+        if (amount != null && amount > 0) 'amountEgp': amount,
+      };
+      return _finalizeDraft(AssistantCommandKind.paySupplier, fields);
+    }
+
+    // 2. Record Expense: "سجل مصروف [بند] [مبلغ]" / "دفعت [بند] [مبلغ]"
+    if (q.startsWith('سجل مصروف') ||
+        q.startsWith('اضف مصروف') ||
+        q.startsWith('مصروف جديد') ||
+        (q.startsWith('دفعت ') && !q.contains('مورد'))) {
+      final body = normalizedDigits
+          .replaceFirst(
+            RegExp(r'^(?:سجل\s+مصروف|اضف\s+مصروف|أضف\s+مصروف|مصروف\s+جديد|دفعت)\s*'),
+            '',
+          )
+          .trim();
+      final amtMatch = RegExp(r'(\d+(?:\.\d+)?)\s*(?:ج\.?م|جنيه)?$').firstMatch(body);
+      double? amount;
+      String? category;
+      if (amtMatch != null) {
+        amount = double.tryParse(amtMatch.group(1)!);
+        category = body.substring(0, amtMatch.start).trim();
+      } else if (body.isNotEmpty) {
+        category = body;
+      }
+      final fields = <String, dynamic>{
+        if (category != null && category.isNotEmpty) 'category': category,
+        if (amount != null && amount > 0) 'amountEgp': amount,
+      };
+      return _finalizeDraft(AssistantCommandKind.recordExpense, fields);
+    }
+
+    // 3. Update Product Price or Stock: "خلي سعر [صنف] [سعر]" / "زود رصيد [صنف] [عدد]"
+    if (q.startsWith('خلي سعر ') ||
+        q.startsWith('عدل سعر ') ||
+        q.startsWith('غير سعر ')) {
+      final body = normalizedDigits
+          .replaceFirst(RegExp(r'^(?:خلي|عدل|غير|عدّل)\s+سعر\s+'), '')
+          .trim();
+      final numMatch = RegExp(r'(\d+(?:\.\d+)?)\s*(?:ج\.?م|جنيه)?$').firstMatch(body);
+      double? val;
+      String? prodName;
+      if (numMatch != null) {
+        val = double.tryParse(numMatch.group(1)!);
+        prodName = body.substring(0, numMatch.start).trim();
+      } else if (body.isNotEmpty) {
+        prodName = body;
+      }
+      final fields = <String, dynamic>{
+        'mode': 'price',
+        if (prodName != null && prodName.isNotEmpty) 'productName': prodName,
+        if (val != null && val > 0) 'value': val,
+      };
+      return _finalizeDraft(AssistantCommandKind.updateProductPriceOrStock, fields);
+    }
+    if (q.startsWith('زود رصيد ') ||
+        q.startsWith('زود كميه ') ||
+        q.startsWith('نقص رصيد ')) {
+      final isNeg = q.startsWith('نقص');
+      final body = normalizedDigits
+          .replaceFirst(RegExp(r'^(?:زود|نقص)\s+(?:رصيد|كميه|كمية)\s+'), '')
+          .trim();
+      final numMatch = RegExp(r'(\d+)\s*(?:قطعه|قطعة)?$').firstMatch(body);
+      int? val;
+      String? prodName;
+      if (numMatch != null) {
+        val = int.tryParse(numMatch.group(1)!);
+        if (val != null && isNeg) val = -val;
+        prodName = body.substring(0, numMatch.start).trim();
+      } else if (body.isNotEmpty) {
+        prodName = body;
+      }
+      final fields = <String, dynamic>{
+        'mode': 'stock',
+        if (prodName != null && prodName.isNotEmpty) 'productName': prodName,
+        if (val != null && val != 0) 'value': val,
+      };
+      return _finalizeDraft(AssistantCommandKind.updateProductPriceOrStock, fields);
+    }
+
+    // 4. Add Product: "ضيف صنف [اسم] تكلفة [سعر] بيع [سعر] كمية [عدد]"
+    if (q.startsWith('ضيف صنف') ||
+        q.startsWith('اضف صنف') ||
+        q.startsWith('اضافه صنف') ||
+        q.startsWith('صنف جديد')) {
+      final body = normalizedDigits
+          .replaceFirst(
+            RegExp(r'^(?:ضيف\s+صنف|اضف\s+صنف|أضف\s+صنف|اضافه\s+صنف|إضافة\s+صنف|صنف\s+جديد)\s*'),
+            '',
+          )
+          .trim();
+      final costMatch = RegExp(r'(?:تكلفه|تكلفة)\s+(\d+(?:\.\d+)?)').firstMatch(body);
+      final sellMatch = RegExp(r'(?:بيع|سعر)\s+(\d+(?:\.\d+)?)').firstMatch(body);
+      final qtyMatch = RegExp(r'(?:كميه|كمية|عدد)\s+(\d+)').firstMatch(body);
+
+      String prodName = body;
+      final cutIndices = [
+        if (costMatch != null) costMatch.start,
+        if (sellMatch != null) sellMatch.start,
+        if (qtyMatch != null) qtyMatch.start,
+      ];
+      if (cutIndices.isNotEmpty) {
+        cutIndices.sort();
+        prodName = body.substring(0, cutIndices.first).trim();
+      }
+
+      final fields = <String, dynamic>{
+        if (prodName.isNotEmpty) 'productName': prodName,
+        if (costMatch != null) 'costEgp': double.tryParse(costMatch.group(1)!),
+        if (sellMatch != null) 'sellEgp': double.tryParse(sellMatch.group(1)!),
+        if (qtyMatch != null) 'qty': int.tryParse(qtyMatch.group(1)!),
+      }..removeWhere((_, v) => v == null);
+      return _finalizeDraft(AssistantCommandKind.addProduct, fields);
+    }
+
+    // 5. Record Purchase: "اشتريت [صنف] من المورد [اسم] بسعر [سعر] عدد [كمية] (نقدي/آجل)"
+    if (q.startsWith('اشتريت') || q.startsWith('شراء ') || q.startsWith('سجل مشتريات')) {
+      final body = normalizedDigits
+          .replaceFirst(RegExp(r'^(?:اشتريت|شراء|سجل\s+مشتريات)\s*'), '')
+          .trim();
+      final isCredit = q.contains('اجل') || q.contains('آجل') || q.contains('شكك');
+      final supMatch = RegExp(
+        r'من\s+(?:المورد|مورد)?\s*([^\d]+?)(?=\s+(?:بسعر|سعر|عدد|كميه|كمية|نقدي|كاش|آجل|اجل)|$)',
+      ).firstMatch(body);
+      final costMatch = RegExp(r'(?:بسعر|سعر)\s+(\d+(?:\.\d+)?)').firstMatch(body);
+      final qtyMatch = RegExp(r'(?:عدد|كميه|كمية)\s+(\d+)').firstMatch(body);
+
+      String prodName = body;
+      final cutIndices = [
+        if (supMatch != null) supMatch.start,
+        if (costMatch != null) costMatch.start,
+        if (qtyMatch != null) qtyMatch.start,
+      ];
+      if (cutIndices.isNotEmpty) {
+        cutIndices.sort();
+        prodName = body.substring(0, cutIndices.first).trim();
+      }
+
+      final fields = <String, dynamic>{
+        if (prodName.isNotEmpty) 'productName': prodName,
+        if (supMatch != null && supMatch.group(1)!.trim().isNotEmpty)
+          'supplierName': supMatch.group(1)!.trim(),
+        if (costMatch != null) 'costEgp': double.tryParse(costMatch.group(1)!),
+        if (qtyMatch != null) 'qty': int.tryParse(qtyMatch.group(1)!),
+        'paymentType': isCredit ? 'credit' : 'cash',
+      }..removeWhere((_, v) => v == null);
+      return _finalizeDraft(AssistantCommandKind.recordPurchase, fields);
+    }
+
+    return null;
+  }
+
+  AssistantActionDraft _finalizeDraft(
+    AssistantCommandKind kind,
+    Map<String, dynamic> fields,
+  ) {
+    switch (kind) {
+      case AssistantCommandKind.recordPurchase:
+        if ((fields['productName'] as String? ?? '').isEmpty) {
+          return AssistantActionDraft(
+            kind: kind,
+            fields: fields,
+            missingField: 'productName',
+            promptForMissing: 'ما اسم الصنف الذي اشتريته؟',
+          );
+        }
+        if ((fields['supplierName'] as String? ?? '').isEmpty) {
+          return AssistantActionDraft(
+            kind: kind,
+            fields: fields,
+            missingField: 'supplierName',
+            promptForMissing: 'من أي مورد اشتريت الصنف؟',
+          );
+        }
+        if ((fields['costEgp'] as num? ?? 0) <= 0) {
+          return AssistantActionDraft(
+            kind: kind,
+            fields: fields,
+            missingField: 'costEgp',
+            promptForMissing: 'كم سعر شراء القطعة الواحدة بالجنيه؟',
+          );
+        }
+        if ((fields['qty'] as num? ?? 0) <= 0) {
+          return AssistantActionDraft(
+            kind: kind,
+            fields: fields,
+            missingField: 'qty',
+            promptForMissing: 'كم الكمية المشتراة (عدد القطع)؟',
+          );
+        }
+        return AssistantActionDraft(kind: kind, fields: fields);
+
+      case AssistantCommandKind.addProduct:
+        if ((fields['productName'] as String? ?? '').isEmpty) {
+          return AssistantActionDraft(
+            kind: kind,
+            fields: fields,
+            missingField: 'productName',
+            promptForMissing: 'ما اسم الصنف الجديد؟',
+          );
+        }
+        if (fields['costEgp'] == null) {
+          return AssistantActionDraft(
+            kind: kind,
+            fields: fields,
+            missingField: 'costEgp',
+            promptForMissing: 'كم سعر التكلفة للصنف الجديد بالجنيه؟',
+          );
+        }
+        if ((fields['sellEgp'] as num? ?? 0) <= 0) {
+          return AssistantActionDraft(
+            kind: kind,
+            fields: fields,
+            missingField: 'sellEgp',
+            promptForMissing: 'كم سعر البيع المقترح بالجنيه؟',
+          );
+        }
+        if (fields['qty'] == null) {
+          return AssistantActionDraft(
+            kind: kind,
+            fields: fields,
+            missingField: 'qty',
+            promptForMissing: 'كم الكمية الافتتاحية بالمخزن؟',
+          );
+        }
+        return AssistantActionDraft(kind: kind, fields: fields);
+
+      case AssistantCommandKind.updateProductPriceOrStock:
+        final isPrice = (fields['mode'] ?? 'price') == 'price';
+        if ((fields['productName'] as String? ?? '').isEmpty) {
+          return AssistantActionDraft(
+            kind: kind,
+            fields: fields,
+            missingField: 'productName',
+            promptForMissing: 'ما اسم الصنف المراد تعديله؟',
+          );
+        }
+        if (fields['value'] == null) {
+          return AssistantActionDraft(
+            kind: kind,
+            fields: fields,
+            missingField: 'value',
+            promptForMissing:
+                isPrice ? 'ما السعر الجديد بالجنيه؟' : 'كم الكمية المراد إضافتها/خصمها؟',
+          );
+        }
+        return AssistantActionDraft(kind: kind, fields: fields);
+
+      case AssistantCommandKind.recordExpense:
+        if ((fields['category'] as String? ?? '').isEmpty) {
+          return AssistantActionDraft(
+            kind: kind,
+            fields: fields,
+            missingField: 'category',
+            promptForMissing: 'ما بند المصروف (مثال: كهرباء، إيجار، ضيافة)؟',
+          );
+        }
+        if ((fields['amountEgp'] as num? ?? 0) <= 0) {
+          return AssistantActionDraft(
+            kind: kind,
+            fields: fields,
+            missingField: 'amountEgp',
+            promptForMissing: 'كم مبلغ المصروف بالجنيه؟',
+          );
+        }
+        return AssistantActionDraft(kind: kind, fields: fields);
+
+      case AssistantCommandKind.paySupplier:
+        if ((fields['supplierName'] as String? ?? '').isEmpty) {
+          return AssistantActionDraft(
+            kind: kind,
+            fields: fields,
+            missingField: 'supplierName',
+            promptForMissing: 'ما اسم المورد المراد السداد له؟',
+          );
+        }
+        if ((fields['amountEgp'] as num? ?? 0) <= 0) {
+          return AssistantActionDraft(
+            kind: kind,
+            fields: fields,
+            missingField: 'amountEgp',
+            promptForMissing: 'كم المبلغ المدفوع للمورد بالجنيه؟',
+          );
+        }
+        return AssistantActionDraft(kind: kind, fields: fields);
+
+      default:
+        return AssistantActionDraft(kind: kind, fields: fields);
+    }
+  }
+
+  AssistantActionDraft advanceDraft(
+    AssistantActionDraft draft,
+    String userReply,
+  ) {
+    final cleaned = Money.normalizeDigits(userReply).trim();
+    final updated = Map<String, dynamic>.from(draft.fields);
+    final missing = draft.missingField;
+    if (missing != null && cleaned.isNotEmpty) {
+      if (missing == 'costEgp' ||
+          missing == 'sellEgp' ||
+          missing == 'amountEgp') {
+        final numMatch = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(cleaned);
+        if (numMatch != null) {
+          updated[missing] = double.tryParse(numMatch.group(1)!);
+        }
+      } else if (missing == 'qty' || missing == 'value') {
+        final numMatch = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(cleaned);
+        if (numMatch != null) {
+          updated[missing] = missing == 'qty'
+              ? int.tryParse(numMatch.group(1)!.split('.').first)
+              : double.tryParse(numMatch.group(1)!);
+        }
+      } else {
+        updated[missing] = cleaned;
+      }
+    }
+    return _finalizeDraft(draft.kind, updated);
+  }
+
+  AssistantInsight _buildDraftPromptInsight(AssistantActionDraft draft) {
+    return AssistantInsight(
+      id: 'draft_prompt_${draft.missingField}',
+      title: 'استكمال بيانات العملية',
+      summary: draft.promptForMissing ?? 'أدخل القيمة المطلوبة:',
+      details: const ['يمكنك كتابة "إلغاء" في أي وقت لإلغاء المسودة.'],
+    );
+  }
+
+  AssistantInsight _buildPendingCommandInsight(AssistantActionDraft draft) {
+    final f = draft.fields;
+    switch (draft.kind) {
+      case AssistantCommandKind.recordPurchase:
+        final prod = f['productName'];
+        final sup = f['supplierName'];
+        final cost = (f['costEgp'] as num).toDouble();
+        final qty = (f['qty'] as num).toInt();
+        final isCredit = f['paymentType'] == 'credit';
+        final total = cost * qty;
+        return AssistantInsight(
+          id: 'cmd_record_purchase',
+          title: 'تأكيد تسجيل فاتورة مشتريات',
+          summary:
+              'شراء "$prod" ($qty قطعة) من المورد "$sup" بإجمالي ${total.toStringAsFixed(2)} ج.م (${isCredit ? 'آجل' : 'نقدي'}).',
+          details: const ['يتطلب التنفيذ صلاحية مدير (Admin) ويُحفظ في سجل المراجعة.'],
+          pendingCommand: AssistantPendingCommand(
+            kind: AssistantCommandKind.recordPurchase,
+            title: 'تسجيل مشتريات',
+            description: '$prod x$qty',
+            payload: Map<String, dynamic>.from(f),
+          ),
+        );
+      case AssistantCommandKind.addProduct:
+        final prod = f['productName'];
+        final cost = (f['costEgp'] as num).toDouble();
+        final sell = (f['sellEgp'] as num).toDouble();
+        final qty = (f['qty'] as num).toInt();
+        return AssistantInsight(
+          id: 'cmd_add_product',
+          title: 'تأكيد إضافة صنف جديد',
+          summary:
+              'إضافة "$prod" — تكلفة ${cost.toStringAsFixed(2)} ج.م، بيع ${sell.toStringAsFixed(2)} ج.م، كمية $qty.',
+          details: const ['يتطلب التنفيذ صلاحية مدير (Admin).'],
+          pendingCommand: AssistantPendingCommand(
+            kind: AssistantCommandKind.addProduct,
+            title: 'إضافة صنف جديد',
+            description: '$prod',
+            payload: Map<String, dynamic>.from(f),
+          ),
+        );
+      case AssistantCommandKind.updateProductPriceOrStock:
+        final isPrice = (f['mode'] ?? 'price') == 'price';
+        final prod = f['productName'];
+        final val = (f['value'] as num).toDouble();
+        return AssistantInsight(
+          id: 'cmd_update_product',
+          title: isPrice ? 'تأكيد تعديل سعر الصنف' : 'تأكيد تعديل رصيد الصنف',
+          summary: isPrice
+              ? 'تعديل سعر بيع "$prod" إلى ${val.toStringAsFixed(2)} ج.م.'
+              : 'تعديل رصيد "$prod" بمقدار ${val.toInt()} قطعة.',
+          details: const ['يتطلب التنفيذ صلاحية مدير (Admin).'],
+          pendingCommand: AssistantPendingCommand(
+            kind: AssistantCommandKind.updateProductPriceOrStock,
+            title: isPrice ? 'تعديل سعر صنف' : 'تعديل رصيد صنف',
+            description: '$prod',
+            payload: Map<String, dynamic>.from(f),
+          ),
+        );
+      case AssistantCommandKind.recordExpense:
+        final cat = f['category'];
+        final amt = (f['amountEgp'] as num).toDouble();
+        return AssistantInsight(
+          id: 'cmd_record_expense',
+          title: 'تأكيد تسجيل مصروف',
+          summary: 'تسجيل مصروف "$cat" بمبلغ ${amt.toStringAsFixed(2)} ج.م.',
+          details: const ['يتطلب التنفيذ صلاحية مدير (Admin).'],
+          pendingCommand: AssistantPendingCommand(
+            kind: AssistantCommandKind.recordExpense,
+            title: 'تسجيل مصروف',
+            description: '$cat',
+            payload: Map<String, dynamic>.from(f),
+          ),
+        );
+      case AssistantCommandKind.paySupplier:
+        final sup = f['supplierName'];
+        final amt = (f['amountEgp'] as num).toDouble();
+        return AssistantInsight(
+          id: 'cmd_pay_supplier',
+          title: 'تأكيد سداد مورد',
+          summary: 'تسجيل سداد ${amt.toStringAsFixed(2)} ج.م للمورد "$sup".',
+          details: const ['يتطلب التنفيذ صلاحية مدير (Admin).'],
+          pendingCommand: AssistantPendingCommand(
+            kind: AssistantCommandKind.paySupplier,
+            title: 'سداد مورد',
+            description: '$sup',
+            payload: Map<String, dynamic>.from(f),
+          ),
+        );
+      default:
+        return const AssistantInsight(
+          id: 'cmd_unknown',
+          title: 'أمر غير معروف',
+          summary: 'تعذر تجهيز الأمر للتنفيذ.',
+        );
+    }
+  }
+
+  /// Multi-turn conversation entry point supporting [AssistantActionDraft].
+  Future<AssistantTurnResult> askWithDraft(
+    String query, {
+    AssistantActionDraft? activeDraft,
+  }) async {
+    final q = normalizeArabic(query);
+    if (activeDraft != null) {
+      if (q == 'الغاء' || q == 'cancel' || q == 'الغي') {
+        return const AssistantTurnResult(
+          insights: [
+            AssistantInsight(
+              id: 'draft_cancelled',
+              title: 'تم إلغاء المسودة',
+              summary: 'تم إلغاء العملية الجارية دون إجراء أي تغيير.',
+            ),
+          ],
+          activeDraft: null,
+        );
+      }
+      final nextDraft = advanceDraft(activeDraft, query);
+      if (!nextDraft.isComplete) {
+        return AssistantTurnResult(
+          insights: [_buildDraftPromptInsight(nextDraft)],
+          activeDraft: nextDraft,
+        );
+      }
+      return AssistantTurnResult(
+        insights: [_buildPendingCommandInsight(nextDraft)],
+        activeDraft: null,
+      );
+    }
+
+    final erpDraft = parseErpDraft(query);
+    if (erpDraft != null) {
+      if (!erpDraft.isComplete) {
+        return AssistantTurnResult(
+          insights: [_buildDraftPromptInsight(erpDraft)],
+          activeDraft: erpDraft,
+        );
+      }
+      return AssistantTurnResult(
+        insights: [_buildPendingCommandInsight(erpDraft)],
+        activeDraft: null,
+      );
+    }
+
+    final insights = await ask(query);
+    return AssistantTurnResult(insights: insights, activeDraft: null);
   }
 
   /// 1. Marketing & Finance Clarifications (Discount vs Bundle vs Gift, Funnel, Profit vs Cash)
@@ -2207,6 +3362,16 @@ $cta${storePhone.isNotEmpty ? ' على: $storePhone' : ''}
     final cmdInsight = parseCommand(query);
     if (cmdInsight != null) {
       return [cmdInsight];
+    }
+
+    // 1b. Direct complete ERP action command
+    final erpDraft = parseErpDraft(query);
+    if (erpDraft != null) {
+      return [
+        erpDraft.isComplete
+            ? _buildPendingCommandInsight(erpDraft)
+            : _buildDraftPromptInsight(erpDraft),
+      ];
     }
 
     // 2. Interactive How-To Guide

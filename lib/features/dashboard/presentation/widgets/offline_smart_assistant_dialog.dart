@@ -111,6 +111,18 @@ class _OfflineSmartAssistantDialogState
   Map<String, bool> _enabledFeatures = const {};
   bool _isLoading = true;
   String _selectedCategory = 'all';
+  AssistantActionDraft? _activeDraft;
+  bool _instantAdminMode = false;
+
+  bool _isCurrentUserAdmin() {
+    try {
+      final authState = context.read<AuthCubit>().state;
+      if (authState is AuthAuthenticated) {
+        return authState.user.role.toLowerCase() == 'admin';
+      }
+    } catch (_) {}
+    return false;
+  }
 
   @override
   void initState() {
@@ -169,16 +181,27 @@ class _OfflineSmartAssistantDialogState
     if (trimmed.isEmpty) return;
     setState(() => _isLoading = true);
     try {
-      final res = await _resolveService().ask(trimmed);
+      final turn = await _resolveService().askWithDraft(
+        trimmed,
+        activeDraft: _activeDraft,
+      );
       if (!mounted) return;
       setState(() {
+        _activeDraft = turn.activeDraft;
         _history.add(
-          _AssistantChatEntry(userPrompt: trimmed, insights: res),
+          _AssistantChatEntry(userPrompt: trimmed, insights: turn.insights),
         );
         _queryCtrl.clear();
         _isLoading = false;
       });
       _scrollToLatest();
+
+      if (_instantAdminMode &&
+          _isCurrentUserAdmin() &&
+          turn.insights.length == 1 &&
+          turn.insights.first.pendingCommand != null) {
+        await _confirmCommand(turn.insights.first);
+      }
     } catch (_) {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -359,6 +382,7 @@ class _OfflineSmartAssistantDialogState
     const categorizedPrompts = <String, List<String>>{
       'analytics': [
         'وضع المحل دلوقتي؟',
+        'الأقساط المتأخرة',
         'صافي ربح اليوم ومقارنته بأمس',
         'نقطة التعادل اليومية',
         'كاشف تسرب الأرباح',
@@ -366,7 +390,6 @@ class _OfflineSmartAssistantDialogState
         'المبيعات قليلة ليه؟',
         'الأصناف الراكدة',
         'أعلى 5 أصناف ربحاً',
-        'الأقساط المتأخرة',
         'مستحقات الموردين',
       ],
       'marketing': [
@@ -427,7 +450,7 @@ class _OfflineSmartAssistantDialogState
           children: [
             // Gradient Header
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [AppColors.primary, AppColors.secondary],
@@ -440,24 +463,26 @@ class _OfflineSmartAssistantDialogState
                   const Icon(
                     Icons.auto_awesome_rounded,
                     color: Colors.white,
-                    size: 20,
+                    size: 18,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   const Expanded(
                     child: Text(
                       'المساعد التحليلي الذكي (أوفلاين)',
                       style: TextStyle(
                         fontFamily: 'Cairo',
-                        fontSize: 13.5,
+                        fontSize: 12.5,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  const SizedBox(width: 4),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
+                      horizontal: 6,
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
@@ -468,18 +493,54 @@ class _OfflineSmartAssistantDialogState
                       'أوفلاين 100%',
                       style: TextStyle(
                         fontFamily: 'Cairo',
-                        fontSize: 10,
+                        fontSize: 9.5,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  if (_isCurrentUserAdmin()) ...[
+                    const SizedBox(width: 4),
+                    Tooltip(
+                      message: 'تنفيذ فوري للمدير بدون ضغط زر التأكيد',
+                      child: InkWell(
+                        key: const Key('assistant_instant_mode_toggle'),
+                        borderRadius: BorderRadius.circular(999),
+                        onTap: () => setState(
+                          () => _instantAdminMode = !_instantAdminMode,
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _instantAdminMode
+                                ? Colors.white
+                                : Colors.white.withValues(alpha: 0.16),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            'تنفيذ فوري',
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.bold,
+                              color: _instantAdminMode
+                                  ? AppColors.primary
+                                  : Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(width: 2),
                   IconButton(
                     key: const Key('smart_assistant_reset_btn'),
                     constraints: const BoxConstraints(
-                      minWidth: 30,
-                      minHeight: 30,
+                      minWidth: 26,
+                      minHeight: 26,
                     ),
                     padding: EdgeInsets.zero,
                     tooltip: 'بدء محادثة جديدة',
@@ -487,20 +548,20 @@ class _OfflineSmartAssistantDialogState
                     icon: const Icon(
                       Icons.refresh_rounded,
                       color: Colors.white,
-                      size: 18,
+                      size: 17,
                     ),
                   ),
                   IconButton(
                     constraints: const BoxConstraints(
-                      minWidth: 30,
-                      minHeight: 30,
+                      minWidth: 26,
+                      minHeight: 26,
                     ),
                     padding: EdgeInsets.zero,
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(
                       Icons.close_rounded,
                       color: Colors.white,
-                      size: 18,
+                      size: 17,
                     ),
                   ),
                 ],
@@ -729,7 +790,7 @@ class _OfflineSmartAssistantDialogState
                                               ),
                                             ),
                                             child: const Text(
-                                              'تأكيد التعديل',
+                                              'تنفيذ الآن',
                                               style: TextStyle(
                                                 fontFamily: 'Cairo',
                                                 fontSize: 12,

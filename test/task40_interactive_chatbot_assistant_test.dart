@@ -1230,4 +1230,210 @@ void main() {
       expect(find.text('خطة تسويق لزيادة المبيعات'), findsOneWidget);
     });
   });
+
+  group('Task 40.6: Full ERP Action Agent, Multi-Turn Drafts & Instant Mode', () {
+    test('handles multi-turn incomplete drafts and cancellation cleanly', () async {
+      // Turn 1: incomplete expense command (missing amount)
+      final t1 = await assistantService.askWithDraft('سجل مصروف كهرباء');
+      expect(t1.activeDraft, isNotNull);
+      expect(t1.activeDraft!.missingField, 'amountEgp');
+      expect(t1.insights.first.id, 'draft_prompt_amountEgp');
+
+      // Turn 2: cancel active draft
+      final tCancel = await assistantService.askWithDraft(
+        'إلغاء',
+        activeDraft: t1.activeDraft,
+      );
+      expect(tCancel.activeDraft, isNull);
+      expect(tCancel.insights.first.id, 'draft_cancelled');
+
+      // Turn 3: incomplete purchase -> fill missing fields step by step
+      final p1 = await assistantService.askWithDraft('اشتريت جاكيت جلد');
+      expect(p1.activeDraft?.missingField, 'supplierName');
+      final p2 = await assistantService.askWithDraft(
+        'شركة النيل',
+        activeDraft: p1.activeDraft,
+      );
+      expect(p2.activeDraft?.missingField, 'costEgp');
+      final p3 = await assistantService.askWithDraft(
+        '250',
+        activeDraft: p2.activeDraft,
+      );
+      expect(p3.activeDraft?.missingField, 'qty');
+      final p4 = await assistantService.askWithDraft(
+        '4',
+        activeDraft: p3.activeDraft,
+      );
+      expect(p4.activeDraft, isNull);
+      expect(p4.insights.first.pendingCommand?.kind, AssistantCommandKind.recordPurchase);
+    });
+
+    test('executes all 5 ERP actions + updateStorePhone in DB transaction with AuditLogs and blocks cashier', () async {
+      // 1. Cashier must be rejected
+      final expTurn = await assistantService.askWithDraft('سجل مصروف ضيافة 150');
+      final expCmd = expTurn.insights.first.pendingCommand!;
+      await expectLater(
+        assistantService.executeCommand(
+          expCmd,
+          userId: 'cashier_1',
+          userRole: 'cashier',
+          gate: gate,
+        ),
+        throwsException,
+      );
+      expect(await db.select(db.expenses).get(), isEmpty);
+
+      // 2. Admin executes recordExpense
+      await assistantService.executeCommand(
+        expCmd,
+        userId: 'admin_1',
+        userRole: 'admin',
+        gate: gate,
+      );
+      final expenses = await db.select(db.expenses).get();
+      expect(expenses.length, 1);
+      expect(expenses.first.category, 'ضيافة');
+      expect(expenses.first.amount, 15000);
+
+      // 3. Admin executes addProduct
+      final addTurn = await assistantService.askWithDraft(
+        'ضيف صنف تيشيرت بولو تكلفة 100 بيع 200 كمية 10',
+      );
+      await assistantService.executeCommand(
+        addTurn.insights.first.pendingCommand!,
+        userId: 'admin_1',
+        userRole: 'admin',
+        gate: gate,
+      );
+      final products = await db.select(db.products).get();
+      expect(products.any((p) => p.name == 'تيشيرت بولو'), isTrue);
+
+      // 4. Admin executes updateProductPriceOrStock (price & stock)
+      final priceTurn = await assistantService.askWithDraft('خلي سعر تيشيرت بولو 250');
+      await assistantService.executeCommand(
+        priceTurn.insights.first.pendingCommand!,
+        userId: 'admin_1',
+        userRole: 'admin',
+        gate: gate,
+      );
+      final stockTurn = await assistantService.askWithDraft('زود رصيد تيشيرت بولو 5');
+      await assistantService.executeCommand(
+        stockTurn.insights.first.pendingCommand!,
+        userId: 'admin_1',
+        userRole: 'admin',
+        gate: gate,
+      );
+      final variants = await db.select(db.productVariants).get();
+      expect(variants.first.sellPrice, 25000);
+      expect(variants.first.quantity, 15);
+
+      // 5. Admin executes recordPurchase (credit) & paySupplier
+      final purTurn = await assistantService.askWithDraft(
+        'اشتريت تيشيرت بولو من المورد النيل بسعر 120 عدد 10 آجل',
+      );
+      await assistantService.executeCommand(
+        purTurn.insights.first.pendingCommand!,
+        userId: 'admin_1',
+        userRole: 'admin',
+        gate: gate,
+      );
+      var suppliers = await db.select(db.suppliers).get();
+      expect(suppliers.first.balance, 120000); // 120 * 10 = 1200 EGP
+
+      final payTurn = await assistantService.askWithDraft('دفعت للمورد النيل 500');
+      await assistantService.executeCommand(
+        payTurn.insights.first.pendingCommand!,
+        userId: 'admin_1',
+        userRole: 'admin',
+        gate: gate,
+      );
+      suppliers = await db.select(db.suppliers).get();
+      expect(suppliers.first.balance, 70000); // 1200 - 500 = 700 EGP
+      expect((await db.select(db.supplierPayments).get()).length, 1);
+
+      // 6. Admin executes updateStorePhone
+      final phoneInsight = assistantService.parseCommand(
+        'تغيير رقم هاتف الفاتورة إلى 01055667788',
+      );
+      expect(phoneInsight?.pendingCommand?.kind, AssistantCommandKind.updateStorePhone);
+      await assistantService.executeCommand(
+        phoneInsight!.pendingCommand!,
+        userId: 'admin_1',
+        userRole: 'admin',
+        gate: gate,
+      );
+      await ReceiptSettingsService.loadFromFeatureGate(gate);
+      expect(ReceiptSettingsService.current.storePhone, '01055667788');
+
+      // AuditLogs recorded for all ERP actions
+      final audits = await db.select(db.auditLogs).get();
+      expect(audits.length, greaterThanOrEqualTo(6));
+    });
+
+    testWidgets('dialog supports multi-turn draft completion and admin instant mode toggle', (tester) async {
+      tester.view.physicalSize = const Size(1280, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final admin = UserEntity(
+        id: 'admin_1',
+        name: 'المدير',
+        email: 'admin@test.com',
+        role: 'admin',
+        isActive: true,
+        createdAt: DateTime(2026, 1, 1),
+      );
+      final authCubit = _StubAuthCubit(admin);
+
+      await tester.pumpWidget(
+        BlocProvider<AuthCubit>.value(
+          value: authCubit,
+          child: MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => ElevatedButton(
+                  onPressed: () => OfflineSmartAssistantDialog.show(context),
+                  child: const Text('Open Agent'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Agent'));
+      await tester.pumpAndSettle();
+
+      // Enable instant execution mode for admin
+      final instantToggle = find.byKey(const Key('assistant_instant_mode_toggle'));
+      expect(instantToggle, findsOneWidget);
+      await tester.tap(instantToggle);
+      await tester.pumpAndSettle();
+
+      // Multi-turn incomplete expense: "سجل مصروف نقل" -> "300" -> auto-executes!
+      await tester.enterText(
+        find.byKey(const Key('smart_assistant_query_field')),
+        'سجل مصروف نقل',
+      );
+      await tester.tap(find.byKey(const Key('smart_assistant_ask_btn')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('كم مبلغ المصروف'), findsOneWidget);
+
+      await tester.enterText(
+        find.byKey(const Key('smart_assistant_query_field')),
+        '300',
+      );
+      await tester.tap(find.byKey(const Key('smart_assistant_ask_btn')));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 120)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('تم تنفيذ التعديل بنجاح'), findsOneWidget);
+      final exps = await db.select(db.expenses).get();
+      expect(exps.length, 1);
+      expect(exps.first.category, 'نقل');
+      expect(exps.first.amount, 30000);
+    });
+  });
 }
