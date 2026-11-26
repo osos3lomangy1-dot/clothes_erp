@@ -10,6 +10,7 @@ import '../../../../core/services/local_backup_service.dart';
 import '../../../../core/utils/money.dart';
 import '../../../auth/services/cashier_permissions_service.dart';
 import '../../../invoices/data/services/receipt_settings_service.dart';
+import 'assistant_nlu_classifier.dart';
 import 'assistant_nlu_engine.dart';
 
 part 'assistant_draft_engine_part.dart';
@@ -1005,6 +1006,23 @@ class OfflineSmartAssistantService {
         return kbMatches;
       }
 
+      // Tier 2: On-device Naive Bayes + N-Gram classifier trained on 75k+ corpus v2 sentences
+      final trainedPred = await _trainedClassifier.classify(
+        query,
+        minConfidence: 0.72,
+      );
+      if (trainedPred != null &&
+          trainedPred.intent != AssistantNluIntent.outOfScope) {
+        final trainedInsights = await _dispatchTrainedIntent(
+          trainedPred.intent,
+          query,
+        );
+        if (trainedInsights.isNotEmpty) {
+          _lastInsights = List<AssistantInsight>.unmodifiable(trainedInsights);
+          return trainedInsights;
+        }
+      }
+
       final suggestions = _buildDidYouMeanSuggestions(q);
       return [
         AssistantInsight(
@@ -1024,8 +1042,92 @@ class OfflineSmartAssistantService {
   // OFFLINE KNOWLEDGE DISTILLATION & FUZZY SYNONYM SCORING ENGINE
   // ─────────────────────────────────────────────────────────────────────────
 
+  Future<List<AssistantInsight>> _dispatchTrainedIntent(
+    AssistantNluIntent intent,
+    String query,
+  ) async {
+    switch (intent) {
+      case AssistantNluIntent.overdueInstallments:
+        return [await getOverdueInstallmentsInsight()];
+      case AssistantNluIntent.promoPost:
+        return [await getPromoPostGeneratorInsight(query)];
+      case AssistantNluIntent.salesDiagnosis:
+        return [await getSalesDiagnosisInsight()];
+      case AssistantNluIntent.todayProfit:
+        return [await getTodayProfitInsight()];
+      case AssistantNluIntent.yesterdayFollowup:
+        return [await _buildYesterdayFollowupInsight()];
+      case AssistantNluIntent.whatIfPricing:
+        return [await getWhatIfPricingInsight(query)];
+      case AssistantNluIntent.objectionReplies:
+        return [await getCustomerObjectionRepliesInsight(query)];
+      case AssistantNluIntent.goalPlanner:
+        return [await getGoalPlannerInsight(query)];
+      case AssistantNluIntent.storeHealthScore:
+        return [await getStoreHealthScoreInsight()];
+      case AssistantNluIntent.smartReorderList:
+        return [await getSmartReorderListInsight()];
+      case AssistantNluIntent.businessmanConsultation:
+        return [await getBusinessmanConsultationInsight()];
+      case AssistantNluIntent.suppliersDues:
+        return [await getSuppliersDuesInsight()];
+      case AssistantNluIntent.stagnantStock:
+        return [await getStagnantProductsInsight()];
+      case AssistantNluIntent.stockoutVelocity:
+        return [await getStockoutVelocityInsight()];
+      case AssistantNluIntent.storePulse:
+        return [await getStorePulseInsight()];
+      case AssistantNluIntent.topProfitProducts:
+        return [await getTopProfitableProductsInsight()];
+      case AssistantNluIntent.endOfDayReport:
+        return [await getEndOfDayReportInsight()];
+      case AssistantNluIntent.topVariants:
+        return [await getTopVariantsByProductInsight(query)];
+      case AssistantNluIntent.cheapestSupplier:
+        return [await getCheapestSupplierForProductInsight(query)];
+      case AssistantNluIntent.marginLeak:
+        return [await getMarginLeakInsight()];
+      case AssistantNluIntent.breakEven:
+        return [await getBreakEvenInsight()];
+      case AssistantNluIntent.cashierPerformance:
+        return [await getCashierPerformanceInsight()];
+      case AssistantNluIntent.budgetComparison:
+        return [await getMonthlyBudgetComparisonInsight()];
+      case AssistantNluIntent.todayAudits:
+        return [await getTodayAuditsAndCancellationsInsight()];
+      case AssistantNluIntent.winBackCustomers:
+        return [await getCustomerReEngagementInsight()];
+      case AssistantNluIntent.installmentReminderMessage:
+        return [await getInstallmentReminderInsight(query)];
+      case AssistantNluIntent.seasonPlan:
+        return [getSeasonalMarketingPlanInsight(query)];
+      case AssistantNluIntent.inflationCalculator:
+        return [await getInflationCalculatorInsight(query)];
+      case AssistantNluIntent.liquidityStrategy:
+        return [await getCashExpansionAdvisorInsight(query)];
+      case AssistantNluIntent.visualMerchandising:
+        return [await getVisualMerchandisingInsight()];
+      case AssistantNluIntent.shiftSummary:
+        return [await getOpenShiftSummaryInsight()];
+      case AssistantNluIntent.preOrderQuery:
+        return [await getPreOrdersSummaryInsight()];
+      case AssistantNluIntent.deliveryQuery:
+        return [await getDeliveryPendingSummaryInsight()];
+      case AssistantNluIntent.repairQuery:
+        return [await getRepairReadyInsight()];
+      case AssistantNluIntent.walletQuery:
+        return [await getWalletsBalanceInsight()];
+      case AssistantNluIntent.partnerShares:
+        return [await getPartnersProfitSharesInsight()];
+      default:
+        return const [];
+    }
+  }
+
   static final OfflineKnowledgeMatcher _knowledgeMatcher =
       OfflineKnowledgeMatcher();
+  static final OfflineNluClassifier _trainedClassifier =
+      OfflineNluClassifier();
 
   Future<int> getKnowledgeTopicCount() => _knowledgeMatcher.topicCount();
 

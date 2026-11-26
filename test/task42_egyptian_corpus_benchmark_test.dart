@@ -1,4 +1,5 @@
 import 'package:clothes_erp/core/database/app_database.dart';
+import 'package:clothes_erp/features/dashboard/data/services/assistant_nlu_classifier.dart';
 import 'package:clothes_erp/features/dashboard/data/services/assistant_nlu_engine.dart';
 import 'package:clothes_erp/features/dashboard/data/services/offline_smart_assistant_service.dart';
 import 'package:drift/native.dart';
@@ -229,6 +230,28 @@ void main() {
       final copy = await service.ask('انسخ الرد');
       expect(copy.first.id, startsWith('followup_copy_'));
       expect(copy.first.details, isNotEmpty);
+    });
+  });
+
+  group('Task 42.5: Trained On-Device NLU Classifier (75k Corpus v2)', () {
+    test('loads assistant_nlu_model.json and classifies colloquial queries', () async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      final classifier = OfflineNluClassifier();
+      await classifier.ensureLoaded();
+      expect(classifier.isLoaded, isTrue);
+      expect(classifier.labelCount, greaterThanOrEqualTo(60));
+
+      final p1 = await classifier.classify('ربح اليوم كام');
+      expect(p1?.intent, AssistantNluIntent.todayProfit);
+
+      final p2 = await classifier.classify('ايه البضاعة الراكدة اللي مش بتتباع');
+      expect(p2?.intent, AssistantNluIntent.stagnantStock);
+
+      final p3 = await classifier.classify('عايز اعمل جرد واضبط رصيد المخزن');
+      expect(p3, isNotNull);
+
+      final unknown = await classifier.classify('اختبار عشوائي غير معروف', minConfidence: 0.65);
+      expect(unknown, isNull);
     });
   });
 }
