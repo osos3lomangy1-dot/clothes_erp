@@ -11,10 +11,11 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-CORPUS_PATH = ROOT / "tool" / "assistant_egyptian_corpus_v2.jsonl"
+TOOL_DIR = ROOT / "tool"
+CORPUS_DIR = TOOL_DIR / "corpus"
 OUT_PATH = ROOT / "assets" / "assistant_nlu_model.json"
 
-# Map corpus v2 intents to Dart AssistantNluIntent enum names
+# Map corpus v1/v2 intents (and direct Dart enum names) to Dart AssistantNluIntent enum names
 INTENT_MAP = {
     "addProduct": "addProduct",
     "recordPurchase": "recordPurchase",
@@ -127,21 +128,88 @@ def extract_features(norm: str) -> list[str]:
     return feats
 
 
+def _resolve_intent(raw_intent: str | None) -> str | None:
+    if not raw_intent:
+        return None
+    if raw_intent in INTENT_MAP:
+        return INTENT_MAP[raw_intent]
+    if raw_intent in INTENT_MAP.values():
+        return raw_intent
+    return None
+
+
+def _discover_corpus_files() -> list[Path]:
+    files: list[Path] = []
+    search_dirs = [TOOL_DIR] + ([CORPUS_DIR] if CORPUS_DIR.exists() else [])
+    for d in search_dirs:
+        for p in sorted(d.iterdir()):
+            if not p.is_file():
+                continue
+            if p.suffix.lower() not in (".jsonl", ".json"):
+                continue
+            name = p.name.lower()
+            if "numbers" in name:
+                continue
+            files.append(p)
+    return files
+
+
+def _iter_records(path: Path):
+    if path.suffix.lower() == ".jsonl":
+        with path.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    yield json.loads(line)
+    else:
+        with path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+            if isinstance(data, list):
+                for item in data:
+                    if isinstance(item, dict):
+                        yield item
+
+
 def main() -> None:
     train_docs: list[tuple[str, list[str]]] = []
     test_docs: list[tuple[str, list[str]]] = []
 
-    with CORPUS_PATH.open("r", encoding="utf-8") as f:
-        for line in f:
-            row = json.loads(line)
-            mapped = INTENT_MAP.get(row["intent"])
+    corpus_files = _discover_corpus_files()
+    print(f"Discovered {len(corpus_files)} corpus files: {[p.name for p in corpus_files]}")
+
+    for path in corpus_files:
+        for row in _iter_records(path):
+            split = row.get("split", "train")
+            # Dialogue format with 'turns'
+            if "turns" in row and isinstance(row["turns"], list):
+                for idx, turn in enumerate(row["turns"]):
+                    if turn.get("role") != "user":
+                        continue
+                    raw_lbl = turn.get("label")
+                    if idx == 0 and raw_lbl not in INTENT_MAP and row.get("intent"):
+                        raw_lbl = row.get("intent")
+                    mapped = _resolve_intent(raw_lbl)
+                    if not mapped:
+                        continue
+                    norm = normalize_text(turn.get("text", ""))
+                    if not norm:
+                        continue
+                    feats = extract_features(norm)
+                    if split == "test":
+                        test_docs.append((mapped, feats))
+                    else:
+                        train_docs.append((mapped, feats))
+                continue
+
+            # Standard sentence format with 'text' + 'intent'
+            mapped = _resolve_intent(row.get("intent"))
             if not mapped:
                 continue
-            norm = normalize_text(row["text"])
+            norm = normalize_text(row.get("text", ""))
             if not norm:
                 continue
             feats = extract_features(norm)
-            if row.get("split") == "test":
+            if split == "test":
                 test_docs.append((mapped, feats))
             else:
                 train_docs.append((mapped, feats))
