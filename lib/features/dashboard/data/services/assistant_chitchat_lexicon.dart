@@ -129,12 +129,44 @@ class ChitchatMatcher {
     final tokens = normQuery.split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toList();
     if (tokens.isEmpty) return null;
 
-    // Business guard: never intercept ERP/business queries as chitchat.
+    final nonFillers = tokens.where((t) => !ChitchatLexicon.fillers.contains(t)).toList();
+
+    // 0. Capabilities / Identity / OfflineInfo can mention "المحل" or "الشغل"
+    //    (e.g. "بتعرف تعمل اي في المحل") as long as it's not a specific ERP query.
+    final hasSpecificBusinessToken = tokens.any(
+      (t) =>
+          ChitchatLexicon.business.contains(t) &&
+          t != 'المحل' &&
+          t != 'محل' &&
+          t != 'الشغل' &&
+          t != 'شغل',
+    );
+    if (!hasSpecificBusinessToken) {
+      final nonPrepositionTokens =
+          nonFillers.where((t) => t != 'في' && t != 'عن').toList();
+      for (final rule in ChitchatLexicon.socialRules) {
+        if (rule.intent == 'capabilities' ||
+            rule.intent == 'identity' ||
+            rule.intent == 'offlineInfo') {
+          if (_matchesRule(nonFillers, rule) ||
+              _matchesRule(nonPrepositionTokens, rule)) {
+            return ChitchatMatchResult(rule.intent);
+          }
+          // Also allow trailing "المحل" / "الشغل" (e.g. "بتعرف تعمل اي في المحل")
+          final withoutStoreContext = nonPrepositionTokens
+              .where((t) => t != 'المحل' && t != 'محل' && t != 'الشغل' && t != 'شغل')
+              .toList();
+          if (_matchesRule(withoutStoreContext, rule)) {
+            return ChitchatMatchResult(rule.intent);
+          }
+        }
+      }
+    }
+
+    // Business guard: never intercept ERP/business queries as greetings/howAreYou.
     for (final t in tokens) {
       if (ChitchatLexicon.business.contains(t)) return null;
     }
-
-    final nonFillers = tokens.where((t) => !ChitchatLexicon.fillers.contains(t)).toList();
 
     // 1. Name rules (forgetName, changeName, askMyName)
     for (final rule in ChitchatLexicon.nameRules) {

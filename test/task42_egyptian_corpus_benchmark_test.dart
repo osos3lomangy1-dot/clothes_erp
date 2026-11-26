@@ -172,6 +172,12 @@ void main() {
       expect(caps.first.id, 'chitchat_capabilities');
       expect(caps.first.details.length, greaterThanOrEqualTo(6));
 
+      final capsBare = await service.ask('بتعرف تعمل اي');
+      expect(capsBare.first.id, 'chitchat_capabilities');
+
+      final capsStore = await service.ask('بتعرف تعمل اي في المحل');
+      expect(capsStore.first.id, 'chitchat_capabilities');
+
       final role = await service.ask('انت دورك اي');
       expect(role.first.id, 'chitchat_identity');
       expect(role.first.details.length, greaterThanOrEqualTo(6));
