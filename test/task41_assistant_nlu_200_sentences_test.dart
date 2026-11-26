@@ -1,8 +1,31 @@
+import 'dart:convert';
+
 import 'package:clothes_erp/core/database/app_database.dart';
+import 'package:clothes_erp/core/database/branch_provider.dart';
+import 'package:clothes_erp/core/database/tx_writer.dart';
+import 'package:clothes_erp/core/features/feature_gate.dart';
+import 'package:clothes_erp/features/auth/data/datasources/auth_local_data_source.dart';
+import 'package:clothes_erp/features/auth/data/models/user_model.dart';
 import 'package:clothes_erp/features/dashboard/data/services/assistant_nlu_engine.dart';
 import 'package:clothes_erp/features/dashboard/data/services/offline_smart_assistant_service.dart';
+import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+class _FakeAuthLocalDataSource implements AuthLocalDataSource {
+  @override
+  Future<UserModel?> getCachedUser() async => UserModel(
+        id: 'admin_1',
+        name: 'المدير',
+        email: 'admin@test.com',
+        role: 'admin',
+        isActive: true,
+        createdAt: DateTime(2026, 1, 1),
+      );
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 void main() {
   late AppDatabase db;
@@ -445,6 +468,169 @@ void main() {
       );
       expect(tFnb, isNotEmpty);
       expect(tFnb.first.id, 'kb_enc6_fnb_food_cost_menu_waste');
+    });
+  });
+
+  group('Task 41.4: ERP Modules Integration, Undo & Compound Drafts', () {
+    Future<void> setMeta(String key, String value) async {
+      await db.into(db.appMeta).insertOnConflictUpdate(
+            AppMetaCompanion.insert(
+              key: key,
+              value: value,
+              updatedAt: DateTime.now(),
+            ),
+          );
+    }
+
+    test('queries open shift, wallets, repair tickets, partners, preOrders, delivery & backup command', () async {
+      final now = DateTime.now();
+
+      // 1. Open shift
+      await db.into(db.shifts).insert(
+            ShiftsCompanion.insert(
+              id: 'sh_open',
+              branchId: 'b1',
+              cashierId: 'admin',
+              openingBalance: 100000, // 1000 EGP
+              openedAt: now,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      final shiftRes = await service.ask('ملخص الدرج المفتوح');
+      expect(shiftRes.first.id, 'open_shift_summary');
+      expect(shiftRes.first.summary, contains('1000.00'));
+
+      // 2. Wallets (disabled -> enabled)
+      final walletsDisabled = await service.ask('رصيد المحافظ');
+      expect(walletsDisabled.first.id, 'wallets_disabled');
+
+      await setMeta('feature.${FeatureKeys.mobileWallets}', 'true');
+      await db.into(db.cashWallets).insert(
+            CashWalletsCompanion.insert(
+              id: 'w1',
+              branchId: 'b1',
+              name: 'فودافون كاش',
+              currentBalance: const Value(250000),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      final walletsEnabled = await service.ask('رصيد المحافظ');
+      expect(walletsEnabled.first.id, 'wallets_balance_summary');
+      expect(walletsEnabled.first.summary, contains('2500.00'));
+
+      // 3. Repair ready tickets
+      await setMeta('feature.${FeatureKeys.mobileRepair}', 'true');
+      await db.into(db.repairTickets).insert(
+            RepairTicketsCompanion.insert(
+              id: 'rep1',
+              branchId: 'b1',
+              ticketNumber: 'R-101',
+              customerName: 'طارق علي',
+              deviceModel: 'iPhone 13',
+              issueDescription: 'شاشة',
+              estimatedCost: const Value(150000),
+              depositPaid: const Value(50000),
+              finalCost: const Value(150000),
+              status: const Value('ready'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      final repRes = await service.ask('تذاكر الصيانة الجاهزة');
+      expect(repRes.first.id, 'repair_ready_summary');
+      expect(repRes.first.summary, contains('1000.00'));
+      expect(repRes.first.details.first, contains('R-101'));
+
+      // 4. Partners profit shares
+      await setMeta('feature.${FeatureKeys.partners}', 'true');
+      await setMeta(
+        'partners_registry',
+        jsonEncode([
+          {
+            'id': 'pt1',
+            'name': 'شريك 1',
+            'percentage': 60.0,
+            'createdAt': now.toIso8601String(),
+          },
+          {
+            'id': 'pt2',
+            'name': 'شريك 2',
+            'percentage': 40.0,
+            'createdAt': now.toIso8601String(),
+          },
+        ]),
+      );
+      final partnersRes = await service.ask('حصص الشركاء');
+      expect(partnersRes.first.id, 'partners_shares_summary');
+      expect(partnersRes.first.details.join('\n'), contains('شريك 1'));
+
+      // 5. PreOrders & Delivery (FeatureGate disabled gracefully)
+      final preRes = await service.ask('حجوزات النهارده');
+      expect(preRes.first.id, 'pre_orders_disabled');
+
+      final delRes = await service.ask('عهدة الطيارين');
+      expect(delRes.first.id, 'delivery_disabled');
+
+      // 6. Backup command parsing
+      final backupCmd = service.parseCommand('اعمل نسخة احتياطية');
+      expect(backupCmd?.pendingCommand?.kind, AssistantCommandKind.runBackupNow);
+    });
+
+    test('supports compound multi-field draft replies and undoLastCommand with AuditLog', () async {
+      // Compound draft reply: "عايز اضيف صنف" -> "تيشيرت بولو" -> "150 300 10"
+      final t1 = await service.askWithDraft('عايز اضيف صنف');
+      expect(t1.activeDraft?.missingField, 'productName');
+      expect(t1.insights.first.followUpPrompts, contains('إلغاء'));
+
+      final t2 = await service.askWithDraft('تيشيرت بولو', activeDraft: t1.activeDraft);
+      expect(t2.activeDraft?.missingField, 'costEgp');
+
+      final t3 = await service.askWithDraft('150 300 10', activeDraft: t2.activeDraft);
+      expect(t3.activeDraft, isNull);
+      expect(t3.insights.first.pendingCommand?.kind, AssistantCommandKind.addProduct);
+      expect(t3.insights.first.pendingCommand?.payload['costEgp'], 150.0);
+      expect(t3.insights.first.pendingCommand?.payload['sellEgp'], 300.0);
+      expect(t3.insights.first.pendingCommand?.payload['qty'], 10);
+
+      // Execute expense then undo it
+      final gate = FeatureGate(
+        db,
+        _FakeAuthLocalDataSource(),
+        TxWriter(db),
+        BranchProvider(db),
+      );
+      final expTurn = await service.askWithDraft('سجل مصروف ضيافة 120');
+      await service.executeCommand(
+        expTurn.insights.first.pendingCommand!,
+        userId: 'admin_1',
+        userRole: 'admin',
+        gate: gate,
+      );
+      expect(service.lastUndoToken, isNotNull);
+
+      await expectLater(
+        service.undoLastCommand(userId: 'cashier_1', userRole: 'cashier'),
+        throwsException,
+      );
+
+      final undoMsg = await service.undoLastCommand(
+        userId: 'admin_1',
+        userRole: 'admin',
+      );
+      expect(undoMsg, contains('تم التراجع'));
+      expect(service.lastUndoToken, isNull);
+
+      final activeExpenses = await (db.select(db.expenses)
+            ..where((e) => e.deletedAt.isNull()))
+          .get();
+      expect(activeExpenses, isEmpty);
+
+      final audits = await db.select(db.auditLogs).get();
+      expect(audits.any((a) => a.action == 'assistant_undo_recordExpense'), isTrue);
+
+      gate.dispose();
     });
   });
 }

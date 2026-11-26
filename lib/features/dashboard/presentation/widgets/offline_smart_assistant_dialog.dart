@@ -161,11 +161,14 @@ class _OfflineSmartAssistantDialogState
     });
   }
 
+  OfflineSmartAssistantService? _cachedService;
+
   OfflineSmartAssistantService _resolveService() {
+    if (_cachedService != null) return _cachedService!;
     if (getIt.isRegistered<OfflineSmartAssistantService>()) {
-      return getIt<OfflineSmartAssistantService>();
+      return _cachedService = getIt<OfflineSmartAssistantService>();
     }
-    return OfflineSmartAssistantService(getIt<AppDatabase>());
+    return _cachedService = OfflineSmartAssistantService(getIt<AppDatabase>());
   }
 
   Future<void> _loadInitialBriefing() async {
@@ -292,6 +295,9 @@ class _OfflineSmartAssistantDialogState
                 id: 'cmd_success',
                 title: 'تم تنفيذ التعديل بنجاح',
                 summary: msg,
+                actionLabel: _resolveService().lastUndoToken != null
+                    ? 'تراجع عن العملية'
+                    : null,
               ),
             ],
           ),
@@ -963,6 +969,57 @@ class _OfflineSmartAssistantDialogState
                                             ),
                                           ),
                                         ],
+                                      ),
+                                    ],
+                                    if (item.id == 'cmd_success' &&
+                                        item.actionLabel != null &&
+                                        _resolveService().lastUndoToken != null) ...[
+                                      const SizedBox(height: 6),
+                                      OutlinedButton.icon(
+                                        key: const Key('assistant_undo_btn'),
+                                        onPressed: () async {
+                                          final authState =
+                                              context.read<AuthCubit>().state;
+                                          final userId =
+                                              authState is AuthAuthenticated
+                                                  ? authState.user.id
+                                                  : 'admin';
+                                          final userRole =
+                                              authState is AuthAuthenticated
+                                                  ? authState.user.role
+                                                  : 'admin';
+                                          final undoMsg = await _resolveService()
+                                              .undoLastCommand(
+                                            userId: userId,
+                                            userRole: userRole,
+                                          );
+                                          if (!mounted) return;
+                                          setState(() {
+                                            _history.add(
+                                              _AssistantChatEntry(
+                                                insights: [
+                                                  AssistantInsight(
+                                                    id: 'cmd_undone',
+                                                    title: 'تم التراجع',
+                                                    summary: undoMsg,
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          });
+                                          _scrollToLatest();
+                                        },
+                                        icon: const Icon(
+                                          Icons.undo_rounded,
+                                          size: 14,
+                                        ),
+                                        label: Text(
+                                          item.actionLabel!,
+                                          style: const TextStyle(
+                                            fontFamily: 'Cairo',
+                                            fontSize: 11.5,
+                                          ),
+                                        ),
                                       ),
                                     ],
                                     if (_canNavigate(item) &&

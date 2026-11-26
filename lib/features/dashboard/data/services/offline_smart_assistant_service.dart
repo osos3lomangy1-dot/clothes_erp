@@ -42,6 +42,19 @@ enum AssistantCommandKind {
   addCustomer,
   collectInstallment,
   calculateZakat,
+  runBackupNow,
+}
+
+class AssistantUndoToken {
+  final AssistantCommandKind kind;
+  final String recordId;
+  final String label;
+
+  const AssistantUndoToken({
+    required this.kind,
+    required this.recordId,
+    required this.label,
+  });
 }
 
 class AssistantPendingCommand {
@@ -1128,6 +1141,25 @@ class OfflineSmartAssistantService {
       );
     }
 
+    if ((q.contains('اعمل نسخه احتياطيه') ||
+            q.contains('نسخه احتياطيه فوريه') ||
+            q.contains('خد باك اب') ||
+            q.contains('باك اب دلوقتي')) &&
+        !q.contains('تلقائي')) {
+      return const AssistantInsight(
+        id: 'cmd_run_backup_now',
+        title: 'تأكيد إنشاء نسخة احتياطية فورية',
+        summary: 'هل تريد إنشاء نسخة احتياطية كاملة لقاعدة البيانات الآن؟',
+        details: ['يتطلب التنفيذ صلاحية مدير (Admin).'],
+        pendingCommand: AssistantPendingCommand(
+          kind: AssistantCommandKind.runBackupNow,
+          title: 'نسخة احتياطية فورية',
+          description: 'إنشاء نسخة احتياطية الآن',
+          touchesFeatureGate: false,
+        ),
+      );
+    }
+
     final renameMatch = RegExp(
       r'(?:تغيير اسم (?:المحل|المتجر)(?: الي)?|سمي المحل)\s+(.+)$',
     ).firstMatch(q);
@@ -1270,6 +1302,11 @@ class OfflineSmartAssistantService {
         return _execCollectInstallment(cmd.payload, userId: userId);
       case AssistantCommandKind.calculateZakat:
         return 'تم حساب زكاة المال وعروض التجارة بنجاح.';
+      case AssistantCommandKind.runBackupNow:
+        final backupResult = await LocalBackupService(_db, gate).createBackup(
+          userId: userId,
+        );
+        return 'تم إنشاء النسخة الاحتياطية بنجاح: ${backupResult.filePath}';
     }
   }
 
@@ -1304,6 +1341,11 @@ class OfflineSmartAssistantService {
         entityId: custId,
         newValue: '$name ($phone)',
         now: now,
+      );
+      lastUndoToken = AssistantUndoToken(
+        kind: AssistantCommandKind.addCustomer,
+        recordId: custId,
+        label: 'إضافة عميل: $name',
       );
       return 'تمت إضافة العميل "$name" ($phone) بنجاح.';
     });
@@ -1729,6 +1771,11 @@ class OfflineSmartAssistantService {
             '$name | تكلفة: ${Money(costPiasters).toDisplay()} | بيع: ${Money(sellPiasters).toDisplay()} | كمية: $qty',
         now: now,
       );
+      lastUndoToken = AssistantUndoToken(
+        kind: AssistantCommandKind.addProduct,
+        recordId: prodId,
+        label: 'إضافة صنف: $name',
+      );
 
       return 'تمت إضافة الصنف "$name" (تكلفة ${Money(costPiasters).toDisplay()}، بيع ${Money(sellPiasters).toDisplay()} ج.م، رصيد $qty) بنجاح.';
     });
@@ -1879,6 +1926,11 @@ class OfflineSmartAssistantService {
         newValue: '$category: ${Money(amountPiasters).toDisplay()}',
         now: now,
       );
+      lastUndoToken = AssistantUndoToken(
+        kind: AssistantCommandKind.recordExpense,
+        recordId: expId,
+        label: 'مصروف $category (${Money(amountPiasters).toDisplay()} ج.م)',
+      );
       return 'تم تسجيل مصروف "$category" بمبلغ ${Money(amountPiasters).toDisplay()} ج.م بنجاح.';
     });
   }
@@ -1995,6 +2047,58 @@ class OfflineSmartAssistantService {
 
   /// Parses ERP operational commands into a (possibly incomplete) [AssistantActionDraft].
   final AssistantContextMemory contextMemory = AssistantContextMemory();
+  AssistantUndoToken? lastUndoToken;
+
+  Future<String> undoLastCommand({
+    required String userId,
+    required String userRole,
+  }) async {
+    if (userRole != 'admin') {
+      throw Exception('عذراً: التراجع عن العمليات متاح لحساب المدير (Admin) فقط.');
+    }
+    final token = lastUndoToken;
+    if (token == null) {
+      throw Exception('لا توجد عملية حديثة قابلة للتراجع.');
+    }
+    final now = DateTime.now();
+    await _db.transaction(() async {
+      final branchId = await _resolveBranchId();
+      switch (token.kind) {
+        case AssistantCommandKind.recordExpense:
+          await (_db.update(_db.expenses)
+                ..where((e) => e.id.equals(token.recordId)))
+              .write(ExpensesCompanion(deletedAt: Value(now)));
+          break;
+        case AssistantCommandKind.addCustomer:
+          await (_db.update(_db.customers)
+                ..where((c) => c.id.equals(token.recordId)))
+              .write(CustomersCompanion(deletedAt: Value(now)));
+          break;
+        case AssistantCommandKind.addProduct:
+          await (_db.update(_db.products)
+                ..where((p) => p.id.equals(token.recordId)))
+              .write(ProductsCompanion(deletedAt: Value(now)));
+          await (_db.update(_db.productVariants)
+                ..where((v) => v.productId.equals(token.recordId)))
+              .write(ProductVariantsCompanion(deletedAt: Value(now)));
+          break;
+        default:
+          throw Exception('هذه العملية لا تدعم التراجع التلقائي.');
+      }
+      await _insertAudit(
+        branchId: branchId,
+        userId: userId,
+        action: 'assistant_undo_${token.kind.name}',
+        entity: token.kind.name,
+        entityId: token.recordId,
+        oldValue: token.label,
+        newValue: 'reverted',
+        now: now,
+      );
+    });
+    lastUndoToken = null;
+    return 'تم التراجع عن العملية (${token.label}) بنجاح.';
+  }
 
   AssistantCommandKind? _commandKindForNluIntent(AssistantNluIntent intent) {
     switch (intent) {
@@ -2534,9 +2638,31 @@ class OfflineSmartAssistantService {
       } else if (missing == 'costEgp' ||
           missing == 'sellEgp' ||
           missing == 'amountEgp') {
-        final numMatch = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(cleaned);
-        if (numMatch != null) {
-          updated[missing] = double.tryParse(numMatch.group(1)!);
+        final nums = RegExp(r'(\d+(?:\.\d+)?)')
+            .allMatches(cleaned)
+            .map((m) => double.tryParse(m.group(1)!))
+            .whereType<double>()
+            .toList();
+        if (nums.isNotEmpty) {
+          updated[missing] = nums.first;
+          // Support compound replies like "150 300 10" or "150 بيع 300 كمية 10"
+          if (draft.kind == AssistantCommandKind.addProduct &&
+              missing == 'costEgp') {
+            final sellMatch = RegExp(r'(?:بيع|سعر)\s+(\d+(?:\.\d+)?)')
+                .firstMatch(cleaned);
+            final qtyMatch = RegExp(r'(?:كمي[ةه]|عدد)\s+(\d+)')
+                .firstMatch(cleaned);
+            if (sellMatch != null) {
+              updated['sellEgp'] = double.tryParse(sellMatch.group(1)!);
+            } else if (nums.length >= 2) {
+              updated['sellEgp'] = nums[1];
+            }
+            if (qtyMatch != null) {
+              updated['qty'] = int.tryParse(qtyMatch.group(1)!);
+            } else if (nums.length >= 3) {
+              updated['qty'] = nums[2].toInt();
+            }
+          }
         }
       } else if (missing == 'qty' || missing == 'value') {
         final numMatch = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(cleaned);
@@ -2553,11 +2679,17 @@ class OfflineSmartAssistantService {
   }
 
   AssistantInsight _buildDraftPromptInsight(AssistantActionDraft draft) {
+    final quickChips = <String>[
+      if (draft.missingField == 'qty') ...['1', '5', '12'],
+      if (draft.missingField == 'amountEgp') ...['100', '200', '500'],
+      'إلغاء',
+    ];
     return AssistantInsight(
       id: 'draft_prompt_${draft.missingField}',
       title: 'استكمال بيانات العملية',
       summary: draft.promptForMissing ?? 'أدخل القيمة المطلوبة:',
       details: const ['يمكنك كتابة "إلغاء" في أي وقت لإلغاء المسودة.'],
+      followUpPrompts: quickChips,
     );
   }
 
@@ -5141,6 +5273,359 @@ $cta${storePhone.isNotEmpty ? ' على: $storePhone' : ''}
     );
   }
 
+  Future<bool> _isFeatureEnabledInDb(
+    String featureKey, {
+    bool defaultValue = false,
+  }) async {
+    final row = await (_db.select(_db.appMeta)
+          ..where((m) => m.key.equals('feature.$featureKey')))
+        .getSingleOrNull();
+    if (row == null) return defaultValue;
+    return row.value.trim().toLowerCase() == 'true';
+  }
+
+  Future<bool> _sqliteTableExists(String tableName) async {
+    final rows = await _db.customSelect(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name = ?",
+      variables: [Variable.withString(tableName)],
+    ).get();
+    return rows.isNotEmpty;
+  }
+
+  /// Open Shift Drawer Summary (`shifts`).
+  Future<AssistantInsight> getOpenShiftSummaryInsight() async {
+    final openShift = await (_db.select(_db.shifts)
+          ..where((s) => s.closedAt.isNull() & s.deletedAt.isNull())
+          ..orderBy([(s) => OrderingTerm.desc(s.openedAt)])
+          ..limit(1))
+        .getSingleOrNull();
+
+    if (openShift == null) {
+      return const AssistantInsight(
+        id: 'open_shift_summary',
+        title: 'ملخص الدرج والوردية المفتوحة',
+        summary: 'لا توجد وردية مفتوحة حالياً.',
+        details: ['افتح وردية جديدة من شاشة الورديات أو الكاشير للبدء.'],
+        actionLabel: 'فتح شاشة الورديات',
+        actionRoute: AssistantActionRoute.shifts,
+      );
+    }
+
+    final shiftSales = await (_db.select(_db.sales)
+          ..where((s) =>
+              s.shiftId.equals(openShift.id) &
+              s.deletedAt.isNull() &
+              s.status.equals('cancelled').not()))
+        .get();
+    final cashSales = shiftSales
+        .where((s) => s.paymentMethod == 'cash')
+        .fold<int>(0, (sum, s) => sum + s.total);
+    final totalSales = shiftSales.fold<int>(0, (sum, s) => sum + s.total);
+
+    final movements = await (_db.select(_db.cashMovements)
+          ..where((m) => m.shiftId.equals(openShift.id) & m.deletedAt.isNull()))
+        .get();
+    int cashIn = 0;
+    int cashOut = 0;
+    for (final m in movements) {
+      if (m.direction == 'in') {
+        cashIn += m.amountPiasters;
+      } else {
+        cashOut += m.amountPiasters;
+      }
+    }
+
+    final expectedDrawer =
+        openShift.openingBalance + cashSales + cashIn - cashOut;
+
+    return AssistantInsight(
+      id: 'open_shift_summary',
+      title: 'ملخص الدرج والوردية المفتوحة',
+      summary:
+          'المتوقع في الدرج الآن: ${Money(expectedDrawer).toDisplay()} ج.م (${shiftSales.length} فاتورة).',
+      details: [
+        'الرصيد الافتتاحي: ${Money(openShift.openingBalance).toDisplay()} ج.م.',
+        'مبيعات الكاش بالوردية: ${Money(cashSales).toDisplay()} ج.م (إجمالي المبيعات: ${Money(totalSales).toDisplay()} ج.م).',
+        'حركات الدرج: وارد +${Money(cashIn).toDisplay()} ج.م | منصرف -${Money(cashOut).toDisplay()} ج.م.',
+      ],
+      actionLabel: 'فتح شاشة الورديات',
+      actionRoute: AssistantActionRoute.shifts,
+    );
+  }
+
+  /// Pre-Orders summary (`FeatureKeys.preOrders`).
+  Future<AssistantInsight> getPreOrdersSummaryInsight() async {
+    final enabled = await _isFeatureEnabledInDb(FeatureKeys.preOrders);
+    if (!enabled) {
+      return const AssistantInsight(
+        id: 'pre_orders_disabled',
+        title: 'الحجوزات المسبقة غير مفعلة',
+        summary: 'ميزة الحجوزات المسبقة معطلة في إعدادات المزايا الحالية.',
+      );
+    }
+    if (!await _sqliteTableExists('pre_orders')) {
+      return const AssistantInsight(
+        id: 'pre_orders_summary',
+        title: 'ملخص الحجوزات المسبقة',
+        summary: 'لا توجد حجوزات مسجلة حتى الآن.',
+      );
+    }
+
+    final rows = await _db.customSelect(
+      "SELECT order_number, customer_name, total_piasters, paid_piasters, status, expected_delivery_date FROM pre_orders WHERE deleted_at IS NULL AND status NOT IN ('delivered', 'cancelled') ORDER BY created_at DESC LIMIT 10",
+    ).get();
+
+    if (rows.isEmpty) {
+      return const AssistantInsight(
+        id: 'pre_orders_summary',
+        title: 'ملخص الحجوزات المسبقة',
+        summary: 'لا توجد حجوزات معلقة حالياً.',
+      );
+    }
+
+    int totalRemaining = 0;
+    final lines = <String>[];
+    for (final r in rows) {
+      final orderNo = r.read<String>('order_number');
+      final cust = r.read<String>('customer_name');
+      final total = r.read<int>('total_piasters');
+      final paid = r.read<int>('paid_piasters');
+      final status = r.read<String>('status');
+      final rem = (total - paid).clamp(0, total);
+      totalRemaining += rem;
+      lines.add(
+        '• #$orderNo ($cust): مدفوع ${Money(paid).toDisplay()} / إجمالي ${Money(total).toDisplay()} ج.م — متبقي ${Money(rem).toDisplay()} ج.م [$status]',
+      );
+    }
+
+    return AssistantInsight(
+      id: 'pre_orders_summary',
+      title: 'الحجوزات المسبقة النشطة (${rows.length})',
+      summary:
+          'إجمالي المتبقي للتحصيل عند التسليم: ${Money(totalRemaining).toDisplay()} ج.م.',
+      details: lines,
+    );
+  }
+
+  /// Delivery pending orders & courier custody (`FeatureKeys.delivery`).
+  Future<AssistantInsight> getDeliveryPendingSummaryInsight() async {
+    final enabled = await _isFeatureEnabledInDb(FeatureKeys.delivery);
+    if (!enabled) {
+      return const AssistantInsight(
+        id: 'delivery_disabled',
+        title: 'وحدة الديليفري غير مفعلة',
+        summary: 'ميزة الديليفري والتوصيل معطلة في إعدادات المزايا الحالية.',
+      );
+    }
+    if (!await _sqliteTableExists('delivery_orders')) {
+      return const AssistantInsight(
+        id: 'delivery_summary',
+        title: 'عهدة الطيارين والطلبات المعلقة',
+        summary: 'لا توجد طلبات ديليفري مسجلة حتى الآن.',
+      );
+    }
+
+    final rows = await _db.customSelect(
+      "SELECT courier_name, order_total_piasters, delivery_fee_piasters, status FROM delivery_orders WHERE deleted_at IS NULL AND status NOT IN ('delivered', 'cancelled', 'returned')",
+    ).get();
+
+    if (rows.isEmpty) {
+      return const AssistantInsight(
+        id: 'delivery_summary',
+        title: 'عهدة الطيارين والطلبات المعلقة',
+        summary: 'لا توجد طلبات ديليفري معلقة الآن.',
+      );
+    }
+
+    final byCourier = <String, ({int count, int amount})>{};
+    int grandTotal = 0;
+    for (final r in rows) {
+      final courier = (r.readNullable<String>('courier_name') ?? '').trim();
+      final key = courier.isEmpty ? 'غير معين لطيار' : courier;
+      final amt = r.read<int>('order_total_piasters') +
+          r.read<int>('delivery_fee_piasters');
+      grandTotal += amt;
+      final prev = byCourier[key] ?? (count: 0, amount: 0);
+      byCourier[key] = (count: prev.count + 1, amount: prev.amount + amt);
+    }
+
+    final details = byCourier.entries
+        .map(
+          (e) =>
+              '• ${e.key}: ${e.value.count} طلب — إجمالي عهدة ${Money(e.value.amount).toDisplay()} ج.م',
+        )
+        .toList();
+
+    return AssistantInsight(
+      id: 'delivery_summary',
+      title: 'عهدة الطيارين والديليفري المعلق (${rows.length} طلب)',
+      summary:
+          'إجمالي المبالغ قيد التوصيل والتحصيل: ${Money(grandTotal).toDisplay()} ج.م.',
+      details: details,
+    );
+  }
+
+  /// Ready Repair Tickets (`FeatureKeys.mobileRepair`).
+  Future<AssistantInsight> getRepairReadyInsight() async {
+    final enabled = await _isFeatureEnabledInDb(FeatureKeys.mobileRepair);
+    if (!enabled) {
+      return const AssistantInsight(
+        id: 'repair_disabled',
+        title: 'وحدة الصيانة غير مفعلة',
+        summary: 'ميزة الصيانة معطلة في إعدادات المزايا الحالية.',
+      );
+    }
+
+    final readyTickets = await (_db.select(_db.repairTickets)
+          ..where((t) => t.deletedAt.isNull() & t.status.equals('ready'))
+          ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
+        .get();
+
+    if (readyTickets.isEmpty) {
+      return const AssistantInsight(
+        id: 'repair_ready_summary',
+        title: 'تذاكر الصيانة الجاهزة للتسليم',
+        summary: 'لا توجد أجهزة جاهزة للتسليم حالياً.',
+      );
+    }
+
+    int totalDue = 0;
+    final lines = readyTickets.take(10).map((t) {
+      final baseCost = t.finalCost > 0 ? t.finalCost : t.estimatedCost;
+      final due = (baseCost - t.depositPaid).clamp(0, baseCost);
+      totalDue += due;
+      return '• تذكرة ${t.ticketNumber} (${t.deviceModel} - ${t.customerName}): متبقي ${Money(due).toDisplay()} ج.م';
+    }).toList();
+
+    return AssistantInsight(
+      id: 'repair_ready_summary',
+      title: 'تذاكر الصيانة الجاهزة للتسليم (${readyTickets.length})',
+      summary:
+          'إجمالي المتبقي تحصيله عند التسليم: ${Money(totalDue).toDisplay()} ج.م.',
+      details: lines,
+    );
+  }
+
+  /// Electronic Wallets Balances (`FeatureKeys.mobileWallets`).
+  Future<AssistantInsight> getWalletsBalanceInsight() async {
+    final enabled = await _isFeatureEnabledInDb(FeatureKeys.mobileWallets);
+    if (!enabled) {
+      return const AssistantInsight(
+        id: 'wallets_disabled',
+        title: 'وحدة المحافظ الإلكترونية غير مفعلة',
+        summary: 'ميزة المحافظ الإلكترونية معطلة في إعدادات المزايا الحالية.',
+      );
+    }
+
+    final wallets = await (_db.select(_db.cashWallets)
+          ..where((w) => w.deletedAt.isNull() & w.isActive.equals(true)))
+        .get();
+
+    if (wallets.isEmpty) {
+      return const AssistantInsight(
+        id: 'wallets_balance_summary',
+        title: 'أرصدة المحافظ الإلكترونية',
+        summary: 'لا توجد محافظ نشطة مسجلة حالياً.',
+      );
+    }
+
+    final totalBalance =
+        wallets.fold<int>(0, (sum, w) => sum + w.currentBalance);
+    final lines = wallets.map((w) {
+      final remLimit = w.monthlyLimit > 0
+          ? ' | متبقي بالحد الشهري: ${Money((w.monthlyLimit - w.monthlyUsed).clamp(0, w.monthlyLimit)).toDisplay()} ج.م'
+          : '';
+      return '• ${w.name} (${w.providerType}): ${Money(w.currentBalance).toDisplay()} ج.م$remLimit';
+    }).toList();
+
+    return AssistantInsight(
+      id: 'wallets_balance_summary',
+      title: 'أرصدة المحافظ الإلكترونية (${wallets.length} محفظة)',
+      summary:
+          'إجمالي السيولة بالمحافظ: ${Money(totalBalance).toDisplay()} ج.م.',
+      details: lines,
+    );
+  }
+
+  /// Partners Profit Shares (`FeatureKeys.partners`).
+  Future<AssistantInsight> getPartnersProfitSharesInsight() async {
+    final enabled = await _isFeatureEnabledInDb(FeatureKeys.partners);
+    if (!enabled) {
+      return const AssistantInsight(
+        id: 'partners_disabled',
+        title: 'وحدة الشركاء غير مفعلة',
+        summary: 'ميزة الشركاء وتوزيع الأرباح معطلة في إعدادات المزايا الحالية.',
+      );
+    }
+
+    final meta = await (_db.select(_db.appMeta)
+          ..where((m) => m.key.equals('partners_registry')))
+        .getSingleOrNull();
+    if (meta == null || meta.value.trim().isEmpty) {
+      return const AssistantInsight(
+        id: 'partners_shares_summary',
+        title: 'حصص وأرباح الشركاء',
+        summary: 'لا يوجد شركاء مسجلون حالياً.',
+        actionLabel: 'فتح شاشة الشركاء',
+        actionRoute: AssistantActionRoute.partners,
+      );
+    }
+
+    final decoded = jsonDecode(meta.value) as List<dynamic>;
+    if (decoded.isEmpty) {
+      return const AssistantInsight(
+        id: 'partners_shares_summary',
+        title: 'حصص وأرباح الشركاء',
+        summary: 'لا يوجد شركاء مسجلون حالياً.',
+        actionLabel: 'فتح شاشة الشركاء',
+        actionRoute: AssistantActionRoute.partners,
+      );
+    }
+
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month, 1);
+    final monthSales = await (_db.select(_db.sales)
+          ..where((s) =>
+              s.createdAt.isBiggerOrEqualValue(monthStart) &
+              s.deletedAt.isNull() &
+              s.status.equals('cancelled').not()))
+        .get();
+    final monthItems = await (_db.select(_db.saleItems)
+          ..where((si) => si.createdAt.isBiggerOrEqualValue(monthStart)))
+        .get();
+    final monthExp = await (_db.select(_db.expenses)
+          ..where((e) =>
+              e.expenseDate.isBiggerOrEqualValue(monthStart) &
+              e.deletedAt.isNull()))
+        .get();
+
+    final rev = monthSales.fold<int>(0, (s, r) => s + r.total);
+    final cost = monthItems.fold<int>(0, (s, r) => s + r.costSnapshot * r.qty);
+    final exp = monthExp.fold<int>(0, (s, r) => s + r.amount);
+    final netProfit = rev - cost - exp;
+
+    final lines = <String>[];
+    for (final raw in decoded) {
+      final map = raw as Map<String, dynamic>;
+      final name = map['name'] as String? ?? 'شريك';
+      final pct = (map['percentage'] as num?)?.toDouble() ?? 0.0;
+      final share = netProfit > 0 ? ((netProfit * pct) / 100.0).round() : 0;
+      lines.add(
+        '• $name (${pct.toStringAsFixed(1)}%): الحصة التقديرية هذا الشهر ${Money(share).toDisplay()} ج.م',
+      );
+    }
+
+    return AssistantInsight(
+      id: 'partners_shares_summary',
+      title: 'حصص وأرباح الشركاء للشهر الحالي',
+      summary:
+          'صافي ربح الشهر التقديري القابل للتوزيع: ${Money(netProfit).toDisplay()} ج.م.',
+      details: lines,
+      actionLabel: 'فتح شاشة الشركاء',
+      actionRoute: AssistantActionRoute.partners,
+    );
+  }
+
   /// Automatic Daily Smart Briefing shown when the assistant opens.
   Future<List<AssistantInsight>> getDailyBriefing() async {
     return [
@@ -5243,6 +5728,38 @@ $cta${storePhone.isNotEmpty ? ' على: $storePhone' : ''}
       if (results.isNotEmpty) {
         return results;
       }
+    }
+
+    // 2c. Additional ERP Modules (FeatureGate-aware): Shifts, PreOrders, Delivery, Repair, Wallets, Partners
+    if (q.contains('الدرج المفتوح') ||
+        q.contains('الورديه المفتوحه') ||
+        q.contains('ملخص الدرج') ||
+        q.contains('الدرج فيه كام')) {
+      results.add(await getOpenShiftSummaryInsight());
+    }
+    if (q.contains('حجوزات') || q.contains('طلبات الحجز') || q.contains('الحجز المسبق')) {
+      results.add(await getPreOrdersSummaryInsight());
+    }
+    if (q.contains('عهده الطيارين') ||
+        q.contains('حساب الطيارين') ||
+        q.contains('طلبات الديليفري') ||
+        q.contains('الديليفري المعلق')) {
+      results.add(await getDeliveryPendingSummaryInsight());
+    }
+    if (q.contains('تذاكر الصيانه') ||
+        q.contains('الصيانه الجاهزه') ||
+        q.contains('اجهزه الصيانه')) {
+      results.add(await getRepairReadyInsight());
+    }
+    if (q.contains('رصيد المحافظ') ||
+        q.contains('المحافظ الالكترونيه') ||
+        q.contains('فودافون كاش')) {
+      results.add(await getWalletsBalanceInsight());
+    }
+    if (q.contains('حصص الشركاء') ||
+        q.contains('ارباح الشركاء') ||
+        q.contains('توزيع الارباح على الشركاء')) {
+      results.add(await getPartnersProfitSharesInsight());
     }
 
     // 3. Direct barcode / SKU or product lookup
