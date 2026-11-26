@@ -128,6 +128,9 @@ class _OfflineSmartAssistantDialogState
   String _selectedCategory = 'all';
   AssistantActionDraft? _activeDraft;
   bool _instantAdminMode = false;
+  bool _isExpanded = false;
+  double? _customWidth;
+  double? _customHeight;
   String? _lastBarcodeProductName;
 
   bool _isCurrentUserAdmin() {
@@ -156,7 +159,7 @@ class _OfflineSmartAssistantDialogState
   void _scrollToLatest() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollCtrl.hasClients) {
-        _scrollCtrl.jumpTo(0);
+        _scrollCtrl.jumpTo(_scrollCtrl.position.maxScrollExtent);
       }
     });
   }
@@ -515,10 +518,19 @@ class _OfflineSmartAssistantDialogState
           ]
         : categorizedPrompts[_selectedCategory]!;
 
-    final maxHeight = MediaQuery.sizeOf(context).height * 0.85;
-    final containerWidth = widget.isBottomSheet ? double.infinity : 390.0;
-    final containerHeight =
-        widget.isBottomSheet ? maxHeight : (maxHeight < 560 ? maxHeight : 560.0);
+    final screenSize = MediaQuery.sizeOf(context);
+    final maxHeight = screenSize.height * 0.90;
+    final maxWidth = (screenSize.width - 40).clamp(360.0, 960.0);
+    final defaultWidth = _isExpanded ? maxWidth.clamp(390.0, 820.0) : 390.0;
+    final defaultHeight = _isExpanded
+        ? (screenSize.height * 0.84).clamp(440.0, maxHeight)
+        : (maxHeight < 560 ? maxHeight : 560.0);
+    final containerWidth = widget.isBottomSheet
+        ? double.infinity
+        : (_customWidth ?? defaultWidth).clamp(360.0, maxWidth);
+    final containerHeight = widget.isBottomSheet
+        ? screenSize.height * 0.85
+        : (_customHeight ?? defaultHeight).clamp(400.0, maxHeight);
 
     return CallbackShortcuts(
       bindings: {
@@ -544,8 +556,10 @@ class _OfflineSmartAssistantDialogState
           ],
         ),
         clipBehavior: Clip.antiAlias,
-        child: Column(
+        child: Stack(
           children: [
+            Column(
+              children: [
             // Gradient Header
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
@@ -633,33 +647,64 @@ class _OfflineSmartAssistantDialogState
                       ),
                     ),
                   ],
-                  const SizedBox(width: 2),
-                  IconButton(
-                    key: const Key('smart_assistant_reset_btn'),
-                    constraints: const BoxConstraints(
-                      minWidth: 26,
-                      minHeight: 26,
-                    ),
-                    padding: EdgeInsets.zero,
-                    tooltip: 'بدء محادثة جديدة',
-                    onPressed: _resetChat,
-                    icon: const Icon(
-                      Icons.refresh_rounded,
-                      color: Colors.white,
-                      size: 17,
+                  const SizedBox(width: 4),
+                  Tooltip(
+                    message: 'بدء محادثة جديدة',
+                    child: InkWell(
+                      key: const Key('smart_assistant_reset_btn'),
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: _resetChat,
+                      child: const SizedBox(
+                        width: 26,
+                        height: 26,
+                        child: Icon(
+                          Icons.refresh_rounded,
+                          color: Colors.white,
+                          size: 17,
+                        ),
+                      ),
                     ),
                   ),
-                  IconButton(
-                    constraints: const BoxConstraints(
-                      minWidth: 26,
-                      minHeight: 26,
+                  if (!widget.isBottomSheet)
+                    Tooltip(
+                      message: _isExpanded ? 'تصغير النافذة' : 'تكبير النافذة',
+                      child: InkWell(
+                        key: const Key('smart_assistant_expand_btn'),
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () {
+                          setState(() {
+                            _isExpanded = !_isExpanded;
+                            _customWidth = null;
+                            _customHeight = null;
+                          });
+                        },
+                        child: SizedBox(
+                          width: 26,
+                          height: 26,
+                          child: Icon(
+                            _isExpanded
+                                ? Icons.close_fullscreen_rounded
+                                : Icons.open_in_full_rounded,
+                            color: Colors.white,
+                            size: 15,
+                          ),
+                        ),
+                      ),
                     ),
-                    padding: EdgeInsets.zero,
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(
-                      Icons.close_rounded,
-                      color: Colors.white,
-                      size: 17,
+                  Tooltip(
+                    message: 'إغلاق',
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () => Navigator.of(context).pop(),
+                      child: const SizedBox(
+                        width: 26,
+                        height: 26,
+                        child: Icon(
+                          Icons.close_rounded,
+                          color: Colors.white,
+                          size: 17,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -831,7 +876,7 @@ class _OfflineSmartAssistantDialogState
                       itemCount: _history.length,
                       separatorBuilder: (_, _) => const SizedBox(height: 12),
                       itemBuilder: (context, idx) {
-                        final entry = _history[_history.length - 1 - idx];
+                        final entry = _history[idx];
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -1240,6 +1285,35 @@ class _OfflineSmartAssistantDialogState
             ),
           ],
         ),
+        if (!widget.isBottomSheet)
+          Positioned(
+            top: 0,
+            right: 0,
+            child: Tooltip(
+              message: 'اسحب لتغيير الحجم',
+              child: MouseRegion(
+                cursor: SystemMouseCursors.resizeUpRightDownLeft,
+                child: GestureDetector(
+                  key: const Key('smart_assistant_resize_handle'),
+                  behavior: HitTestBehavior.translucent,
+                  onPanUpdate: (details) {
+                    setState(() {
+                      _customWidth = (containerWidth + details.delta.dx)
+                          .clamp(360.0, maxWidth);
+                      _customHeight = (containerHeight - details.delta.dy)
+                          .clamp(400.0, maxHeight);
+                    });
+                  },
+                  child: const SizedBox(
+                    width: 18,
+                    height: 18,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
       ),
     );
   }
