@@ -518,6 +518,12 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
         return _execCollectInstallment(cmd.payload, userId: userId);
       case AssistantCommandKind.calculateZakat:
         return 'تم حساب زكاة المال وعروض التجارة بنجاح.';
+      case AssistantCommandKind.preOrderCreate:
+        return _execPreOrderCreate(cmd.payload, userId: userId);
+      case AssistantCommandKind.walletTransfer:
+        return _execWalletTransfer(cmd.payload, userId: userId);
+      case AssistantCommandKind.partnerWithdraw:
+        return _execPartnerWithdraw(cmd.payload, userId: userId);
       case AssistantCommandKind.runBackupNow:
         final backupResult = await LocalBackupService(
           _db,
@@ -1399,6 +1405,12 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
         return AssistantCommandKind.updateProductPriceOrStock;
       case AssistantNluIntent.calculateZakat:
         return AssistantCommandKind.calculateZakat;
+      case AssistantNluIntent.preOrderCreate:
+        return AssistantCommandKind.preOrderCreate;
+      case AssistantNluIntent.walletTransfer:
+        return AssistantCommandKind.walletTransfer;
+      case AssistantNluIntent.partnerWithdraw:
+        return AssistantCommandKind.partnerWithdraw;
       default:
         return null;
     }
@@ -1921,6 +1933,55 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
         }
         return AssistantActionDraft(kind: kind, fields: fields);
 
+      case AssistantCommandKind.preOrderCreate:
+        if ((fields['customerName'] as String? ?? '').isEmpty) {
+          return AssistantActionDraft(
+            kind: kind,
+            fields: fields,
+            missingField: 'customerName',
+            promptForMissing: 'ما اسم العميل صاحب الحجز المسبق؟',
+          );
+        }
+        if ((fields['amountEgp'] as num? ?? 0) <= 0) {
+          return AssistantActionDraft(
+            kind: kind,
+            fields: fields,
+            missingField: 'amountEgp',
+            promptForMissing: 'كم مبلغ العربون المدفوع بالجنيه؟',
+          );
+        }
+        return AssistantActionDraft(kind: kind, fields: fields);
+
+      case AssistantCommandKind.walletTransfer:
+        if ((fields['amountEgp'] as num? ?? 0) <= 0) {
+          return AssistantActionDraft(
+            kind: kind,
+            fields: fields,
+            missingField: 'amountEgp',
+            promptForMissing: 'كم مبلغ التحويل أو الشحن للمحفظة بالجنيه؟',
+          );
+        }
+        return AssistantActionDraft(kind: kind, fields: fields);
+
+      case AssistantCommandKind.partnerWithdraw:
+        if ((fields['partnerName'] as String? ?? '').isEmpty) {
+          return AssistantActionDraft(
+            kind: kind,
+            fields: fields,
+            missingField: 'partnerName',
+            promptForMissing: 'ما اسم الشريك الذي قام بالسحب؟',
+          );
+        }
+        if ((fields['amountEgp'] as num? ?? 0) <= 0) {
+          return AssistantActionDraft(
+            kind: kind,
+            fields: fields,
+            missingField: 'amountEgp',
+            promptForMissing: 'كم مبلغ المسحوبات بالجنيه؟',
+          );
+        }
+        return AssistantActionDraft(kind: kind, fields: fields);
+
       default:
         return AssistantActionDraft(kind: kind, fields: fields);
     }
@@ -2154,6 +2215,53 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
             payload: Map<String, dynamic>.from(f),
           ),
         );
+      case AssistantCommandKind.preOrderCreate:
+        final cust = f['customerName'];
+        final amt = (f['amountEgp'] as num).toDouble();
+        return AssistantInsight(
+          id: 'cmd_preorder_create',
+          title: 'تأكيد تسجيل حجز مسبق',
+          summary: 'تسجيل حجز مسبق للعميل "$cust" بعربون ${amt.toStringAsFixed(2)} ج.م.',
+          details: const ['يتطلب التنفيذ صلاحية مدير (Admin).'],
+          pendingCommand: AssistantPendingCommand(
+            kind: AssistantCommandKind.preOrderCreate,
+            title: 'تسجيل حجز مسبق',
+            description: '$cust',
+            payload: Map<String, dynamic>.from(f),
+          ),
+        );
+      case AssistantCommandKind.walletTransfer:
+        final wallet = f['walletName'] ?? 'محفظة إلكترونية';
+        final amt = (f['amountEgp'] as num).toDouble();
+        final isWithdraw = f['txType'] == 'withdraw';
+        return AssistantInsight(
+          id: 'cmd_wallet_transfer',
+          title: isWithdraw ? 'تأكيد سحب من المحفظة' : 'تأكيد تحويل / شحن محفظة',
+          summary:
+              '${isWithdraw ? 'سحب' : 'إيداع/تحويل'} ${amt.toStringAsFixed(2)} ج.م في "$wallet".',
+          details: const ['يتطلب التنفيذ صلاحية مدير (Admin).'],
+          pendingCommand: AssistantPendingCommand(
+            kind: AssistantCommandKind.walletTransfer,
+            title: 'حركة محفظة إلكترونية',
+            description: '$wallet',
+            payload: Map<String, dynamic>.from(f),
+          ),
+        );
+      case AssistantCommandKind.partnerWithdraw:
+        final partner = f['partnerName'];
+        final amt = (f['amountEgp'] as num).toDouble();
+        return AssistantInsight(
+          id: 'cmd_partner_withdraw',
+          title: 'تأكيد تسجيل مسحوبات شريك',
+          summary: 'تسجيل مسحوبات للشريك "$partner" بمبلغ ${amt.toStringAsFixed(2)} ج.م.',
+          details: const ['يتطلب التنفيذ صلاحية مدير (Admin).'],
+          pendingCommand: AssistantPendingCommand(
+            kind: AssistantCommandKind.partnerWithdraw,
+            title: 'مسحوبات شريك',
+            description: '$partner',
+            payload: Map<String, dynamic>.from(f),
+          ),
+        );
       default:
         return const AssistantInsight(
           id: 'cmd_unknown',
@@ -2161,5 +2269,155 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
           summary: 'تعذر تجهيز الأمر للتنفيذ.',
         );
     }
+  }
+
+  Future<String> _execPreOrderCreate(
+    Map<String, dynamic> payload, {
+    required String userId,
+  }) async {
+    final cust = (payload['customerName'] as String? ?? '').trim();
+    final amtEgp = (payload['amountEgp'] as num?)?.toDouble() ?? 0;
+    if (cust.isEmpty || amtEgp <= 0) {
+      throw Exception('اسم العميل ومبلغ العربون مطلوبان للحجز');
+    }
+    if (!await _sqliteTableExists('pre_orders')) {
+      throw Exception('جدول الحجوزات المسبقة غير مهيأ — افتح شاشة الحجوزات أولاً');
+    }
+    final paidPiasters = (amtEgp * 100).round();
+    final now = DateTime.now();
+    final id = _genId('pre');
+    final orderNo = 'PO-${now.millisecondsSinceEpoch % 100000}';
+    final branchId = await _resolveBranchId();
+    await _db.customInsert(
+      'INSERT INTO pre_orders (id, branch_id, order_number, customer_name, total_piasters, paid_piasters, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      variables: [
+        Variable.withString(id),
+        Variable.withString(branchId),
+        Variable.withString(orderNo),
+        Variable.withString(cust),
+        Variable.withInt(paidPiasters),
+        Variable.withInt(paidPiasters),
+        Variable.withString('pending'),
+        Variable.withDateTime(now),
+        Variable.withDateTime(now),
+      ],
+    );
+    await _insertAudit(
+      branchId: branchId,
+      userId: userId,
+      action: 'assistant_preorder_create',
+      entity: 'pre_orders',
+      entityId: id,
+      newValue: '$orderNo ($cust: ${Money(paidPiasters).toDisplay()})',
+      now: now,
+    );
+    return 'تم تسجيل الحجز المسبق #$orderNo للعميل "$cust" بعربون ${Money(paidPiasters).toDisplay()} ج.م.';
+  }
+
+  Future<String> _execWalletTransfer(
+    Map<String, dynamic> payload, {
+    required String userId,
+  }) async {
+    final walletHint = (payload['walletName'] as String? ?? '').trim();
+    final amtEgp = (payload['amountEgp'] as num?)?.toDouble() ?? 0;
+    final isWithdraw = payload['txType'] == 'withdraw';
+    if (amtEgp <= 0) {
+      throw Exception('مبلغ حركة المحفظة غير صالح');
+    }
+    final amountPiasters = (amtEgp * 100).round();
+    final now = DateTime.now();
+    return _db.transaction(() async {
+      final wallets = await (_db.select(_db.cashWallets)
+            ..where((w) => w.deletedAt.isNull() & w.isActive.equals(true)))
+          .get();
+      if (wallets.isEmpty) {
+        throw Exception('لا توجد محفظة إلكترونية نشطة مسجلة — أضف محفظة أولاً');
+      }
+      final normHint = OfflineSmartAssistantService.normalizeArabic(walletHint);
+      final target = wallets.firstWhere(
+        (w) =>
+            OfflineSmartAssistantService.normalizeArabic(w.name).contains(normHint) ||
+            OfflineSmartAssistantService.normalizeArabic(w.providerType).contains(normHint),
+        orElse: () => wallets.first,
+      );
+      final branchId = target.branchId;
+      final txId = _genId('wtx');
+      final delta = isWithdraw ? -amountPiasters : amountPiasters;
+      final dbType = isWithdraw ? 'withdraw_in_cash' : 'topup_from_drawer';
+      await _db.into(_db.walletTransactions).insert(
+            WalletTransactionsCompanion.insert(
+              id: txId,
+              branchId: branchId,
+              walletId: target.id,
+              type: dbType,
+              amount: amountPiasters,
+              userId: Value(userId),
+              notes: const Value('مسجل عبر المساعد الذكي'),
+              createdAt: now,
+            ),
+          );
+      await (_db.update(_db.cashWallets)..where((w) => w.id.equals(target.id))).write(
+        CashWalletsCompanion(
+          currentBalance: Value(target.currentBalance + delta),
+          monthlyUsed: Value(target.monthlyUsed + amountPiasters),
+          updatedAt: Value(now),
+        ),
+      );
+      await _insertAudit(
+        branchId: branchId,
+        userId: userId,
+        action: 'assistant_wallet_transfer',
+        entity: 'cash_wallets',
+        entityId: target.id,
+        newValue: '${target.name}: ${isWithdraw ? '-' : '+'}${Money(amountPiasters).toDisplay()}',
+        now: now,
+      );
+      return 'تم تسجيل ${isWithdraw ? 'سحب' : 'تحويل/شحن'} ${Money(amountPiasters).toDisplay()} ج.م على محفظة "${target.name}".';
+    });
+  }
+
+  Future<String> _execPartnerWithdraw(
+    Map<String, dynamic> payload, {
+    required String userId,
+  }) async {
+    final partner = (payload['partnerName'] as String? ?? '').trim();
+    final amtEgp = (payload['amountEgp'] as num?)?.toDouble() ?? 0;
+    if (partner.isEmpty || amtEgp <= 0) {
+      throw Exception('اسم الشريك ومبلغ المسحوبات مطلوبان');
+    }
+    final amountPiasters = (amtEgp * 100).round();
+    final now = DateTime.now();
+    const metaKey = 'partners_withdrawals';
+    final existing = await (_db.select(_db.appMeta)..where((m) => m.key.equals(metaKey)))
+        .getSingleOrNull();
+    final list = existing != null && existing.value.trim().isNotEmpty
+        ? (jsonDecode(existing.value) as List<dynamic>).cast<Map<String, dynamic>>()
+        : <Map<String, dynamic>>[];
+    final id = _genId('pw');
+    list.add({
+      'id': id,
+      'partnerName': partner,
+      'amountPiasters': amountPiasters,
+      'userId': userId,
+      'createdAt': now.toIso8601String(),
+    });
+    await _db.into(_db.appMeta).insertOnConflictUpdate(
+          AppMetaCompanion.insert(
+            key: metaKey,
+            value: jsonEncode(list),
+            updatedAt: now,
+          ),
+        );
+    final branchId = await _resolveBranchId();
+    await _insertAudit(
+      branchId: branchId,
+      userId: userId,
+      action: 'assistant_partner_withdraw',
+      entity: 'app_meta',
+      entityId: id,
+      newValue: '$partner: ${Money(amountPiasters).toDisplay()}',
+      now: now,
+    );
+    return 'تم تسجيل مسحوبات الشريك "$partner" بمبلغ ${Money(amountPiasters).toDisplay()} ج.م.';
   }
 }

@@ -1,9 +1,19 @@
 import 'package:clothes_erp/core/database/app_database.dart';
+import 'package:clothes_erp/core/database/branch_provider.dart';
+import 'package:clothes_erp/core/database/tx_writer.dart';
+import 'package:clothes_erp/core/features/feature_gate.dart';
+import 'package:clothes_erp/features/auth/data/datasources/auth_local_data_source.dart';
+import 'package:clothes_erp/features/auth/data/models/user_model.dart';
 import 'package:clothes_erp/features/dashboard/data/services/assistant_nlu_classifier.dart';
 import 'package:clothes_erp/features/dashboard/data/services/assistant_nlu_engine.dart';
 import 'package:clothes_erp/features/dashboard/data/services/offline_smart_assistant_service.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+class _FakeAuthLocalDataSource implements AuthLocalDataSource {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 void main() {
   late AppDatabase db;
@@ -252,6 +262,60 @@ void main() {
 
       final unknown = await classifier.classify('اختبار عشوائي غير معروف', minConfidence: 0.65);
       expect(unknown, isNull);
+    });
+  });
+
+  group('Task 42.6: Self-Learning Logger & Extra Module Commands', () {
+    test('records unmatched queries and exports JSONL', () async {
+      await service.ask('اختبار عشوائي غير معروف');
+      final list = await service.getUnmatchedQueries();
+      expect(list, contains('اختبار عشوائي غير معروف'));
+
+      final jsonl = await service.exportUnmatchedQueriesJsonl();
+      expect(jsonl, contains('"intent":"TODO"'));
+      expect(jsonl, contains('اختبار عشوائي غير معروف'));
+
+      await service.clearUnmatchedQueries();
+      expect(await service.getUnmatchedQueries(), isEmpty);
+    });
+
+    test('parses and executes walletTransfer and partnerWithdraw commands', () async {
+      final now = DateTime.now();
+      await db.into(db.cashWallets).insert(
+            CashWalletsCompanion.insert(
+              id: 'w_vf',
+              branchId: 'b1',
+              name: 'فودافون كاش',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      final gate = FeatureGate(
+        db,
+        _FakeAuthLocalDataSource(),
+        TxWriter(db),
+        BranchProvider(db),
+      );
+      final wTurn = await service.askWithDraft('شحن محفظة فودافون كاش 500');
+      expect(wTurn.insights.first.pendingCommand?.kind, AssistantCommandKind.walletTransfer);
+      final wMsg = await service.executeCommand(
+        wTurn.insights.first.pendingCommand!,
+        userId: 'admin_1',
+        userRole: 'admin',
+        gate: gate,
+      );
+      expect(wMsg, contains('500.00'));
+
+      final pTurn = await service.askWithDraft('مسحوبات شريك احمد 1200');
+      expect(pTurn.insights.first.pendingCommand?.kind, AssistantCommandKind.partnerWithdraw);
+      final pMsg = await service.executeCommand(
+        pTurn.insights.first.pendingCommand!,
+        userId: 'admin_1',
+        userRole: 'admin',
+        gate: gate,
+      );
+      expect(pMsg, contains('1200.00'));
     });
   });
 }

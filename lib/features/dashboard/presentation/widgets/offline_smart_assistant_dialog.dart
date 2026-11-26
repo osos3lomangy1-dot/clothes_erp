@@ -187,33 +187,55 @@ class _OfflineSmartAssistantDialogState
 
     try {
       final service = _resolveService();
+      if (service.sessionHistory.isNotEmpty) {
+        if (!mounted) return;
+        setState(() {
+          _history.addAll(
+            service.sessionHistory.map(
+              (e) => _AssistantChatEntry(
+                userPrompt: e.userPrompt,
+                headerLabel: e.headerLabel,
+                insights: e.insights,
+              ),
+            ),
+          );
+          _activeDraft = service.sessionActiveDraft;
+          _isLoading = false;
+        });
+        _scrollToLatest();
+        return;
+      }
       final userName = await service.getPersistedUserName();
       final briefing = await service.getDailyBriefing();
       if (!mounted) return;
       final header = userName != null
           ? 'أهلاً بك يا $userName — الملخص التنفيذي اليومي (Daily Smart Briefing)'
           : 'الملخص التنفيذي اليومي التلقائي (Daily Smart Briefing)';
+      final initialEntry = _AssistantChatEntry(
+        headerLabel: header,
+        insights: [
+          if (userName != null)
+            AssistantInsight(
+              id: 'welcome_user',
+              title: 'أهلاً بك يا $userName',
+              summary:
+                  'جاهز لمساعدتك في حسابات المحل، المبيعات، والمخزون أوفلاين 100%.',
+              followUpPrompts: const [
+                'كسبت كام النهارده؟',
+                'تقرير قفلة اليوم',
+                'بتعرف تعمل ايه؟',
+              ],
+            ),
+          ...briefing,
+        ],
+      );
+      service.sessionHistory.add((
+        userPrompt: initialEntry.userPrompt,
+        headerLabel: initialEntry.headerLabel,
+        insights: initialEntry.insights,
+      ));
       setState(() {
-        _history.add(
-          _AssistantChatEntry(
-            headerLabel: header,
-            insights: [
-              if (userName != null)
-                AssistantInsight(
-                  id: 'welcome_user',
-                  title: 'أهلاً بك يا $userName',
-                  summary:
-                      'جاهز لمساعدتك في حسابات المحل، المبيعات، والمخزون أوفلاين 100%.',
-                  followUpPrompts: const [
-                    'كسبت كام النهارده؟',
-                    'تقرير قفلة اليوم',
-                    'بتعرف تعمل ايه؟',
-                  ],
-                ),
-              ...briefing,
-            ],
-          ),
-        );
+        _history.add(initialEntry);
         _isLoading = false;
       });
     } catch (_) {
@@ -238,9 +260,18 @@ class _OfflineSmartAssistantDialogState
             _lastBarcodeProductName = ins.summary.split(' — ').first.trim();
           }
         }
-        _history.add(
-          _AssistantChatEntry(userPrompt: trimmed, insights: turn.insights),
+        final newEntry = _AssistantChatEntry(
+          userPrompt: trimmed,
+          insights: turn.insights,
         );
+        _history.add(newEntry);
+        final svc = _resolveService();
+        svc.sessionActiveDraft = turn.activeDraft;
+        svc.sessionHistory.add((
+          userPrompt: newEntry.userPrompt,
+          headerLabel: newEntry.headerLabel,
+          insights: newEntry.insights,
+        ));
         _queryCtrl.clear();
         _isLoading = false;
       });
@@ -427,9 +458,11 @@ class _OfflineSmartAssistantDialogState
   }
 
   void _resetChat() {
+    _resolveService().clearSessionHistory();
     setState(() {
       _history.clear();
       _resolvedCommands.clear();
+      _activeDraft = null;
       _isLoading = true;
     });
     _loadInitialBriefing();

@@ -433,6 +433,85 @@ class AssistantArabicNormalizer {
     return s.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
+  static const _hundredsMap = <String, int>{
+    'اربعمية': 400,
+    'اربعماية': 400,
+    'ربعمية': 400,
+    'خمسمية': 500,
+    'خمسماية': 500,
+    'تلاتمية': 300,
+    'تلاتماية': 300,
+    'تلتمية': 300,
+    'تلتماية': 300,
+    'تسعمية': 900,
+    'تسعماية': 900,
+    'سبعمية': 700,
+    'سبعماية': 700,
+    'تمنمية': 800,
+    'تمنماية': 800,
+    'ستمية': 600,
+    'ستماية': 600,
+    'ميتين': 200,
+    'مية': 100,
+  };
+
+  static const _tensMap = <String, int>{
+    'عشرين': 20,
+    'تلاتين': 30,
+    'اربعين': 40,
+    'خمسين': 50,
+    'ستين': 60,
+    'سبعين': 70,
+    'تمانين': 80,
+    'تسعين': 90,
+  };
+
+  static const _unitsMap = <String, int>{
+    'تسعتاشر': 19,
+    'تمنتاشر': 18,
+    'سبعتاشر': 17,
+    'خمستاشر': 15,
+    'اربعتاشر': 14,
+    'تلاتاشر': 13,
+    'تلتاشر': 13,
+    'اتناشر': 12,
+    'احداشر': 11,
+    'حداشر': 11,
+    'ستاشر': 16,
+    'عشرة': 10,
+    'عشره': 10,
+    'تسعة': 9,
+    'تسعه': 9,
+    'تمانية': 8,
+    'تمانيه': 8,
+    'سبعة': 7,
+    'سبعه': 7,
+    'خمسة': 5,
+    'خمسه': 5,
+    'اربعة': 4,
+    'اربعه': 4,
+    'تلاتة': 3,
+    'تلاته': 3,
+    'اتنين': 2,
+    'ستة': 6,
+    'سته': 6,
+    'واحد': 1,
+  };
+
+  static final _compoundUnitTenRx = RegExp(
+    r'(?<=^|\s)(و)?(تسعة|تسعه|تمانية|تمانيه|سبعة|سبعه|ستة|سته|خمسة|خمسه|اربعة|اربعه|تلاتة|تلاته|اتنين|واحد)\s+و(عشرين|تلاتين|اربعين|خمسين|ستين|سبعين|تمانين|تسعين)(?=\s|$|%)',
+  );
+
+  static final _compoundHundredTailRx = RegExp(
+    r'(?<=^|\s)(و)?(اربعمية|اربعماية|ربعمية|خمسمية|خمسماية|تلاتمية|تلاتماية|تلتمية|تلتماية|تسعمية|تسعماية|سبعمية|سبعماية|تمنمية|تمنماية|ستمية|ستماية|ميتين|مية)\s+و(\d{1,2}|عشرين|تلاتين|اربعين|خمسين|ستين|سبعين|تمانين|تسعين|تسعتاشر|تمنتاشر|سبعتاشر|خمستاشر|اربعتاشر|تلاتاشر|تلتاشر|اتناشر|احداشر|حداشر|ستاشر|عشرة|عشره|تسعة|تسعه|تمانية|تمانيه|سبعة|سبعه|خمسة|خمسه|اربعة|اربعه|تلاتة|تلاته|اتنين|ستة|سته|واحد)(?=\s|$|%)',
+  );
+
+  static final _standaloneNumberWordRx = RegExp(
+    r'(?<=^|\s)(و)?(اربعمية|اربعماية|ربعمية|خمسمية|خمسماية|تلاتمية|تلاتماية|تلتمية|تلتماية|تسعمية|تسعماية|سبعمية|سبعماية|تمنمية|تمنماية|ستمية|ستماية|ميتين|مية|عشرين|تلاتين|اربعين|خمسين|ستين|سبعين|تمانين|تسعين|تسعتاشر|تمنتاشر|سبعتاشر|خمستاشر|اربعتاشر|تلاتاشر|تلتاشر|اتناشر|احداشر|حداشر|ستاشر|عشرة|عشره|تسعة|تسعه|تمانية|تمانيه|سبعة|سبعه|خمسة|خمسه|اربعة|اربعه|تلاتة|تلاته|اتنين|ستة|سته)(?=\s|$|%)',
+  );
+
+  static final _standaloneWahedRx = RegExp(r'(?<!ال)(?<=^|\s)(و)?واحد(?=\s|$)');
+
   /// Replaces spoken Egyptian numbers, compound thousands, and quantity units with numeric digits.
   static String replaceSpokenNumbers(String input) {
     var s = normalizeMerchantColloquial(input);
@@ -490,7 +569,7 @@ class AssistantArabicNormalizer {
     s = s.replaceAll(RegExp(r'(?:^|\s)مية\s+[أا]لف(?=\s|$)'), ' 100000');
 
     s = s.replaceAll(RegExp(r'(?:^|\s)[أا]لفين(?=\s|$)'), ' 2000');
-    s = s.replaceAll(RegExp(r'(?:^|\s)[أا]لف(?=\s|$)'), ' 1000');
+    s = s.replaceAll(RegExp(r'(?<!كام\s)(?:^|\s)[أا]لف(?=\s|$)'), ' 1000');
 
     // 3. Quantity units
     s = s.replaceAll(RegExp(r'نص\s+دست[ةه]'), ' 6 ');
@@ -511,125 +590,37 @@ class AssistantArabicNormalizer {
     s = s.replaceAll(RegExp(r'(?<=^|\s)(?:تسعميه)(?=\s|$)'), ' 900 ');
     s = s.replaceAll(RegExp(r'(?<=^|\s)(?:ميه)(?=\s|$)'), ' 100 ');
 
-    const hundreds = <String, int>{
-      'اربعمية': 400,
-      'اربعماية': 400,
-      'ربعمية': 400,
-      'خمسمية': 500,
-      'خمسماية': 500,
-      'تلاتمية': 300,
-      'تلاتماية': 300,
-      'تلتمية': 300,
-      'تلتماية': 300,
-      'تسعمية': 900,
-      'تسعماية': 900,
-      'سبعمية': 700,
-      'سبعماية': 700,
-      'تمنمية': 800,
-      'تمنماية': 800,
-      'ستمية': 600,
-      'ستماية': 600,
-      'ميتين': 200,
-      'مية': 100,
-    };
-
-    const tens = <String, int>{
-      'عشرين': 20,
-      'تلاتين': 30,
-      'اربعين': 40,
-      'خمسين': 50,
-      'ستين': 60,
-      'سبعين': 70,
-      'تمانين': 80,
-      'تسعين': 90,
-    };
-
-    const units = <String, int>{
-      'تسعتاشر': 19,
-      'تمنتاشر': 18,
-      'سبعتاشر': 17,
-      'خمستاشر': 15,
-      'اربعتاشر': 14,
-      'تلاتاشر': 13,
-      'تلتاشر': 13,
-      'اتناشر': 12,
-      'احداشر': 11,
-      'حداشر': 11,
-      'ستاشر': 16,
-      'عشرة': 10,
-      'عشره': 10,
-      'تسعة': 9,
-      'تسعه': 9,
-      'تمانية': 8,
-      'تمانيه': 8,
-      'سبعة': 7,
-      'سبعه': 7,
-      'خمسة': 5,
-      'خمسه': 5,
-      'اربعة': 4,
-      'اربعه': 4,
-      'تلاتة': 3,
-      'تلاته': 3,
-      'اتنين': 2,
-      'ستة': 6,
-      'سته': 6,
-      'واحد': 1,
-    };
-
     // 5. Compound units + tens FIRST (e.g. خمسة وعشرين -> 25, وواحد وعشرين -> و21)
-    for (final u in units.entries) {
-      if (u.value >= 10) continue; // Only 1-9 combine with tens
-      for (final t in tens.entries) {
-        s = s.replaceAllMapped(
-          RegExp('(?<=^|\\s)(و)?${u.key}\\s+و${t.key}(?=\\s|\$|%)'),
-          (m) => ' ${m.group(1) != null ? 'و' : ''}${u.value + t.value} ',
-        );
-      }
-    }
+    s = s.replaceAllMapped(_compoundUnitTenRx, (m) {
+      final prefix = m.group(1) != null ? 'و' : '';
+      final u = _unitsMap[m.group(2)!]!;
+      final t = _tensMap[m.group(3)!]!;
+      return ' $prefix${u + t} ';
+    });
 
     // 6. Compound hundreds + (1..99 digits / tens / units)
-    for (final h in hundreds.entries) {
-      s = s.replaceAllMapped(
-        RegExp('(?<=^|\\s)(و)?${h.key}\\s+و(\\d{1,2})(?=\\s|\$|%)'),
-        (m) => ' ${m.group(1) != null ? 'و ' : ''}${h.value + int.parse(m.group(2)!)} ',
-      );
-      for (final t in tens.entries) {
-        s = s.replaceAllMapped(
-          RegExp('(?<=^|\\s)(و)?${h.key}\\s+و${t.key}(?=\\s|\$|%)'),
-          (m) => ' ${m.group(1) != null ? 'و ' : ''}${h.value + t.value} ',
-        );
-      }
-      for (final u in units.entries) {
-        s = s.replaceAllMapped(
-          RegExp('(?<=^|\\s)(و)?${h.key}\\s+و${u.key}(?=\\s|\$|%)'),
-          (m) => ' ${m.group(1) != null ? 'و ' : ''}${h.value + u.value} ',
-        );
-      }
-    }
+    s = s.replaceAllMapped(_compoundHundredTailRx, (m) {
+      final prefix = m.group(1) != null ? 'و ' : '';
+      final h = _hundredsMap[m.group(2)!]!;
+      final tailStr = m.group(3)!;
+      final tail = int.tryParse(tailStr) ??
+          _tensMap[tailStr] ??
+          _unitsMap[tailStr] ??
+          0;
+      return ' $prefix${h + tail} ';
+    });
 
     // 7. Standalone hundreds, tens, units
-    for (final h in hundreds.entries) {
-      s = s.replaceAllMapped(
-        RegExp('(?<=^|\\s)(و)?${h.key}(?=\\s|\$|%)'),
-        (m) => ' ${m.group(1) != null ? 'و ' : ''}${h.value} ',
-      );
-    }
-    for (final t in tens.entries) {
-      s = s.replaceAllMapped(
-        RegExp('(?<=^|\\s)(و)?${t.key}(?=\\s|\$|%)'),
-        (m) => ' ${m.group(1) != null ? 'و ' : ''}${t.value} ',
-      );
-    }
-    for (final u in units.entries) {
-      if (u.key == 'واحد') {
-        s = s.replaceAll(RegExp(r'(?<!ال)(?<=^|\s)واحد(?=\s|$)'), ' 1 ');
-      } else {
-        s = s.replaceAllMapped(
-          RegExp('(?<=^|\\s)(و)?${u.key}(?=\\s|\$|%)'),
-          (m) => ' ${m.group(1) != null ? 'و ' : ''}${u.value} ',
-        );
-      }
-    }
+    s = s.replaceAllMapped(_standaloneNumberWordRx, (m) {
+      final prefix = m.group(1) != null ? 'و ' : '';
+      final key = m.group(2)!;
+      final val = _hundredsMap[key] ?? _tensMap[key] ?? _unitsMap[key]!;
+      return ' $prefix$val ';
+    });
+    s = s.replaceAllMapped(
+      _standaloneWahedRx,
+      (m) => ' ${m.group(1) != null ? 'و ' : ''}1 ',
+    );
 
     // 8. Compound thousands (e.g. "58 1000 ونص" -> "58500", "1000 و 200" -> "1200")
     s = s.replaceAll(RegExp(r'\s+'), ' ').trim();
@@ -1394,7 +1385,7 @@ class AssistantIntentScorer {
     }
 
     if (_hasAny(norm, ['سجل تحويل', 'حول من محفظه', 'شحن محفظه', 'سحب من المحفظه', 'تحويل محفظه', 'حول رصيد'])) {
-      addScore(AssistantNluIntent.walletTransfer, 9.0);
+      addScore(AssistantNluIntent.walletTransfer, 10.5);
     }
 
     if (_hasAny(norm, ['حصص الشركاء', 'ارباح الشركاء', 'توزيع الارباح علي الشركاء', 'كل شريك له كام', 'نصيب كل شريك', 'نصيب كل شرك', 'حصه الشركاء', 'حصه كل شريك'])) {
@@ -1402,7 +1393,7 @@ class AssistantIntentScorer {
     }
 
     if (_hasAny(norm, ['الشريك خد فلوس', 'مسحوبات شريك', 'شريك سحب', 'سحب ابو علي', 'الشريك سحب', 'سحب شريك', 'مسحوبات الشركاء', 'سحب من الارباح'])) {
-      addScore(AssistantNluIntent.partnerWithdraw, 9.0);
+      addScore(AssistantNluIntent.partnerWithdraw, 10.5);
     }
 
     if (scores.isEmpty) return null;
@@ -1459,6 +1450,12 @@ class AssistantSlotExtractor {
         return _extractUpdateStock(numericText, norm);
       case AssistantNluIntent.calculateZakat:
         return _extractZakat(numericText, norm);
+      case AssistantNluIntent.preOrderCreate:
+        return _extractPreOrder(numericText);
+      case AssistantNluIntent.walletTransfer:
+        return _extractWalletTransfer(numericText, norm);
+      case AssistantNluIntent.partnerWithdraw:
+        return _extractPartnerWithdraw(numericText);
       default:
         return const {};
     }
@@ -1804,6 +1801,74 @@ class AssistantSlotExtractor {
     return {
       if (goldPrice != null && goldPrice > 0) 'goldPrice24': goldPrice,
       'isGregorianYear': isGregorian,
+    };
+  }
+
+  static Map<String, dynamic> _extractPreOrder(String text) {
+    final cleaned = _stripLeadingPrefixes(text)
+        .replaceFirst(
+          RegExp(r'^(?:سجل\s+حجز|احجزلي|حجز\s+بعربون|سجل\s+عربون|حجزت)\s*'),
+          '',
+        )
+        .trim();
+    final amtMatch = RegExp(r'(\d+(?:\.\d+)?)\s*(?:ج\.?م|جنيه)?').firstMatch(cleaned);
+    final deposit = amtMatch != null ? double.tryParse(amtMatch.group(1)!) : null;
+    final custMatch = RegExp(
+      r'(?:للعميل|لـ?|عميل)\s+([^\d]+?)(?=\s+(?:عربون|بـ?\s*\d)|\s*$)',
+    ).firstMatch(cleaned);
+    var custName = custMatch?.group(1)?.trim();
+    if (custName == null || custName.isEmpty) {
+      final beforeNum = amtMatch != null
+          ? cleaned.substring(0, amtMatch.start).trim()
+          : cleaned;
+      final stripped = beforeNum
+          .replaceAll(RegExp(r'(?:بعربون|عربون|بـ)$'), '')
+          .trim();
+      if (stripped.isNotEmpty) custName = stripped;
+    }
+    return {
+      if (custName != null && custName.isNotEmpty) 'customerName': custName,
+      if (deposit != null && deposit > 0) 'amountEgp': deposit,
+    };
+  }
+
+  static Map<String, dynamic> _extractWalletTransfer(String text, String norm) {
+    final amtMatch = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(text);
+    final amt = amtMatch != null ? double.tryParse(amtMatch.group(1)!) : null;
+    String walletName = 'محفظة إلكترونية';
+    if (norm.contains('فودافون')) {
+      walletName = 'فودافون كاش';
+    } else if (norm.contains('انستا')) {
+      walletName = 'انستا باي';
+    } else if (norm.contains('اورانج')) {
+      walletName = 'اورانج كاش';
+    } else if (norm.contains('اتصالات')) {
+      walletName = 'اتصالات كاش';
+    }
+    final isWithdraw = norm.contains('سحب');
+    return {
+      'walletName': walletName,
+      'txType': isWithdraw ? 'withdraw' : 'deposit',
+      if (amt != null && amt > 0) 'amountEgp': amt,
+    };
+  }
+
+  static Map<String, dynamic> _extractPartnerWithdraw(String text) {
+    final cleaned = _stripLeadingPrefixes(text)
+        .replaceFirst(
+          RegExp(r'^(?:الشريك\s+خد\s+فلوس|مسحوبات\s+شريك|شريك\s+سحب|سحب\s+الشريك|سحب)\s*'),
+          '',
+        )
+        .trim();
+    final amtMatch = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(cleaned);
+    final amt = amtMatch != null ? double.tryParse(amtMatch.group(1)!) : null;
+    var partner = amtMatch != null
+        ? cleaned.substring(0, amtMatch.start).trim()
+        : cleaned;
+    partner = partner.replaceAll(RegExp(r'(?:مبلغ|بـ|جنيه)$'), '').trim();
+    return {
+      if (partner.isNotEmpty) 'partnerName': partner,
+      if (amt != null && amt > 0) 'amountEgp': amt,
     };
   }
 }

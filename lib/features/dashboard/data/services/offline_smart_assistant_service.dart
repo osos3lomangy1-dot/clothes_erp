@@ -49,6 +49,9 @@ enum AssistantCommandKind {
   collectInstallment,
   calculateZakat,
   runBackupNow,
+  preOrderCreate,
+  walletTransfer,
+  partnerWithdraw,
 }
 
 class AssistantUndoToken {
@@ -139,10 +142,70 @@ class OfflineSmartAssistantService {
 
   /// Last undoable command executed via assistant.
   static const _userNameMetaKey = 'assistant_user_name';
+  static const _unmatchedMetaKey = 'assistant_unmatched_queries';
   bool _userNameLoaded = false;
   List<AssistantInsight> _lastInsights = const [];
+  final List<({String? userPrompt, String? headerLabel, List<AssistantInsight> insights})>
+      sessionHistory = [];
+  AssistantActionDraft? sessionActiveDraft;
   AssistantUndoToken? lastUndoToken;
   OfflineSmartAssistantService(this._db);
+
+  void clearSessionHistory() {
+    sessionHistory.clear();
+    sessionActiveDraft = null;
+  }
+
+  Future<void> _recordUnmatchedQuery(String rawQuery) async {
+    final trimmed = rawQuery.trim();
+    if (trimmed.isEmpty) return;
+    try {
+      final list = await getUnmatchedQueries();
+      if (!list.contains(trimmed)) {
+        list.add(trimmed);
+        if (list.length > 200) {
+          list.removeAt(0);
+        }
+        await _db.into(_db.appMeta).insertOnConflictUpdate(
+              AppMetaCompanion.insert(
+                key: _unmatchedMetaKey,
+                value: jsonEncode(list),
+                updatedAt: DateTime.now(),
+              ),
+            );
+      }
+    } catch (_) {
+      // Ignore logging errors when appMeta is unavailable.
+    }
+  }
+
+  Future<List<String>> getUnmatchedQueries() async {
+    try {
+      final row = await (_db.select(_db.appMeta)
+            ..where((m) => m.key.equals(_unmatchedMetaKey)))
+          .getSingleOrNull();
+      if (row == null || row.value.trim().isEmpty) return [];
+      final decoded = jsonDecode(row.value) as List<dynamic>;
+      return decoded.map((e) => e.toString()).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<String> exportUnmatchedQueriesJsonl() async {
+    final queries = await getUnmatchedQueries();
+    return queries
+        .map((q) => jsonEncode({'text': q, 'intent': 'TODO', 'split': 'train'}))
+        .join('\n');
+  }
+
+  Future<void> clearUnmatchedQueries() async {
+    try {
+      await (_db.delete(_db.appMeta)
+            ..where((m) => m.key.equals(_unmatchedMetaKey)))
+          .go();
+    } catch (_) {}
+  }
 
   Future<String?> getPersistedUserName() async {
     await _loadPersistedUserName();
@@ -1023,6 +1086,7 @@ class OfflineSmartAssistantService {
         }
       }
 
+      await _recordUnmatchedQuery(query);
       final suggestions = _buildDidYouMeanSuggestions(q);
       return [
         AssistantInsight(
