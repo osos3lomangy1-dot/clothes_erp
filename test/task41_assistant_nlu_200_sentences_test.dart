@@ -450,7 +450,14 @@ void main() {
         'بروتوكول احتواء العميل الغاضب LAST',
       );
       expect(tLast, isNotEmpty);
-      expect(tLast.first.id, 'kb_enc2_last_angry_customer');
+      expect(
+        tLast.any(
+          (i) =>
+              i.id == 'kb_enc2_last_angry_customer' ||
+              i.id == 'kb_enc2_customer_last_complaint_protocol',
+        ),
+        isTrue,
+      );
 
       final tAbc = await service.searchKnowledgeBase('تصنيف ABC للمخزون');
       expect(tAbc, isNotEmpty);

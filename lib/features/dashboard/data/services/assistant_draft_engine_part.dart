@@ -1496,11 +1496,18 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
     }
 
     // 0c. Zakat Calculator Draft: "احسب الزكاة" / "زكاة المال" / "زكاة التجارة"
-    if (q.contains('احسب الزكاه') ||
-        q.contains('زكاه المال') ||
-        q.contains('زكاه التجاره') ||
-        q.contains('حاسبه الزكاه') ||
-        q == 'الزكاه') {
+    final isZakatConceptual = q.contains('ايه هي') ||
+        q.contains('يعني ايه') ||
+        q.contains('نصاب') ||
+        q.contains('احكام') ||
+        q.contains('تعريف') ||
+        q.contains('مفهوم');
+    if (!isZakatConceptual &&
+        (q.contains('احسب الزكاه') ||
+            q.contains('زكاه المال') ||
+            q.contains('زكاه التجاره') ||
+            q.contains('حاسبه الزكاه') ||
+            q == 'الزكاه')) {
       final isGregorian = q.contains('ميلادي');
       final goldMatch = RegExp(
         r'(?:الذهب|ذهب|عيار\s*24|سعر)\s*(?:ب|هو)?\s*(\d+(?:\.\d+)?)',

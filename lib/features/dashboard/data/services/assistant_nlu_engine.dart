@@ -1,4 +1,5 @@
 import '../../../../core/utils/money.dart';
+import 'assistant_chitchat_lexicon.dart';
 
 /// Supported high-level intents scored by [AssistantIntentScorer].
 enum AssistantNluIntent {
@@ -60,6 +61,7 @@ enum AssistantNluIntent {
   partnerWithdraw,
   undoLast,
   howToGuide,
+  knowledge,
   confirm,
   cancel,
   chitchat,
@@ -83,6 +85,7 @@ class AssistantContextMemory {
   double? lastSellEgp;
   int? lastQty;
   String? lastPaymentType;
+  String? userName;
   AssistantNluIntent? lastIntent;
   Map<String, dynamic> lastFields = const {};
 
@@ -135,6 +138,7 @@ class AssistantContextMemory {
     lastSellEgp = null;
     lastQty = null;
     lastPaymentType = null;
+    userName = null;
     lastIntent = null;
     lastFields = const {};
   }
@@ -314,6 +318,8 @@ class AssistantArabicNormalizer {
     'عربون',
     'طيار',
     'محفظه',
+    'كهربا',
+    'شريت',
   };
 
   /// Corrects 1-character typos for core ERP & commerce tokens (length >= 4)
@@ -526,20 +532,28 @@ class AssistantArabicNormalizer {
       'واحد': 1,
     };
 
-    // 5. Compound hundreds + tens / units
+    // 5. Compound units + tens FIRST (e.g. خمسة وعشرين -> 25, وواحد وعشرين -> و21)
+    for (final u in units.entries) {
+      if (u.value >= 10) continue; // Only 1-9 combine with tens
+      for (final t in tens.entries) {
+        s = s.replaceAllMapped(
+          RegExp('(?<=^|\\s)(و)?${u.key}\\s+و${t.key}(?=\\s|\$|%)'),
+          (m) => ' ${m.group(1) != null ? 'و' : ''}${u.value + t.value} ',
+        );
+      }
+    }
+
+    // 6. Compound hundreds + (1..99 digits / tens / units)
     for (final h in hundreds.entries) {
+      s = s.replaceAllMapped(
+        RegExp('${h.key}\\s+و(\\d{1,2})(?=\\s|\$|%)'),
+        (m) => ' ${h.value + int.parse(m.group(1)!)} ',
+      );
       for (final t in tens.entries) {
         s = s.replaceAll('${h.key} و${t.key}', ' ${h.value + t.value} ');
       }
       for (final u in units.entries) {
         s = s.replaceAll('${h.key} و${u.key}', ' ${h.value + u.value} ');
-      }
-    }
-
-    // 6. Compound units + tens (e.g. خمسة وعشرين -> 25)
-    for (final u in units.entries) {
-      for (final t in tens.entries) {
-        s = s.replaceAll('${u.key} و${t.key}', ' ${u.value + t.value} ');
       }
     }
 
@@ -709,6 +723,27 @@ class AssistantIntentScorer {
     if (confirmSet.contains(core)) {
       return const ScoredIntentResult(intent: AssistantNluIntent.confirm, score: 20.0);
     }
+
+    final chitchatMatch = ChitchatMatcher.match(norm);
+    if (chitchatMatch != null) {
+      if ((chitchatMatch.subIntent == 'setName' ||
+              chitchatMatch.subIntent == 'changeName') &&
+          chitchatMatch.extractedName != null) {
+        context.userName = chitchatMatch.extractedName;
+      } else if (chitchatMatch.subIntent == 'forgetName') {
+        context.userName = null;
+      }
+      return ScoredIntentResult(
+        intent: AssistantNluIntent.chitchat,
+        score: 20.0,
+        slots: {
+          'subIntent': chitchatMatch.subIntent,
+          if (chitchatMatch.extractedName != null)
+            'extractedName': chitchatMatch.extractedName,
+        },
+      );
+    }
+
     if (chitchatSet.contains(core)) {
       return const ScoredIntentResult(intent: AssistantNluIntent.chitchat, score: 20.0);
     }
@@ -805,6 +840,37 @@ class AssistantIntentScorer {
       if (norm.contains('اسعر ازاي') || norm.contains('الجنيه نزل')) {
         return const ScoredIntentResult(intent: AssistantNluIntent.inflationCalculator, score: 18.0);
       }
+    }
+
+    // 2a. Conceptual / Encyclopedia Knowledge queries (must run before generic howToGuide, calculateZakat, breakEven)
+    final isConceptualQuestion = _hasAny(norm, [
+          'يعني ايه',
+          'ايه هو',
+          'ايه هي',
+          'ما هو',
+          'ما هي',
+          'ايه الفرق بين',
+          'الفرق بين',
+          'نصاب الزكاه',
+          'مفهوم ',
+          'تعريف ',
+          'قواعد التفاوض',
+          'مبادئ الاقناع',
+          'بروتوكول احتواء',
+          'دوره التحويل النقدي',
+          'القوائم الماليه',
+          'العرض الذي لا يرفض',
+          'ازاي اتفاوض مع المورد',
+          'ازاي اتعامل مع عميل غاضب',
+          'عميل غاضب',
+          'بضاعه نايمه',
+        ]) &&
+        !_hasAny(norm, ['احسب الزكاه', 'احسب لي الزكاه', 'احسب نقطه التعادل', 'سجل', 'ضيف']);
+    if (isConceptualQuestion) {
+      return const ScoredIntentResult(
+        intent: AssistantNluIntent.knowledge,
+        score: 19.0,
+      );
     }
 
     // 3. Module & specific queries that might contain "ازاي" protected before generic HowTo

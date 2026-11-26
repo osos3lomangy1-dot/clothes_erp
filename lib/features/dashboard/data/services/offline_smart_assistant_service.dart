@@ -137,8 +137,46 @@ class OfflineSmartAssistantService {
   final AssistantContextMemory contextMemory = AssistantContextMemory();
 
   /// Last undoable command executed via assistant.
+  static const _userNameMetaKey = 'assistant_user_name';
+  bool _userNameLoaded = false;
   AssistantUndoToken? lastUndoToken;
   OfflineSmartAssistantService(this._db);
+
+  Future<void> _loadPersistedUserName() async {
+    if (_userNameLoaded) return;
+    _userNameLoaded = true;
+    try {
+      final row = await (_db.select(_db.appMeta)
+            ..where((m) => m.key.equals(_userNameMetaKey)))
+          .getSingleOrNull();
+      final saved = row?.value.trim();
+      if (saved != null && saved.isNotEmpty) {
+        contextMemory.userName ??= saved;
+      }
+    } catch (_) {
+      // Safe fallback for unit tests using minimal mocks.
+    }
+  }
+
+  Future<void> _persistUserName(String? name) async {
+    try {
+      if (name == null || name.trim().isEmpty) {
+        await (_db.delete(_db.appMeta)
+              ..where((m) => m.key.equals(_userNameMetaKey)))
+            .go();
+      } else {
+        await _db.into(_db.appMeta).insertOnConflictUpdate(
+              AppMetaCompanion.insert(
+                key: _userNameMetaKey,
+                value: name.trim(),
+                updatedAt: DateTime.now(),
+              ),
+            );
+      }
+    } catch (_) {
+      // Ignore persistence errors when appMeta is unavailable.
+    }
+  }
 
   /// Normalizes Arabic characters (`أ/إ/آ -> ا`, `ة -> ه`, `ى -> ي`),
   /// strips diacritics, converts Arabic-Indic digits, and collapses spaces.
@@ -276,6 +314,7 @@ class OfflineSmartAssistantService {
   }
 
   Future<List<AssistantInsight>> ask(String query) async {
+    await _loadPersistedUserName();
     final q = normalizeArabic(query);
     if (q.isEmpty) {
       return getDailyBriefing();
@@ -359,11 +398,164 @@ class OfflineSmartAssistantService {
             contextMemory.updateAnalyticalIntent(intent);
             results.add(await getCustomerObjectionRepliesInsight(query));
             break;
+          case AssistantNluIntent.goalPlanner:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(await getGoalPlannerInsight(query));
+            break;
+          case AssistantNluIntent.storeHealthScore:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(await getStoreHealthScoreInsight());
+            break;
+          case AssistantNluIntent.smartReorderList:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(await getSmartReorderListInsight());
+            break;
+          case AssistantNluIntent.businessmanConsultation:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(await getBusinessmanConsultationInsight());
+            break;
+          case AssistantNluIntent.suppliersDues:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(await getSuppliersDuesInsight());
+            break;
+          case AssistantNluIntent.stagnantStock:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(await getStagnantProductsInsight());
+            break;
+          case AssistantNluIntent.stockoutVelocity:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(await getStockoutVelocityInsight());
+            break;
+          case AssistantNluIntent.storePulse:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(await getStorePulseInsight());
+            break;
+          case AssistantNluIntent.topProfitProducts:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(await getTopProfitableProductsInsight());
+            break;
+          case AssistantNluIntent.endOfDayReport:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(await getEndOfDayReportInsight());
+            break;
+          case AssistantNluIntent.topVariants:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(await getTopVariantsByProductInsight(query));
+            break;
+          case AssistantNluIntent.cheapestSupplier:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(await getCheapestSupplierForProductInsight(query));
+            break;
+          case AssistantNluIntent.searchByBarcodeOrSku:
+            final barcodeMatch = await searchByBarcodeOrSkuInsight(query);
+            if (barcodeMatch != null) {
+              results.add(barcodeMatch);
+            } else {
+              final productMatch = await searchProductByNameInsight(query);
+              if (productMatch != null) results.add(productMatch);
+            }
+            break;
+          case AssistantNluIntent.marginLeak:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(await getMarginLeakInsight());
+            break;
+          case AssistantNluIntent.breakEven:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(await getBreakEvenInsight());
+            break;
+          case AssistantNluIntent.cashierPerformance:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(await getCashierPerformanceInsight());
+            break;
+          case AssistantNluIntent.budgetComparison:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(await getMonthlyBudgetComparisonInsight());
+            break;
+          case AssistantNluIntent.todayAudits:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(await getTodayAuditsAndCancellationsInsight());
+            break;
+          case AssistantNluIntent.winBackCustomers:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(await getCustomerReEngagementInsight());
+            break;
+          case AssistantNluIntent.installmentReminderMessage:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(await getInstallmentReminderInsight(query));
+            break;
+          case AssistantNluIntent.seasonPlan:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(getSeasonalMarketingPlanInsight(query));
+            break;
+          case AssistantNluIntent.inflationCalculator:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(await getInflationCalculatorInsight(query));
+            break;
+          case AssistantNluIntent.liquidityStrategy:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(await getCashExpansionAdvisorInsight(query));
+            break;
+          case AssistantNluIntent.visualMerchandising:
+            contextMemory.updateAnalyticalIntent(intent);
+            results.add(await getVisualMerchandisingInsight());
+            break;
+          case AssistantNluIntent.shiftSummary:
+            results.add(await getOpenShiftSummaryInsight());
+            break;
+          case AssistantNluIntent.preOrderQuery:
+            results.add(await getPreOrdersSummaryInsight());
+            break;
+          case AssistantNluIntent.deliveryQuery:
+            results.add(await getDeliveryPendingSummaryInsight());
+            break;
+          case AssistantNluIntent.repairQuery:
+            results.add(await getRepairReadyInsight());
+            break;
+          case AssistantNluIntent.walletQuery:
+            results.add(await getWalletsBalanceInsight());
+            break;
+          case AssistantNluIntent.partnerShares:
+            results.add(await getPartnersProfitSharesInsight());
+            break;
+          case AssistantNluIntent.outOfScope:
+            results.add(
+              const AssistantInsight(
+                id: 'assistant_out_of_scope',
+                title: 'سؤال خارج نطاق إدارة المحل',
+                summary:
+                    'أنا مساعد متخصص في حسابات المحل، المبيعات، المخزون، المشتريات، والزكاة أوفلاين 100%.',
+                followUpPrompts: [
+                  'بتعرف تعمل ايه؟',
+                  'كسبت كام النهارده؟',
+                  'تقرير قفلة اليوم',
+                ],
+              ),
+            );
+            break;
+          case AssistantNluIntent.chitchat:
+          case AssistantNluIntent.help:
+            final subIntent = nluMatch.slots['subIntent'] as String?;
+            if (subIntent == 'setName' || subIntent == 'changeName') {
+              await _persistUserName(contextMemory.userName);
+            } else if (subIntent == 'forgetName') {
+              await _persistUserName(null);
+            }
+            results.add(_buildChitchatInsight(nluMatch.slots));
+            break;
+          case AssistantNluIntent.knowledge:
+            if (q.contains('الفرق')) {
+              results.addAll(await getMarketingClarificationInsights(query));
+            }
+            results.addAll(await searchKnowledgeBase(query));
+            break;
           default:
             break;
         }
       }
       if (results.isNotEmpty) {
+        if (q.contains('الفرق')) {
+          results.insertAll(0, await getMarketingClarificationInsights(query));
+        }
         return results;
       }
     }
@@ -769,5 +961,132 @@ class OfflineSmartAssistantService {
       maxResults: maxResults,
       activeSector: sector,
     );
+  }
+
+  static const List<String> _fullCapabilitiesReport = [
+    '1. العمليات المحاسبية والمخزنية بالعامية (مع تأكيد قبل التنفيذ): إضافة صنف جديد، تسجيل فاتورة شراء، تسجيل مصروف، سداد مورد، إضافة عميل، تحصيل قسط، وتعديل سعر أو رصيد (مثال: "جبت 10 بناطيل من الحاج محمود بـ 300 شكك" أو "دفعت كهربا 600").',
+    '2. التحليلات والتقارير اليومية: صافي ربح اليوم وأمس، تشخيص سبب نزول المبيعات، تقرير قفلة اليوم، نبض المحل، مؤشر صحة المحل من 100، نقطة التعادل، تسريب الأرباح، وأفضل الأصناف ربحاً (مثال: "كسبت كام النهارده؟" أو "الدنيا نايمة ليه؟").',
+    '3. المخزون والموردين والعملاء: البضاعة الراكدة، النواقص وقائمة إعادة الطلب، أرخص مورد لصنف، أكثر المقاسات والألوان مبيعاً، الأقساط المتأخرة، ديون الموردين، والبحث بالباركود أو الاسم.',
+    '4. أدوات التاجر والاستشارات (أوفلاين 100%): حاسبة الزكاة الشرعية بسعر الذهب، محاكاة الخصومات والعروض، ردود دبلوماسية على اعتراضات الزبائن، كتابة بوستات تسويقية للواتساب، خطة الهدف، حاسبة التضخم، وقاعدة السيولة 50/30/20.',
+    '5. الأدلة والإعدادات والأقسام الإضافية: شرح خطوات أي شاشة ("ازاي أعمل مرتجع؟")، ملخص الدرج والوردية، الحجوزات المسبقة، عهدة الديليفري، تذاكر الصيانة، المحافظ الإلكترونية، حصص الشركاء، والنسخ الاحتياطي وتغيير إعدادات المحل.',
+    '6. السياق والذاكرة: بفهم المتابعات مثل "طيب وامبارح؟"، "نفس المورد"، "خلي السعر 400"، وبحفظ اسمك خلال الجلسة ("اسمي أحمد").',
+  ];
+
+  AssistantInsight _buildChitchatInsight(Map<String, dynamic> slots) {
+    final sub = slots['subIntent'] as String? ?? 'capabilities';
+    final name = contextMemory.userName;
+    final greetPrefix = name != null ? 'يا $name' : 'يا فندم';
+
+    switch (sub) {
+      case 'greetingSalam':
+        return AssistantInsight(
+          id: 'chitchat_greetingSalam',
+          title: 'وعليكم السلام ورحمة الله وبركاته',
+          summary: 'أهلاً بك $greetPrefix، تحت أمرك في أي وقت لحسابات المحل والمبيعات والمخزون.',
+        );
+      case 'greetingMorning':
+        return AssistantInsight(
+          id: 'chitchat_greetingMorning',
+          title: 'صباح الفل والرزق الواسع',
+          summary: 'صباح النور $greetPrefix، جاهز أتابع معاك مبيعات ومصاريف اليوم.',
+        );
+      case 'greetingEvening':
+        return AssistantInsight(
+          id: 'chitchat_greetingEvening',
+          title: 'مساء النور والبركة',
+          summary: 'مساء الفل $greetPrefix، تحب نراجع مبيعات النهارده أو نقفل اليومية؟',
+        );
+      case 'greetingHello':
+        return AssistantInsight(
+          id: 'chitchat_greetingHello',
+          title: 'أهلاً وسهلاً بك',
+          summary: 'أهلاً بك $greetPrefix، قولي تحب نبدأ بإيه النهارده؟',
+        );
+      case 'howAreYou':
+        return AssistantInsight(
+          id: 'chitchat_howAreYou',
+          title: 'كله تمام الحمد لله',
+          summary: 'بخير $greetPrefix، ومستعد أساعدك في فواتير الشراء، المصروفات، وتقارير الأرباح.',
+        );
+      case 'fine':
+        return AssistantInsight(
+          id: 'chitchat_fine',
+          title: 'دايماً بخير يا رب',
+          summary: 'ربنا يديمها نعمة $greetPrefix، لو احتجت أي حسابات أو تقارير أنا جاهز.',
+        );
+      case 'thanks':
+        return AssistantInsight(
+          id: 'chitchat_thanks',
+          title: 'العفو، تحت أمرك',
+          summary: 'لا شكر على واجب $greetPrefix، بالتوفيق في شغلك دايماً.',
+        );
+      case 'bye':
+        return AssistantInsight(
+          id: 'chitchat_bye',
+          title: 'في أمان الله',
+          summary: 'مع السلامة $greetPrefix، وتقدر ترجع لي في أي وقت.',
+        );
+      case 'identity':
+        return AssistantInsight(
+          id: 'chitchat_identity',
+          title: 'دوري وإمكانيات المساعد الذكي ($greetPrefix)',
+          summary:
+              'أنا مساعدك المحاسبي والتجاري الذكي داخل النظام (أوفلاين 100%). ده التقرير الكامل بكل الحاجات اللي أقدر أساعدك فيها:',
+          details: _fullCapabilitiesReport,
+          followUpPrompts: const [
+            'كسبت كام النهارده؟',
+            'تقرير قفلة اليوم',
+            'النهارده الدنيا نايمة ليه؟',
+            'ايه البضاعة الراكدة؟',
+            'الأقساط المتأخرة',
+          ],
+        );
+      case 'offlineInfo':
+        return const AssistantInsight(
+          id: 'chitchat_offlineInfo',
+          title: 'شغال أوفلاين 100% بدون إنترنت',
+          summary:
+              'كل تحليلاتي وحساباتي بتتم محلياً على جهازك مباشرة من قاعدة بيانات المحل بدون الحاجة لأي إنترنت.',
+        );
+      case 'setName':
+      case 'changeName':
+        final saved = name ?? (slots['extractedName'] as String?);
+        return AssistantInsight(
+          id: 'chitchat_$sub',
+          title: saved != null ? 'اتشرفت بيك يا $saved' : 'تم تحديث الاسم',
+          summary: saved != null
+              ? 'حاضر، هندهلك باسم "$saved" من دلوقتي.'
+              : 'قولي اسمك اللي تحب أندهلك بيه (مثلاً: اسمي أحمد).',
+        );
+      case 'askMyName':
+        return AssistantInsight(
+          id: 'chitchat_askMyName',
+          title: name != null ? 'اسمك هو $name' : 'لسه معرفش اسمك',
+          summary: name != null
+              ? 'أكيد فاكر يا $name! تحب نراجع شغل المحل؟'
+              : 'ممكن تقولي "اسمي ..." عشان أفتكرك بيه.',
+        );
+      case 'forgetName':
+        return const AssistantInsight(
+          id: 'chitchat_forgetName',
+          title: 'تم مسح الاسم',
+          summary: 'حاضر، مسحت الاسم من ذاكرة الجلسة الحالية.',
+        );
+      case 'capabilities':
+      default:
+        return AssistantInsight(
+          id: 'chitchat_capabilities',
+          title: 'تقرير إمكانيات المساعد الذكي ($greetPrefix)',
+          summary: 'دي كل الحاجات اللي أقدر أساعدك فيها بالعامية المصرية أوفلاين 100%:',
+          details: _fullCapabilitiesReport,
+          followUpPrompts: const [
+            'كسبت كام النهارده؟',
+            'تقرير قفلة اليوم',
+            'النهارده الدنيا نايمة ليه؟',
+            'ايه البضاعة الراكدة؟',
+            'الأقساط المتأخرة',
+          ],
+        );
+    }
   }
 }

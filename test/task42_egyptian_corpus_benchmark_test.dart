@@ -150,5 +150,63 @@ void main() {
       expect(t3.insights.first.pendingCommand?.payload['amountEgp'], 47500.0);
     });
   });
+
+  group('Task 42.4: Chitchat Lexicon & User Name Memory', () {
+    test('handles social chitchat, offlineInfo, capabilities, and business guard', () async {
+      final salam = await service.ask('السلام عليكم يا باشا');
+      expect(salam.first.id, 'chitchat_greetingSalam');
+
+      final morning = await service.ask('صباح الخير');
+      expect(morning.first.id, 'chitchat_greetingMorning');
+
+      final howAreYou = await service.ask('اي الاخبار عامل اي');
+      expect(howAreYou.first.id, 'chitchat_howAreYou');
+
+      final howAreYou2 = await service.ask('الدنيا عامله ايه النهارده يا باشا');
+      expect(howAreYou2.first.id, 'chitchat_howAreYou');
+
+      final offline = await service.ask('انت شغال بالنت ولا اوفلاين');
+      expect(offline.first.id, 'chitchat_offlineInfo');
+
+      final caps = await service.ask('بتعرف تعمل ايه يا مساعد');
+      expect(caps.first.id, 'chitchat_capabilities');
+      expect(caps.first.details.length, greaterThanOrEqualTo(6));
+
+      final role = await service.ask('انت دورك اي');
+      expect(role.first.id, 'chitchat_identity');
+      expect(role.first.details.length, greaterThanOrEqualTo(6));
+
+      final thanks = await service.ask('تسلم ايدك يا معلم');
+      expect(thanks.first.id, 'chitchat_thanks');
+
+      // Business guard: must NOT treat store query as chitchat
+      final biz = await service.ask('المحل عامل ايه');
+      expect(biz.first.id, isNot(startsWith('chitchat_')));
+    });
+
+    test('remembers, recalls, changes, and forgets user name', () async {
+      final setRes = await service.ask('اسمي احمد');
+      expect(setRes.first.id, 'chitchat_setName');
+      expect(setRes.first.title, contains('احمد'));
+
+      final askRes = await service.ask('اسمي ايه');
+      expect(askRes.first.id, 'chitchat_askMyName');
+      expect(askRes.first.title, contains('احمد'));
+
+      final chgRes = await service.ask('غير اسمي كريم');
+      expect(chgRes.first.id, 'chitchat_changeName');
+      expect(chgRes.first.title, contains('كريم'));
+
+      // Persists across a fresh service instance via AppMeta
+      final freshService = OfflineSmartAssistantService(db);
+      final persistedAsk = await freshService.ask('اسمي ايه');
+      expect(persistedAsk.first.id, 'chitchat_askMyName');
+      expect(persistedAsk.first.title, contains('كريم'));
+
+      final fgtRes = await freshService.ask('امسح اسمي');
+      expect(fgtRes.first.id, 'chitchat_forgetName');
+      expect(freshService.contextMemory.userName, isNull);
+    });
+  });
 }
 
