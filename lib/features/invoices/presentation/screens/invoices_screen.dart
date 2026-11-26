@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/money.dart';
+import '../../../../core/widgets/custom_date_range_dialog.dart';
 import '../../domain/entities/invoice_details_entity.dart';
 import '../cubits/invoices_cubit.dart';
 import '../cubits/invoices_state.dart';
@@ -69,7 +70,7 @@ class _InvoicesViewState extends State<_InvoicesView> {
   }
 
   Future<void> _pickCustomDateRange() async {
-    final picked = await showDateRangePicker(
+    final picked = await showCustomDateRangeDialog(
       context: context,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),

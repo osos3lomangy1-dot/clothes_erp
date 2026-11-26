@@ -6,6 +6,7 @@ import '../../../../core/di/injection.dart';
 import '../../../../core/services/excel_service.dart';
 import '../../../../core/utils/keyboard_focus_helper.dart';
 import '../../../../core/utils/money.dart';
+import '../../../../core/widgets/custom_date_range_dialog.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../../auth/services/cashier_permissions_service.dart';
@@ -458,7 +459,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
                             onPressed: () async {
-                              final picked = await showDateRangePicker(
+                              final picked = await showCustomDateRangeDialog(
                                 context: context,
                                 firstDate: DateTime(2020),
                                 lastDate: DateTime.now(),

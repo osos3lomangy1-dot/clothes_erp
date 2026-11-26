@@ -4,6 +4,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/services/excel_service.dart';
 import '../../../../core/utils/money.dart';
+import '../../../../core/widgets/custom_date_range_dialog.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
 import '../cubits/reports_cubit.dart';
@@ -248,7 +249,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     selectedPreset: _selectedPreset,
                     onPresetSelected: (preset) async {
                       if (preset == QuickDatePreset.custom) {
-                        final picked = await showDateRangePicker(
+                        final picked = await showCustomDateRangeDialog(
                           context: context,
                           firstDate: DateTime(2020),
                           lastDate: DateTime.now(),
@@ -311,7 +312,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                             ),
                           ),
                           onPressed: () async {
-                            final picked = await showDateRangePicker(
+                            final picked = await showCustomDateRangeDialog(
                               context: context,
                               firstDate: DateTime(2020),
                               lastDate: DateTime.now(),

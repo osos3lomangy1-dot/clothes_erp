@@ -5,6 +5,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/features/feature_gate.dart';
 import '../../../../core/utils/money.dart';
+import '../../../../core/widgets/custom_date_range_dialog.dart';
 import '../../domain/entities/customer_installment_entity.dart';
 import '../../domain/entities/customer_installments_summary.dart';
 import '../../domain/facades/installments_facade.dart';
@@ -240,26 +241,13 @@ class _InstallmentsListViewState extends State<_InstallmentsListView> {
                               selected: state.dateFilter == 'custom',
                               onCustomTap: () async {
                                 final now = DateTime.now();
-                                final range = await showDateRangePicker(
+                                final range = await showCustomDateRangeDialog(
                                   context: context,
                                   firstDate: DateTime(now.year - 2),
                                   lastDate: DateTime(now.year + 5),
                                   initialDateRange: state.customFromDate != null && state.customToDate != null
                                       ? DateTimeRange(start: state.customFromDate!, end: state.customToDate!)
                                       : DateTimeRange(start: now, end: now.add(const Duration(days: 7))),
-                                  builder: (context, child) {
-                                    return Theme(
-                                      data: Theme.of(context).copyWith(
-                                        colorScheme: ColorScheme.light(
-                                          primary: AppColors.primary,
-                                          onPrimary: Colors.white,
-                                          surface: Colors.white,
-                                          onSurface: AppColors.onSurface,
-                                        ),
-                                      ),
-                                      child: child!,
-                                    );
-                                  },
                                 );
                                 if (range != null && context.mounted) {
                                   context.read<InstallmentsListCubit>().setDateFilter(

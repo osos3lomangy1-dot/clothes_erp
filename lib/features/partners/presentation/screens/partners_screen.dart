@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/money.dart';
+import '../../../../core/widgets/custom_date_range_dialog.dart';
 import '../cubits/partners_cubit.dart';
 import '../cubits/partners_state.dart';
 import '../../domain/entities/partner_entity.dart';
@@ -1815,7 +1816,7 @@ class _PartnersScreenState extends State<PartnersScreen> {
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
                             onPressed: () async {
-                              final picked = await showDateRangePicker(
+                              final picked = await showCustomDateRangeDialog(
                                 context: context,
                                 firstDate: DateTime(2020),
                                 lastDate: DateTime.now(),
