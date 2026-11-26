@@ -9,8 +9,6 @@ import '../../../../core/features/feature_gate.dart';
 import '../../../../core/layout/main_layout.dart';
 import '../../../../core/services/app_update_service.dart';
 import '../../../../core/utils/money.dart';
-import '../../../auth/presentation/cubits/auth_cubit.dart';
-import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../../employees/presentation/screens/employee_list_screen.dart';
 import '../../../inventory/presentation/screens/blind_receive_screen.dart';
 import '../../../partners/presentation/screens/partners_screen.dart';
@@ -22,7 +20,6 @@ import '../cubits/dashboard_cubit.dart';
 import '../cubits/dashboard_state.dart';
 import '../../domain/entities/dashboard_stats_entity.dart';
 import '../widgets/hourly_sales_chart.dart';
-import '../widgets/offline_smart_assistant_dialog.dart';
 import '../widgets/store_financial_interview_dialog.dart';
 import '../widgets/weekly_sales_chart.dart';
 
@@ -60,9 +57,9 @@ class _QuickSetupGuideCardState extends State<QuickSetupGuideCard> {
     try {
       if (!getIt.isRegistered<AppDatabase>()) return;
       final db = getIt<AppDatabase>();
-      final row = await (db.select(db.appMeta)
-            ..where((t) => t.key.equals(_quickSetupMetaKey)))
-          .getSingleOrNull();
+      final row = await (db.select(
+        db.appMeta,
+      )..where((t) => t.key.equals(_quickSetupMetaKey))).getSingleOrNull();
       if (!mounted || row == null) return;
       setState(() {
         _hidden = row.value == 'hidden';
@@ -75,7 +72,9 @@ class _QuickSetupGuideCardState extends State<QuickSetupGuideCard> {
     try {
       if (!getIt.isRegistered<AppDatabase>()) return;
       final db = getIt<AppDatabase>();
-      await db.into(db.appMeta).insert(
+      await db
+          .into(db.appMeta)
+          .insert(
             AppMetaCompanion.insert(
               key: _quickSetupMetaKey,
               value: stateVal,
@@ -199,8 +198,8 @@ class _QuickSetupGuideCardState extends State<QuickSetupGuideCard> {
                 final itemWidth = constraints.maxWidth >= 900
                     ? (constraints.maxWidth - 30) / 4
                     : (constraints.maxWidth >= 540
-                        ? (constraints.maxWidth - 10) / 2
-                        : constraints.maxWidth);
+                          ? (constraints.maxWidth - 10) / 2
+                          : constraints.maxWidth);
                 return Wrap(
                   spacing: 10,
                   runSpacing: 10,
@@ -363,28 +362,6 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
             ],
           ),
           actions: [
-            Builder(
-              builder: (authCtx) {
-                bool isAdminOrManager = true;
-                try {
-                  final authState = authCtx.watch<AuthCubit>().state;
-                  if (authState is AuthAuthenticated) {
-                    final r = authState.user.role.toLowerCase();
-                    isAdminOrManager = r == 'admin' || r == 'manager' || r == 'owner';
-                  }
-                } catch (_) {}
-                if (!isAdminOrManager) return const SizedBox.shrink();
-                return IconButton(
-                  key: const Key('open_smart_assistant_btn'),
-                  tooltip: 'المساعد التحليلي الذكي (أوفلاين)',
-                  onPressed: () => OfflineSmartAssistantDialog.show(authCtx),
-                  icon: Icon(
-                    Icons.auto_awesome_rounded,
-                    color: AppColors.primary,
-                  ),
-                );
-              },
-            ),
             Builder(
               builder: (innerCtx) {
                 final screenWidth = MediaQuery.sizeOf(innerCtx).width;
@@ -883,7 +860,9 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
               decoration: BoxDecoration(
                 color: AppColors.warningContainer,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
+                border: Border.all(
+                  color: AppColors.warning.withValues(alpha: 0.4),
+                ),
               ),
               child: Text(
                 '${stats.lowStockVariants.length} أصناف تحتاج للتوريد',
@@ -1021,7 +1000,10 @@ class _KpiCard extends StatelessWidget {
                 ),
                 if (g != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: g >= 0
                           ? AppColors.successContainer

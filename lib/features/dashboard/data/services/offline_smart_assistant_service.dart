@@ -102,10 +102,7 @@ class AssistantTurnResult {
   final List<AssistantInsight> insights;
   final AssistantActionDraft? activeDraft;
 
-  const AssistantTurnResult({
-    required this.insights,
-    this.activeDraft,
-  });
+  const AssistantTurnResult({required this.insights, this.activeDraft});
 }
 
 class AssistantInsight {
@@ -137,7 +134,10 @@ class AssistantInsight {
 @lazySingleton
 class OfflineSmartAssistantService {
   final AppDatabase _db;
+  final AssistantContextMemory contextMemory = AssistantContextMemory();
 
+  /// Last undoable command executed via assistant.
+  AssistantUndoToken? lastUndoToken;
   OfflineSmartAssistantService(this._db);
 
   /// Normalizes Arabic characters (`أ/إ/آ -> ا`, `ة -> ه`, `ى -> ي`),
@@ -173,6 +173,24 @@ class OfflineSmartAssistantService {
           activeDraft: null,
         );
       }
+      // Allow mid-dialogue How-To questions without losing activeDraft!
+      if (q.startsWith('ازاي') ||
+          q.startsWith('كيف') ||
+          q.startsWith('طريقه') ||
+          q.startsWith('خطوات')) {
+        final howTo = matchHowToGuide(query);
+        final helpInsight = howTo ??
+            AssistantInsight(
+              id: 'how_to_fallback_${activeDraft.kind.name}',
+              title: 'مساعدة سريعة أثناء الإدخال',
+              summary:
+                  'يمكنك إكمال البيانات المطلوبة للخطوة الحالية أو قول "إلغاء" للخروج من العملية.',
+            );
+        return AssistantTurnResult(
+          insights: [helpInsight, _buildDraftPromptInsight(activeDraft)],
+          activeDraft: activeDraft,
+        );
+      }
       final nextDraft = advanceDraft(activeDraft, query);
       if (nextDraft.fields.isNotEmpty) {
         final intent = switch (nextDraft.kind) {
@@ -203,8 +221,8 @@ class OfflineSmartAssistantService {
       }
       if (nextDraft.kind == AssistantCommandKind.calculateZakat) {
         final zakatInsight = await getZakatCalculatorInsight(
-          goldGramPrice24Egp:
-              (nextDraft.fields['goldPrice24'] as num).toDouble(),
+          goldGramPrice24Egp: (nextDraft.fields['goldPrice24'] as num)
+              .toDouble(),
           extraBankCashPiasters:
               (((nextDraft.fields['extraBankCashEgp'] as num?) ?? 0) * 100)
                   .round(),
@@ -231,8 +249,8 @@ class OfflineSmartAssistantService {
       }
       if (erpDraft.kind == AssistantCommandKind.calculateZakat) {
         final zakatInsight = await getZakatCalculatorInsight(
-          goldGramPrice24Egp:
-              (erpDraft.fields['goldPrice24'] as num).toDouble(),
+          goldGramPrice24Egp: (erpDraft.fields['goldPrice24'] as num)
+              .toDouble(),
           isGregorianYear: erpDraft.fields['isGregorianYear'] == true,
         );
         return AssistantTurnResult(insights: [zakatInsight], activeDraft: null);
@@ -276,8 +294,8 @@ class OfflineSmartAssistantService {
           erpDraft.kind == AssistantCommandKind.calculateZakat) {
         return [
           await getZakatCalculatorInsight(
-            goldGramPrice24Egp:
-                (erpDraft.fields['goldPrice24'] as num).toDouble(),
+            goldGramPrice24Egp: (erpDraft.fields['goldPrice24'] as num)
+                .toDouble(),
             isGregorianYear: erpDraft.fields['isGregorianYear'] == true,
           ),
         ];
@@ -357,7 +375,9 @@ class OfflineSmartAssistantService {
         q.contains('الدرج فيه كام')) {
       results.add(await getOpenShiftSummaryInsight());
     }
-    if (q.contains('حجوزات') || q.contains('طلبات الحجز') || q.contains('الحجز المسبق')) {
+    if (q.contains('حجوزات') ||
+        q.contains('طلبات الحجز') ||
+        q.contains('الحجز المسبق')) {
       results.add(await getPreOrdersSummaryInsight());
     }
     if (q.contains('عهده الطيارين') ||
@@ -462,7 +482,8 @@ class OfflineSmartAssistantService {
     }
 
     // 4. Post & Ad Generator intents
-    final isPostRequest = q.contains('بوست') ||
+    final isPostRequest =
+        q.contains('بوست') ||
         q.contains('منشور') ||
         q.contains('اعلان') ||
         q.contains('اعمل اعلان') ||
@@ -482,7 +503,8 @@ class OfflineSmartAssistantService {
     }
 
     // Customer re-engagement intents
-    final isReEngagement = q.contains('استرجع العملاء') ||
+    final isReEngagement =
+        q.contains('استرجع العملاء') ||
         q.contains('العملاء الغايبين') ||
         q.contains('العملاء مش شاريين') ||
         q.contains('عملاء قديمين') ||

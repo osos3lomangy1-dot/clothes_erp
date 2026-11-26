@@ -4,7 +4,8 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
   /// Interactive How-To Guide (11 topics) for Arabic & Egyptian colloquial queries.
   AssistantInsight? matchHowToGuide(String rawQuery) {
     final q = OfflineSmartAssistantService.normalizeArabic(rawQuery);
-    final isQuestion = q.contains('ازاي') ||
+    final isQuestion =
+        q.contains('ازاي') ||
         q.contains('كيف') ||
         q.contains('طريقه') ||
         q.contains('اعمل') ||
@@ -33,7 +34,8 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
       );
     }
 
-    final isEncyclopediaQuery = q.contains('فرق') ||
+    final isEncyclopediaQuery =
+        q.contains('فرق') ||
         q.contains('باقه') ||
         q.contains('هديه') ||
         q.contains('تضخم') ||
@@ -50,7 +52,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
         q.contains('بزنس مان');
 
     if (!isEncyclopediaQuery &&
-        (q.contains('خصم') || q.contains('منع الخصم') || q.contains('تعديل السعر'))) {
+        (q.contains('خصم') ||
+            q.contains('منع الخصم') ||
+            q.contains('تعديل السعر'))) {
       return const AssistantInsight(
         id: 'howto_discount_guard',
         title: 'دليل: منع الخصم اليدوي أو تعديل السعر للكاشير',
@@ -146,7 +150,10 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
       );
     }
 
-    if (q.contains('تعدد') || q.contains('نشاط') || q.contains('متاجر') || q.contains('ميزات')) {
+    if (q.contains('تعدد') ||
+        q.contains('نشاط') ||
+        q.contains('متاجر') ||
+        q.contains('ميزات')) {
       return const AssistantInsight(
         id: 'howto_presets',
         title: 'دليل: تبديل نشاط المتجر وتعدد الأنشطة',
@@ -245,13 +252,15 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
         rawQuery.trim().endsWith('?')) {
       return null;
     }
-    final enable = q.contains('فعل') ||
+    final enable =
+        q.contains('فعل') ||
         q.contains('تفعيل') ||
         q.contains('شغل') ||
         q.contains('تشغيل') ||
         q.contains('اسمح') ||
         q.contains('سماح');
-    final disable = q.contains('عطل') ||
+    final disable =
+        q.contains('عطل') ||
         q.contains('تعطيل') ||
         q.contains('اقفل') ||
         q.contains('ايقاف') ||
@@ -425,16 +434,23 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
     if (!isAdmin) {
       if (cmd.kind == AssistantCommandKind.addCustomer) {
         final custEnabled = await gate.isEnabled(FeatureKeys.customers);
-        if (!custEnabled || !CashierPermissionsService.current.allowManageCustomers) {
-          throw Exception('غير مصرح: إضافة العملاء متاحة للمدير أو الكاشير المصرح له فقط');
+        if (!custEnabled ||
+            !CashierPermissionsService.current.allowManageCustomers) {
+          throw Exception(
+            'غير مصرح: إضافة العملاء متاحة للمدير أو الكاشير المصرح له فقط',
+          );
         }
       } else if (cmd.kind == AssistantCommandKind.collectInstallment) {
         final instEnabled = await gate.isEnabled(FeatureKeys.installments);
         if (!instEnabled) {
-          throw Exception('غير مصرح: تحصيل الأقساط غير مفعل أو متاح للمدير فقط');
+          throw Exception(
+            'غير مصرح: تحصيل الأقساط غير مفعل أو متاح للمدير فقط',
+          );
         }
       } else {
-        throw Exception('غير مصرح: تنفيذ تعديلات الإعدادات متاح لحساب المدير (admin) فقط');
+        throw Exception(
+          'غير مصرح: تنفيذ تعديلات الإعدادات متاح لحساب المدير (admin) فقط',
+        );
       }
     }
 
@@ -503,9 +519,10 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
       case AssistantCommandKind.calculateZakat:
         return 'تم حساب زكاة المال وعروض التجارة بنجاح.';
       case AssistantCommandKind.runBackupNow:
-        final backupResult = await LocalBackupService(_db, gate).createBackup(
-          userId: userId,
-        );
+        final backupResult = await LocalBackupService(
+          _db,
+          gate,
+        ).createBackup(userId: userId);
         return 'تم إنشاء النسخة الاحتياطية بنجاح: ${backupResult.filePath}';
     }
   }
@@ -515,7 +532,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
     required String userId,
   }) async {
     final name = (payload['customerName'] as String? ?? '').trim();
-    final phone = Money.normalizeDigits(payload['phone'] as String? ?? '').trim();
+    final phone = Money.normalizeDigits(
+      payload['phone'] as String? ?? '',
+    ).trim();
     if (name.isEmpty || phone.isEmpty) {
       throw Exception('اسم العميل ورقم الهاتف مطلوبان');
     }
@@ -523,7 +542,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
     return _db.transaction(() async {
       final branchId = await _resolveBranchId();
       final custId = _genId('cust');
-      await _db.into(_db.customers).insert(
+      await _db
+          .into(_db.customers)
+          .insert(
             CustomersCompanion.insert(
               id: custId,
               branchId: branchId,
@@ -565,14 +586,16 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
 
     return _db.transaction(() async {
       final branchId = await _resolveBranchId();
-      final customers = await (_db.select(_db.customers)
-            ..where((c) => c.deletedAt.isNull()))
-          .get();
+      final customers = await (_db.select(
+        _db.customers,
+      )..where((c) => c.deletedAt.isNull())).get();
       final norm = OfflineSmartAssistantService.normalizeArabic(customerName);
       Customer? targetCust;
       for (final c in customers) {
         if (OfflineSmartAssistantService.normalizeArabic(c.name) == norm ||
-            OfflineSmartAssistantService.normalizeArabic(c.name).contains(norm)) {
+            OfflineSmartAssistantService.normalizeArabic(
+              c.name,
+            ).contains(norm)) {
           targetCust = c;
           break;
         }
@@ -581,14 +604,18 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
         throw Exception('لم يتم العثور على عميل باسم "$customerName"');
       }
 
-      final plans = await (_db.select(_db.customerInstallments)
-            ..where((i) =>
-                i.customerId.equals(targetCust!.id) &
-                i.deletedAt.isNull() &
-                (i.status.equals('overdue') | i.status.equals('active'))))
-          .get();
+      final plans =
+          await (_db.select(_db.customerInstallments)..where(
+                (i) =>
+                    i.customerId.equals(targetCust!.id) &
+                    i.deletedAt.isNull() &
+                    (i.status.equals('overdue') | i.status.equals('active')),
+              ))
+              .get();
       if (plans.isEmpty) {
-        throw Exception('لا توجد عقود تقسيط نشطة أو متأخرة للعميل "${targetCust.name}"');
+        throw Exception(
+          'لا توجد عقود تقسيط نشطة أو متأخرة للعميل "${targetCust.name}"',
+        );
       }
 
       plans.sort((a, b) {
@@ -597,12 +624,16 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
         return a.endDate.compareTo(b.endDate);
       });
       final plan = plans.first;
-      final newRemaining = (plan.remainingPiasters - amountPiasters)
-          .clamp(0, plan.totalPiasters);
+      final newRemaining = (plan.remainingPiasters - amountPiasters).clamp(
+        0,
+        plan.totalPiasters,
+      );
       final newStatus = newRemaining == 0 ? 'completed' : 'active';
       final payId = _genId('ipay');
 
-      await _db.into(_db.installmentPayments).insert(
+      await _db
+          .into(_db.installmentPayments)
+          .insert(
             InstallmentPaymentsCompanion.insert(
               id: payId,
               branchId: branchId,
@@ -616,9 +647,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
               updatedAt: now,
             ),
           );
-      await (_db.update(_db.customerInstallments)
-            ..where((i) => i.id.equals(plan.id)))
-          .write(
+      await (_db.update(
+        _db.customerInstallments,
+      )..where((i) => i.id.equals(plan.id))).write(
         CustomerInstallmentsCompanion(
           remainingPiasters: Value(newRemaining),
           status: Value(newStatus),
@@ -640,9 +671,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
   }
 
   Future<String> _resolveBranchId() async {
-    final row = await (_db.select(_db.appMeta)
-          ..where((m) => m.key.equals('branch.active_id')))
-        .getSingleOrNull();
+    final row = await (_db.select(
+      _db.appMeta,
+    )..where((m) => m.key.equals('branch.active_id'))).getSingleOrNull();
     final val = row?.value.trim() ?? '';
     return val.isNotEmpty ? val : 'branch_main';
   }
@@ -653,12 +684,14 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
   }
 
   Future<String> _ensureDefaultCategoryId(String branchId, DateTime now) async {
-    final existing = await (_db.select(_db.categories)
-          ..where((c) => c.deletedAt.isNull()))
-        .get();
+    final existing = await (_db.select(
+      _db.categories,
+    )..where((c) => c.deletedAt.isNull())).get();
     if (existing.isNotEmpty) return existing.first.id;
     final catId = _genId('cat');
-    await _db.into(_db.categories).insert(
+    await _db
+        .into(_db.categories)
+        .insert(
           CategoriesCompanion.insert(
             id: catId,
             branchId: branchId,
@@ -680,7 +713,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
     String? newValue,
     required DateTime now,
   }) async {
-    await _db.into(_db.auditLogs).insert(
+    await _db
+        .into(_db.auditLogs)
+        .insert(
           AuditLogsCompanion.insert(
             id: _genId('aud'),
             branchId: branchId,
@@ -705,7 +740,10 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
     final qty = (payload['qty'] as num?)?.toInt() ?? 0;
     final isCredit = payload['paymentType'] == 'credit';
 
-    if (productName.isEmpty || supplierName.isEmpty || costEgp <= 0 || qty <= 0) {
+    if (productName.isEmpty ||
+        supplierName.isEmpty ||
+        costEgp <= 0 ||
+        qty <= 0) {
       throw Exception('بيانات فاتورة الشراء غير مكتملة');
     }
 
@@ -717,14 +755,18 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
       final branchId = await _resolveBranchId();
 
       // Match or create supplier
-      final suppliers = await (_db.select(_db.suppliers)
-            ..where((s) => s.deletedAt.isNull()))
-          .get();
-      final normSup = OfflineSmartAssistantService.normalizeArabic(supplierName);
+      final suppliers = await (_db.select(
+        _db.suppliers,
+      )..where((s) => s.deletedAt.isNull())).get();
+      final normSup = OfflineSmartAssistantService.normalizeArabic(
+        supplierName,
+      );
       Supplier? matchedSup;
       for (final s in suppliers) {
         if (OfflineSmartAssistantService.normalizeArabic(s.name) == normSup ||
-            OfflineSmartAssistantService.normalizeArabic(s.name).contains(normSup)) {
+            OfflineSmartAssistantService.normalizeArabic(
+              s.name,
+            ).contains(normSup)) {
           matchedSup = s;
           break;
         }
@@ -733,9 +775,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
       if (matchedSup != null) {
         supplierId = matchedSup.id;
         if (isCredit) {
-          await (_db.update(_db.suppliers)
-                ..where((s) => s.id.equals(supplierId)))
-              .write(
+          await (_db.update(
+            _db.suppliers,
+          )..where((s) => s.id.equals(supplierId))).write(
             SuppliersCompanion(
               balance: Value(matchedSup.balance + totalPiasters),
               updatedAt: Value(now),
@@ -744,7 +786,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
         }
       } else {
         supplierId = _genId('sup');
-        await _db.into(_db.suppliers).insert(
+        await _db
+            .into(_db.suppliers)
+            .insert(
               SuppliersCompanion.insert(
                 id: supplierId,
                 branchId: branchId,
@@ -757,14 +801,18 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
       }
 
       // Match or create product + variant
-      final products = await (_db.select(_db.products)
-            ..where((p) => p.deletedAt.isNull()))
-          .get();
-      final normProd = OfflineSmartAssistantService.normalizeArabic(productName);
+      final products = await (_db.select(
+        _db.products,
+      )..where((p) => p.deletedAt.isNull())).get();
+      final normProd = OfflineSmartAssistantService.normalizeArabic(
+        productName,
+      );
       Product? matchedProd;
       for (final p in products) {
         if (OfflineSmartAssistantService.normalizeArabic(p.name) == normProd ||
-            OfflineSmartAssistantService.normalizeArabic(p.name).contains(normProd)) {
+            OfflineSmartAssistantService.normalizeArabic(
+              p.name,
+            ).contains(normProd)) {
           matchedProd = p;
           break;
         }
@@ -772,16 +820,19 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
 
       final String variantId;
       if (matchedProd != null) {
-        final variants = await (_db.select(_db.productVariants)
-              ..where((v) =>
-                  v.productId.equals(matchedProd!.id) & v.deletedAt.isNull()))
-            .get();
+        final variants =
+            await (_db.select(_db.productVariants)..where(
+                  (v) =>
+                      v.productId.equals(matchedProd!.id) &
+                      v.deletedAt.isNull(),
+                ))
+                .get();
         if (variants.isNotEmpty) {
           final v = variants.first;
           variantId = v.id;
-          await (_db.update(_db.productVariants)
-                ..where((t) => t.id.equals(variantId)))
-              .write(
+          await (_db.update(
+            _db.productVariants,
+          )..where((t) => t.id.equals(variantId))).write(
             ProductVariantsCompanion(
               quantity: Value(v.quantity + qty),
               costPrice: Value(costPiasters),
@@ -790,7 +841,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
           );
         } else {
           variantId = _genId('var');
-          await _db.into(_db.productVariants).insert(
+          await _db
+              .into(_db.productVariants)
+              .insert(
                 ProductVariantsCompanion.insert(
                   id: variantId,
                   branchId: branchId,
@@ -809,7 +862,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
       } else {
         final catId = await _ensureDefaultCategoryId(branchId, now);
         final prodId = _genId('prd');
-        await _db.into(_db.products).insert(
+        await _db
+            .into(_db.products)
+            .insert(
               ProductsCompanion.insert(
                 id: prodId,
                 branchId: branchId,
@@ -820,7 +875,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
               ),
             );
         variantId = _genId('var');
-        await _db.into(_db.productVariants).insert(
+        await _db
+            .into(_db.productVariants)
+            .insert(
               ProductVariantsCompanion.insert(
                 id: variantId,
                 branchId: branchId,
@@ -839,12 +896,16 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
 
       // Insert Purchase & PurchaseItem
       final purchaseId = _genId('pur');
-      await _db.into(_db.purchases).insert(
+      await _db
+          .into(_db.purchases)
+          .insert(
             PurchasesCompanion.insert(
               id: purchaseId,
               branchId: branchId,
               supplierId: supplierId,
-              invoiceNumber: Value('PUR-${now.millisecondsSinceEpoch % 100000}'),
+              invoiceNumber: Value(
+                'PUR-${now.millisecondsSinceEpoch % 100000}',
+              ),
               purchaseDate: now,
               totalAmount: totalPiasters,
               paidAmount: Value(isCredit ? 0 : totalPiasters),
@@ -855,7 +916,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
               updatedAt: now,
             ),
           );
-      await _db.into(_db.purchaseItems).insert(
+      await _db
+          .into(_db.purchaseItems)
+          .insert(
             PurchaseItemsCompanion.insert(
               id: _genId('pi'),
               purchaseId: purchaseId,
@@ -868,7 +931,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
           );
 
       // Stock movement (InventoryLogs) + AuditLog
-      await _db.into(_db.inventoryLogs).insert(
+      await _db
+          .into(_db.inventoryLogs)
+          .insert(
             InventoryLogsCompanion.insert(
               id: _genId('inv'),
               branchId: branchId,
@@ -920,7 +985,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
       final prodId = _genId('prd');
       final varId = _genId('var');
 
-      await _db.into(_db.products).insert(
+      await _db
+          .into(_db.products)
+          .insert(
             ProductsCompanion.insert(
               id: prodId,
               branchId: branchId,
@@ -930,7 +997,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
               updatedAt: now,
             ),
           );
-      await _db.into(_db.productVariants).insert(
+      await _db
+          .into(_db.productVariants)
+          .insert(
             ProductVariantsCompanion.insert(
               id: varId,
               branchId: branchId,
@@ -946,7 +1015,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
             ),
           );
       if (qty > 0) {
-        await _db.into(_db.inventoryLogs).insert(
+        await _db
+            .into(_db.inventoryLogs)
+            .insert(
               InventoryLogsCompanion.insert(
                 id: _genId('inv'),
                 branchId: branchId,
@@ -996,14 +1067,16 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
     final now = DateTime.now();
     return _db.transaction(() async {
       final branchId = await _resolveBranchId();
-      final products = await (_db.select(_db.products)
-            ..where((p) => p.deletedAt.isNull()))
-          .get();
+      final products = await (_db.select(
+        _db.products,
+      )..where((p) => p.deletedAt.isNull())).get();
       final norm = OfflineSmartAssistantService.normalizeArabic(productName);
       Product? targetProd;
       for (final p in products) {
         if (OfflineSmartAssistantService.normalizeArabic(p.name) == norm ||
-            OfflineSmartAssistantService.normalizeArabic(p.name).contains(norm)) {
+            OfflineSmartAssistantService.normalizeArabic(
+              p.name,
+            ).contains(norm)) {
           targetProd = p;
           break;
         }
@@ -1012,10 +1085,12 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
         throw Exception('لم يتم العثور على صنف باسم "$productName"');
       }
 
-      final variants = await (_db.select(_db.productVariants)
-            ..where((v) =>
-                v.productId.equals(targetProd!.id) & v.deletedAt.isNull()))
-          .get();
+      final variants =
+          await (_db.select(_db.productVariants)..where(
+                (v) =>
+                    v.productId.equals(targetProd!.id) & v.deletedAt.isNull(),
+              ))
+              .get();
       if (variants.isEmpty) {
         throw Exception('لا توجد وحدات متاحة للصنف "${targetProd.name}"');
       }
@@ -1026,9 +1101,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
         if (newSellPiasters <= 0) {
           throw Exception('سعر البيع يجب أن يكون أكبر من صفر');
         }
-        await (_db.update(_db.productVariants)
-              ..where((t) => t.id.equals(v.id)))
-            .write(
+        await (_db.update(
+          _db.productVariants,
+        )..where((t) => t.id.equals(v.id))).write(
           ProductVariantsCompanion(
             sellPrice: Value(newSellPiasters),
             updatedAt: Value(now),
@@ -1051,15 +1126,17 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
         if (nextQty < 0) {
           throw Exception('الرصيد الناتج لا يمكن أن يكون سالباً');
         }
-        await (_db.update(_db.productVariants)
-              ..where((t) => t.id.equals(v.id)))
-            .write(
+        await (_db.update(
+          _db.productVariants,
+        )..where((t) => t.id.equals(v.id))).write(
           ProductVariantsCompanion(
             quantity: Value(nextQty),
             updatedAt: Value(now),
           ),
         );
-        await _db.into(_db.inventoryLogs).insert(
+        await _db
+            .into(_db.inventoryLogs)
+            .insert(
               InventoryLogsCompanion.insert(
                 id: _genId('inv'),
                 branchId: branchId,
@@ -1103,7 +1180,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
     return _db.transaction(() async {
       final branchId = await _resolveBranchId();
       final expId = _genId('exp');
-      await _db.into(_db.expenses).insert(
+      await _db
+          .into(_db.expenses)
+          .insert(
             ExpensesCompanion.insert(
               id: expId,
               branchId: branchId,
@@ -1149,14 +1228,16 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
 
     return _db.transaction(() async {
       final branchId = await _resolveBranchId();
-      final suppliers = await (_db.select(_db.suppliers)
-            ..where((s) => s.deletedAt.isNull()))
-          .get();
+      final suppliers = await (_db.select(
+        _db.suppliers,
+      )..where((s) => s.deletedAt.isNull())).get();
       final norm = OfflineSmartAssistantService.normalizeArabic(supplierName);
       Supplier? targetSup;
       for (final s in suppliers) {
         if (OfflineSmartAssistantService.normalizeArabic(s.name) == norm ||
-            OfflineSmartAssistantService.normalizeArabic(s.name).contains(norm)) {
+            OfflineSmartAssistantService.normalizeArabic(
+              s.name,
+            ).contains(norm)) {
           targetSup = s;
           break;
         }
@@ -1167,7 +1248,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
 
       final newBalance = targetSup.balance - amountPiasters;
       final payId = _genId('spay');
-      await _db.into(_db.supplierPayments).insert(
+      await _db
+          .into(_db.supplierPayments)
+          .insert(
             SupplierPaymentsCompanion.insert(
               id: payId,
               branchId: branchId,
@@ -1180,13 +1263,10 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
               createdAt: now,
             ),
           );
-      await (_db.update(_db.suppliers)
-            ..where((s) => s.id.equals(targetSup!.id)))
-          .write(
-        SuppliersCompanion(
-          balance: Value(newBalance),
-          updatedAt: Value(now),
-        ),
+      await (_db.update(
+        _db.suppliers,
+      )..where((s) => s.id.equals(targetSup!.id))).write(
+        SuppliersCompanion(balance: Value(newBalance), updatedAt: Value(now)),
       );
       await _insertAudit(
         branchId: branchId,
@@ -1246,15 +1326,14 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
   }
 
   /// Parses ERP operational commands into a (possibly incomplete) [AssistantActionDraft].
-  final AssistantContextMemory contextMemory = AssistantContextMemory();
-  AssistantUndoToken? lastUndoToken;
-
   Future<String> undoLastCommand({
     required String userId,
     required String userRole,
   }) async {
     if (userRole != 'admin') {
-      throw Exception('عذراً: التراجع عن العمليات متاح لحساب المدير (Admin) فقط.');
+      throw Exception(
+        'عذراً: التراجع عن العمليات متاح لحساب المدير (Admin) فقط.',
+      );
     }
     final token = lastUndoToken;
     if (token == null) {
@@ -1316,6 +1395,7 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
         return AssistantCommandKind.collectInstallment;
       case AssistantNluIntent.updatePrice:
       case AssistantNluIntent.updateStock:
+      case AssistantNluIntent.fuChangeValue:
         return AssistantCommandKind.updateProductPriceOrStock;
       case AssistantNluIntent.calculateZakat:
         return AssistantCommandKind.calculateZakat;
@@ -1360,7 +1440,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
         q.startsWith('عميل جديد')) {
       var body = cleanedDigits
           .replaceFirst(
-            RegExp(r'^(?:ضيف\s+عميل|[أا]ضف\s+عميل|[إا]ضاف[ةه]\s+عميل|عميل\s+جديد)\s*'),
+            RegExp(
+              r'^(?:ضيف\s+عميل|[أا]ضف\s+عميل|[إا]ضاف[ةه]\s+عميل|عميل\s+جديد)\s*',
+            ),
             '',
           )
           .trim();
@@ -1396,7 +1478,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
         }
       } else {
         body = body.replaceFirst(RegExp(r'^تحصيل\s+قسط\s*'), '').trim();
-        final amtMatch = RegExp(r'(\d+(?:\.\d+)?)\s*(?:ج\.?م|جنيه)?$').firstMatch(body);
+        final amtMatch = RegExp(
+          r'(\d+(?:\.\d+)?)\s*(?:ج\.?م|جنيه)?$',
+        ).firstMatch(body);
         if (amtMatch != null) {
           amount = double.tryParse(amtMatch.group(1)!);
           custName = body.substring(0, amtMatch.start).trim();
@@ -1421,11 +1505,13 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
       final goldMatch = RegExp(
         r'(?:الذهب|ذهب|عيار\s*24|سعر)\s*(?:ب|هو)?\s*(\d+(?:\.\d+)?)',
       ).firstMatch(cleanedDigits);
-      double? goldPrice =
-          goldMatch != null ? double.tryParse(goldMatch.group(1)!) : null;
+      double? goldPrice = goldMatch != null
+          ? double.tryParse(goldMatch.group(1)!)
+          : null;
       if (goldPrice == null) {
-        final trailingNum = RegExp(r'(\d{3,6}(?:\.\d+)?)\s*(?:ج\.?م|جنيه)?$')
-            .firstMatch(cleanedDigits);
+        final trailingNum = RegExp(
+          r'(\d{3,6}(?:\.\d+)?)\s*(?:ج\.?م|جنيه)?$',
+        ).firstMatch(cleanedDigits);
         if (trailingNum != null) {
           goldPrice = double.tryParse(trailingNum.group(1)!);
         }
@@ -1448,7 +1534,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
             '',
           )
           .trim();
-      final amtMatch = RegExp(r'(\d+(?:\.\d+)?)\s*(?:ج\.?م|جنيه)?$').firstMatch(body);
+      final amtMatch = RegExp(
+        r'(\d+(?:\.\d+)?)\s*(?:ج\.?م|جنيه)?$',
+      ).firstMatch(body);
       double? amount;
       String? supName;
       if (amtMatch != null) {
@@ -1475,7 +1563,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
             '',
           )
           .trim();
-      final amtMatch = RegExp(r'(\d+(?:\.\d+)?)\s*(?:ج\.?م|جنيه)?$').firstMatch(body);
+      final amtMatch = RegExp(
+        r'(\d+(?:\.\d+)?)\s*(?:ج\.?م|جنيه)?$',
+      ).firstMatch(body);
       double? amount;
       String? category;
       if (amtMatch != null) {
@@ -1498,7 +1588,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
       final body = cleanedDigits
           .replaceFirst(RegExp(r'^(?:خلي|عدل|غير|عدّل)\s+سعر\s+'), '')
           .trim();
-      final numMatch = RegExp(r'(?:\s+(?:لـ?|إلى|الى|بـ?))?\s*(\d+(?:\.\d+)?)\s*(?:ج\.?م|جنيه)?$').firstMatch(body);
+      final numMatch = RegExp(
+        r'(?:\s+(?:لـ?|إلى|الى|بـ?))?\s*(\d+(?:\.\d+)?)\s*(?:ج\.?م|جنيه)?$',
+      ).firstMatch(body);
       double? val;
       String? prodName;
       if (numMatch != null) {
@@ -1515,7 +1607,10 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
         if (prodName != null && prodName.isNotEmpty) 'productName': prodName,
         if (val != null && val > 0) 'value': val,
       };
-      return _finalizeDraft(AssistantCommandKind.updateProductPriceOrStock, fields);
+      return _finalizeDraft(
+        AssistantCommandKind.updateProductPriceOrStock,
+        fields,
+      );
     }
     if (q.startsWith('زود رصيد ') ||
         q.startsWith('زود كميه ') ||
@@ -1539,7 +1634,10 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
         if (prodName != null && prodName.isNotEmpty) 'productName': prodName,
         if (val != null && val != 0) 'value': val,
       };
-      return _finalizeDraft(AssistantCommandKind.updateProductPriceOrStock, fields);
+      return _finalizeDraft(
+        AssistantCommandKind.updateProductPriceOrStock,
+        fields,
+      );
     }
 
     // 4. Add Product: "ضيف صنف [اسم] تكلفة [سعر] بيع [سعر] كمية [عدد]"
@@ -1549,12 +1647,16 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
         q.startsWith('صنف جديد')) {
       final body = cleanedDigits
           .replaceFirst(
-            RegExp(r'^(?:ضيف\s+صنف|[أا]ضف\s+صنف|[إا]ضاف[ةه]\s+صنف|صنف\s+جديد)\s*'),
+            RegExp(
+              r'^(?:ضيف\s+صنف|[أا]ضف\s+صنف|[إا]ضاف[ةه]\s+صنف|صنف\s+جديد)\s*',
+            ),
             '',
           )
           .trim();
       final costMatch = RegExp(r'تكلف[ةه]\s+(\d+(?:\.\d+)?)').firstMatch(body);
-      final sellMatch = RegExp(r'(?:بيع|سعر)\s+(\d+(?:\.\d+)?)').firstMatch(body);
+      final sellMatch = RegExp(
+        r'(?:بيع|سعر)\s+(\d+(?:\.\d+)?)',
+      ).firstMatch(body);
       final qtyMatch = RegExp(r'(?:كمي[ةه]|عدد)\s+(\d+)').firstMatch(body);
 
       String prodName = body;
@@ -1581,7 +1683,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
     }
 
     // 5. Record Purchase: "اشتريت [صنف] من المورد [اسم] بسعر [سعر] عدد [كمية] (نقدي/آجل)"
-    if (q.startsWith('اشتريت') || q.startsWith('شراء ') || q.startsWith('سجل مشتريات')) {
+    if (q.startsWith('اشتريت') ||
+        q.startsWith('شراء ') ||
+        q.startsWith('سجل مشتريات')) {
       final body = cleanedDigits
           .replaceFirst(RegExp(r'^(?:اشتريت|شراء|سجل\s+مشتريات)\s*'), '')
           .trim();
@@ -1589,7 +1693,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
       final supMatch = RegExp(
         r'من\s+(?:المورد|مورد)?\s*([^\d]+?)(?=\s+(?:بسعر|سعر|عدد|كمي[ةه]|نقدي|كاش|[آا]جل)|$)',
       ).firstMatch(body);
-      final costMatch = RegExp(r'(?:بسعر|سعر)\s+(\d+(?:\.\d+)?)').firstMatch(body);
+      final costMatch = RegExp(
+        r'(?:بسعر|سعر)\s+(\d+(?:\.\d+)?)',
+      ).firstMatch(body);
       final qtyMatch = RegExp(r'(?:عدد|كمي[ةه])\s+(\d+)').firstMatch(body);
 
       String prodName = body;
@@ -1602,7 +1708,10 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
         cutIndices.sort();
         prodName = body.substring(0, cutIndices.first).trim();
       }
-      if (prodName == 'بضاعة' || prodName == 'بضاعه' || prodName == 'صنف' || prodName == 'جديد') {
+      if (prodName == 'بضاعة' ||
+          prodName == 'بضاعه' ||
+          prodName == 'صنف' ||
+          prodName == 'جديد') {
         prodName = '';
       }
 
@@ -1710,8 +1819,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
             kind: kind,
             fields: fields,
             missingField: 'value',
-            promptForMissing:
-                isPrice ? 'ما السعر الجديد بالجنيه؟' : 'كم الكمية المراد إضافتها/خصمها؟',
+            promptForMissing: isPrice
+                ? 'ما السعر الجديد بالجنيه؟'
+                : 'كم الكمية المراد إضافتها/خصمها؟',
           );
         }
         return AssistantActionDraft(kind: kind, fields: fields);
@@ -1813,15 +1923,17 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
     AssistantActionDraft draft,
     String userReply,
   ) {
-    final cleaned = Money.normalizeDigits(userReply).trim();
+    final cleaned = AssistantArabicNormalizer.replaceSpokenNumbers(userReply);
     final updated = Map<String, dynamic>.from(draft.fields);
     final missing = draft.missingField;
     if (missing != null && cleaned.isNotEmpty) {
       if (missing == 'goldPrice24') {
-        final bankMatch = RegExp(r'(?:بنك|بنكي|خارجي)\s+(\d+(?:\.\d+)?)')
-            .firstMatch(cleaned);
-        final debtMatch = RegExp(r'(?:دين|ديون|التزامات)\s+(\d+(?:\.\d+)?)')
-            .firstMatch(cleaned);
+        final bankMatch = RegExp(
+          r'(?:بنك|بنكي|خارجي)\s+(\d+(?:\.\d+)?)',
+        ).firstMatch(cleaned);
+        final debtMatch = RegExp(
+          r'(?:دين|ديون|التزامات)\s+(\d+(?:\.\d+)?)',
+        ).firstMatch(cleaned);
         if (bankMatch != null) {
           updated['extraBankCashEgp'] = double.tryParse(bankMatch.group(1)!);
         }
@@ -1832,7 +1944,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
         if (firstNum != null) {
           updated['goldPrice24'] = double.tryParse(firstNum.group(1)!);
         }
-        if (OfflineSmartAssistantService.normalizeArabic(cleaned).contains('ميلادي')) {
+        if (OfflineSmartAssistantService.normalizeArabic(
+          cleaned,
+        ).contains('ميلادي')) {
           updated['isGregorianYear'] = true;
         }
       } else if (missing == 'costEgp' ||
@@ -1848,10 +1962,12 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
           // Support compound replies like "150 300 10" or "150 بيع 300 كمية 10"
           if (draft.kind == AssistantCommandKind.addProduct &&
               missing == 'costEgp') {
-            final sellMatch = RegExp(r'(?:بيع|سعر)\s+(\d+(?:\.\d+)?)')
-                .firstMatch(cleaned);
-            final qtyMatch = RegExp(r'(?:كمي[ةه]|عدد)\s+(\d+)')
-                .firstMatch(cleaned);
+            final sellMatch = RegExp(
+              r'(?:بيع|سعر)\s+(\d+(?:\.\d+)?)',
+            ).firstMatch(cleaned);
+            final qtyMatch = RegExp(
+              r'(?:كمي[ةه]|عدد)\s+(\d+)',
+            ).firstMatch(cleaned);
             if (sellMatch != null) {
               updated['sellEgp'] = double.tryParse(sellMatch.group(1)!);
             } else if (nums.length >= 2) {
@@ -1865,14 +1981,30 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
           }
         }
       } else if (missing == 'qty' || missing == 'value') {
-        final numMatch = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(cleaned);
-        if (numMatch != null) {
-          updated[missing] = missing == 'qty'
-              ? int.tryParse(numMatch.group(1)!.split('.').first)
-              : double.tryParse(numMatch.group(1)!);
+        final nums = RegExp(r'(\d+(?:\.\d+)?)')
+            .allMatches(cleaned)
+            .map((m) => double.tryParse(m.group(1)!))
+            .whereType<double>()
+            .toList();
+        if (nums.isNotEmpty) {
+          updated[missing] = missing == 'qty' ? nums.first.toInt() : nums.first;
+          if (draft.kind == AssistantCommandKind.recordPurchase &&
+              missing == 'qty' &&
+              nums.length >= 2) {
+            updated['costEgp'] = nums[1];
+          }
         }
       } else {
-        updated[missing] = cleaned;
+        var textSlot = Money.normalizeDigits(userReply).trim();
+        textSlot = textSlot
+            .replaceFirst(
+              RegExp(r'^(?:من\s+عند|من|عند|على|اسمه|اسمها)\s+'),
+              '',
+            )
+            .trim();
+        if (textSlot.isNotEmpty) {
+          updated[missing] = textSlot;
+        }
       }
     }
     return _finalizeDraft(draft.kind, updated);
@@ -1908,7 +2040,9 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
           title: 'تأكيد تسجيل فاتورة مشتريات',
           summary:
               'شراء "$prod" ($qty قطعة) من المورد "$sup" بإجمالي ${total.toStringAsFixed(2)} ج.م (${isCredit ? 'آجل' : 'نقدي'}).',
-          details: const ['يتطلب التنفيذ صلاحية مدير (Admin) ويُحفظ في سجل المراجعة.'],
+          details: const [
+            'يتطلب التنفيذ صلاحية مدير (Admin) ويُحفظ في سجل المراجعة.',
+          ],
           pendingCommand: AssistantPendingCommand(
             kind: AssistantCommandKind.recordPurchase,
             title: 'تسجيل مشتريات',
@@ -2003,7 +2137,8 @@ extension AssistantDraftEnginePart on OfflineSmartAssistantService {
         return AssistantInsight(
           id: 'cmd_collect_installment',
           title: 'تأكيد تحصيل قسط عميل',
-          summary: 'تحصيل قسط بقيمة ${amt.toStringAsFixed(2)} ج.م من العميل "$cust".',
+          summary:
+              'تحصيل قسط بقيمة ${amt.toStringAsFixed(2)} ج.م من العميل "$cust".',
           details: const ['سيتم تحديث المتبقي في عقد التقسيط وتسجيل الدفعة.'],
           pendingCommand: AssistantPendingCommand(
             kind: AssistantCommandKind.collectInstallment,

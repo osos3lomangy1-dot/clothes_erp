@@ -357,17 +357,17 @@ void main() {
         ('الزبون لقيته بره ارخص من كده', AssistantNluIntent.objectionReplies),
         ('العميل بيقول السعر غالي ارد عليه بايه', AssistantNluIntent.objectionReplies),
         ('زبون بيقول غالي عليا', AssistantNluIntent.objectionReplies),
-        // Educational How-To exclusions MUST return null from IntentScorer
-        ('ازاي اضيف صنف', null),
-        ('ازاي اضيف كاشير', null),
-        ('كيف اعمل جرد للمخزون', null),
-        ('طريقة اضافة عميل جديد', null),
-        ('خطوات تقفيل الوردية', null),
-        ('ازاي ارجع فاتورة', null),
-        ('كيف اسجل مصروف', null),
-        ('طريقة طباعة الباركود', null),
-        ('ازاي اعمل خصم في الكاشير', null),
-        ('خطوات النسخ الاحتياطي', null),
+        // Educational How-To guides map to howToGuide intent
+        ('ازاي اضيف صنف', AssistantNluIntent.howToGuide),
+        ('ازاي اضيف كاشير', AssistantNluIntent.howToGuide),
+        ('كيف اعمل جرد للمخزون', AssistantNluIntent.howToGuide),
+        ('طريقة اضافة عميل جديد', AssistantNluIntent.howToGuide),
+        ('خطوات تقفيل الوردية', AssistantNluIntent.howToGuide),
+        ('ازاي ارجع فاتورة', AssistantNluIntent.howToGuide),
+        ('كيف اسجل مصروف', AssistantNluIntent.howToGuide),
+        ('طريقة طباعة الباركود', AssistantNluIntent.howToGuide),
+        ('ازاي اعمل خصم في الكاشير', AssistantNluIntent.howToGuide),
+        ('خطوات النسخ الاحتياطي', AssistantNluIntent.howToGuide),
 
         // --- Extra 25 Diverse Colloquial Sentences (Total 210) ---
         ('ضيف صنف بلوفر صوف تكلفة 220 بيع 380 كمية 10', AssistantNluIntent.addProduct),

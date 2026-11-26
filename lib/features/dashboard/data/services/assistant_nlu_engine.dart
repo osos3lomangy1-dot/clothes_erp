@@ -25,6 +25,53 @@ enum AssistantNluIntent {
   suppliersDues,
   stagnantStock,
   stockoutVelocity,
+  storePulse,
+  topProfitProducts,
+  endOfDayReport,
+  topVariants,
+  cheapestSupplier,
+  searchByBarcodeOrSku,
+  marginLeak,
+  breakEven,
+  cashierPerformance,
+  budgetComparison,
+  todayAudits,
+  winBackCustomers,
+  installmentReminderMessage,
+  seasonPlan,
+  inflationCalculator,
+  liquidityStrategy,
+  visualMerchandising,
+  toggleBlindShiftClosing,
+  toggleManagerPinProtection,
+  toggleAllowManualDiscount,
+  toggleAutoBackup,
+  updateStoreName,
+  updateStorePhone,
+  backupNow,
+  shiftSummary,
+  preOrderQuery,
+  preOrderCreate,
+  deliveryQuery,
+  repairQuery,
+  walletQuery,
+  walletTransfer,
+  partnerShares,
+  partnerWithdraw,
+  undoLast,
+  howToGuide,
+  confirm,
+  cancel,
+  chitchat,
+  outOfScope,
+  rejectOrFix,
+  help,
+  fuSameSupplier,
+  fuOneMore,
+  fuChangeValue,
+  fuDetails,
+  fuTone,
+  fuCopy,
 }
 
 /// Conversation context memory across turns inside [OfflineSmartAssistantService].
@@ -93,12 +140,20 @@ class AssistantContextMemory {
   }
 }
 
-/// Normalizes common Egyptian merchant typos, spoken numbers, and quantity units.
+/// Normalizes common Egyptian merchant typos, spoken numbers, and conversational particles.
 class AssistantArabicNormalizer {
-  static String normalizeBasic(String text) {
+  static final _punctuationRegex = RegExp(r'[؟?!\.,،:;_\-"\(\)\[\]\{\}\\/+=*&^%$#@~`><|]');
+
+  static String stripPunctuation(String text) {
     return text
-        .trim()
-        .toLowerCase()
+        .replaceAll(_punctuationRegex, ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  static String normalizeBasic(String text) {
+    var s = stripPunctuation(Money.normalizeDigits(text).trim().toLowerCase());
+    s = s
         .replaceAll('ـ', '')
         .replaceAll('أ', 'ا')
         .replaceAll('إ', 'ا')
@@ -107,6 +162,40 @@ class AssistantArabicNormalizer {
         .replaceAll('ة', 'ه')
         .replaceAll(RegExp(r'[\u064B-\u065F]'), '')
         .replaceAll(RegExp(r'\s+'), ' ');
+    return s.trim();
+  }
+
+  static final _prefixRegex = RegExp(
+    r'^(?:'
+    r'عايز|عاوز|عايزه|محتاج|محتاجين|ممكن\s+لو\s+سمحت|ممكن\s+تساعدني|ممكن|'
+    r'لو\s+سمحت|يا\s+ريت|ياريت|حابب|نفسي|يا\s+باشا|يا\s+معلم|يا\s+هندسة|يا\s+هندسه|'
+    r'يا\s+عم|يا\s+كبير|يا\s+ريس|يا\s+غالي|يا\s+مساعد|طيب|ينفع|هو\s+ينفع|تقدر|اوعى\s+تنسى|'
+    r'ايوه|يلا|بقولك|قولي|انا\s+عايز|انا\s+عاوز|احنا\s+عايزين|عاوزين|تعالى|اسمع|'
+    r'لو\s+فاضي|من\s+فضلك|بالله\s+عليك|اريد|ابغي|ابغى|انا|احنا|اني|ان'
+    r')(?:\s+|$)',
+  );
+
+  static final _suffixRegex = RegExp(
+    r'(?:\s+|^)(?:'
+    r'دلوقتي|دلوقت|بسرعة|بسرعه|لو\s+سمحت|يا\s+باشا|يا\s+معلم|حالا|من\s+فضلك|'
+    r'ضروري|النهاردة|النهارده|اليوم|يا\s+ريس|شكرا|بالله\s+عليك|ع\s+السريع|'
+    r'يا\s+مساعد|يا\s+هندسة|يا\s+هندسه|يا\s+غالي|يا\s+كبير|يا\s+عم|معلش'
+    r')$',
+  );
+
+  static String stripConversationalNoise(String text) {
+    var s = text.trim();
+    while (true) {
+      final next = s.replaceFirst(_prefixRegex, '').trim();
+      if (next == s) break;
+      s = next;
+    }
+    while (true) {
+      final next = s.replaceFirst(_suffixRegex, '').trim();
+      if (next == s) break;
+      s = next;
+    }
+    return s;
   }
 
   /// Computes Levenshtein edit distance between two normalized strings.
@@ -135,9 +224,44 @@ class AssistantArabicNormalizer {
     return prev[b.length];
   }
 
+  /// Fast check if two strings differ by at most 1 edit (substitution, insertion, deletion)
+  /// with zero allocations and immediate early-exit.
+  static bool isOneEditApart(String a, String b) {
+    if (a == b) return false;
+    final lenDiff = a.length - b.length;
+    if (lenDiff > 1 || lenDiff < -1) return false;
+
+    if (lenDiff == 0) {
+      var diffs = 0;
+      for (var i = 0; i < a.length; i++) {
+        if (a.codeUnitAt(i) != b.codeUnitAt(i)) {
+          diffs++;
+          if (diffs > 1) return false;
+        }
+      }
+      return diffs == 1;
+    }
+
+    final s1 = lenDiff < 0 ? a : b;
+    final s2 = lenDiff < 0 ? b : a;
+    var i = 0, j = 0, diffs = 0;
+    while (i < s1.length && j < s2.length) {
+      if (s1.codeUnitAt(i) != s2.codeUnitAt(j)) {
+        diffs++;
+        if (diffs > 1) return false;
+        j++;
+      } else {
+        i++;
+        j++;
+      }
+    }
+    return true;
+  }
+
   static const _levenshteinVocab = <String, String>{
     'منتج': 'منتج',
     'مصروف': 'مصروف',
+    'مصاريف': 'مصاريف',
     'مورد': 'مورد',
     'عميل': 'عميل',
     'زبون': 'زبون',
@@ -159,21 +283,41 @@ class AssistantArabicNormalizer {
     'تفاوض': 'تفاوض',
     'شراكه': 'شراكة',
     'صيانه': 'صيانة',
+    'موديل': 'موديل',
+    'اقساط': 'اقساط',
+    'تحصيل': 'تحصيل',
+    'تحويل': 'تحويل',
+    'شريك': 'شريك',
+    'اوردر': 'اوردر',
+    'عربون': 'عربون',
+    'طيار': 'طيار',
+    'محفظه': 'محفظة',
+    'المحل': 'المحل',
+    'مخزن': 'مخزن',
   };
 
   static const _safeNonTypoWords = <String>{
     'معروف',
     'مبيعاتي',
+    'مصاريفي',
+    'ارباحي',
+    'فلوسي',
     'ساره',
     'تصفيه',
     'شراء',
     'موردين',
     'عملاء',
     'زباين',
+    'تحويل',
+    'شريك',
+    'اوردر',
+    'عربون',
+    'طيار',
+    'محفظه',
   };
 
   /// Corrects 1-character typos for core ERP & commerce tokens (length >= 4)
-  /// using same-length Levenshtein distance while skipping numbers & safe words.
+  /// using fast single-edit distance with zero heap allocation.
   static String correctTyposWithLevenshtein(String input) {
     final words = input.split(RegExp(r'\s+'));
     if (words.isEmpty) return input;
@@ -191,8 +335,8 @@ class AssistantArabicNormalizer {
 
       String? bestMatch;
       for (final entry in _levenshteinVocab.entries) {
-        if (normW.length != entry.key.length) continue;
-        if (levenshteinDistance(normW, entry.key) == 1) {
+        if ((normW.length - entry.key.length).abs() > 1) continue;
+        if (isOneEditApart(normW, entry.key)) {
           bestMatch = entry.value;
           break;
         }
@@ -202,10 +346,15 @@ class AssistantArabicNormalizer {
     return corrected.join(' ');
   }
 
-  /// Fixes common merchant typos & enclitics ("منتح" -> "منتج", "شوفلي" -> "شوف لي").
+  /// Fixes common merchant typos, voice elongations & dialect variations.
   static String normalizeMerchantColloquial(String input) {
     var s = Money.normalizeDigits(input).trim();
     s = s.replaceAll('ـ', '');
+    s = s.replaceAllMapped(
+      RegExp(r'([\u0621-\u064A])\1{2,}'),
+      (m) => m.group(1)!,
+    );
+    s = s.replaceAll('مييتين', 'ميتين');
 
     const typoReplacements = <(String, String)>[
       (r'(?<=^|\s)منتح(?=\s|$)', 'منتج'),
@@ -226,6 +375,32 @@ class AssistantArabicNormalizer {
       (r'(?<=^|\s)في\s+المي[ةه](?=\s|$|[؟?])', '%'),
       (r'(?<=^|\s)ف\s+المي[ةه](?=\s|$|[؟?])', '%'),
       (r'(?<=^|\s)بالمي[ةه](?=\s|$|[؟?])', '%'),
+      (r'(?<=^|\s)اعفر(?=\s|$)', 'اعرف'),
+      (r'(?<=^|\s)النهار[ةده](?=\s|$)', 'النهارده'),
+      (r'(?<=^|\s)المأخرين(?=\s|$)', 'المتاخرين'),
+      (r'(?<=^|\s)محاكاه(?=\s|$)', 'محاكاه'),
+      (r'(?<=^|\s)زاك[ةه](?=\s|$)', 'زكاه'),
+      (r'(?<=^|\s)الزك[ةه](?=\s|$)', 'الزكاه'),
+      (r'(?<=^|\s)كزا[ةه](?=\s|$)', 'زكاه'),
+      (r'(?<=^|\s)النجيه(?=\s|$)', 'الجنيه'),
+      (r'(?<=^|\s)فاترة(?=\s|$)', 'فاتورة'),
+      (r'(?<=^|\s)تعملني(?=\s|$)', 'تعلمني'),
+      (r'(?<=^|\s)صوة(?=\s|$)', 'صورة'),
+      (r'(?<=^|\s)تلفون(?=\s|$)', 'تليفون'),
+      (r'(?<=^|\s)افزع(?=\s|$)', 'الفرع'),
+      (r'(?<=^|\s)افرع(?=\s|$)', 'الفرع'),
+      (r'(?<=^|\s)خيله(?=\s|$)', 'خليه'),
+      (r'(?<=^|\s)نفز(?=\s|$)', 'نفذ'),
+      (r'(?<=^|\s)حامية(?=\s|$)', 'حماية'),
+      (r'(?<=^|\s)البك\s+اب(?=\s|$)', 'الباك اب'),
+      (r'(?<=^|\s)لاتلقائي(?=\s|$)', 'التلقائي'),
+      (r'(?<=^|\s)الخمص(?=\s|$)', 'الخصم'),
+      (r'(?<=^|\s)فعلل(?=\s|$)', 'فعل'),
+      (r'(?<=^|\s)الددرج(?=\s|$)', 'الدرج'),
+      (r'(?<=^|\s)الملح(?=\s|$)', 'المحل'),
+      (r'(?<=^|\s)اللمحل(?=\s|$)', 'المحل'),
+      (r'(?<=^|\s)المبوايلات(?=\s|$)', 'الموبايلات'),
+      (r'(?<=^|\s)(?:LE|le)(?=\s|$)', 'جنيه'),
     ];
     for (final (pat, rep) in typoReplacements) {
       s = s.replaceAll(RegExp(pat), rep);
@@ -234,166 +409,205 @@ class AssistantArabicNormalizer {
     return s.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
-  static const _unitsMap = <String, int>{
-    'واحد': 1,
-    'واحدة': 1,
-    'واحده': 1,
-    'اتنين': 2,
-    'اثنين': 2,
-    'تلاتة': 3,
-    'تلاته': 3,
-    'ثلاثة': 3,
-    'ثلاثه': 3,
-    'اربعة': 4,
-    'اربعه': 4,
-    'أربعة': 4,
-    'خمسة': 5,
-    'خمسه': 5,
-    'ستة': 6,
-    'سته': 6,
-    'سبعة': 7,
-    'سبعه': 7,
-    'تمانية': 8,
-    'تمانيه': 8,
-    'ثمانية': 8,
-    'تسعة': 9,
-    'تسعه': 9,
-    'عشرة': 10,
-    'عشره': 10,
-    'حداشر': 11,
-    'احد عشر': 11,
-    'اتناشر': 12,
-    'اثنا عشر': 12,
-    'تلتاشر': 13,
-    'اربعتاشر': 14,
-    'خمستاشر': 15,
-    'ستاشر': 16,
-    'سبعتاشر': 17,
-    'تمنتاشر': 18,
-    'تسعتاشر': 19,
-  };
-
-  static const _tensMap = <String, int>{
-    'عشرين': 20,
-    'تلاتين': 30,
-    'ثلاثين': 30,
-    'اربعين': 40,
-    'أربعين': 40,
-    'خمسين': 50,
-    'ستين': 60,
-    'سبعين': 70,
-    'تمانين': 80,
-    'ثمانين': 80,
-    'تسعين': 90,
-  };
-
-  static const _hundredsMap = <String, int>{
-    'مية': 100,
-    'ميه': 100,
-    'مائة': 100,
-    'ميتين': 200,
-    'مائتين': 200,
-    'تلتمية': 300,
-    'تلتميه': 300,
-    'ثلاثمائة': 300,
-    'ربعمية': 400,
-    'ربعميه': 400,
-    'اربعمائة': 400,
-    'خمسمية': 500,
-    'خمسميه': 500,
-    'خمسمائة': 500,
-    'ستمية': 600,
-    'ستميه': 600,
-    'ستمائة': 600,
-    'سبعمية': 700,
-    'سبعميه': 700,
-    'سبعمائة': 700,
-    'تمنمية': 800,
-    'تمنميه': 800,
-    'ثمانمائة': 800,
-    'تسعمية': 900,
-    'تسعميه': 900,
-    'تسعمائة': 900,
-  };
-
-  /// Replaces spoken Egyptian/Arabic numbers and quantity units with digits,
-  /// e.g. "ميتين" -> "200", "الف ونص" -> "1500", "3 آلاف" -> "3000", "دستة" -> "12".
+  /// Replaces spoken Egyptian numbers, compound thousands, and quantity units with numeric digits.
   static String replaceSpokenNumbers(String input) {
     var s = normalizeMerchantColloquial(input);
 
-    // 1. Compound thousands: "الف ونص" -> 1500, "الفين ونص" -> 2500, "3 آلاف" / "٤ تلاف" -> 3000 / 4000
+    // 1. Named fractional thousands & quantity units (compound thousands handled in Step 8)
     s = s.replaceAllMapped(
-      RegExp(r'(?:^|\s)[أا]لف\s+ونص(?=\s|$)'),
-      (m) => '${m.group(0)!.startsWith(' ') ? ' ' : ''}1500',
+      RegExp(r'(?:^|\s)ربع\s+[أا]لف(?=\s|$)'),
+      (m) => '${m.group(0)!.startsWith(' ') ? ' ' : ''}250',
     );
     s = s.replaceAllMapped(
-      RegExp(r'(?:^|\s)[أا]لفين\s+ونص(?=\s|$)'),
-      (m) => '${m.group(0)!.startsWith(' ') ? ' ' : ''}2500',
+      RegExp(r'(?:^|\s)نص\s+[أا]لف(?=\s|$)'),
+      (m) => '${m.group(0)!.startsWith(' ') ? ' ' : ''}500',
     );
+
+    // 2. Thousands phrases
+    s = s.replaceAll(RegExp(r'(?:^|\s)(?:تلات|ثلاث)\s*(?:تلاف|[آا]لاف|الاف)(?=\s|$)'), ' 3000');
+    s = s.replaceAll(RegExp(r'(?:^|\s)(?:اربع|أربع)\s*(?:تلاف|[آا]لاف|الاف)(?=\s|$)'), ' 4000');
+    s = s.replaceAll(RegExp(r'(?:^|\s)(?:خمس|خمسة)\s*(?:تلاف|[آا]لاف|الاف)(?=\s|$)'), ' 5000');
+    s = s.replaceAll(RegExp(r'(?:^|\s)(?:ست|ستة)\s*(?:تلاف|[آا]لاف|الاف)(?=\s|$)'), ' 6000');
+    s = s.replaceAll(RegExp(r'(?:^|\s)(?:سبع|سبعة)\s*(?:تلاف|[آا]لاف|الاف)(?=\s|$)'), ' 7000');
+    s = s.replaceAll(RegExp(r'(?:^|\s)(?:تمن|ثماني|ثمانية)\s*(?:تلاف|[آا]لاف|الاف)(?=\s|$)'), ' 8000');
+    s = s.replaceAll(RegExp(r'(?:^|\s)(?:تسع|تسعة)\s*(?:تلاف|[آا]لاف|الاف)(?=\s|$)'), ' 9000');
+    s = s.replaceAll(RegExp(r'(?:^|\s)(?:عشر|عشرة)\s*(?:تلاف|[آا]لاف|الاف)(?=\s|$)'), ' 10000');
+
     s = s.replaceAllMapped(
       RegExp(r'(\d+)\s*(?:تلاف|[آا]لاف|الاف)'),
-      (m) => '${int.parse(m.group(1)!) * 1000}',
-    );
-    s = s.replaceAllMapped(
-      RegExp(r'(?:^|\s)[أا]لفين(?=\s|$)'),
-      (m) => '${m.group(0)!.startsWith(' ') ? ' ' : ''}2000',
-    );
-    s = s.replaceAllMapped(
-      RegExp(r'(?:^|\s)[أا]لف(?=\s|$)'),
-      (m) => '${m.group(0)!.startsWith(' ') ? ' ' : ''}1000',
+      (m) => ' ${int.parse(m.group(1)!) * 1000} ',
     );
 
-    // 2. Quantity units: "نص دستة" -> 6, "دستتين" -> 24, "دستة" -> 12, "حتتين" -> 2, "قطعتين" -> 2
-    s = s.replaceAll(RegExp(r'نص\s+دست[ةه]'), '6');
-    s = s.replaceAll(RegExp(r'دستتين'), '24');
-    s = s.replaceAllMapped(
-      RegExp(r'(\d+)\s+دست[ةه]'),
-      (m) => '${int.parse(m.group(1)!) * 12}',
-    );
-    s = s.replaceAll(RegExp(r'(?<=^|\s)دست[ةه](?=\s|$)'), '12');
-    s = s.replaceAll(RegExp(r'(?<=^|\s)حتتين(?=\s|$)'), '2 حتت');
-    s = s.replaceAll(RegExp(r'(?<=^|\s)قطعتين(?=\s|$)'), '2 قطعة');
-    s = s.replaceAll(RegExp(r'(?<=^|\s)علبتين(?=\s|$)'), '2 علبة');
+    s = s.replaceAll(RegExp(r'(?:^|\s)عشرين\s+[أا]لف(?=\s|$)'), ' 20000');
+    s = s.replaceAll(RegExp(r'(?:^|\s)تلاتين\s+[أا]لف(?=\s|$)'), ' 30000');
+    s = s.replaceAll(RegExp(r'(?:^|\s)اربعين\s+[أا]لف(?=\s|$)'), ' 40000');
+    s = s.replaceAll(RegExp(r'(?:^|\s)خمسين\s+[أا]لف(?=\s|$)'), ' 50000');
+    s = s.replaceAll(RegExp(r'(?:^|\s)ستين\s+[أا]لف(?=\s|$)'), ' 60000');
+    s = s.replaceAll(RegExp(r'(?:^|\s)سبعين\s+[أا]لف(?=\s|$)'), ' 70000');
+    s = s.replaceAll(RegExp(r'(?:^|\s)تمانين\s+[أا]لف(?=\s|$)'), ' 80000');
+    s = s.replaceAll(RegExp(r'(?:^|\s)تسعين\s+[أا]لف(?=\s|$)'), ' 90000');
+    s = s.replaceAll(RegExp(r'(?:^|\s)مية\s+[أا]لف(?=\s|$)'), ' 100000');
 
-    // 3. Compound hundreds + tens/units: "ميتين وخمسين" -> 250, "ميه وعشرين" -> 120
-    final hundredsPattern = _hundredsMap.keys.join('|');
-    final tensPattern = _tensMap.keys.join('|');
-    final unitsPattern = _unitsMap.keys.join('|');
+    s = s.replaceAll(RegExp(r'(?:^|\s)[أا]لفين(?=\s|$)'), ' 2000');
+    s = s.replaceAll(RegExp(r'(?:^|\s)[أا]لف(?=\s|$)'), ' 1000');
 
-    s = s.replaceAllMapped(
-      RegExp('($hundredsPattern)\\s+و($tensPattern)(?=\\s|\$|%)'),
-      (m) => '${(_hundredsMap[m.group(1)!] ?? 0) + (_tensMap[m.group(2)!] ?? 0)}',
-    );
-    s = s.replaceAllMapped(
-      RegExp('($hundredsPattern)\\s+و($unitsPattern)(?=\\s|\$|%)'),
-      (m) => '${(_hundredsMap[m.group(1)!] ?? 0) + (_unitsMap[m.group(2)!] ?? 0)}',
-    );
-    s = s.replaceAllMapped(
-      RegExp('($unitsPattern)\\s+و($tensPattern)(?=\\s|\$|%)'),
-      (m) => '${(_unitsMap[m.group(1)!] ?? 0) + (_tensMap[m.group(2)!] ?? 0)}',
-    );
+    // 3. Quantity units
+    s = s.replaceAll(RegExp(r'نص\s+دست[ةه]'), ' 6 ');
+    s = s.replaceAll(RegExp(r'دستتين'), ' 24 ');
+    s = s.replaceAllMapped(RegExp(r'(\d+)\s+دست[ةه]'), (m) => ' ${int.parse(m.group(1)!) * 12} ');
+    s = s.replaceAll(RegExp(r'(?<=^|\s)دست[ةه](?=\s|$)'), ' 12 ');
+    s = s.replaceAll(RegExp(r'(?<=^|\s)حتتين(?=\s|$)'), ' 2 ');
+    s = s.replaceAll(RegExp(r'(?<=^|\s)قطعتين(?=\s|$)'), ' 2 ');
+    s = s.replaceAll(RegExp(r'(?<=^|\s)علبتين(?=\s|$)'), ' 2 ');
 
-    // 4. Standalone hundreds, tens, units
-    for (final entry in _hundredsMap.entries) {
-      s = s.replaceAll(RegExp('(?<=^|\\s)${entry.key}(?=\\s|\$|%)'), '${entry.value}');
+    // 4. Hundreds typos & alternates (ordered longest to shortest)
+    s = s.replaceAll(RegExp(r'(?<=^|\s)(?:تلتيمة|تلتماية|تلتميه)(?=\s|$)'), ' 300 ');
+    s = s.replaceAll(RegExp(r'(?<=^|\s)(?:سبعيمة|سبعميه)(?=\s|$)'), ' 700 ');
+    s = s.replaceAll(RegExp(r'(?<=^|\s)(?:تمنيمة|تمنميه)(?=\s|$)'), ' 800 ');
+    s = s.replaceAll(RegExp(r'(?<=^|\s)(?:خمسميه)(?=\s|$)'), ' 500 ');
+    s = s.replaceAll(RegExp(r'(?<=^|\s)(?:ربعميه|اربعميه)(?=\s|$)'), ' 400 ');
+    s = s.replaceAll(RegExp(r'(?<=^|\s)(?:ستميه)(?=\s|$)'), ' 600 ');
+    s = s.replaceAll(RegExp(r'(?<=^|\s)(?:تسعميه)(?=\s|$)'), ' 900 ');
+    s = s.replaceAll(RegExp(r'(?<=^|\s)(?:ميه)(?=\s|$)'), ' 100 ');
+
+    const hundreds = <String, int>{
+      'اربعمية': 400,
+      'ربعمية': 400,
+      'خمسمية': 500,
+      'تلتمية': 300,
+      'تسعمية': 900,
+      'سبعمية': 700,
+      'تمنمية': 800,
+      'ستمية': 600,
+      'ميتين': 200,
+      'مية': 100,
+    };
+
+    const tens = <String, int>{
+      'عشرين': 20,
+      'تلاتين': 30,
+      'اربعين': 40,
+      'خمسين': 50,
+      'ستين': 60,
+      'سبعين': 70,
+      'تمانين': 80,
+      'تسعين': 90,
+    };
+
+    const units = <String, int>{
+      'تسعتاشر': 19,
+      'تمنتاشر': 18,
+      'سبعتاشر': 17,
+      'خمستاشر': 15,
+      'اربعتاشر': 14,
+      'تلاتاشر': 13,
+      'تلتاشر': 13,
+      'اتناشر': 12,
+      'احداشر': 11,
+      'حداشر': 11,
+      'ستاشر': 16,
+      'عشرة': 10,
+      'عشره': 10,
+      'تسعة': 9,
+      'تسعه': 9,
+      'تمانية': 8,
+      'تمانيه': 8,
+      'سبعة': 7,
+      'سبعه': 7,
+      'خمسة': 5,
+      'خمسه': 5,
+      'اربعة': 4,
+      'اربعه': 4,
+      'تلاتة': 3,
+      'تلاته': 3,
+      'اتنين': 2,
+      'ستة': 6,
+      'سته': 6,
+      'واحد': 1,
+    };
+
+    // 5. Compound hundreds + tens / units
+    for (final h in hundreds.entries) {
+      for (final t in tens.entries) {
+        s = s.replaceAll('${h.key} و${t.key}', ' ${h.value + t.value} ');
+      }
+      for (final u in units.entries) {
+        s = s.replaceAll('${h.key} و${u.key}', ' ${h.value + u.value} ');
+      }
     }
-    for (final entry in _tensMap.entries) {
-      s = s.replaceAll(RegExp('(?<=^|\\s)${entry.key}(?=\\s|\$|%)'), '${entry.value}');
+
+    // 6. Compound units + tens (e.g. خمسة وعشرين -> 25)
+    for (final u in units.entries) {
+      for (final t in tens.entries) {
+        s = s.replaceAll('${u.key} و${t.key}', ' ${u.value + t.value} ');
+      }
     }
-    for (final entry in _unitsMap.entries) {
-      // Avoid turning "واحد" into "1" inside "الواحد بـ 300"
-      if (entry.key == 'واحد') {
-        s = s.replaceAll(
-          RegExp(r'(?<!ال)(?<=^|\s)واحد(?=\s|$)'),
-          '1',
-        );
+
+    // 7. Standalone hundreds, tens, units
+    for (final h in hundreds.entries) {
+      s = s.replaceAllMapped(
+        RegExp('(?<=^|\\s)(و)?${h.key}(?=\\s|\$|%)'),
+        (m) => ' ${m.group(1) != null ? 'و ' : ''}${h.value} ',
+      );
+    }
+    for (final t in tens.entries) {
+      s = s.replaceAllMapped(
+        RegExp('(?<=^|\\s)(و)?${t.key}(?=\\s|\$|%)'),
+        (m) => ' ${m.group(1) != null ? 'و ' : ''}${t.value} ',
+      );
+    }
+    for (final u in units.entries) {
+      if (u.key == 'واحد') {
+        s = s.replaceAll(RegExp(r'(?<!ال)(?<=^|\s)واحد(?=\s|$)'), ' 1 ');
       } else {
-        s = s.replaceAll(
-          RegExp('(?<=^|\\s)${entry.key}(?=\\s|\$|%)'),
-          '${entry.value}',
+        s = s.replaceAllMapped(
+          RegExp('(?<=^|\\s)(و)?${u.key}(?=\\s|\$|%)'),
+          (m) => ' ${m.group(1) != null ? 'و ' : ''}${u.value} ',
         );
       }
     }
+
+    // 8. Compound thousands (e.g. "58 1000 ونص" -> "58500", "1000 و 200" -> "1200")
+    s = s.replaceAll(RegExp(r'\s+'), ' ').trim();
+    s = s.replaceAllMapped(
+      RegExp(r'(\d+)\s+1000\s+ونص(?=\s|$)'),
+      (m) => '${int.parse(m.group(1)!) * 1000 + 500}',
+    );
+    s = s.replaceAllMapped(
+      RegExp(r'(\d+)\s+1000\s+وربع(?=\s|$)'),
+      (m) => '${int.parse(m.group(1)!) * 1000 + 250}',
+    );
+    s = s.replaceAllMapped(
+      RegExp(r'(\d+)\s+1000\s+و\s*(\d+)(?=\s|$)'),
+      (m) {
+        final base = int.parse(m.group(1)!) * 1000;
+        final tail = int.parse(m.group(2)!);
+        if (tail < 1000) return '${base + tail}';
+        return m.group(0)!;
+      },
+    );
+    s = s.replaceAllMapped(
+      RegExp(r'(\d+)\s+1000(?=\s|$)'),
+      (m) => '${int.parse(m.group(1)!) * 1000}',
+    );
+    s = s.replaceAllMapped(
+      RegExp(r'(?:^|\s)([1-9]\d*000)\s+ونص(?=\s|$)'),
+      (m) => '${m.group(0)!.startsWith(' ') ? ' ' : ''}${int.parse(m.group(1)!) + 500}',
+    );
+    s = s.replaceAllMapped(
+      RegExp(r'(?:^|\s)([1-9]\d*000)\s+وربع(?=\s|$)'),
+      (m) => '${m.group(0)!.startsWith(' ') ? ' ' : ''}${int.parse(m.group(1)!) + 250}',
+    );
+    s = s.replaceAllMapped(
+      RegExp(r'(?:^|\s)([1-9]\d*000)\s+و\s*(\d+)(?=\s|$)'),
+      (m) {
+        final tail = int.parse(m.group(2)!);
+        if (tail < 1000) {
+          return '${m.group(0)!.startsWith(' ') ? ' ' : ''}${int.parse(m.group(1)!) + tail}';
+        }
+        return m.group(0)!;
+      },
+    );
 
     return s.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
@@ -415,75 +629,274 @@ class ScoredIntentResult {
 
 /// Scores natural Egyptian/Arabic queries across ERP actions and analytical intents.
 class AssistantIntentScorer {
+  static bool _hasAny(String text, List<String> patterns) {
+    for (final p in patterns) {
+      if (text.contains(p)) return true;
+    }
+    return false;
+  }
+
   static ScoredIntentResult? score(
     String rawQuery, {
     required AssistantContextMemory context,
   }) {
     final numericText = AssistantArabicNormalizer.replaceSpokenNumbers(rawQuery);
-    final q = AssistantArabicNormalizer.normalizeBasic(numericText);
-    if (q.isEmpty) return null;
+    final norm = AssistantArabicNormalizer.normalizeBasic(numericText);
+    if (norm.isEmpty) return null;
 
-    // Preserve How-To guides and analytical queries from being hijacked by action intents
-    if (q.startsWith('ازاي') ||
-        q.startsWith('كيف') ||
-        q.startsWith('خطوات') ||
-        q.startsWith('طريقه') ||
-        q.contains('ارخص مورد') ||
-        q.contains('اكتر مقاس') ||
-        q.contains('اكتر يوم') ||
-        q.contains('ساعات الذروه') ||
-        q.contains('ايه اللي اتعدل') ||
-        q.contains('عندي سيوله') ||
-        q.contains('معايا فلوس')) {
-      return null;
+    final core = AssistantArabicNormalizer.stripConversationalNoise(norm);
+
+    // 0. Fast exact lookups for conversational & control intents
+    const rejectSet = <String>{
+      'لا', 'لأ', 'لا مش كدا', 'لا مش كده', 'غلط', 'مش ده', 'لا ده غلط', 'مش صح',
+      'لا استنى', 'لا استني', 'استنى', 'استني', 'ثواني', 'لحظة', 'لحظه', 'دقيقة', 'دقيقه',
+      'استنى شوية', 'استني شويه', 'مش مظبوط', 'لا غلطت', 'اتلخبطت', 'غلطت',
+      'ده مش اللي قلته', 'اتلخبط', 'غلط في الرقم', 'مش دي', 'مش عاجبني غيرها', 'مش عاجبني',
+    };
+    const cancelSet = <String>{
+      'الغي', 'إلغاء', 'الغاء', 'خلاص', 'بلاش', 'مش عايز', 'لا بلاش', 'سيبك', 'وقف',
+      'انسى', 'انسي', 'مش عاوز', 'لأ خلاص', 'لا خلاص', 'تراجع', 'كنسل', 'cancel',
+      'مفيش داعي', 'ولا يهمك سيبها', 'مش دلوقتي', 'بعدين', 'لا لا', 'ارجع', 'ماشي سيبها',
+      'قفل', 'انهي العملية', 'انهي العمليه', 'مش محتاج', 'غيرت رأيي', 'غيرت رايي',
+      'لا شكرا', 'لأ مش دي', 'لا مش دي', 'ولا حاجة', 'ولا حاجه', 'طنش',
+    };
+    const confirmSet = <String>{
+      'ايوه', 'اه', 'ايوا', 'تمام', 'ماشي', 'اوكي', 'ok', 'اكيد', 'طبعا',
+      'نفذ', 'نفذها', 'اعملها', 'يلا', 'ايوه نفذ', 'صح', 'مظبوط',
+      'كمل', 'تمام كمل', 'موافق', 'ايوه كدا', 'ايوه كده', 'اتفضل',
+      'اعمل كدا', 'اعمل كده', 'ايوة', 'آه', 'حاضر', 'ادي الاوامر', 'اتمم',
+      'خلاص نفذ', 'تمام يا باشا نفذها', 'ماشي سجلها', 'هو ده', 'بالظبط', 'ايوه ده',
+    };
+    const chitchatSet = <String>{
+      'صباح الخير', 'مساء الخير', 'السلام عليكم', 'سلام عليكم', 'ازيك', 'اهلا', 'هاي',
+      'ازاي الحال', 'عامل ايه', 'يا مساعد', 'ازيك يا بيه', 'اهلين', 'هلا', 'صباح النور',
+      'مساء النور', 'نهارك سعيد', 'نهارك فل', 'تسلم', 'شكرا', 'متشكر', 'تسلم ايدك',
+      'الله يكرمك', 'جزاك الله خيرا', 'ميرسي', 'ممنون', 'مشكور', 'يعطيك العافية',
+      'يعطيك العافيه', 'ربنا يخليك', 'كتر خيرك', 'الله ينور', 'بارك الله فيك',
+      'تمام الحمد لله', 'الحمد لله', 'سلام', 'مع السلامة', 'مع السلامه', 'الى اللقاء',
+      'الي اللقاء', 'باي', 'اشوفك بعدين', 'يلا سلام', 'في امان الله', 'تصبح على خير', 'تصبح علي خير',
+    };
+
+    if (core.isEmpty) {
+      for (final cw in confirmSet) {
+        if (norm.startsWith('$cw ') || norm == cw) {
+          return const ScoredIntentResult(intent: AssistantNluIntent.confirm, score: 20.0);
+        }
+      }
+      for (final cw in cancelSet) {
+        if (norm.startsWith('$cw ') || norm == cw) {
+          return const ScoredIntentResult(intent: AssistantNluIntent.cancel, score: 20.0);
+        }
+      }
+      for (final cw in chitchatSet) {
+        if (norm.startsWith('$cw ') || norm == cw) {
+          return const ScoredIntentResult(intent: AssistantNluIntent.chitchat, score: 20.0);
+        }
+      }
+      for (final rw in rejectSet) {
+        if (norm.startsWith('$rw ') || norm == rw) {
+          return const ScoredIntentResult(intent: AssistantNluIntent.rejectOrFix, score: 20.0);
+        }
+      }
     }
 
-    // 1. Follow-up on previous context ("طيب وامبارح؟" / "وامبارح؟")
-    if (RegExp(r'^(?:طيب\s+)?و?امبارح[؟?]?$').hasMatch(q) ||
-        q == 'امس' ||
-        q == 'وامس') {
+    if (rejectSet.contains(core)) {
+      return const ScoredIntentResult(intent: AssistantNluIntent.rejectOrFix, score: 20.0);
+    }
+    if (cancelSet.contains(core)) {
+      return const ScoredIntentResult(intent: AssistantNluIntent.cancel, score: 20.0);
+    }
+    if (confirmSet.contains(core)) {
+      return const ScoredIntentResult(intent: AssistantNluIntent.confirm, score: 20.0);
+    }
+    if (chitchatSet.contains(core)) {
+      return const ScoredIntentResult(intent: AssistantNluIntent.chitchat, score: 20.0);
+    }
+
+    if (core.contains('تراجع عن اخر') ||
+        core.contains('الغي اخر') ||
+        core.contains('الغاء اخر') ||
+        core.contains('ارجع اللي فات') ||
+        core.contains('اخر عمليه غلط') ||
+        core.contains('مسح اخر') ||
+        core.contains('ارجع زي الاول') ||
+        core.contains('اتراجع') ||
+        core == 'undo') {
+      return const ScoredIntentResult(intent: AssistantNluIntent.undoLast, score: 20.0);
+    }
+
+    final isHelp = core == 'help' ||
+        core == 'مساعده' ||
+        core == 'ساعدني' ||
+        norm.contains('اوامر المساعد') ||
+        norm.contains('بتعمل ايه') ||
+        norm.contains('انت مين') ||
+        norm.contains('تعرف تعمل ايه') ||
+        norm.contains('ايه اللي بتعرفه') ||
+        norm.contains('انت بتفهم') ||
+        norm.contains('ايه الاوامر') ||
+        norm.contains('فيه ايه من الاوامر') ||
+        norm.contains('اساعدك ازاي') ||
+        norm.contains('هتساعدني ازاي') ||
+        norm.contains('ايه امكانياتك') ||
+        norm.contains('انت ذكي') ||
+        norm.contains('هتفهم عليا') ||
+        norm.contains('بتتكلم مصري') ||
+        norm.contains('انت اونلاين') ||
+        norm.contains('انت محتاج نت') ||
+        norm.contains('ازاي استعملك') ||
+        norm.contains('ايه الجديد فيك') ||
+        norm.contains('ممكن اطلب منك ايه') ||
+        norm.contains('قايمه الاوامر') ||
+        norm.contains('اعرضلي الاوامر');
+    if (isHelp) {
+      return const ScoredIntentResult(intent: AssistantNluIntent.help, score: 20.0);
+    }
+
+    // 1. Settings toggles & commands (must run before general cancel/confirm words)
+    if (_hasAny(norm, ['قفل الورديه العمياء', 'الاقفال الاعمي', 'اخفي رصيد الدرج', 'يقفل بدون ما يشوف', 'قفله الورديه من غير'])) {
+      return const ScoredIntentResult(intent: AssistantNluIntent.toggleBlindShiftClosing, score: 20.0);
+    }
+    if (_hasAny(norm, ['حمايه الرقم السري', 'pin المدير', 'كود المدير', 'رقم المدير السري', 'اطلب رقم سري'])) {
+      return const ScoredIntentResult(intent: AssistantNluIntent.toggleManagerPinProtection, score: 20.0);
+    }
+    if (_hasAny(norm, ['الخصم اليدوي', 'السماح بالخصم', 'خصم الكاشير', 'خلي الكاشير يخصم', 'خصم يدوي'])) {
+      return const ScoredIntentResult(intent: AssistantNluIntent.toggleAllowManualDiscount, score: 20.0);
+    }
+    if (_hasAny(norm, ['النسخ الاحتياطي التلقائي', 'الباك اب التلقائي', 'نسخه احتياطيه اوتوماتيك', 'حفظ نسخه تلقائي', 'باك اب اوتوماتيك', 'نسخه احتياطيه تلقائي'])) {
+      return const ScoredIntentResult(intent: AssistantNluIntent.toggleAutoBackup, score: 20.0);
+    }
+    if (_hasAny(norm, ['غير اسم المحل', 'عدل اسم المحل', 'اسم المحل بقى', 'اسم المحل', 'غير اسم المتجر', 'اسم الفرع', 'اسم المتجر'])) {
+      return const ScoredIntentResult(intent: AssistantNluIntent.updateStoreName, score: 20.0);
+    }
+    if (_hasAny(norm, ['غير تليفون المحل', 'عدل رقم تليفون المحل', 'رقم المحل بقى', 'رقم المحل', 'تليفون الفاتوره', 'غير رقم الموبايل بتاع المحل', 'رقم الواتساب بتاع المحل', 'تلفون الفاتوره'])) {
+      return const ScoredIntentResult(intent: AssistantNluIntent.updateStorePhone, score: 20.0);
+    }
+    if (_hasAny(norm, ['نسخه احتياطيه فوريه', 'نسخه احتياطيه الان', 'باك اب دلوقتي', 'اعمل نسخه احتياطيه', 'اعمل باك اب', 'خد نسخه احتياطيه', 'خد نسخه من الداتا', 'خزن الداتا'])) {
+      if (!norm.contains('ازاي') && !norm.contains('كيف') && !norm.contains('خطوات') && !norm.contains('طريقه')) {
+        return const ScoredIntentResult(intent: AssistantNluIntent.backupNow, score: 20.0);
+      }
+    }
+
+    // 2. Business advisory queries with "ازاي" / questions (must run before generic howToGuide)
+    if ((norm.contains('خصم') || norm.contains('تخفيض') || norm.contains('اوكازيون')) &&
+        (norm.contains('ياثر') || norm.contains('هخسر') || norm.contains('هكسب') || norm.contains('الربح'))) {
+      return const ScoredIntentResult(intent: AssistantNluIntent.whatIfPricing, score: 18.0);
+    }
+    if (norm.contains('سيوله') || (norm.contains('معايا فلوس') && norm.contains('بضاع'))) {
+      return const ScoredIntentResult(intent: AssistantNluIntent.liquidityStrategy, score: 18.0);
+    }
+    if (_hasAny(norm, ['ارجع الزباين', 'ترتيب الفاترينه', 'ترتيب المحل', 'ارتب المحل', 'عرض البضاعه', 'هندسه ترتيب', 'ديكور المحل', 'العرض في المحل', 'اجذب الزبون من الشارع', 'ركن للعروض', 'استراتيجيه السيوله', 'اوزع الفلوس ازاي', 'ادير الكاش', 'رد علي الفصال', 'اقنع الزبون', 'اوصل لهدف', 'ازود الدخل', 'عميل زعلان', 'اسعر ازاي', 'الجنيه نزل'])) {
+      if (norm.contains('ارجع الزباين') || norm.contains('استرداد العملاء') || norm.contains('بطلوا يجوا')) {
+        return const ScoredIntentResult(intent: AssistantNluIntent.winBackCustomers, score: 18.0);
+      }
+      if (norm.contains('الفاترينه') || norm.contains('ترتيب المحل') || norm.contains('ارتب المحل') || norm.contains('عرض البضاعه') || norm.contains('هندسه ترتيب') || norm.contains('ديكور') || norm.contains('العرض في المحل') || norm.contains('ترتيب البضاعه') || norm.contains('ركن للعروض') || norm.contains('اجذب الزبون')) {
+        return const ScoredIntentResult(intent: AssistantNluIntent.visualMerchandising, score: 18.0);
+      }
+      if (norm.contains('السيوله') || norm.contains('اوزع الفلوس') || norm.contains('ادير الكاش') || norm.contains('50 30 20')) {
+        return const ScoredIntentResult(intent: AssistantNluIntent.liquidityStrategy, score: 18.0);
+      }
+      if (norm.contains('الفصال') || norm.contains('اقنع الزبون') || norm.contains('بيقول غالي') || norm.contains('عميل زعلان')) {
+        return const ScoredIntentResult(intent: AssistantNluIntent.objectionReplies, score: 18.0);
+      }
+      if (norm.contains('اوصل لهدف') || norm.contains('ازود الدخل')) {
+        return const ScoredIntentResult(intent: AssistantNluIntent.goalPlanner, score: 18.0);
+      }
+      if (norm.contains('اسعر ازاي') || norm.contains('الجنيه نزل')) {
+        return const ScoredIntentResult(intent: AssistantNluIntent.inflationCalculator, score: 18.0);
+      }
+    }
+
+    // 3. Module & specific queries that might contain "ازاي" protected before generic HowTo
+    final isSpecificAdvisorOrModule = norm.contains('الدليفري ماشي ازاي') ||
+        norm.contains('الديليفري ماشي ازاي') ||
+        norm.contains('المحل ماشي ازاي') ||
+        norm.contains('الدنيا ماشيه ازاي') ||
+        norm.contains('المحل صحته عامله ازاي') ||
+        norm.contains('اداء المحل عامل ازاي') ||
+        norm.contains('ازاي ارتب المحل') ||
+        norm.contains('ارتب المحل ازاي') ||
+        norm.contains('ازاي الحال') ||
+        norm.contains('اساعدك ازاي') ||
+        norm.contains('هتساعدني ازاي') ||
+        norm.contains('ازاي استعملك') ||
+        norm.contains('ازاي ارجع الزباين') ||
+        norm.contains('اوزع الفلوس ازاي') ||
+        norm.contains('ادير الكاش ازاي') ||
+        norm.contains('اسعر ازاي') ||
+        norm.contains('ازاي اوصل لهدف') ||
+        norm.contains('ازاي ازود الدخل');
+
+    final isHowTo = !isSpecificAdvisorOrModule && (norm.contains('ازاي') ||
+        norm.contains('كيف') ||
+        norm.contains('خطوات') ||
+        norm.contains('طريقه') ||
+        norm.contains('فين الاقي') ||
+        norm.contains('شرح') ||
+        norm.contains('علمني') ||
+        norm.contains('تعملني') ||
+        norm.contains('دلني'));
+    if (isHowTo) {
+      return const ScoredIntentResult(
+        intent: AssistantNluIntent.howToGuide,
+        score: 18.0,
+      );
+    }
+
+
+
+    const outOfScopePhrases = <String>[
+      'رئيس مصر', 'الجو عامل ايه', 'سعر الدولار', 'ماتش الاهلي', 'احكيلي قصه',
+      'اعمل لي واجب', 'ترجم الجمله', 'اخبار الكوره', 'اعمل اغنيه', 'اعمل لي اغنيه',
+      'اشتري لي اكل', 'اجمل ممثله', 'الارض كرويه', 'اكتب قصيده', 'اكتب لي قصيده', 'كام الساعه',
+      'الدنيا حر', 'اخبار البورصه', 'اتصل بزوجتي', 'شغل اغنيه', 'اعمل منبه',
+      'عاصمه فرنسا', 'كود بايثون', 'نكته', 'قولي نكته', 'رايك في الحكومه', 'اعمل رسمه',
+      'قولي معلومه',
+    ];
+    for (final oos in outOfScopePhrases) {
+      if (norm.contains(oos)) {
+        return const ScoredIntentResult(intent: AssistantNluIntent.outOfScope, score: 20.0);
+      }
+    }
+
+    // 5. Contextual follow-ups
+    if (RegExp(r'^(?:طيب\s+)?و?امبارح[؟?]?$').hasMatch(norm) ||
+        norm == 'امس' ||
+        norm == 'وامس') {
       return ScoredIntentResult(
         intent: AssistantNluIntent.yesterdayFollowup,
-        score: 10.0,
+        score: 15.0,
         slots: {'previousIntent': context.lastIntent},
       );
     }
 
-    // 2. Contextual edit on last product ("لا خليه 500" / "خليه 500" / "هات نفس الصنف بس خلي السعر 400")
-    if ((q.contains('نفس الصنف') && q.contains('سعر')) ||
-        RegExp(r'^(?:لا\s+)?خلي[ه]?\s+(?:السعر\s+)?\d+').hasMatch(q)) {
-      final numMatch = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(q);
-      if (numMatch != null && context.lastProductName != null) {
-        return ScoredIntentResult(
-          intent: AssistantNluIntent.updatePrice,
-          score: 12.0,
-          slots: {
-            'mode': 'price',
-            'productName': context.lastProductName,
-            'value': double.parse(numMatch.group(1)!),
-          },
-        );
-      }
+    final isNewPurchaseWithSameSupplier = norm.contains('نفس المورد') &&
+        (norm.contains('جبت') ||
+            norm.contains('اشتريت') ||
+            norm.contains('وكمان واحد') ||
+            norm.contains('وكمان 1') ||
+            RegExp(r'(?:^|\s)ب\s*\d+').hasMatch(norm));
+    if (!isNewPurchaseWithSameSupplier &&
+        (_hasAny(norm, ['نفس المورد', 'من نفس المورد', 'ونفس الحاج', 'نفس التاجر', 'نفس اللي فات', 'زي الاول']) ||
+            norm == 'نفسه' ||
+            norm == 'هو هو')) {
+      return const ScoredIntentResult(intent: AssistantNluIntent.fuSameSupplier, score: 15.0);
     }
 
-    // 3. Contextual purchase from same supplier ("وكمان واحد من نفس المورد بـ 250")
-    if (q.contains('نفس المورد') ||
-        (q.startsWith('وكمان ') && context.lastSupplierName != null)) {
-      final costMatch = RegExp(r'(?:ب|بسعر|سعر)\s*(\d+(?:\.\d+)?)').firstMatch(q);
-      final qtyMatch = RegExp(r'(?:^|\s)(\d+)(?=\s|$)').firstMatch(
-        q.replaceFirst(RegExp(r'(?:ب|بسعر|سعر)\s*\d+(?:\.\d+)?'), ''),
-      );
+    if (_hasAny(norm, ['وكمان واحد', 'واحد كمان', 'كمان واحده', 'كمان واحدة', 'ضيف كمان', 'كرر العمليه', 'كمان مره'])) {
+      return const ScoredIntentResult(intent: AssistantNluIntent.fuOneMore, score: 15.0);
+    }
+
+    if ((norm.contains('نفس الصنف') && norm.contains('سعر')) ||
+        RegExp(r'^(?:لا\s+)?خلي[ه]?\s+(?:السعر\s+)?\d+').hasMatch(norm)) {
+      final numMatch = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(norm);
       return ScoredIntentResult(
-        intent: AssistantNluIntent.recordPurchase,
-        score: 12.0,
+        intent: AssistantNluIntent.updatePrice,
+        score: 15.0,
         slots: {
-          if (context.lastProductName != null)
-            'productName': context.lastProductName,
-          if (context.lastSupplierName != null)
-            'supplierName': context.lastSupplierName,
-          if (costMatch != null) 'costEgp': double.parse(costMatch.group(1)!),
-          'qty': qtyMatch != null ? int.parse(qtyMatch.group(1)!) : 1,
-          'paymentType': context.lastPaymentType ?? 'cash',
+          'mode': 'price',
+          if (context.lastProductName != null) 'productName': context.lastProductName,
+          if (numMatch != null) 'value': double.parse(numMatch.group(1)!),
         },
       );
     }
@@ -493,135 +906,378 @@ class AssistantIntentScorer {
       scores[intent] = (scores[intent] ?? 0) + pts;
     }
 
-    // --- Action Intent Signals ---
-    // Add Product
+    // --- Core Action Intent Matchers ---
     final hasPurchaseVerb = RegExp(
-      r'(?:^|\s)(?:اشتريت|اشتري|بشتري|شريت|جبت|شراء|مشتريات)(?=\s|$)',
-    ).hasMatch(q);
-    if (!hasPurchaseVerb &&
-        (RegExp(r'(?:ضيف|اضيف|تضيف|ضف|نزل|انزل|سجل)\s+(?:لي\s+)?(?:صنف|منتج|بضاعه|موديل)').hasMatch(q) ||
-            q.contains('بضاعه جديده') ||
-            q.contains('صنف جديد') ||
-            q.contains('منتج جديد'))) {
-      addScore(AssistantNluIntent.addProduct, 7.0);
-    }
-    if (q.contains('بيشتري ب') || q.contains('بيتباع ب') || q.contains('تكلفه')) {
-      addScore(AssistantNluIntent.addProduct, 4.0);
-    }
+      r'(?:^|\s)(?:اشتريت|شتريت|شريت|جبت|جيبت|استلمت|استلمنا|اشترينا|جالي|وصلني|وصلت|نزلت|طلبت\s+وجه|سجل\s+شراء|سجل\s+مشتريات|اسجل\s+مشتريات|سجل\s+فاتوره\s+شراء|فاتوره\s+مشتريات|فاتوره\s+شراء|سجلي\s+بضاعه\s+جت|اشتري|بشتري|هشتري|شراء|مشتريات|شحنه\s+جديده|بضاعه\s+جت|بضاعه\s+وصلت)(?=\s|$)',
+    ).hasMatch(norm);
 
-    // Record Purchase
-    if (hasPurchaseVerb) {
-      addScore(AssistantNluIntent.recordPurchase, 7.5);
+    if (hasPurchaseVerb && !norm.contains('اشتري مقاس ايه') && !norm.contains('اشتري ايه')) {
+      addScore(AssistantNluIntent.recordPurchase, 10.0);
     }
-    if (q.contains('من المورد') || q.contains('من الحاج') || q.contains('شكك') || q.contains('الواحد ب')) {
-      addScore(AssistantNluIntent.recordPurchase, 4.0);
+    if (norm.contains('من مورد') ||
+        norm.contains('من عند') ||
+        norm.contains('من الحاج') ||
+        norm.contains('من مصنع') ||
+        norm.contains('من المورد') ||
+        norm.contains('من نفس المورد') ||
+        norm.contains('الواحد ب') ||
+        norm.contains('علي الحساب') ||
+        norm.contains('شكك') ||
+        norm.contains('مدفعتش لسه')) {
+      if (hasPurchaseVerb || norm.contains('وكمان واحد') || norm.contains('وكمان 1')) {
+        addScore(AssistantNluIntent.recordPurchase, 7.0);
+      }
     }
 
     // Pay Supplier
-    if (RegExp(r'(?:اديت|دفعت|ادفع|سددت|سداد)\s+(?:للمورد|لمورد|للحاج|لـ?\s*المورد|لـ?\s*مورد|مورد|الحاج|ل)').hasMatch(q) ||
-        (q.contains('دفعه') && !q.contains('قسط'))) {
-      addScore(AssistantNluIntent.paySupplier, 8.5);
+    final hasPayVerb = RegExp(
+      r'(?:^|\s)(?:سدد|اسدد|سددت|سداد|دفعت|ادفع|حول|احول|اديت|ادي|اديه|اديله|اعطيت|سلمت|اسلم|سلمنا|خصم\s+من\s+حساب|سجل\s+دفعه|سجل\s+سداد|استلم\s+كاش|استلم|عليا\s+لـ?|خد\s+مني)(?=\s|$)',
+    ).hasMatch(norm);
+    final hasSupplierTarget = norm.contains('مورد') ||
+        norm.contains('للمورد') ||
+        norm.contains('الحاج') ||
+        norm.contains('للحاج') ||
+        norm.contains('تاجر') ||
+        norm.contains('للتاجر') ||
+        norm.contains('مصنع') ||
+        norm.contains('للمصنع') ||
+        norm.contains('شركه') ||
+        norm.contains('للشركه') ||
+        norm.contains('مؤسسه') ||
+        norm.contains('للمؤسسه') ||
+        norm.contains('المعلم') ||
+        norm.contains('للمعلم') ||
+        norm.contains('الاستاذ') ||
+        norm.contains('للاستاذ') ||
+        norm.contains('عم ') ||
+        norm.contains('لعم ') ||
+        norm.contains('ابو ') ||
+        norm.contains('لابو ') ||
+        norm.contains('خد مني') ||
+        norm.contains('استلم مني') ||
+        norm.contains('عليا ل') ||
+        norm.contains('دفعت ل') ||
+        norm.contains('اديت ل') ||
+        norm.contains('سددت ل') ||
+        norm.contains('سجل دفعه ل');
+
+    if ((hasPayVerb || norm.contains('اسدد لمورد') || norm.contains('دفعه لمورد') || norm.contains('استلم') || norm.contains('خد مني')) &&
+        (hasSupplierTarget || norm.contains('مورد')) &&
+        !norm.contains('قسط') &&
+        !hasPurchaseVerb) {
+      addScore(AssistantNluIntent.paySupplier, 10.5);
     }
 
     // Collect Installment
-    if (q.contains('دفع قسط') ||
-        q.contains('تحصيل قسط') ||
-        q.contains('من قسطه') ||
-        (q.contains('قسط') && (q.contains('دفع') || q.contains('احصل')))) {
-      addScore(AssistantNluIntent.collectInstallment, 9.0);
+    if (norm.contains('قسط') || norm.contains('اقساط')) {
+      if (norm.contains('حصل') ||
+          norm.contains('قبضت') ||
+          norm.contains('استلمت') ||
+          norm.contains('دفع') ||
+          norm.contains('سدد') ||
+          norm.contains('جاب') ||
+          norm.contains('خد') ||
+          norm.contains('اخد') ||
+          norm.contains('اتدفع') ||
+          norm.contains('تحصيل')) {
+        addScore(AssistantNluIntent.collectInstallment, 11.0);
+      }
+    }
+
+    // Add Product
+    final hasAddProductKeywords = RegExp(
+          r'(?:^|\s)(?:كارت\s+صنف|افتح\s+كارت|اعمل\s+كارت|صنف\s+جديد|منتج\s+جديد|بضاعه\s+جديده|موديل\s+جديد|ريفرنس\s+جديد|حاجه\s+جديده\s+للمخزن|ستايل\s+جديد)(?=\s|$)',
+        ).hasMatch(norm) ||
+        (RegExp(r'(?:^|\s)(?:ضيف|اضيف|هضيف|تضيف|نضيف|ضف|اضيفلك|نزل|انزل|تنزل|نزلي|سجل|اسجل|دخل|ادخل|اعمل|اعملي|اكتب)\s+(?:لي\s+)?(?:صنف|منتج|بضاعه|موديل|قطعه|كارت)').hasMatch(norm)) ||
+        ((norm.contains('تكلفته') || norm.contains('شرائه') || norm.contains('بشتريه')) &&
+            (norm.contains('بيعه') || norm.contains('هبيعه') || norm.contains('بيتباع')));
+
+    final hasDirectItemAdd = RegExp(r'(?:^|\s)(?:ضيف|اضيف|هضيف|تضيف|نضيف|نزل|انزل|نزلي|دخل|ادخل|سجل|اسجل|اكتب|اعمل|اعملي)\s+').hasMatch(norm) &&
+        (norm.contains('في المخزن') || norm.contains('للمحل') || norm.contains('جديد') || norm.contains('بسعر') || norm.contains('والكميه') || norm.contains('ادخلها') || norm.contains('هبيعها'));
+
+    final isPreOrder = norm.contains('حجز') || norm.contains('احجز') || norm.contains('عربون');
+    if (!hasPurchaseVerb &&
+        !norm.contains('عميل') &&
+        !norm.contains('زبون') &&
+        !isPreOrder &&
+        (hasAddProductKeywords || hasDirectItemAdd)) {
+      addScore(AssistantNluIntent.addProduct, 9.5);
     }
 
     // Record Expense
-    if (q.contains('مصروف') ||
-        q.contains('طلع من الدرج') ||
-        q.contains('صرفت') ||
-        (q.startsWith('دفعت ') &&
-            !q.contains('مورد') &&
-            !q.contains('الحاج') &&
-            !q.contains('قسط'))) {
-      addScore(AssistantNluIntent.recordExpense, 8.0);
-    }
-    if (q.contains('كهربا') ||
-        q.contains('ايجار') ||
-        q.contains('مياه') ||
-        q.contains('نت') ||
-        q.contains('مرتب')) {
-      addScore(AssistantNluIntent.recordExpense, 3.0);
+    final isExpense = norm.contains('مصروف') ||
+        norm.contains('مصاريف') ||
+        norm.contains('صرفت') ||
+        norm.contains('صرفنا') ||
+        norm.contains('اتصرف') ||
+        norm.contains('عدي مصروف') ||
+        norm.contains('اكتب مصروف') ||
+        norm.contains('حط مصروف') ||
+        norm.contains('نزل مصروف') ||
+        norm.contains('طلع مني') ||
+        norm.contains('طلع من الدرج') ||
+        norm.contains('من الدرج') ||
+        norm.contains('سجلها مصروف') ||
+        norm.contains('طلعت') ||
+        norm.contains('فاتوره مواصلات') ||
+        norm.contains('رسوم حكوميه') ||
+        norm.contains('بقشيش') ||
+        norm.contains('رسوم') ||
+        (norm.startsWith('دفعت ') &&
+            !hasSupplierTarget &&
+            !norm.contains('قسط')) ||
+        (norm.contains('دفعنا') && norm.contains('على'));
+
+    const expenseCategories = [
+      'كهربا', 'كهرباء', 'ايجار', 'مياه', 'ميه', 'نت', 'مرتب', 'مرتبات',
+      'صيانه', 'اكياس', 'شحن', 'فطار', 'شاي', 'قهوه', 'قهوة',
+      'نظافه', 'بنزين', 'مواصلات', 'دعايه', 'ورق', 'طباعه', 'ضيافه',
+      'بوفيه', 'تكييف', 'رسوم', 'بقشيش', 'كرتون', 'كراتين', 'ادوات مكتبيه',
+      'غداء عمال', 'غداء', 'عمال', 'باقه', 'لمبات', 'تيكت', 'شماعات', 'لزق', 'تغليف',
+    ];
+    final hasExpCat = expenseCategories.any((cat) => norm.contains(cat));
+    if (isExpense || (hasExpCat && (norm.contains('دفعت') || norm.contains('فاتوره') || norm.contains('صرفت') || norm.contains('اتصرف') || norm.contains('دفعنا') || norm.contains('ادفع')))) {
+      if (!hasSupplierTarget && !norm.contains('قسط') && !norm.contains('المصاريف مرتفعه ليه') && !norm.contains('هغطي مصاريفي') && !norm.contains('زادت ولا قلت') && !norm.contains('مقارنه المصاريف')) {
+        addScore(AssistantNluIntent.recordExpense, 9.5);
+      }
     }
 
     // Add Customer
-    if (RegExp(r'(?:ضيف|اضيف|اضافه)\s+(?:عميل|زبون)|(?:عميل|زبون)\s+جديد').hasMatch(q)) {
-      addScore(AssistantNluIntent.addCustomer, 9.0);
+    final hasCustomerNoun = norm.contains('عميل') ||
+        norm.contains('زبون') ||
+        norm.contains('عميله') ||
+        norm.contains('زبونه') ||
+        norm.contains('كارت عميل') ||
+        norm.contains('حساب عميل');
+
+    final hasCustomerAction = norm.contains('ضيف') ||
+        norm.contains('اضيف') ||
+        norm.contains('اضافه') ||
+        norm.contains('سجل') ||
+        norm.contains('اكتب') ||
+        norm.contains('دخل') ||
+        norm.contains('افتح حساب') ||
+        norm.contains('اعمل كارت') ||
+        norm.contains('جديد');
+
+    if ((hasCustomerNoun && hasCustomerAction) ||
+        norm.contains('جه المحل اول مره') ||
+        norm.contains('افتح حساب ل') ||
+        (hasCustomerNoun && (norm.contains('اسمه') || norm.contains('رقمه')))) {
+      addScore(AssistantNluIntent.addCustomer, 10.0);
     }
 
     // Update Price
-    if (RegExp(r'(?:خلي|عدل|غير)\s+(?:لي\s+)?سعر').hasMatch(q)) {
-      addScore(AssistantNluIntent.updatePrice, 9.0);
+    if (RegExp(r'(?:غير|خلي|عدل|بدل|ضبط)\s+(?:لي\s+)?سعر').hasMatch(norm) ||
+        RegExp(r'سعر\s+.+\s+(?:بقى|بقي|هو|وصل|خليه|خلي)\s+\d+').hasMatch(norm) ||
+        RegExp(r'(?:زود|نزل|ارفع|خفض)\s+سعر').hasMatch(norm) ||
+        RegExp(r'(?:بقى|بقي)\s+بـ?\s*\d+').hasMatch(norm) ||
+        norm.contains('السعر غلط عدله') ||
+        norm.contains('غير سعر صنف') ||
+        norm.contains('عدل سعر منتج') ||
+        norm.contains('غالي خليه') ||
+        norm.contains('سعر البيع بتاع') ||
+        RegExp(r'اعمل\s+.+\s+بـ?\s*\d+').hasMatch(norm)) {
+      addScore(AssistantNluIntent.updatePrice, 9.5);
     }
 
-    // Update Stock (including damage / breakage in stocktake)
-    if (RegExp(r'(?:^|\s)(?:زود|نقص)\s+(?:لي\s+)?(?:رصيد|كميه)?').hasMatch(q) &&
-        (q.contains('حتت') || q.contains('قطع') || q.contains('رصيد') || q.contains('كميه'))) {
-      addScore(AssistantNluIntent.updateStock, 8.5);
-    }
-    if (RegExp(r'(?:^|\s)(?:اتكسر|باظ|ضاع|تالف)(?=\s|$)').hasMatch(q)) {
-      addScore(AssistantNluIntent.updateStock, 9.0);
+    // Update Stock
+    final isStagnant = norm.contains('بضاعه واقفه') ||
+        norm.contains('بضاعه راكده') ||
+        norm.contains('اصناف راكده') ||
+        norm.contains('المخزون الراكد') ||
+        norm.contains('بضاعه مبتبعش') ||
+        norm.contains('مبيتحركش') ||
+        norm.contains('مبيتبعش') ||
+        norm.contains('ترتيب البضاعه') ||
+        norm.contains('ترتيب المحل');
+
+    if (!hasPurchaseVerb && !norm.contains('مصروف') && !norm.contains('البضاعه الراكده') && !norm.contains('بضاعه الشتا') && !isStagnant) {
+      if (RegExp(r'(?:زود|نقص|عدل|شيل|انقص|حط)\s+(?:لي\s+)?(?:رصيد|كميه)').hasMatch(norm) ||
+          (!norm.contains('سعر') && RegExp(r'(?:زودلي|نقصلي|زود|نقص|شيل|انقص)\s+.+\s+\d+(?:\s*(?:حتت|حته|قطع|قطعه))?').hasMatch(norm)) ||
+          RegExp(r'رصيد\s+.+\s+(?:المفروض|بقى|بقي|هو|طلع)\s+\d+').hasMatch(norm) ||
+          RegExp(r'جرد\s+.+\s+طلع\s+\d+').hasMatch(norm) ||
+          RegExp(r'(?:^|\s)(?:اتكسر|باظ|باظت|ضاع|تالف)(?:\s|$)').hasMatch(norm) ||
+          norm.contains('الرصيد مش مظبوط عدله') ||
+          norm.contains('اغير رصيد صنف') ||
+          norm.contains('عدل كميه بضاعه') ||
+          norm.contains('ضبط جرد') ||
+          norm.contains('في المخزن عدلها') ||
+          norm.contains('من الرصيد') ||
+          RegExp(r'فيه\s+\d+\s+.+\s+بس\s+في\s+المخزن').hasMatch(norm)) {
+        addScore(AssistantNluIntent.updateStock, 9.5);
+      }
     }
 
     // Zakat
-    if (q.contains('زكاه') || q.contains('الزكاه')) {
-      addScore(AssistantNluIntent.calculateZakat, 9.5);
+    if (norm.contains('زكاه') ||
+        norm.contains('الزكاه') ||
+        norm.contains('ازكي') ||
+        norm.contains('زكاتي')) {
+      addScore(AssistantNluIntent.calculateZakat, 10.0);
     }
 
-    // --- Analytical / Advisory Intent Signals ---
-    if (q.contains('متاخر في الفلوس') ||
-        q.contains('اقساط متاخره') ||
-        q.contains('الاقساط المتاخره') ||
-        (q.contains('متاخر') && q.contains('اقساط')) ||
-        q.contains('مين عليه فلوس') ||
-        q.contains('متاخرين')) {
-      addScore(AssistantNluIntent.overdueInstallments, 9.0);
+    // --- Analytical / Advisory Intents ---
+    if (_hasAny(norm, ['كسبت كام', 'ربح النهارده', 'الارباح النهارده', 'صافي ربح اليوم', 'الدخل النهارده', 'كسبان ولا خسران', 'المكسب كام', 'كسبنا كام', 'طلعت كام النهارده', 'الي دخل النهارده', 'ايه اللي كسبته', 'الربح مقارنه بامس', 'احسن من امبارح', 'بعت بكام', 'بعنا بكام', 'مبيعات النهارده', 'النهارده كام صافي'])) {
+      if (!norm.contains('سجل') && !norm.contains('ضيف')) {
+        addScore(AssistantNluIntent.todayProfit, 9.5);
+      }
     }
 
-    if (q.contains('بوست') || q.contains('منشور') || q.contains('اشد بيه الزباين')) {
-      addScore(AssistantNluIntent.promoPost, 9.0);
+    if (_hasAny(norm, ['المبيعات واقعه', 'المبيعات قليله', 'سبب نزول البيع', 'الشغل واقف', 'البيع نايم', 'مفيش بيع', 'المحل ميت', 'حلل لي سبب نزول المبيعات', 'ايه اللي حصل في المبيعات', 'مبيعاتي نزلت', 'مبيعاتي نازله', 'مبيعاتي بتقل', 'الكساد ده سببه ايه', 'الايراد قل', 'ليه الايراد', 'الزباين قلت', 'الدنيا رخمه ليه', 'السوق واقف ولا العيب فينا', 'نايمه ليه', 'الدنيا نايمه', 'البيع واقف', 'ليه البيع واقف'])) {
+      addScore(AssistantNluIntent.salesDiagnosis, 10.0);
     }
 
-    if (q.contains('نايمه ليه') ||
-        q.contains('المبيعات قليله') ||
-        q.contains('ليه البيع') ||
-        q.contains('مبيعاتي نازله') ||
-        q.contains('مبيعات نازله') ||
-        q.contains('نازله ليه')) {
-      addScore(AssistantNluIntent.salesDiagnosis, 8.5);
+    if (_hasAny(norm, ['الاقساط المتاخره', 'الاقساط اللي فاتت', 'مين متاخر', 'مين عليه فلوس', 'متاخرات الاقساط', 'الديون اللي ليا', 'مين مماطل', 'كشف العملاء المتاخرين', 'المتاخرين في السداد', 'المتاخرين', 'الفلوس اللي بره', 'مين لسه مدفعش'])) {
+      addScore(AssistantNluIntent.overdueInstallments, 9.5);
     }
 
-    if (q.contains('بعت بكام') ||
-        q.contains('ربح النهارده') ||
-        q.contains('ربح اليوم') ||
-        q.contains('صافي ربح اليوم') ||
-        q.contains('كسبت كام') ||
-        q.contains('مبيعات النهارده')) {
-      addScore(AssistantNluIntent.todayProfit, 8.5);
-    }
-
-    if ((q.contains('خصم') && (q.contains('%') || q.contains('هخسر') || q.contains('هكسب'))) ||
-        q.contains('ماذا لو')) {
+    if (_hasAny(norm, ['ماذا لو', 'لو عملت خصم', 'لو عملت تخفيضات', 'اوكازيون', 'لو زودت السعر', 'لو رفعت الاسعار', 'لو خصمت', 'محاكاه خصم', 'محاكاة خصم', 'لو خليت الخصم'])) {
       addScore(AssistantNluIntent.whatIfPricing, 9.5);
     }
 
-    if (q.contains('ارخص') && (q.contains('بره') || q.contains('الزبون') || q.contains('ارد عليه')) ||
-        q.contains('بيقول غالي') ||
-        q.contains('السعر غالي') ||
-        q.contains('بيقولي لاقيته') ||
-        q.contains('لقيته بره')) {
+    if (_hasAny(norm, ['بيقول غالي', 'الزبون بيقول غالي', 'السعر غالي', 'بيفاصل', 'رد علي الزبون', 'رد دبلوماسي', 'لقيتها ارخص', 'لاقيته بره ارخص', 'لقيته بره ارخص', 'بره ارخص', 'ارخص من كده', 'ارد عليه بايه', 'خصم كبير', 'اقنع الزبون', 'الزبون بيقول هفكر', 'الزبون عايز يرجع', 'اعمل ايه لو قال غالي', 'ازاي ارد علي الفصال', 'عميل زعلان'])) {
       addScore(AssistantNluIntent.objectionReplies, 9.5);
+    }
+
+    if (_hasAny(norm, [
+      'المحل ماشي ازاي', 'نبض المحل', 'طمني علي الشغل', 'حال المحل', 'المحل عامل ايه',
+      'الدنيا ماشيه ازاي', 'كله تمام النهارده', 'اديني لمحه سريعه', 'ملخص سريع',
+      'ايه الوضع', 'شغلنا ماشي كويس', 'الحال ايه', 'عامل ايه المحل', 'ايه الاخبار',
+      'قولي حال المحل', 'ايه اللي بيحصل في المحل', 'اطمن علي المحل', 'اطمن على المحل',
+      'فيه ايه جديد في المحل', 'الشغل عامل ايه', 'قولي نبض المحل', 'طمني ع الشغل'
+    ])) {
+      addScore(AssistantNluIntent.storePulse, 9.0);
+    }
+
+    if (_hasAny(norm, ['صحه المحل', 'قيمني المحل', 'درجه المحل من 100', 'مؤشر صحه المحل', 'قيم شغلي', 'تشخيص المحل', 'هل المحل بحاله كويسه', 'اداء المحل عامل ازاي', 'المحل ماشي صح', 'نقاط المحل كام'])) {
+      addScore(AssistantNluIntent.storeHealthScore, 9.0);
+    }
+
+    if (_hasAny(norm, ['ارفع المبيعات', 'هدف الشهر', 'اوصل لهدف', 'حطلي هدف', 'اهداف المبيعات', 'خطه تحقيق التارجت', 'خطه اوصل بيها', 'ازود الدخل', 'عايز ابيع بـ', 'ايه المطلوب عشان اوصل الهدف', 'عايز ابيع ب'])) {
+      addScore(AssistantNluIntent.goalPlanner, 9.0);
+    }
+
+    if (_hasAny(norm, ['تقرير قفله اليوم', 'قفله النهارده', 'ملخص اليوم', 'تقرير اخر اليوم', 'تقرير اليوميه', 'تقفيل اليوم', 'رساله اليوميه', 'اقفل اليوم وقولي الحصيله', 'تقرير نهايه اليوم', 'اقفل اليوم وقوولي الحصيله'])) {
+      addScore(AssistantNluIntent.endOfDayReport, 9.5);
+    }
+
+    if (_hasAny(norm, ['اكتر حاجه بتكسب', 'اعلي الاصناف ربحا', 'ايه اكتر صنف بيجيب فلوس', 'الاصناف الرابحه', 'اربح 5 اصناف', 'نجم المحل', 'ايه الحاجات اللي بتكسبني', 'اكتر منتج مكسب', 'الاكتر ربحيه', 'بضاعه بتكسب', 'الاصناف اللي بتجيب ربح', 'الاصناف الللي بتجيب'])) {
+      addScore(AssistantNluIntent.topProfitProducts, 9.0);
+    }
+
+    if (_hasAny(norm, ['البضاعه الراكده', 'بضاعه راكده', 'اصناف راكده', 'المخزون الراكد', 'ايه اللي مش بيتباع', 'اصناف نايمه', 'بضاعه واقفه', 'المخزون الميت', 'اصفي الراكد', 'اصناف بقالها كتير', 'اتخلص من الراكد', 'راكد', 'بضاعه مبتبعش', 'مبيتحركش'])) {
+      addScore(AssistantNluIntent.stagnantStock, 9.5);
+    }
+
+    if (_hasAny(norm, ['طلبيه الشراء', 'ايه اللي لازم اطلبه', 'نواقص المحل', 'النواقص', 'قايمه الطلبات', 'جهزلي طلبيه', 'ريستوك', 'اوشكت علي النفاد', 'اللي قرب يخلص', 'ايه اللي خلص', 'اطلب ايه النهارده', 'ايه المطلوب اشتريه', 'اشتري ايه', 'اللي رصيده قليل'])) {
+      addScore(AssistantNluIntent.smartReorderList, 9.5);
+    }
+
+    if (_hasAny(norm, ['اكتر مقاس', 'اكتر لون', 'المقاسات الاكتر طلبا', 'الالوان الاكتر بيعا', 'اشتري مقاس ايه', 'الالوان اللي بتتطلب', 'المقاسات اللي بتخلص', 'لون الجينز اللي بيتباع', 'مقاس l ولا xl', 'المقاس الاكتر مطلوب', 'المقاس الاكثر مطلوب', 'اكتر مقاس مطلوب', 'المقاس المطلوب'])) {
+      addScore(AssistantNluIntent.topVariants, 9.5);
+    }
+
+    if (_hasAny(norm, ['ارخص مورد', 'ارخص سعر للصنف', 'قارن اسعار الموردين', 'مقارنه الموردين', 'مين بيبيع ارخص', 'سعر مين احسن', 'اشتري من مين اوفر', 'مورد ارخص', 'اقل سعر في'])) {
+      addScore(AssistantNluIntent.cheapestSupplier, 12.0);
+    }
+
+    if (_hasAny(norm, ['الباركود ده ايه', 'ابحث عن باركود', 'السكيو ده بتاع ايه', 'دورلي علي', 'دور علي صنف', 'رصيد الصنف', 'الصنف ده عندي ولا', 'تشوفلي صنف', 'سعر الصنف ده كام', 'لاقيلي المنتج', 'مش لاقي الرصيد', 'عندي بنطلون'])) {
+      addScore(AssistantNluIntent.searchByBarcodeOrSku, 9.0);
+    }
+
+    if (_hasAny(norm, ['الفلوس بتروح فين', 'تسريب الارباح', 'تسرب الارباح', 'ايه اللي بياكل الربح', 'خصومات الكاشير', 'هامش الربح بيقل', 'الخصومات كتير', 'ليه الربح قليل', 'حد بيخصم زياده', 'فين الهامش', 'ايه اللي بيياكل'])) {
+      addScore(AssistantNluIntent.marginLeak, 9.0);
+    }
+
+    if (_hasAny(norm, ['نقطه التعادل', 'ابيع بكام عشان اغطي', 'البريك ايفن', 'التعادل', 'لازم ابيع كام عشان مخسرش', 'اقل مبيعات تغطي', 'اقل بيع في اليوم', 'امتي هكسب', 'هغطي مصاريفي', 'هغطي مصاريف', 'حد ادني للمبيعات'])) {
+      addScore(AssistantNluIntent.breakEven, 9.5);
+    }
+
+    if (_hasAny(norm, ['اداء الكاشير', 'مين احسن كاشير', 'الكاشيرات عاملين ايه', 'ترتيب الكاشيرات', 'مبيعات كل كاشير', 'مين اللي بيبيع اكتر', 'الموظفين بيشتغلوا كويس', 'تقييم العمال', 'بتاع الكاشير شاطر', 'مين شاطر من العمال'])) {
+      addScore(AssistantNluIntent.cashierPerformance, 9.0);
+    }
+
+    if (_hasAny(norm, ['الملغيات النهارده', 'مين الغي فاتوره', 'فواتير ملغيه', 'سجل التدقيق', 'مين مسح حاجه', 'رقابه اليوم', 'حد لعب في حاجه', 'المرتجعات والالغاء', 'التعديلات النهارده', 'عمليات مشبوهه', 'مين لاغي فاتوره'])) {
+      addScore(AssistantNluIntent.todayAudits, 9.0);
+    }
+
+    if (_hasAny(norm, ['بوست', 'منشور', 'اعلان للمحل', 'كابشن', 'رساله ترويجيه', 'اعملي بوست', 'اكتب اعلان', 'ريلز', 'اعلان باقه', 'اعمللي اعلان', 'عرض اعلنه', 'عايز عرض اعلنه'])) {
+      addScore(AssistantNluIntent.promoPost, 9.0);
+    }
+
+    if (_hasAny(norm, ['عليا كام للموردين', 'مستحقات الموردين', 'مديونيه الموردين', 'حساب الموردين', 'الفلوس اللي عليا', 'ديوني', 'انا مديون بكام', 'مين لازم اسدده'])) {
+      addScore(AssistantNluIntent.suppliersDues, 9.0);
+    }
+
+    if (_hasAny(norm, ['مقارنه المصاريف', 'ميزانيه المصاريف', 'المصاريف زادت ولا قلت', 'المصروفات زادت ولا قلت', 'تحليل المصروفات', 'المصاريف مرتفعه ليه', 'صرفنا كام الشهر ده', 'مصاريف الشهر ده ازاي', 'المصروفات زادت', 'المصاريف زادت'])) {
+      addScore(AssistantNluIntent.budgetComparison, 10.0);
+    }
+
+    if (_hasAny(norm, ['رجع العملاء الغايبين', 'استرداد العملاء', 'رساله للعملاء القدام', 'رساله وحشتونا', 'كلم الزباين اللي اختفوا', 'العملاء اللي مجوش', 'بطلوا يجوا'])) {
+      addScore(AssistantNluIntent.winBackCustomers, 9.0);
+    }
+
+    if (_hasAny(norm, ['رساله تذكير بالقسط', 'ذكر العميل بالقسط', 'تذكير الاقساط', 'رساله مطالبه بالقسط', 'كلم المتاخرين بشياكه', 'رساله للمتاخر', 'اكتبلي رساله للمتاخر', 'كلم المتاخرين', 'صيغه رساله قسط'])) {
+      addScore(AssistantNluIntent.installmentReminderMessage, 9.0);
+    }
+
+    if (_hasAny(norm, ['خطه العيد', 'استعداد رمضان', 'موسم المدارس', 'خطه الصيف', 'عروض الشتا', 'البلاك فرايدي', 'بضاعه الشتا امتي اجيبها', 'اجهزه لرمضان', 'بضاعه الشتا'])) {
+      addScore(AssistantNluIntent.seasonPlan, 9.5);
+    }
+
+    if (_hasAny(norm, ['التضخم', 'حاسبه التضخم', 'احسب الغلا', 'البضاعه غليت عليا', 'الدولار زاد اعمل ايه', 'الجنيه نزل اسعر ازاي', 'الاسعار غليت', 'غليت عليا', 'البضاعه غليت'])) {
+      addScore(AssistantNluIntent.inflationCalculator, 9.0);
+    }
+
+    if (_hasAny(norm, ['استراتيجيه السيوله', 'قسم الارباح', '50 30 20', 'ادير الكاش', 'الفلوس مش فاضله', 'اصرف منين واحوش منين', 'السيوله قليله'])) {
+      addScore(AssistantNluIntent.liquidityStrategy, 9.0);
+    }
+
+    if (_hasAny(norm, ['ترتيب الفاترينه', 'ديكور المحل', 'العرض في المحل', 'ركن للعروض', 'اجذب الزبون', 'ترتيب البضاعه', 'هندسه ترتيب', 'ارتب المحل'])) {
+      addScore(AssistantNluIntent.visualMerchandising, 9.5);
+    }
+
+    // --- Extra Modules ---
+    if (_hasAny(norm, ['الدرج المفتوح', 'الورديه المفتوحه', 'ملخص الدرج', 'الدرج فيه كام', 'الدرج دلوقتي', 'كام في الخزنه', 'الورديه اتقفلت', 'ملخص الورديه'])) {
+      addScore(AssistantNluIntent.shiftSummary, 9.0);
+    }
+
+    if (_hasAny(norm, ['حجوزات', 'طلبات الحجز', 'الحجز المسبق', 'مين هيستلم النهارده', 'الحجوزات المعلقه', 'مين حاجز'])) {
+      addScore(AssistantNluIntent.preOrderQuery, 9.0);
+    }
+
+    if (_hasAny(norm, ['سجل حجز', 'احجزلي قطعه', 'حجز بعربون', 'سجل عربون', 'عميل حجز', 'حجزت قطعه', 'احجزلي', 'اعمل حجز جديد', 'حجز جديد', 'اعمل حجز'])) {
+      addScore(AssistantNluIntent.preOrderCreate, 10.5);
+    }
+
+    if (_hasAny(norm, ['عهده الطيارين', 'حساب الطيارين', 'طلبات الديليفري', 'الديليفري المعلق', 'الطيار معاه كام', 'الدليفري ماشي ازاي', 'الديليفري ماشي ازاي', 'الدليفري', 'الديليفري', 'فين الاوردر', 'الاوردر وصل', 'الاوردر فين'])) {
+      addScore(AssistantNluIntent.deliveryQuery, 9.0);
+    }
+
+    if (_hasAny(norm, ['تذاكر الصيانه', 'الصيانه الجاهزه', 'اجهزه الصيانه', 'موبايل الصيانه خلص', 'الموبايلات اللي خلصت', 'جاهزه للتسليم', 'الاجهزه اللي جاهزه', 'صيانه الموبايل'])) {
+      addScore(AssistantNluIntent.repairQuery, 9.0);
+    }
+
+    if (_hasAny(norm, ['رصيد المحافظ', 'المحافظ الالكترونيه', 'فودافون كاش', 'انستا باي', 'كاش المحفظه', 'المحفظه فيها كام'])) {
+      addScore(AssistantNluIntent.walletQuery, 9.0);
+    }
+
+    if (_hasAny(norm, ['سجل تحويل', 'حول من محفظه', 'شحن محفظه', 'سحب من المحفظه', 'تحويل محفظه', 'حول رصيد'])) {
+      addScore(AssistantNluIntent.walletTransfer, 9.0);
+    }
+
+    if (_hasAny(norm, ['حصص الشركاء', 'ارباح الشركاء', 'توزيع الارباح علي الشركاء', 'كل شريك له كام', 'نصيب كل شريك', 'نصيب كل شرك', 'حصه الشركاء', 'حصه كل شريك'])) {
+      addScore(AssistantNluIntent.partnerShares, 9.0);
+    }
+
+    if (_hasAny(norm, ['الشريك خد فلوس', 'مسحوبات شريك', 'شريك سحب', 'سحب ابو علي', 'الشريك سحب', 'سحب شريك', 'مسحوبات الشركاء', 'سحب من الارباح'])) {
+      addScore(AssistantNluIntent.partnerWithdraw, 9.0);
     }
 
     if (scores.isEmpty) return null;
 
-    final sorted = scores.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final sorted = scores.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
     final best = sorted.first;
     if (best.value < 6.0) return null;
 
@@ -679,36 +1335,27 @@ class AssistantSlotExtractor {
   }
 
   static String _stripLeadingPrefixes(String text) {
-    var s = text.trim();
-    final prefixRegex = RegExp(
-      r'^(?:عايز|عاوز|محتاج|ممكن|لو\s+سمحت|ياريت|يا\s+ريت|حابب|[أا]ريد|[أا]بغ[يى]|[أا]نا|[إا]حنا|دلوقتي|بسرع[ةه]|ع\s+السريع|[إا]ني|[إا]ن)(?=\s|$)\s*',
-    );
-    while (true) {
-      final next = s.replaceFirst(prefixRegex, '').trim();
-      if (next == s) break;
-      s = next;
-    }
-    return s;
+    return AssistantArabicNormalizer.stripConversationalNoise(text);
   }
 
   static Map<String, dynamic> _extractAddProduct(String text, String norm) {
     var body = _stripLeadingPrefixes(text)
         .replaceFirst(
           RegExp(
-            r'^(?:ضيف|[أا]ضيف|تضيف|نضيف|هضيف|ضف|نزل|انزل|تنزل|سجل|[أا]سجل)?\s*(?:لي\s+)?(?:صنف|منتج|بضاع[ةه]|موديل)\s*(?:جديد[ةه]?)?\s*(?:ع\s+السيستم|على\s+السيستم)?\s*',
+            r'^(?:ضيف|[أا]ضيف|تضيف|نضيف|هضيف|ضف|نزل|انزل|تنزل|سجل|[أا]سجل|دخل|[أا]دخل|اعمل|اعملي|[أا]فتح\s+كارت|[أا]عمل\s+كارت)?\s*(?:لي\s+)?(?:صنف|منتج|بضاع[ةه]|موديل|كارت|قطعة)?\s*(?:جديد[ةه]?)?\s*(?:ع\s+السيستم|على\s+السيستم|للمحل|في\s+المخزن)?\s*',
           ),
           '',
         )
         .trim();
 
     final costMatch = RegExp(
-      r'(?:تكلف[ةه]|بيشتري\s+بـ?|بشتريه\s+بـ?|شراء\s+بـ?)\s*(\d+(?:\.\d+)?)',
+      r'(?:تكلف[ةه]|تكلفته|بيشتري\s+بـ?|بشتريه\s+بـ?|شراء\s+بـ?|شرائه\s+بـ?|شرائه)\s*(\d+(?:\.\d+)?)',
     ).firstMatch(body);
     final sellMatch = RegExp(
-      r'(?:بيتباع\s+بـ?|بيع\s+بـ?|بيع|سعر\s+البيع|سعر)\s*(\d+(?:\.\d+)?)',
+      r'(?:بيتباع(?:\s+بـ?)?|بيع(?:\s+بـ?)?|بيعه(?:\s+بـ?)?|وهبيعه(?:\s+بـ?)?|سعر\s+البيع|سعر|بسعر)\s*(\d+(?:\.\d+)?)',
     ).firstMatch(body);
     final qtyMatch = RegExp(
-      r'(?:وعندي\s+منه|عندي\s+منه|كمي[ةه]|عدد)\s*(\d+)',
+      r'(?:وعندي\s+منه|عندي\s+منه|كمي[ةه]|عدد|والكمية)\s*(\d+)',
     ).firstMatch(body);
 
     final cutIndices = [
@@ -723,7 +1370,7 @@ class AssistantSlotExtractor {
     }
     prodName = prodName
         .replaceFirst(RegExp(r'^(?:جديد[ةه]?|اسمه)\s*'), '')
-        .replaceFirst(RegExp(r'\s*(?:جديد[ةه]?|ع\s+السيستم)$'), '')
+        .replaceFirst(RegExp(r'\s*(?:جديد[ةه]?|ع\s+السيستم|في\s+المخزن|للمحل)$'), '')
         .trim();
 
     return {
@@ -740,10 +1387,10 @@ class AssistantSlotExtractor {
     String norm,
     AssistantContextMemory context,
   ) {
-    var body = text
+    var body = _stripLeadingPrefixes(text)
         .replaceFirst(
           RegExp(
-            r'^(?:عايز|عاوز|محتاج|[أا]نا)?\s*(?:اشتريت|[أا]شتري|جبت|شراء|سجل\s+مشتريات)\s*(?:لي\s+)?',
+            r'^(?:اشتريت|[أا]شتري|جبت|جيبت|استلمت|استلمنا|اشترينا|شراء|سجل\s+مشتريات|سجل\s+فاتورة\s+شراء)\s*(?:لي\s+)?',
           ),
           '',
         )
@@ -752,7 +1399,6 @@ class AssistantSlotExtractor {
     final isCredit =
         norm.contains('اجل') || norm.contains('شكك') || norm.contains('علي الحساب');
 
-    // Leading quantity like "10 بناطيل جينز ..."
     int? leadingQty;
     final leadingQtyMatch = RegExp(r'^(\d+)\s+(?!جنيه|ج\.?م)').firstMatch(body);
     if (leadingQtyMatch != null) {
@@ -761,10 +1407,10 @@ class AssistantSlotExtractor {
     }
 
     final supMatch = RegExp(
-      r'من\s+(?:المورد\s+|مورد\s+)?([^\d]+?)(?=\s+(?:الواحد\s+بـ?|بسعر|سعر|عدد|كمي[ةه]|نقدي|كاش|[آا]جل|شكك)|$)',
+      r'من\s+(?:عند\s+)?(?:المورد\s+|مورد\s+)?([^\d]+?)(?=\s+(?:الواحد\s+بـ?|بسعر|سعر|بـ?\s*\d|عدد|كمي[ةه]|نقدي|كاش|[آا]جل|شكك)|$)',
     ).firstMatch(body);
     final costMatch = RegExp(
-      r'(?:الواحد\s+بـ?|بسعر|سعر|بـ)\s*(\d+(?:\.\d+)?)',
+      r'(?:الواحد\s+بـ?|بسعر|سعر|بـ?)\s*(\d+(?:\.\d+)?)',
     ).firstMatch(body);
     final qtyMatch = RegExp(r'(?:عدد|كمي[ةه])\s*(\d+)').firstMatch(body);
 
@@ -778,12 +1424,26 @@ class AssistantSlotExtractor {
       cutIndices.sort();
       prodName = body.substring(0, cutIndices.first).trim();
     }
-    if (prodName == 'بضاعة' || prodName == 'بضاعه' || prodName == 'صنف' || prodName == 'واحد') {
-      prodName = '';
+    if (prodName == 'بضاعة' ||
+        prodName == 'بضاعه' ||
+        prodName == 'صنف' ||
+        prodName == 'واحد' ||
+        prodName == 'وكمان' ||
+        prodName == 'وكمان 1' ||
+        prodName == 'كمان 1') {
+      if (prodName == 'وكمان' || prodName == 'وكمان 1' || prodName == 'كمان 1') {
+        leadingQty ??= 1;
+      }
+      prodName = context.lastProductName ?? '';
+    } else if (prodName.isEmpty && context.lastProductName != null) {
+      prodName = context.lastProductName!;
     }
 
     final qty = qtyMatch != null ? int.tryParse(qtyMatch.group(1)!) : leadingQty;
-    final supName = supMatch?.group(1)?.trim();
+    var supName = supMatch?.group(1)?.trim();
+    if (supName == 'نفس المورد' || supName == 'نفس التاجر' || supName == 'نفس الحاج') {
+      supName = context.lastSupplierName;
+    }
 
     return {
       if (prodName.isNotEmpty) 'productName': prodName,
@@ -795,10 +1455,10 @@ class AssistantSlotExtractor {
   }
 
   static Map<String, dynamic> _extractExpense(String text) {
-    var body = text
+    var body = _stripLeadingPrefixes(text)
         .replaceFirst(
           RegExp(
-            r'^(?:عايز|عاوز|محتاج|[أا]نا)?\s*(?:سجل\s+مصروف|[أا]سجل\s+مصروف|[أا]ضف\s+مصروف|مصروف\s+جديد|دفعت|طلع\s+من\s+الدرج|صرفت)\s*',
+            r'^(?:سجل\s+مصروف|[أا]سجل\s+مصروف|[أا]ضف\s+مصروف|مصروف\s+جديد|دفعت|طلع\s+من\s+الدرج|صرفت|صرفنا|دفعنا|اتصرف)\s*',
           ),
           '',
         )
@@ -807,17 +1467,19 @@ class AssistantSlotExtractor {
         .replaceAll(RegExp(r'\s*(?:النهارده|النهاردة|اليوم|امبارح|جنيه|ج\.?م)\s*'), ' ')
         .trim();
 
-    // Pattern A: "كهربا المحل 600"
     final trailingAmt = RegExp(r'(\d+(?:\.\d+)?)$').firstMatch(body);
     if (trailingAmt != null) {
-      final cat = body.substring(0, trailingAmt.start).trim();
+      var cat = body
+          .substring(0, trailingAmt.start)
+          .replaceFirst(RegExp(r'^(?:بـ?|على|لـ?)\s*'), '')
+          .trim();
+      if (cat == 'ب' || cat == 'على' || cat == 'ل') cat = '';
       return {
         if (cat.isNotEmpty) 'category': cat,
         'amountEgp': double.tryParse(trailingAmt.group(1)!),
       }..removeWhere((_, v) => v == null);
     }
 
-    // Pattern B: "1500 ايجار"
     final leadingAmt = RegExp(r'^(\d+(?:\.\d+)?)\s+(.+)$').firstMatch(body);
     if (leadingAmt != null) {
       return {
@@ -856,6 +1518,13 @@ class AssistantSlotExtractor {
     if (supName != null && supName.startsWith('لحاج ')) {
       supName = 'الحاج ${supName.substring(5)}';
     }
+    if (supName == 'تاجر' ||
+        supName == 'التاجر' ||
+        supName == 'لتاجر' ||
+        supName == 'مورد' ||
+        supName == 'المورد') {
+      supName = '';
+    }
     return {
       if (supName != null && supName.isNotEmpty) 'supplierName': supName,
       if (amount != null && amount > 0) 'amountEgp': amount,
@@ -863,7 +1532,6 @@ class AssistantSlotExtractor {
   }
 
   static Map<String, dynamic> _extractCollectInstallment(String text) {
-    // e.g. "محمود العميل جه دفع 500 من قسطه" OR "العميل سارة علي دفع قسط 250"
     final m1 = RegExp(
       r'^(?:العميل\s+|الزبون\s+)?(.+?)\s+(?:العميل\s+|الزبون\s+)?(?:جه\s+)?(?:دفع|دفعت)\s+(?:قسط\s+)?(\d+(?:\.\d+)?)\s*(?:من\s+قسطه|قسط)?',
     ).firstMatch(text);
@@ -894,10 +1562,10 @@ class AssistantSlotExtractor {
   }
 
   static Map<String, dynamic> _extractAddCustomer(String text) {
-    var body = text
+    var body = _stripLeadingPrefixes(text)
         .replaceFirst(
           RegExp(
-            r'^(?:عايز|عاوز)?\s*(?:ضيف|[أا]ضيف|[أا]ضف|[إا]ضاف[ةه])?\s*(?:عميل|زبون)\s*(?:جديد)?\s*',
+            r'^(?:ضيف|[أا]ضيف|[أا]ضف|[إا]ضاف[ةه]|سجل|اكتب|دخل)\s*(?:كارت\s+|حساب\s+)?(?:عميل|زبون|عميلة|زبونة)\s*(?:جديد)?\s*',
           ),
           '',
         )
@@ -919,9 +1587,10 @@ class AssistantSlotExtractor {
     AssistantContextMemory context,
   ) {
     final body = _stripLeadingPrefixes(text)
+        .replaceAll(RegExp(r'\s+(?:دلوقتي|فورا|شكرا)$'), '')
         .replaceFirst(
           RegExp(
-            r'^(?:خلي|[أا]خلي|تخلي|عدل|[أا]عدل|تعدل|غير|[أا]غير|تغير|عدّل)\s+(?:لي\s+)?سعر\s+',
+            r'^(?:(?:خلي|[أا]خلي|تخلي|عدل|[أا]عدل|تعدل|غير|[أا]غير|تغير|عدّل|بدل|ضبط)\s+(?:لي\s+)?)?سعر\s+',
           ),
           '',
         )
@@ -934,7 +1603,7 @@ class AssistantSlotExtractor {
       prodName = body
           .substring(0, numMatch.start)
           .trim()
-          .replaceFirst(RegExp(r'\s+(?:لـ?|إلى|الى|بـ?)$'), '')
+          .replaceFirst(RegExp(r'\s+(?:لـ?|إلى|الى|بـ?|خلي[ه]?|بقى|بقي|هو|وصل)$'), '')
           .trim();
     } else if (body.isNotEmpty) {
       prodName = body;
@@ -966,7 +1635,7 @@ class AssistantSlotExtractor {
       };
     }
 
-    final body = text
+    final body = _stripLeadingPrefixes(text)
         .replaceFirst(
           RegExp(r'^(?:زود|نقص)\s+(?:لي\s+)?(?:رصيد\s+|كمي[ةه]\s+)?'),
           '',
@@ -1008,4 +1677,3 @@ class AssistantSlotExtractor {
     };
   }
 }
-
