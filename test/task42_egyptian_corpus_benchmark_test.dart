@@ -213,6 +213,23 @@ void main() {
       expect(fgtRes.first.id, 'chitchat_forgetName');
       expect(freshService.contextMemory.userName, isNull);
     });
+
+    test('handles undoLast, fuDetails, fuTone, and fuCopy follow-up intents', () async {
+      final undoNone = await service.ask('اتراجع عن اخر عمليه');
+      expect(undoNone.first.id, 'undo_none');
+
+      await service.ask('كسبت كام النهارده');
+      final details = await service.ask('تفاصيل اكتر');
+      expect(details.first.id, startsWith('followup_details_'));
+
+      final tone = await service.ask('خلي الرد رسمي');
+      expect(tone.first.id, startsWith('followup_tone_'));
+      expect(tone.first.summary, contains('تحية طيبة'));
+
+      final copy = await service.ask('انسخ الرد');
+      expect(copy.first.id, startsWith('followup_copy_'));
+      expect(copy.first.details, isNotEmpty);
+    });
   });
 }
 

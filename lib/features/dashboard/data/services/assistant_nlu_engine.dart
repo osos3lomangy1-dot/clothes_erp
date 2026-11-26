@@ -320,6 +320,24 @@ class AssistantArabicNormalizer {
     'محفظه',
     'كهربا',
     'شريت',
+    'وميه',
+    'وميتين',
+    'وتلاتميه',
+    'وتلتميه',
+    'واربعميه',
+    'وخمسميه',
+    'وستميه',
+    'وسبعميه',
+    'وتمنميه',
+    'وتسعميه',
+    'وعشرين',
+    'وتلاتين',
+    'واربعين',
+    'وخمسين',
+    'وستين',
+    'وسبعين',
+    'وتمانين',
+    'وتسعين',
   };
 
   /// Corrects 1-character typos for core ERP & commerce tokens (length >= 4)
@@ -429,6 +447,23 @@ class AssistantArabicNormalizer {
       (m) => '${m.group(0)!.startsWith(' ') ? ' ' : ''}500',
     );
 
+    s = s.replaceAllMapped(
+      RegExp(r'(?:^|\s)نص\s+مليون(?=\s|$)'),
+      (m) => '${m.group(0)!.startsWith(' ') ? ' ' : ''}500000',
+    );
+    s = s.replaceAllMapped(
+      RegExp(r'(?:^|\s)مليون\s+ونص(?=\s|$)'),
+      (m) => '${m.group(0)!.startsWith(' ') ? ' ' : ''}1500000',
+    );
+    s = s.replaceAllMapped(
+      RegExp(r'(?:^|\s)مليون(?=\s|$)'),
+      (m) => '${m.group(0)!.startsWith(' ') ? ' ' : ''}1000000',
+    );
+    s = s.replaceAllMapped(
+      RegExp(r'(?:^|\s)ميت\s+(جني[هة]|قطعه|حبه|علبه)(?=\s|$)'),
+      (m) => '${m.group(0)!.startsWith(' ') ? ' ' : ''}100 ${m.group(1)}',
+    );
+
     // 2. Thousands phrases
     s = s.replaceAll(RegExp(r'(?:^|\s)(?:تلات|ثلاث)\s*(?:تلاف|[آا]لاف|الاف)(?=\s|$)'), ' 3000');
     s = s.replaceAll(RegExp(r'(?:^|\s)(?:اربع|أربع)\s*(?:تلاف|[آا]لاف|الاف)(?=\s|$)'), ' 4000');
@@ -478,13 +513,22 @@ class AssistantArabicNormalizer {
 
     const hundreds = <String, int>{
       'اربعمية': 400,
+      'اربعماية': 400,
       'ربعمية': 400,
       'خمسمية': 500,
+      'خمسماية': 500,
+      'تلاتمية': 300,
+      'تلاتماية': 300,
       'تلتمية': 300,
+      'تلتماية': 300,
       'تسعمية': 900,
+      'تسعماية': 900,
       'سبعمية': 700,
+      'سبعماية': 700,
       'تمنمية': 800,
+      'تمنماية': 800,
       'ستمية': 600,
+      'ستماية': 600,
       'ميتين': 200,
       'مية': 100,
     };
@@ -546,14 +590,20 @@ class AssistantArabicNormalizer {
     // 6. Compound hundreds + (1..99 digits / tens / units)
     for (final h in hundreds.entries) {
       s = s.replaceAllMapped(
-        RegExp('${h.key}\\s+و(\\d{1,2})(?=\\s|\$|%)'),
-        (m) => ' ${h.value + int.parse(m.group(1)!)} ',
+        RegExp('(?<=^|\\s)(و)?${h.key}\\s+و(\\d{1,2})(?=\\s|\$|%)'),
+        (m) => ' ${m.group(1) != null ? 'و ' : ''}${h.value + int.parse(m.group(2)!)} ',
       );
       for (final t in tens.entries) {
-        s = s.replaceAll('${h.key} و${t.key}', ' ${h.value + t.value} ');
+        s = s.replaceAllMapped(
+          RegExp('(?<=^|\\s)(و)?${h.key}\\s+و${t.key}(?=\\s|\$|%)'),
+          (m) => ' ${m.group(1) != null ? 'و ' : ''}${h.value + t.value} ',
+        );
       }
       for (final u in units.entries) {
-        s = s.replaceAll('${h.key} و${u.key}', ' ${h.value + u.value} ');
+        s = s.replaceAllMapped(
+          RegExp('(?<=^|\\s)(و)?${h.key}\\s+و${u.key}(?=\\s|\$|%)'),
+          (m) => ' ${m.group(1) != null ? 'و ' : ''}${h.value + u.value} ',
+        );
       }
     }
 
@@ -934,6 +984,20 @@ class AssistantIntentScorer {
         score: 15.0,
         slots: {'previousIntent': context.lastIntent},
       );
+    }
+
+    final normWordCount = norm.split(RegExp(r'\s+')).length;
+    if (normWordCount <= 5 &&
+        _hasAny(norm, ['تفاصيل اكتر', 'تفاصيل اكثر', 'اشرح اكتر', 'وضح اكتر', 'زود التفاصيل', 'هات التفاصيل'])) {
+      return const ScoredIntentResult(intent: AssistantNluIntent.fuDetails, score: 15.0);
+    }
+    if (normWordCount <= 5 &&
+        _hasAny(norm, ['خلي الرد رسمي', 'رد رسمي', 'صيغه رسميه', 'اسلوب رسمي', 'اختصر الرد'])) {
+      return const ScoredIntentResult(intent: AssistantNluIntent.fuTone, score: 15.0);
+    }
+    if (normWordCount <= 5 &&
+        _hasAny(norm, ['انسخ الرد', 'نسخ الرد', 'عايز انسخ', 'جهزها للنسخ', 'نسخه للنسخ'])) {
+      return const ScoredIntentResult(intent: AssistantNluIntent.fuCopy, score: 15.0);
     }
 
     final isNewPurchaseWithSameSupplier = norm.contains('نفس المورد') &&

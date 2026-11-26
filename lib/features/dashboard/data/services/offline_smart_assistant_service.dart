@@ -139,8 +139,14 @@ class OfflineSmartAssistantService {
   /// Last undoable command executed via assistant.
   static const _userNameMetaKey = 'assistant_user_name';
   bool _userNameLoaded = false;
+  List<AssistantInsight> _lastInsights = const [];
   AssistantUndoToken? lastUndoToken;
   OfflineSmartAssistantService(this._db);
+
+  Future<String?> getPersistedUserName() async {
+    await _loadPersistedUserName();
+    return contextMemory.userName;
+  }
 
   Future<void> _loadPersistedUserName() async {
     if (_userNameLoaded) return;
@@ -532,6 +538,73 @@ class OfflineSmartAssistantService {
               ),
             );
             break;
+          case AssistantNluIntent.undoLast:
+            final token = lastUndoToken;
+            results.add(
+              token == null
+                  ? const AssistantInsight(
+                      id: 'undo_none',
+                      title: 'لا توجد عملية للتراجع عنها',
+                      summary:
+                          'لم يتم تنفيذ أي عملية قابلة للتراجع في الجلسة الحالية.',
+                    )
+                  : AssistantInsight(
+                      id: 'undo_available',
+                      title: 'التراجع عن آخر عملية',
+                      summary: 'آخر عملية منفذة: ${token.label}.',
+                      details: const [
+                        'يمكن للمدير (Admin) التراجع عنها من زر "تراجع" في البطاقة السابقة.',
+                      ],
+                    ),
+            );
+            break;
+          case AssistantNluIntent.fuDetails:
+            if (_lastInsights.isNotEmpty) {
+              final prev = _lastInsights.first;
+              results.add(
+                AssistantInsight(
+                  id: 'followup_details_${prev.id}',
+                  title: 'تفاصيل: ${prev.title}',
+                  summary: prev.summary,
+                  details: prev.details.isNotEmpty
+                      ? prev.details
+                      : const ['لا توجد تفاصيل إضافية متاحة لهذا التقرير.'],
+                ),
+              );
+            }
+            break;
+          case AssistantNluIntent.fuTone:
+            if (_lastInsights.isNotEmpty) {
+              final prev = _lastInsights.first;
+              results.add(
+                AssistantInsight(
+                  id: 'followup_tone_${prev.id}',
+                  title: 'صياغة رسمية جاهزة',
+                  summary: 'تحية طيبة، ${prev.summary}',
+                  details: [
+                    ...prev.details,
+                    'مع خالص التحية.',
+                  ],
+                ),
+              );
+            }
+            break;
+          case AssistantNluIntent.fuCopy:
+            if (_lastInsights.isNotEmpty) {
+              final prev = _lastInsights.first;
+              results.add(
+                AssistantInsight(
+                  id: 'followup_copy_${prev.id}',
+                  title: 'نسخة جاهزة للنسخ والمشاركة',
+                  summary: prev.summary,
+                  details: [
+                    prev.title,
+                    ...prev.details,
+                  ],
+                ),
+              );
+            }
+            break;
           case AssistantNluIntent.chitchat:
           case AssistantNluIntent.help:
             final subIntent = nluMatch.slots['subIntent'] as String?;
@@ -555,6 +628,12 @@ class OfflineSmartAssistantService {
       if (results.isNotEmpty) {
         if (q.contains('الفرق')) {
           results.insertAll(0, await getMarketingClarificationInsights(query));
+        }
+        final isMetaFollowup = nluMatch.intent == AssistantNluIntent.fuDetails ||
+            nluMatch.intent == AssistantNluIntent.fuTone ||
+            nluMatch.intent == AssistantNluIntent.fuCopy;
+        if (!isMetaFollowup) {
+          _lastInsights = List<AssistantInsight>.unmodifiable(results);
         }
         return results;
       }

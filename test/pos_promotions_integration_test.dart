@@ -198,6 +198,7 @@ void main() {
       int valueBp = 1000, // 10%
       int minQuantity = 1,
     }) {
+      final promoNow = DateTime.now();
       return Promotion(
         id: id,
         branchId: 'branch-1',
@@ -206,8 +207,8 @@ void main() {
         scope: 'all',
         valueBp: valueBp,
         minQuantity: minQuantity,
-        startsAt: baseTime.subtract(const Duration(days: 1)),
-        endsAt: baseTime.add(const Duration(days: 10)),
+        startsAt: promoNow.subtract(const Duration(days: 1)),
+        endsAt: promoNow.add(const Duration(days: 10)),
         isActive: true,
         priority: 1,
         createdBy: 'admin',

@@ -179,13 +179,32 @@ class _OfflineSmartAssistantDialogState
     } catch (_) {}
 
     try {
-      final briefing = await _resolveService().getDailyBriefing();
+      final service = _resolveService();
+      final userName = await service.getPersistedUserName();
+      final briefing = await service.getDailyBriefing();
       if (!mounted) return;
+      final header = userName != null
+          ? 'أهلاً بك يا $userName — الملخص التنفيذي اليومي (Daily Smart Briefing)'
+          : 'الملخص التنفيذي اليومي التلقائي (Daily Smart Briefing)';
       setState(() {
         _history.add(
           _AssistantChatEntry(
-            headerLabel: 'الملخص التنفيذي اليومي التلقائي (Daily Smart Briefing)',
-            insights: briefing,
+            headerLabel: header,
+            insights: [
+              if (userName != null)
+                AssistantInsight(
+                  id: 'welcome_user',
+                  title: 'أهلاً بك يا $userName',
+                  summary:
+                      'جاهز لمساعدتك في حسابات المحل، المبيعات، والمخزون أوفلاين 100%.',
+                  followUpPrompts: const [
+                    'كسبت كام النهارده؟',
+                    'تقرير قفلة اليوم',
+                    'بتعرف تعمل ايه؟',
+                  ],
+                ),
+              ...briefing,
+            ],
           ),
         );
         _isLoading = false;
