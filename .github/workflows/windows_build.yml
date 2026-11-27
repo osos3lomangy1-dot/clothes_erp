@@ -156,7 +156,11 @@ jobs:
           }
 
       - name: Build Windows Release
-        run: flutter build windows --release --dart-define=GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
+        run: >
+          flutter build windows --release
+          --dart-define=GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
+          --dart-define=GDRIVE_CLIENT_ID=${{ secrets.GDRIVE_CLIENT_ID }}
+          --dart-define=GDRIVE_CLIENT_SECRET=${{ secrets.GDRIVE_CLIENT_SECRET }}
 
       - name: Get App Version
         id: version
@@ -232,7 +236,12 @@ jobs:
       # ─────────────────────────────────────────────────────────────────────────
       - name: Build Windows Safe Mode Release
         if: ${{ github.event.inputs.build_safe_mode != 'false' }}
-        run: flutter build windows --release --dart-define=ENABLE_FIREBASE=false --dart-define=GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
+        run: >
+          flutter build windows --release
+          --dart-define=ENABLE_FIREBASE=false
+          --dart-define=GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
+          --dart-define=GDRIVE_CLIENT_ID=${{ secrets.GDRIVE_CLIENT_ID }}
+          --dart-define=GDRIVE_CLIENT_SECRET=${{ secrets.GDRIVE_CLIENT_SECRET }}
 
       - name: Package Safe Mode Release (ZIP)
         if: ${{ github.event.inputs.build_safe_mode != 'false' }}
@@ -268,7 +277,11 @@ jobs:
           name: "Release v${{ env.APP_VERSION }}"
           body: |
             ## تحديث نظام بيعة ERP v${{ env.APP_VERSION }}
-            - تم بناء النسخة ورفع ملفات التثبيت بنجاح.
+            - **مركز التقارير والتحليل:** تنظيم التقارير في 3 أقسام (الملخص المالي، كشف اليوم والتفاصيل، المخزون والأصناف) مع شريط تاريخ موحد.
+            - **الفواتير والمرتجعات:** دمج الشاشتين مع زر استرجاع سريع مباشر على كل فاتورة ودعم البحث بالمبلغ.
+            - **الأقساط والعروض:** إضافة تبويب إحصائيات والتحصيل داخل الأقساط وتبويب أداء العروض داخل العروض.
+            - **ملفات الإكسيل (.xlsx):** تنسيق احترافي موحد + تصدير تقارير الفترة الشامل (9 شيتات) + شيتات جديدة للتصدير الشامل (19 شيت).
+            - **المساعد الذكي والنسخ السحابي:** توجيه تنبيهات المخزون للمخزن، زر تجاهل التنبيهات، وتفعيل النسخ الاحتياطي على Google Drive.
           files: |
             Bay3ah_erp_windows_v${{ env.APP_VERSION }}.zip
             build/installer/*.exe
