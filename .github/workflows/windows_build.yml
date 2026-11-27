@@ -289,3 +289,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
         continue-on-error: true
+
+      - name: Upload Latest Release to Google Drive (Replace Old)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        shell: pwsh
+        env:
+          GDRIVE_CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
+          GDRIVE_CLIENT_SECRET: ${{ secrets.GDRIVE_CLIENT_SECRET }}
+          GDRIVE_REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
+          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+        run: python tool/upload_release_to_gdrive.py "Bay3ah_erp_windows_v${{ env.APP_VERSION }}.zip" "build/installer/*.exe"
+        continue-on-error: true
