@@ -63,7 +63,7 @@ class AppUpdateService {
   static const String _githubToken = String.fromEnvironment('GITHUB_TOKEN');
   static const String _githubRepo = String.fromEnvironment(
     'GITHUB_REPO',
-    defaultValue: 'osos3lomangy1-dot/clothes_erp',
+    defaultValue: 'osos3lomangy1-dot/osos3lomangy1-dot.github.io',
   );
 
   static const String configCollection = 'app_config';

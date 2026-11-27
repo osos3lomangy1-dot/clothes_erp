@@ -271,6 +271,7 @@ jobs:
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
+          repository: osos3lomangy1-dot/osos3lomangy1-dot.github.io
           tag_name: v${{ env.APP_VERSION }}
           name: "Release v${{ env.APP_VERSION }}"
           body: |
@@ -286,5 +287,5 @@ jobs:
           draft: false
           prerelease: false
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
         continue-on-error: true
