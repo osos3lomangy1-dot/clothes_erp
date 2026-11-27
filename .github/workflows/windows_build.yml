@@ -158,7 +158,6 @@ jobs:
       - name: Build Windows Release
         run: >
           flutter build windows --release
-          --dart-define=GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
           --dart-define=GDRIVE_CLIENT_ID=${{ secrets.GDRIVE_CLIENT_ID }}
           --dart-define=GDRIVE_CLIENT_SECRET=${{ secrets.GDRIVE_CLIENT_SECRET }}
 
@@ -239,7 +238,6 @@ jobs:
         run: >
           flutter build windows --release
           --dart-define=ENABLE_FIREBASE=false
-          --dart-define=GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
           --dart-define=GDRIVE_CLIENT_ID=${{ secrets.GDRIVE_CLIENT_ID }}
           --dart-define=GDRIVE_CLIENT_SECRET=${{ secrets.GDRIVE_CLIENT_SECRET }}
 

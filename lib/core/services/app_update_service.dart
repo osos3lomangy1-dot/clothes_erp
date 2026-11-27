@@ -139,9 +139,19 @@ class AppUpdateService {
 
     final httpClient = client ?? http.Client();
     try {
-      final response = await httpClient.get(url, headers: headers).timeout(
+      var response = await httpClient.get(url, headers: headers).timeout(
         const Duration(seconds: 10),
       );
+
+      // If a baked-in token expired (e.g. CI/CD ephemeral token -> 401),
+      // retry once without Authorization header for public releases.
+      if (response.statusCode == 401 && headers.containsKey('Authorization')) {
+        final publicHeaders = Map<String, String>.from(headers)
+          ..remove('Authorization');
+        response = await httpClient
+            .get(url, headers: publicHeaders)
+            .timeout(const Duration(seconds: 10));
+      }
 
       if (response.statusCode != 200) {
         debugPrint('AppUpdateService: GitHub returned status ${response.statusCode}');
