@@ -6,7 +6,7 @@ import '../../../../core/di/injection.dart';
 import '../../../../core/services/excel_service.dart';
 import '../../../../core/utils/keyboard_focus_helper.dart';
 import '../../../../core/utils/money.dart';
-import '../../../../core/widgets/custom_date_range_dialog.dart';
+import '../../../../core/widgets/standard_date_filter_chips.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../../auth/services/cashier_permissions_service.dart';
@@ -23,6 +23,7 @@ class ExpensesScreen extends StatefulWidget {
 
 class _ExpensesScreenState extends State<ExpensesScreen> {
   DateTimeRange? _dateRange;
+  String _activeDateFilter = 'month';
   final TextEditingController _searchCtrl = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   String _searchQuery = '';
@@ -35,6 +36,49 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       start: DateTime(now.year, now.month, 1),
       end: DateTime(now.year, now.month, now.day, 23, 59, 59),
     );
+  }
+
+  void _applyDateFilter(
+    BuildContext context,
+    String filter, {
+    DateTimeRange? custom,
+    String? category,
+  }) {
+    final now = DateTime.now();
+    DateTimeRange? range;
+    if (filter == 'today') {
+      range = DateTimeRange(
+        start: DateTime(now.year, now.month, now.day),
+        end: DateTime(now.year, now.month, now.day, 23, 59, 59),
+      );
+    } else if (filter == 'week') {
+      final start = DateTime(now.year, now.month, now.day)
+          .subtract(const Duration(days: 6));
+      range = DateTimeRange(
+        start: start,
+        end: DateTime(now.year, now.month, now.day, 23, 59, 59),
+      );
+    } else if (filter == 'month') {
+      range = DateTimeRange(
+        start: DateTime(now.year, now.month, 1),
+        end: DateTime(now.year, now.month, now.day, 23, 59, 59),
+      );
+    } else if (filter == 'custom' && custom != null) {
+      range = DateTimeRange(
+        start: custom.start,
+        end: DateTime(custom.end.year, custom.end.month, custom.end.day, 23, 59, 59),
+      );
+    }
+
+    setState(() {
+      _activeDateFilter = filter;
+      _dateRange = range;
+    });
+    context.read<ExpensesCubit>().loadExpenses(
+          from: range?.start,
+          to: range?.end,
+          category: category,
+        );
   }
 
   @override
@@ -425,93 +469,80 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 // Date & Filter bar
                 Container(
                   color: Colors.white,
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
                   child: Column(
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: AppColors.surfaceContainer,
-                                borderRadius: BorderRadius.circular(12),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final searchField = TextField(
+                            key: const Key('expenses_search_field'),
+                            controller: _searchCtrl,
+                            focusNode: _searchFocusNode,
+                            onChanged: (val) =>
+                                setState(() => _searchQuery = val),
+                            decoration: InputDecoration(
+                              hintText:
+                                  'ابحث في المصروفات بالبند أو البيان أو المبلغ... (F2)',
+                              prefixIcon: Icon(
+                                Icons.search_rounded,
+                                color: AppColors.primary,
+                                size: 20,
                               ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.date_range_rounded, color: AppColors.primary, size: 20),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    _dateRange != null
-                                        ? 'الفترة: ${_dateRange!.start.toLocal().toString().split(' ')[0]} إلى ${_dateRange!.end.toLocal().toString().split(' ')[0]}'
-                                        : 'جميع الفترات',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                  ),
-                                ],
+                              suffixIcon: _searchQuery.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.clear, size: 18),
+                                      onPressed: () {
+                                        _searchCtrl.clear();
+                                        setState(() => _searchQuery = '');
+                                      },
+                                    )
+                                  : null,
+                              isDense: true,
+                              filled: true,
+                              fillColor: AppColors.surfaceContainer,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(
+                                  color: AppColors.outlineVariant,
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.primary,
-                              side: BorderSide(color: AppColors.primary),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          );
+
+                          final dateChips = StandardDateFilterChips(
+                            activeFilter: _activeDateFilter,
+                            customRange: _dateRange,
+                            onFilterChanged: (v) => _applyDateFilter(
+                              context,
+                              v,
+                              category: state.selectedCategory,
                             ),
-                            onPressed: () async {
-                              final picked = await showCustomDateRangeDialog(
-                                context: context,
-                                firstDate: DateTime(2020),
-                                lastDate: DateTime.now(),
-                                initialDateRange: _dateRange,
-                              );
-                              if (picked != null) {
-                                setState(() {
-                                  _dateRange = DateTimeRange(
-                                    start: picked.start,
-                                    end: DateTime(picked.end.year, picked.end.month, picked.end.day, 23, 59, 59),
-                                  );
-                                });
-                                if (context.mounted) {
-                                  context.read<ExpensesCubit>().loadExpenses(
-                                        from: _dateRange!.start,
-                                        to: _dateRange!.end,
-                                        category: state.selectedCategory,
-                                      );
-                                }
-                              }
-                            },
-                            icon: const Icon(Icons.calendar_month_outlined, size: 18),
-                            label: const Text('تغيير الفترة'),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        key: const Key('expenses_search_field'),
-                        controller: _searchCtrl,
-                        focusNode: _searchFocusNode,
-                        onChanged: (val) => setState(() => _searchQuery = val),
-                        decoration: InputDecoration(
-                          hintText: 'ابحث في المصروفات بالبند أو البيان أو المبلغ... (F2)',
-                          prefixIcon: Icon(Icons.search_rounded, color: AppColors.primary, size: 20),
-                          suffixIcon: _searchQuery.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear, size: 18),
-                                  onPressed: () {
-                                    _searchCtrl.clear();
-                                    setState(() => _searchQuery = '');
-                                  },
-                                )
-                              : null,
-                          isDense: true,
-                          filled: true,
-                          fillColor: AppColors.surfaceContainer,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide(color: AppColors.outlineVariant),
-                          ),
-                        ),
+                            onCustomRangePicked: (picked) => _applyDateFilter(
+                              context,
+                              'custom',
+                              custom: picked,
+                              category: state.selectedCategory,
+                            ),
+                          );
+
+                          if (constraints.maxWidth >= 880) {
+                            return Row(
+                              children: [
+                                Expanded(child: searchField),
+                                const SizedBox(width: 12),
+                                dateChips,
+                              ],
+                            );
+                          }
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              searchField,
+                              const SizedBox(height: 10),
+                              dateChips,
+                            ],
+                          );
+                        },
                       ),
                       const SizedBox(height: 10),
                       // Category Chips

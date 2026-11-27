@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/money.dart';
+import '../../../../core/widgets/standard_date_filter_chips.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../domain/entities/shift_entity.dart';
@@ -26,8 +27,16 @@ class ShiftScreen extends StatelessWidget {
   }
 }
 
-class _ShiftView extends StatelessWidget {
+class _ShiftView extends StatefulWidget {
   const _ShiftView();
+
+  @override
+  State<_ShiftView> createState() => _ShiftViewState();
+}
+
+class _ShiftViewState extends State<_ShiftView> {
+  String _activeDateFilter = 'all';
+  DateTimeRange? _customRange;
 
   void _openShiftDialog(BuildContext context) {
     final authState = context.read<AuthCubit>().state;
@@ -248,23 +257,51 @@ class _ShiftView extends StatelessWidget {
                 const SizedBox(height: 28),
 
                 // History Section
-                Row(
-                  children: [
-                    Icon(Icons.history_rounded, color: AppColors.primary, size: 22),
-                    const SizedBox(width: 8),
-                    Text(
-                      isAdmin ? 'سجل الورديات السابقة' : 'سجل وردياتي السابقة',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.onSurface),
-                    ),
-                    const Spacer(),
-                    Text(
-                      'آخر ${displayedHistory.length} وردية',
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                    ),
-                  ],
+                Builder(
+                  builder: (context) {
+                    final filteredHistory = displayedHistory
+                        .where(
+                          (s) => StandardDateFilterChips.matchesDate(
+                            s.openedAt,
+                            _activeDateFilter,
+                            _customRange,
+                          ),
+                        )
+                        .toList();
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.history_rounded, color: AppColors.primary, size: 22),
+                            const SizedBox(width: 8),
+                            Text(
+                              isAdmin ? 'سجل الورديات السابقة' : 'سجل وردياتي السابقة',
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.onSurface),
+                            ),
+                            const Spacer(),
+                            Text(
+                              'آخر ${filteredHistory.length} وردية',
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        StandardDateFilterChips(
+                          activeFilter: _activeDateFilter,
+                          customRange: _customRange,
+                          onFilterChanged: (v) => setState(() => _activeDateFilter = v),
+                          onCustomRangePicked: (picked) => setState(() {
+                            _customRange = picked;
+                            _activeDateFilter = 'custom';
+                          }),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildHistoryTable(filteredHistory, dateFormat),
+                      ],
+                    );
+                  },
                 ),
-                const SizedBox(height: 12),
-                _buildHistoryTable(displayedHistory, dateFormat),
               ],
             ),
           );

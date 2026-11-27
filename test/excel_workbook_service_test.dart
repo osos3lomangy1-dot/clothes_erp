@@ -33,7 +33,7 @@ void main() {
   });
 
   group('Full Linked Workbook Export', () {
-    test('exports 12 linked sheets with valid live Excel formulas', () async {
+    test('exports 19 linked sheets with valid live Excel formulas', () async {
       final now = DateTime(2026, 6, 15, 14, 30);
       const branchId = 'branch-1';
 
@@ -221,7 +221,7 @@ void main() {
           );
 
       final result = await service.buildFullWorkbookBytes();
-      expect(result.meta.sheetCount, 12);
+      expect(result.meta.sheetCount, 19);
       expect(result.meta.productsCount, 1);
       expect(result.meta.customersCount, 1);
       expect(result.meta.suppliersCount, 1);
@@ -465,7 +465,7 @@ void main() {
       final p1 = await service.analyzeMultiSheetWorkbook(tpl);
       await service.executeWorkbookImport(preview: p1, userId: 'admin-1');
 
-      // Export full 12-sheet linked workbook
+      // Export full 19-sheet linked workbook
       final exported = await service.buildFullWorkbookBytes();
 
       // Open a brand new empty DB and import from the full export workbook!

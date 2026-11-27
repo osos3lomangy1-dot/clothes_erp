@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/widgets/standard_date_filter_chips.dart';
 import '../../domain/entities/inventory_log_entity.dart';
 import '../cubits/inventory_log_cubit.dart';
 
@@ -29,6 +30,8 @@ class _InventoryLogsView extends StatefulWidget {
 
 class _InventoryLogsViewState extends State<_InventoryLogsView> {
   final TextEditingController _searchController = TextEditingController();
+  String _activeDateFilter = 'all';
+  DateTimeRange? _customRange;
 
   @override
   void dispose() {
@@ -160,6 +163,16 @@ class _InventoryLogsViewState extends State<_InventoryLogsView> {
                     );
                   },
                 ),
+                const SizedBox(height: 10),
+                StandardDateFilterChips(
+                  activeFilter: _activeDateFilter,
+                  customRange: _customRange,
+                  onFilterChanged: (v) => setState(() => _activeDateFilter = v),
+                  onCustomRangePicked: (picked) => setState(() {
+                    _customRange = picked;
+                    _activeDateFilter = 'custom';
+                  }),
+                ),
               ],
             ),
           ),
@@ -193,8 +206,20 @@ class _InventoryLogsViewState extends State<_InventoryLogsView> {
                     ),
                   );
                 }
-                if (state.logs.isEmpty) {
-                  final isFiltered = state.searchQuery.isNotEmpty || state.selectedType != 'all';
+                final filteredLogs = state.logs
+                    .where(
+                      (l) => StandardDateFilterChips.matchesDate(
+                        l.date,
+                        _activeDateFilter,
+                        _customRange,
+                      ),
+                    )
+                    .toList();
+
+                if (filteredLogs.isEmpty) {
+                  final isFiltered = state.searchQuery.isNotEmpty ||
+                      state.selectedType != 'all' ||
+                      _activeDateFilter != 'all';
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -212,7 +237,10 @@ class _InventoryLogsViewState extends State<_InventoryLogsView> {
                               _searchController.clear();
                               cubit.onSearchChanged('');
                               cubit.onTypeFilterChanged('all');
-                              setState(() {});
+                              setState(() {
+                                _activeDateFilter = 'all';
+                                _customRange = null;
+                              });
                             },
                             child: const Text('إعادة تعيين الفلاتر'),
                           ),
@@ -224,10 +252,10 @@ class _InventoryLogsViewState extends State<_InventoryLogsView> {
 
                 return ListView.separated(
                   padding: const EdgeInsets.all(16),
-                  itemCount: state.logs.length,
+                  itemCount: filteredLogs.length,
                   separatorBuilder: (_, index) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
-                    final log = state.logs[index];
+                    final log = filteredLogs[index];
                     return _InventoryLogCard(log: log);
                   },
                 );

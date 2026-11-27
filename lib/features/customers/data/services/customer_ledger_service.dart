@@ -7,6 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../../../core/database/app_database.dart';
+import '../../../../core/services/excel_style_helper.dart';
 import '../../domain/entities/customer_entity.dart';
 
 class CustomerFinancialSummary {
@@ -273,13 +274,6 @@ class CustomerLedgerService {
       excel.delete('Sheet1');
     }
 
-    final headerStyle = CellStyle(
-      bold: true,
-      fontColorHex: ExcelColor.white,
-      backgroundColorHex: ExcelColor.fromHexString('#0A2E5C'),
-      horizontalAlign: HorizontalAlign.Center,
-    );
-
     final headers = const [
       'اسم العميل',
       'رقم الهاتف',
@@ -293,12 +287,7 @@ class CustomerLedgerService {
       'عقود تقسيط نشطة',
       'متبقي التقسيط (ج.م)',
     ];
-    sheet.appendRow(headers.map((h) => TextCellValue(h)).toList());
-    for (var col = 0; col < headers.length; col++) {
-      sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 0))
-          .cellStyle = headerStyle;
-    }
+    ExcelStyleHelper.appendStyledHeader(sheet, headers);
 
     for (final c in customers) {
       final sum = summaries[c.id] ?? CustomerFinancialSummary.empty;
@@ -321,6 +310,39 @@ class CustomerLedgerService {
         DoubleCellValue(sum.installmentsRemainingPiasters / 100.0),
       ]);
     }
+    ExcelStyleHelper.styleDataRows(
+      sheet,
+      startRow: 1,
+      rowCount: customers.length,
+      colCount: headers.length,
+      currencyCols: {5, 6, 8, 10},
+      centerCols: {1, 2, 3, 4, 7, 9},
+    );
+    if (customers.isNotEmpty) {
+      final cEnd = customers.length + 1;
+      ExcelStyleHelper.appendTotalsRow(
+        sheet,
+        rowIndex: customers.length + 1,
+        cells: [
+          TextCellValue('الإجمالي (${customers.length} عميل)'),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          FormulaCellValue('SUM(E2:E$cEnd)'),
+          TextCellValue(''),
+          FormulaCellValue('SUM(G2:G$cEnd)'),
+          FormulaCellValue('SUM(H2:H$cEnd)'),
+          FormulaCellValue('SUM(I2:I$cEnd)'),
+          FormulaCellValue('SUM(J2:J$cEnd)'),
+          FormulaCellValue('SUM(K2:K$cEnd)'),
+        ],
+        currencyCols: {6, 8, 10},
+      );
+    }
+    ExcelStyleHelper.setColumnWidths(
+      sheet,
+      const [24, 16, 12, 15, 13, 18, 18, 13, 20, 16, 18],
+    );
 
     final encoded = excel.encode();
     if (encoded == null) throw Exception('فشل إنشاء ملف إكسيل العملاء');

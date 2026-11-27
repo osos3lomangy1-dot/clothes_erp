@@ -141,8 +141,8 @@ void main() {
       await tester.tap(find.text('سجل فواتير المرتجعات'));
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('returns_history_summary_cards')), findsOneWidget);
-      expect(find.text('مرتجعات اليوم'), findsOneWidget);
-      expect(find.text('إجمالي المسترد اليوم'), findsOneWidget);
+      expect(find.text('عدد المرتجعات المعروضة'), findsOneWidget);
+      expect(find.text('إجمالي المسترد'), findsOneWidget);
 
       await stubCubit.close();
     });

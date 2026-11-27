@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/widgets/standard_date_filter_chips.dart';
 import '../../data/services/telegram_bot_service.dart';
 import '../../domain/entities/pre_order_entity.dart';
 import '../cubits/pre_orders_cubit.dart';
@@ -35,6 +36,8 @@ class _PreOrdersView extends StatefulWidget {
 
 class _PreOrdersViewState extends State<_PreOrdersView> {
   final TextEditingController _searchCtrl = TextEditingController();
+  String _activeDateFilter = 'all';
+  DateTimeRange? _customRange;
 
   @override
   void dispose() {
@@ -300,8 +303,24 @@ class _PreOrdersViewState extends State<_PreOrdersView> {
           }
 
           final isBatchesMode = state.activeMode == 'batches';
-          final filteredOrders = state.filteredOrders;
-          final filteredBatches = state.filteredBatches;
+          final filteredOrders = state.filteredOrders
+              .where(
+                (o) => StandardDateFilterChips.matchesDate(
+                  o.createdAt,
+                  _activeDateFilter,
+                  _customRange,
+                ),
+              )
+              .toList();
+          final filteredBatches = state.filteredBatches
+              .where(
+                (b) => StandardDateFilterChips.matchesDate(
+                  b.createdAt,
+                  _activeDateFilter,
+                  _customRange,
+                ),
+              )
+              .toList();
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -419,6 +438,20 @@ class _PreOrdersViewState extends State<_PreOrdersView> {
               ),
 
               // 2. المحتوى: إما كروت الشحنات المجمعة أو كروت الأوردرات الفردية
+              Container(
+                width: double.infinity,
+                color: Colors.white,
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: StandardDateFilterChips(
+                  activeFilter: _activeDateFilter,
+                  customRange: _customRange,
+                  onFilterChanged: (v) => setState(() => _activeDateFilter = v),
+                  onCustomRangePicked: (picked) => setState(() {
+                    _customRange = picked;
+                    _activeDateFilter = 'custom';
+                  }),
+                ),
+              ),
               Expanded(
                 child: isBatchesMode
                     ? (filteredBatches.isEmpty

@@ -11,25 +11,34 @@ import '../../domain/entities/smart_inventory_entities.dart';
 
 class SmartInventoryReportsScreen extends StatelessWidget {
   final int initialTabIndex;
+  final bool embedded;
 
   const SmartInventoryReportsScreen({
     super.key,
     this.initialTabIndex = 0,
+    this.embedded = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => getIt<SmartInventoryCubit>(),
-      child: _SmartInventoryReportsView(initialTabIndex: initialTabIndex),
+      child: _SmartInventoryReportsView(
+        initialTabIndex: initialTabIndex,
+        embedded: embedded,
+      ),
     );
   }
 }
 
 class _SmartInventoryReportsView extends StatefulWidget {
   final int initialTabIndex;
+  final bool embedded;
 
-  const _SmartInventoryReportsView({required this.initialTabIndex});
+  const _SmartInventoryReportsView({
+    required this.initialTabIndex,
+    required this.embedded,
+  });
 
   @override
   State<_SmartInventoryReportsView> createState() =>
@@ -59,19 +68,81 @@ class _SmartInventoryReportsViewState extends State<_SmartInventoryReportsView>
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<SmartInventoryCubit>();
+    final tabBar = TabBar(
+      controller: _tabController,
+      labelColor: AppColors.primary,
+      unselectedLabelColor: Colors.grey.shade600,
+      indicatorColor: AppColors.primary,
+      indicatorWeight: 3,
+      labelStyle: const TextStyle(
+        fontFamily: 'Cairo',
+        fontWeight: FontWeight.bold,
+        fontSize: 13,
+      ),
+      unselectedLabelStyle: const TextStyle(
+        fontFamily: 'Cairo',
+        fontWeight: FontWeight.normal,
+        fontSize: 13,
+      ),
+      tabs: const [
+        Tab(
+          icon: Icon(Icons.shopping_cart_checkout_rounded, size: 20),
+          text: 'اقتراح طلب الشراء',
+        ),
+        Tab(
+          icon: Icon(Icons.hourglass_bottom_rounded, size: 20),
+          text: 'المنتجات الراكدة',
+        ),
+        Tab(
+          icon: Icon(Icons.history_edu_rounded, size: 20),
+          text: 'كارت حركة الصنف',
+        ),
+      ],
+    );
+
+    final tabView = TabBarView(
+      controller: _tabController,
+      children: const [
+        _ReorderSuggestionsTab(),
+        _DeadStockTab(),
+        _StockMovementCardTab(),
+      ],
+    );
+
+    if (widget.embedded) {
+      return Column(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              border: Border(
+                top: BorderSide(color: Colors.grey.shade200),
+                bottom: BorderSide(color: Colors.grey.shade200),
+              ),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              children: [
+                Expanded(child: tabBar),
+                IconButton(
+                  icon: const Icon(Icons.refresh_rounded, color: AppColors.onSurface),
+                  tooltip: 'تحديث البيانات',
+                  onPressed: () => cubit.init(),
+                ),
+              ],
+            ),
+          ),
+          Expanded(child: tabView),
+        ],
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: Navigator.canPop(context)
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back_rounded, color: AppColors.onSurface),
-                tooltip: 'رجوع',
-                onPressed: () => Navigator.of(context).maybePop(),
-              )
-            : null,
+        automaticallyImplyLeading: false,
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -96,46 +167,9 @@ class _SmartInventoryReportsViewState extends State<_SmartInventoryReportsView>
             onPressed: () => cubit.init(),
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: Colors.grey.shade600,
-          indicatorColor: AppColors.primary,
-          indicatorWeight: 3,
-          labelStyle: const TextStyle(
-            fontFamily: 'Cairo',
-            fontWeight: FontWeight.bold,
-            fontSize: 13,
-          ),
-          unselectedLabelStyle: const TextStyle(
-            fontFamily: 'Cairo',
-            fontWeight: FontWeight.normal,
-            fontSize: 13,
-          ),
-          tabs: const [
-            Tab(
-              icon: Icon(Icons.shopping_cart_checkout_rounded, size: 20),
-              text: 'اقتراح طلب الشراء',
-            ),
-            Tab(
-              icon: Icon(Icons.hourglass_bottom_rounded, size: 20),
-              text: 'المنتجات الراكدة',
-            ),
-            Tab(
-              icon: Icon(Icons.history_edu_rounded, size: 20),
-              text: 'كارت حركة الصنف',
-            ),
-          ],
-        ),
+        bottom: tabBar,
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: const [
-          _ReorderSuggestionsTab(),
-          _DeadStockTab(),
-          _StockMovementCardTab(),
-        ],
-      ),
+      body: tabView,
     );
   }
 }

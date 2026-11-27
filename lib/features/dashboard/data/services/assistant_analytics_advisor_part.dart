@@ -408,10 +408,111 @@ extension AssistantAnalyticsAdvisorPart on OfflineSmartAssistantService {
           : '${stagnant.length} صنف لم يُبع خلال آخر 30 يوماً',
       details: stagnant.take(8).toList(),
       isAlert: stagnant.isNotEmpty,
-      actionLabel: 'إدارة المنتجات',
-      actionRoute: AssistantActionRoute.products,
+      actionLabel: 'فتح شاشة المخزون',
+      actionRoute: AssistantActionRoute.inventory,
       requiredFeatureKey: FeatureKeys.inventory,
     );
+  }
+
+  static const String _keyDismissedLowStock =
+      'assistant.dismissed_low_stock_variants';
+  static const String _keyDismissedOverdueInstallments =
+      'assistant.dismissed_overdue_installments';
+
+  Future<Set<String>> _getDismissedIds(String key) async {
+    try {
+      final row = await (_db.select(_db.appMeta)
+            ..where((m) => m.key.equals(key)))
+          .getSingleOrNull();
+      if (row == null || row.value.trim().isEmpty) return <String>{};
+      final decoded = jsonDecode(row.value);
+      if (decoded is List) {
+        return decoded.map((e) => e.toString()).toSet();
+      }
+    } catch (_) {}
+    return <String>{};
+  }
+
+  Future<void> _saveDismissedIds(String key, Set<String> ids) async {
+    try {
+      if (ids.isEmpty) {
+        await (_db.delete(_db.appMeta)..where((m) => m.key.equals(key))).go();
+        return;
+      }
+      await _db.into(_db.appMeta).insertOnConflictUpdate(
+            AppMetaCompanion.insert(
+              key: key,
+              value: jsonEncode(ids.toList()),
+              updatedAt: DateTime.now(),
+            ),
+          );
+    } catch (_) {}
+  }
+
+  /// Marks all currently low-stock variants as dismissed so discontinued items
+  /// stop triggering the sidebar badge unless restocked above minStock first.
+  Future<void> dismissStockoutAlerts() async {
+    final since = DateTime.now().subtract(const Duration(days: 30));
+    final recentSales = await (_db.select(_db.saleItems).join([
+      innerJoin(_db.sales, _db.sales.id.equalsExp(_db.saleItems.saleId)),
+    ])
+          ..where(
+            _db.sales.date.isBiggerOrEqualValue(since) &
+                _db.sales.deletedAt.isNull() &
+                _db.sales.status.isNotValue('cancelled'),
+          ))
+        .get();
+
+    final Map<String, int> qtySold30d = {};
+    for (final r in recentSales) {
+      final si = r.readTable(_db.saleItems);
+      qtySold30d[si.variantId] = (qtySold30d[si.variantId] ?? 0) + si.qty;
+    }
+
+    final stockRows = await (_db.select(_db.productVariants).join([
+      innerJoin(
+        _db.products,
+        _db.products.id.equalsExp(_db.productVariants.productId),
+      ),
+    ])
+          ..where(
+            _db.productVariants.deletedAt.isNull() &
+                _db.products.deletedAt.isNull(),
+          ))
+        .get();
+
+    final dismissed = await _getDismissedIds(_keyDismissedLowStock);
+    for (final r in stockRows) {
+      final v = r.readTable(_db.productVariants);
+      final p = r.readTable(_db.products);
+      final sold = qtySold30d[v.id] ?? 0;
+      final dailyRate = sold / 30.0;
+      final daysLeft = dailyRate > 0 ? (v.quantity / dailyRate).floor() : 999;
+      if (v.quantity <= p.minStock || (dailyRate > 0 && daysLeft <= 7)) {
+        dismissed.add(v.id);
+      }
+    }
+    await _saveDismissedIds(_keyDismissedLowStock, dismissed);
+  }
+
+  /// Marks all currently overdue installments as dismissed from the badge.
+  Future<void> dismissOverdueInstallmentAlerts() async {
+    final now = DateTime.now();
+    final rows = await (_db.select(_db.customerInstallments)
+          ..where(
+            (i) =>
+                i.deletedAt.isNull() &
+                i.remainingPiasters.isBiggerThanValue(0) &
+                (i.status.equals('overdue') |
+                    (i.status.equals('active') &
+                        i.endDate.isSmallerThanValue(now))),
+          ))
+        .get();
+    final dismissed = await _getDismissedIds(_keyDismissedOverdueInstallments);
+    for (final r in rows) {
+      dismissed.add(r.id);
+    }
+    await _saveDismissedIds(_keyDismissedOverdueInstallments, dismissed);
   }
 
   Future<AssistantInsight> getStockoutVelocityInsight() async {
@@ -444,6 +545,9 @@ extension AssistantAnalyticsAdvisorPart on OfflineSmartAssistantService {
           ))
         .get();
 
+    final dismissed = await _getDismissedIds(_keyDismissedLowStock);
+    bool dismissedChanged = false;
+
     final alerts = <String>[];
     for (final r in stockRows) {
       final v = r.readTable(_db.productVariants);
@@ -452,12 +556,25 @@ extension AssistantAnalyticsAdvisorPart on OfflineSmartAssistantService {
       final dailyRate = sold / 30.0;
       final daysLeft = dailyRate > 0 ? (v.quantity / dailyRate).floor() : 999;
 
-      if (v.quantity <= p.minStock || (dailyRate > 0 && daysLeft <= 7)) {
-        final msg = dailyRate > 0
-            ? '${p.name}: متبقي ${v.quantity} (يكفي ~$daysLeft يوم)'
-            : '${p.name}: متبقي ${v.quantity} (أقل من حد الطلب ${p.minStock})';
-        alerts.add(msg);
+      final isLow =
+          v.quantity <= p.minStock || (dailyRate > 0 && daysLeft <= 7);
+      if (!isLow) {
+        if (dismissed.remove(v.id)) {
+          dismissedChanged = true;
+        }
+        continue;
       }
+
+      if (dismissed.contains(v.id)) continue;
+
+      final msg = dailyRate > 0
+          ? '${p.name}: متبقي ${v.quantity} (يكفي ~$daysLeft يوم)'
+          : '${p.name}: متبقي ${v.quantity} (أقل من حد الطلب ${p.minStock})';
+      alerts.add(msg);
+    }
+
+    if (dismissedChanged) {
+      await _saveDismissedIds(_keyDismissedLowStock, dismissed);
     }
 
     return AssistantInsight(
@@ -468,8 +585,8 @@ extension AssistantAnalyticsAdvisorPart on OfflineSmartAssistantService {
           : '${alerts.length} صنف بحاجة لإعادة طلب قريباً',
       details: alerts.take(8).toList(),
       isAlert: alerts.isNotEmpty,
-      actionLabel: 'فتح قائمة المنتجات',
-      actionRoute: AssistantActionRoute.products,
+      actionLabel: 'فتح شاشة المخزون',
+      actionRoute: AssistantActionRoute.inventory,
       requiredFeatureKey: FeatureKeys.inventory,
     );
   }
@@ -536,20 +653,25 @@ extension AssistantAnalyticsAdvisorPart on OfflineSmartAssistantService {
           ))
         .get();
 
+    final dismissedInst =
+        await _getDismissedIds(_keyDismissedOverdueInstallments);
+    final activeRows =
+        rows.where((r) => !dismissedInst.contains(r.id)).toList();
+
     final totalOverdue =
-        rows.fold<int>(0, (s, r) => s + r.remainingPiasters);
+        activeRows.fold<int>(0, (s, r) => s + r.remainingPiasters);
 
     return AssistantInsight(
       id: 'overdue_installments',
       title: 'الأقساط المتأخرة',
-      summary: rows.isEmpty
+      summary: activeRows.isEmpty
           ? 'لا توجد عقود تقسيط متأخرة'
-          : '${rows.length} عقد متأخر بإجمالي ${Money(totalOverdue).toDisplay()} ج.م',
+          : '${activeRows.length} عقد متأخر بإجمالي ${Money(totalOverdue).toDisplay()} ج.م',
       details: [
-        for (final r in rows.take(6))
+        for (final r in activeRows.take(6))
           'عقد #${r.id.substring(0, r.id.length >= 6 ? 6 : r.id.length)} — متبقي ${Money(r.remainingPiasters).toDisplay()} ج.م',
       ],
-      isAlert: rows.isNotEmpty,
+      isAlert: activeRows.isNotEmpty,
       actionLabel: 'إدارة التقسيط',
       actionRoute: AssistantActionRoute.installments,
       requiredFeatureKey: FeatureKeys.installments,
@@ -865,22 +987,35 @@ extension AssistantAnalyticsAdvisorPart on OfflineSmartAssistantService {
       final variants = await (_db.select(_db.productVariants)
             ..where((v) => v.deletedAt.isNull()))
           .get();
+      final dismissedVariants = await _getDismissedIds(_keyDismissedLowStock);
+      bool dismissedChanged = false;
       int lowCount = 0;
       for (final v in variants) {
         final minS = minStockByProd[v.productId] ?? 5;
         if (v.quantity <= minS) {
-          lowCount++;
+          if (!dismissedVariants.contains(v.id)) {
+            lowCount++;
+          }
+        } else if (dismissedVariants.remove(v.id)) {
+          dismissedChanged = true;
         }
       }
+      if (dismissedChanged) {
+        await _saveDismissedIds(_keyDismissedLowStock, dismissedVariants);
+      }
 
+      final dismissedInst =
+          await _getDismissedIds(_keyDismissedOverdueInstallments);
       final installments = await (_db.select(_db.customerInstallments)
             ..where((i) =>
                 i.deletedAt.isNull() &
+                i.remainingPiasters.isBiggerThanValue(0) &
                 (i.status.equals('overdue') | i.status.equals('active'))))
           .get();
       int overdueCount = 0;
       for (final inst in installments) {
-        if (inst.status == 'overdue' || inst.endDate.isBefore(now)) {
+        if ((inst.status == 'overdue' || inst.endDate.isBefore(now)) &&
+            !dismissedInst.contains(inst.id)) {
           overdueCount++;
         }
       }

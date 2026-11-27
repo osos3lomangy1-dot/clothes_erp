@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import '../../../../core/features/feature_gate.dart';
+import '../../../core/features/feature_gate.dart';
 import '../domain/models/cashier_permissions_config.dart';
 
 class CashierPermissionsService {
@@ -31,11 +31,6 @@ class CashierPermissionsService {
     required String userId,
   }) async {
     notifier.value = config;
-    await gate.setMeta(
-      metaKey,
-      config.toJson(),
-      userId: userId,
-    );
+    await gate.setMeta(metaKey, config.toJson(), userId: userId);
   }
 }
-

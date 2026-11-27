@@ -475,6 +475,33 @@ void main() {
       );
       expect(tFnb, isNotEmpty);
       expect(tFnb.first.id, 'kb_enc6_fnb_food_cost_menu_waste');
+
+      // Conversational explain/teach phrases ("اشرحلي", "فهمني", "علمني", "بسطلي")
+      final ctx = AssistantContextMemory();
+      for (final q in const [
+        'اشرحلي الفرق بين الهامش ونسبة الاضافة',
+        'فهمني تصنيف ABC للمخزون',
+        'علمني بروتوكول احتواء العميل الغاضب',
+        'بسطلي بناء دليل التشغيل SOP',
+      ]) {
+        expect(
+          AssistantIntentScorer.score(q, context: ctx)?.intent,
+          AssistantNluIntent.knowledge,
+          reason: 'Expected knowledge intent for: $q',
+        );
+      }
+      expect(
+        AssistantIntentScorer.score('اشرح اكتر', context: ctx)?.intent,
+        AssistantNluIntent.fuDetails,
+      );
+
+      final askExplain = await service.ask('اشرحلي تصنيف ABC للمخزون');
+      expect(askExplain, isNotEmpty);
+      expect(askExplain.first.id, 'kb_book_abc_inventory_rescue');
+
+      final askTeach = await service.ask('فهمني نظام الفريق E-Myth ودليل التشغيل SOP');
+      expect(askTeach, isNotEmpty);
+      expect(askTeach.first.id, 'kb_enc5_emyth_sop_and_hiring');
     });
   });
 

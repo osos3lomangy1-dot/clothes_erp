@@ -7,6 +7,7 @@ import '../../../../core/features/feature_gate.dart';
 import '../../../../core/utils/money.dart';
 import '../../../categories/domain/repositories/category_repository.dart';
 import '../../../products/data/datasources/product_local_data_source.dart';
+import '../../../reports/presentation/widgets/promotions_report_section.dart';
 import '../../domain/entities/promotion.dart';
 import '../cubits/promotions_cubit.dart';
 import '../widgets/promotion_form_dialog.dart';
@@ -97,28 +98,48 @@ class _PromotionsViewState extends State<_PromotionsView> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FC),
-      appBar: AppBar(
-        title: const Text(
-          'إدارة العروض والخصومات الترويجية',
-          style: TextStyle(
-            fontFamily: 'Cairo',
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8F9FC),
+        appBar: AppBar(
+          title: const Text(
+            'إدارة العروض والخصومات الترويجية',
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
+          ),
+          backgroundColor: Colors.white,
+          elevation: 0,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh_rounded),
+              tooltip: 'تحديث',
+              onPressed: () => context.read<PromotionsCubit>().loadAll(),
+            ),
+          ],
+          bottom: TabBar(
+            labelColor: AppColors.primary,
+            unselectedLabelColor: Colors.grey.shade600,
+            indicatorColor: AppColors.primary,
+            indicatorWeight: 2.5,
+            tabs: const [
+              Tab(
+                icon: Icon(Icons.local_offer_rounded, size: 18),
+                text: 'إدارة العروض',
+              ),
+              Tab(
+                icon: Icon(Icons.analytics_outlined, size: 18),
+                text: 'أداء العروض والتقارير',
+              ),
+            ],
           ),
         ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'تحديث',
-            onPressed: () => context.read<PromotionsCubit>().loadAll(),
-          ),
-        ],
-      ),
-      body: Column(
+        body: TabBarView(
+          children: [
+            Column(
         children: [
           // Filter Tabs
           Container(
@@ -224,6 +245,12 @@ class _PromotionsViewState extends State<_PromotionsView> {
           ),
         ],
       ),
+            ListView(
+              padding: const EdgeInsets.all(16),
+              children: const [PromotionsReportSection()],
+            ),
+          ],
+        ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,
         onPressed: () => _openFormDialog(context),
@@ -236,6 +263,7 @@ class _PromotionsViewState extends State<_PromotionsView> {
             color: Colors.white,
           ),
         ),
+      ),
       ),
     );
   }

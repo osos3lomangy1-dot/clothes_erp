@@ -37,7 +37,7 @@ import '../../features/inventory/presentation/screens/blind_receive_screen.dart'
 import '../../features/inventory/presentation/screens/inventory_logs_screen.dart';
 import '../../features/inventory/presentation/screens/inventory_screen.dart';
 import '../../features/inventory/presentation/screens/stocktake_screen.dart';
-import '../../features/invoices/presentation/screens/invoices_screen.dart';
+import '../../features/invoices/presentation/screens/invoices_returns_hub_screen.dart';
 import '../../features/invoices/presentation/screens/receipt_customizer_screen.dart';
 import '../../features/partners/presentation/screens/partners_screen.dart';
 import '../../features/pos/presentation/screens/pos_screen.dart';
@@ -49,7 +49,6 @@ import '../../features/promotions/presentation/screens/promotions_screen.dart';
 import '../../features/purchases/presentation/screens/create_purchase_screen.dart';
 import '../../features/purchases/presentation/screens/purchases_screen.dart';
 import '../../features/reports/presentation/screens/reports_screen.dart';
-import '../../features/returns/presentation/screens/return_screen.dart';
 import '../../features/settings/presentation/screens/excel_migration_screen.dart';
 import '../../features/settings/presentation/screens/system_settings_screen.dart';
 import '../../features/shifts/presentation/screens/shift_screen.dart';
@@ -64,12 +63,30 @@ class MainLayout extends StatefulWidget {
     required this.currentRoute,
   });
 
+  /// Switches the active sidebar screen if inside [MainLayout], highlighting
+  /// [title] in the sidebar without pushing a back-arrow route.
+  static bool navigateToSidebarScreen(
+    BuildContext context, {
+    required String title,
+    required Widget screen,
+    bool isPos = false,
+  }) {
+    final state =
+        context.findAncestorStateOfType<_MainLayoutState>() ??
+        _MainLayoutState._activeInstance;
+    if (state == null) return false;
+    state._handleItemTap(title, screen, isPos, null);
+    return true;
+  }
+
   @override
   State<MainLayout> createState() => _MainLayoutState();
 }
 
 class _MainLayoutState extends State<MainLayout> {
+  static _MainLayoutState? _activeInstance;
   final GlobalKey<NavigatorState> _contentNavKey = GlobalKey<NavigatorState>();
+  final GlobalKey _activeNavItemKey = GlobalKey();
   final Set<String> _collapsedSections = {};
   bool? _userCollapsedOverride;
   bool? _savedCollapsedOverrideBeforePos;
@@ -108,6 +125,7 @@ class _MainLayoutState extends State<MainLayout> {
   @override
   void initState() {
     super.initState();
+    _activeInstance = this;
     HardwareKeyboard.instance.addHandler(_handleGlobalHardwareKeys);
     _refreshAssistantAlertCount();
     _currentScreen = widget.child;
@@ -205,6 +223,9 @@ class _MainLayoutState extends State<MainLayout> {
 
   @override
   void dispose() {
+    if (identical(_activeInstance, this)) {
+      _activeInstance = null;
+    }
     HardwareKeyboard.instance.removeHandler(_handleGlobalHardwareKeys);
     _activitySub?.cancel();
     _sectorModeSub?.cancel();
@@ -659,19 +680,14 @@ class _MainLayoutState extends State<MainLayout> {
                                             title: 'المبيعات والطلبات',
                                             icon: Icons.receipt_long_rounded,
                                             children: [
-                                              if (isAdmin ||
-                                                  cashierPerms
-                                                      .allowViewInvoicesHistory)
-                                                _navItem(
-                                                  Icons.receipt_long_rounded,
-                                                  'سجل فواتير المبيعات',
-                                                  const InvoicesScreen(),
-                                                  isSubItem: true,
-                                                ),
                                               _navItem(
-                                                Icons.assignment_return_rounded,
-                                                'إدارة المرتجعات',
-                                                const ReturnScreen(),
+                                                Icons.receipt_long_rounded,
+                                                'الفواتير والمرتجعات',
+                                                InvoicesReturnsHubScreen(
+                                                  canViewInvoices: isAdmin ||
+                                                      cashierPerms
+                                                          .allowViewInvoicesHistory,
+                                                ),
                                                 isSubItem: true,
                                               ),
                                               if (_featureEnabled(
@@ -1216,6 +1232,7 @@ class _MainLayoutState extends State<MainLayout> {
 
   void _ensureSectionExpandedFor(String title) {
     const salesTitles = {
+      'الفواتير والمرتجعات',
       'سجل فواتير المبيعات',
       'إدارة المرتجعات',
       'إدارة الدليفري والطيارين',
@@ -1398,6 +1415,17 @@ class _MainLayoutState extends State<MainLayout> {
         MaterialPageRoute(builder: (_) => screen),
         (route) => false,
       );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final navCtx = _activeNavItemKey.currentContext;
+        if (mounted && navCtx != null) {
+          Scrollable.ensureVisible(
+            navCtx,
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeOutCubic,
+            alignment: 0.45,
+          );
+        }
+      });
     }
   }
 
@@ -1442,11 +1470,16 @@ class _MainLayoutState extends State<MainLayout> {
         ),
       CommandPaletteItem(
         id: 'nav_invoices',
-        title: 'سجل فواتير المبيعات',
+        title: 'الفواتير والمرتجعات',
         category: 'شاشات النظام',
         icon: Icons.receipt_long_rounded,
-        subtitle: 'سجل الفواتير السابقة وطباعتها',
-        onSelect: () => _handleItemTap('سجل فواتير المبيعات', const InvoicesScreen(), false, null),
+        subtitle: 'سجل الفواتير السابقة وطباعتها وإدارة المرتجعات',
+        onSelect: () => _handleItemTap(
+          'الفواتير والمرتجعات',
+          const InvoicesReturnsHubScreen(),
+          false,
+          null,
+        ),
       ),
       CommandPaletteItem(
         id: 'nav_treasury',
@@ -1690,8 +1723,9 @@ class _MainLayoutState extends State<MainLayout> {
 
   void _navigateToAssistantRoute(AssistantActionRoute route) {
     final (String title, Widget screen) = switch (route) {
-      AssistantActionRoute.reports => ('التقارير', const ReportsScreen()),
+      AssistantActionRoute.reports => ('تقارير المبيعات', const ReportsScreen()),
       AssistantActionRoute.products => ('المنتجات', const ProductListScreen()),
+      AssistantActionRoute.inventory => ('المخزون والمنتجات', const InventoryScreen()),
       AssistantActionRoute.purchases => ('المشتريات', const PurchasesScreen()),
       AssistantActionRoute.installments => (
         'الأقساط والذمم',
@@ -1713,7 +1747,10 @@ class _MainLayoutState extends State<MainLayout> {
         'تصميم الفاتورة',
         const ReceiptCustomizerScreen(),
       ),
-      AssistantActionRoute.returns => ('المرتجعات', const ReturnScreen()),
+      AssistantActionRoute.returns => (
+        'الفواتير والمرتجعات',
+        const InvoicesReturnsHubScreen(initialTabIndex: 1),
+      ),
     };
     _handleItemTap(title, screen, false, null);
   }
@@ -1902,6 +1939,7 @@ class _MainLayoutState extends State<MainLayout> {
 
     if (_isCollapsed) {
       return Padding(
+        key: isSelected ? _activeNavItemKey : null,
         padding: const EdgeInsets.symmetric(vertical: 3),
         child: Center(
           child: Tooltip(
@@ -1943,6 +1981,7 @@ class _MainLayoutState extends State<MainLayout> {
     }
 
     return Padding(
+      key: isSelected ? _activeNavItemKey : null,
       padding: EdgeInsets.only(
         right: isSubItem ? 16 : 8,
         left: 8,

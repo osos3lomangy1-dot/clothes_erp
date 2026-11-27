@@ -45,15 +45,31 @@ class _PartnersScreenState extends State<PartnersScreen> {
 
     final nameCtrl = TextEditingController(text: partner?.name ?? '');
     final phoneCtrl = TextEditingController(text: partner?.phone ?? '');
-    final percentageCtrl = TextEditingController(text: partner != null ? '${partner.percentage}' : '');
+    final percentageCtrl = TextEditingController(
+      text: partner != null ? '${partner.percentage}' : '',
+    );
     final capitalPercentageCtrl = TextEditingController(
       text: partner?.capitalPercentage != null
           ? '${partner!.capitalPercentage}'
-          : (partner != null && partner.capital > 0 ? '${partner.percentage}' : ''),
+          : (partner != null && partner.capital > 0
+                ? '${partner.percentage}'
+                : ''),
     );
-    final capitalCtrl = TextEditingController(text: partner != null && partner.capital > 0 ? '${partner.capital / 100}' : '');
-    final roiCtrl = TextEditingController(text: partner != null && partner.roiPercentage > 0 ? '${partner.roiPercentage}' : '15');
-    final salaryCtrl = TextEditingController(text: partner != null && partner.monthlySalary > 0 ? '${partner.monthlySalary / 100}' : '');
+    final capitalCtrl = TextEditingController(
+      text: partner != null && partner.capital > 0
+          ? '${partner.capital / 100}'
+          : '',
+    );
+    final roiCtrl = TextEditingController(
+      text: partner != null && partner.roiPercentage > 0
+          ? '${partner.roiPercentage}'
+          : '15',
+    );
+    final salaryCtrl = TextEditingController(
+      text: partner != null && partner.monthlySalary > 0
+          ? '${partner.monthlySalary / 100}'
+          : '',
+    );
     final notesCtrl = TextEditingController(text: partner?.notes ?? '');
     final formKey = GlobalKey<FormState>();
 
@@ -64,7 +80,9 @@ class _PartnersScreenState extends State<PartnersScreen> {
     final customTotalCapitalCtrl = TextEditingController();
 
     // calculate max percentage allowed
-    final otherPercentages = isEdit ? (currentTotalPercentage - partner.percentage) : currentTotalPercentage;
+    final otherPercentages = isEdit
+        ? (currentTotalPercentage - partner.percentage)
+        : currentTotalPercentage;
     final maxAllowed = (100.0 - otherPercentages).clamp(0.0, 100.0);
 
     // Sum of other partners' capital
@@ -81,14 +99,21 @@ class _PartnersScreenState extends State<PartnersScreen> {
           final isFixedRoi = profitMode == 'fixed_roi';
 
           return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             title: Row(
               children: [
                 Icon(Icons.handshake_rounded, color: AppColors.primary),
                 const SizedBox(width: 8),
                 Text(
-                  isEdit ? 'تعديل بيانات الشريك' : 'إضافة شريك جديد وحساب نسبته',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  isEdit
+                      ? 'تعديل بيانات الشريك'
+                      : 'إضافة شريك جديد وحساب نسبته',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
                 ),
               ],
             ),
@@ -107,9 +132,13 @@ class _PartnersScreenState extends State<PartnersScreen> {
                         decoration: InputDecoration(
                           labelText: 'اسم الشريك *',
                           hintText: 'مثال: أستاذ أحمد فؤاد',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
-                        validator: (val) => val == null || val.trim().isEmpty ? 'يرجى إدخال اسم الشريك' : null,
+                        validator: (val) => val == null || val.trim().isEmpty
+                            ? 'يرجى إدخال اسم الشريك'
+                            : null,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
@@ -118,13 +147,21 @@ class _PartnersScreenState extends State<PartnersScreen> {
                         decoration: InputDecoration(
                           labelText: 'رقم الهاتف (اختياري)',
                           hintText: 'مثال: 01012345678',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 16),
 
                       // 2. Partnership Type Selection
-                      const Text('نوع الشراكة:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      const Text(
+                        'نوع الشراكة:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
                       const SizedBox(height: 8),
                       Row(
                         children: [
@@ -133,8 +170,11 @@ class _PartnersScreenState extends State<PartnersScreen> {
                               title: 'بالمال والمجهود',
                               subtitle: 'نسبة مئوية أو رأس مال',
                               icon: Icons.business_center_rounded,
-                              isSelected: partnershipType == 'capital_and_effort',
-                              onTap: () => setDialogState(() => partnershipType = 'capital_and_effort'),
+                              isSelected:
+                                  partnershipType == 'capital_and_effort',
+                              onTap: () => setDialogState(
+                                () => partnershipType = 'capital_and_effort',
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -144,7 +184,9 @@ class _PartnersScreenState extends State<PartnersScreen> {
                               subtitle: 'مستثمر مموّل',
                               icon: Icons.savings_rounded,
                               isSelected: partnershipType == 'capital_only',
-                              onTap: () => setDialogState(() => partnershipType = 'capital_only'),
+                              onTap: () => setDialogState(
+                                () => partnershipType = 'capital_only',
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -171,26 +213,39 @@ class _PartnersScreenState extends State<PartnersScreen> {
                       if (!isEffortOnly) ...[
                         TextFormField(
                           controller: capitalCtrl,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
                           decoration: InputDecoration(
                             labelText: 'رأس المال المستثمر (اختياري)',
-                            hintText: 'مثال: 100000 (اتركه فارغاً إذا كان الاتفاق بالنسبة المباشرة)',
-                            helperText: 'اختياري: إذا كانت الشراكة بالنسبة المئوية مباشرة (مثل 50% أو 40%) دون تقييد برأس مال أولي، اتركه فارغاً',
+                            hintText:
+                                'مثال: 100000 (اتركه فارغاً إذا كان الاتفاق بالنسبة المباشرة)',
+                            helperText:
+                                'اختياري: إذا كانت الشراكة بالنسبة المئوية مباشرة (مثل 50% أو 40%) دون تقييد برأس مال أولي، اتركه فارغاً',
                             helperMaxLines: 2,
                             suffixText: 'ج.م',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                            prefixIcon: Icon(Icons.monetization_on_outlined, color: AppColors.primary),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            prefixIcon: Icon(
+                              Icons.monetization_on_outlined,
+                              color: AppColors.primary,
+                            ),
                           ),
                           validator: (val) {
                             if (isFixedRoi) {
-                              if (val == null || val.trim().isEmpty) return 'يرجى إدخال رأس المال لاحتساب العائد الاستثماري الثابت';
+                              if (val == null || val.trim().isEmpty)
+                                return 'يرجى إدخال رأس المال لاحتساب العائد الاستثماري الثابت';
                               final num = double.tryParse(val.trim());
-                              if (num == null || num <= 0) return 'المبلغ يجب أن يكون أكبر من الصفر';
+                              if (num == null || num <= 0)
+                                return 'المبلغ يجب أن يكون أكبر من الصفر';
                               return null;
                             }
-                            if (val == null || val.trim().isEmpty) return null; // Optional for percentage sharing
+                            if (val == null || val.trim().isEmpty)
+                              return null; // Optional for percentage sharing
                             final num = double.tryParse(val.trim());
-                            if (num == null || num < 0) return 'يرجى إدخال مبلغ صحيح (صفر أو أكثر)';
+                            if (num == null || num < 0)
+                              return 'يرجى إدخال مبلغ صحيح (صفر أو أكثر)';
                             return null;
                           },
                           onChanged: (_) {
@@ -202,15 +257,24 @@ class _PartnersScreenState extends State<PartnersScreen> {
                         // Capital Equity Share Input (حصة رأس المال / الملكية)
                         TextFormField(
                           controller: capitalPercentageCtrl,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
                           decoration: InputDecoration(
                             labelText: 'حصة رأس المال / الملكية (%) (اختياري)',
-                            hintText: 'مثال: 50 (حصة الشريك في ملكية رأس مال المحل)',
-                            helperText: 'يمكن كتابتها يدوياً أو حسابها تلقائياً بالأسفل، وقد تختلف عن نسبة الأرباح',
+                            hintText:
+                                'مثال: 50 (حصة الشريك في ملكية رأس مال المحل)',
+                            helperText:
+                                'يمكن كتابتها يدوياً أو حسابها تلقائياً بالأسفل، وقد تختلف عن نسبة الأرباح',
                             helperMaxLines: 2,
                             suffixText: '%',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                            prefixIcon: const Icon(Icons.pie_chart_outline_rounded, color: Colors.blueGrey),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.pie_chart_outline_rounded,
+                              color: Colors.blueGrey,
+                            ),
                           ),
                           validator: (val) {
                             if (val == null || val.trim().isEmpty) return null;
@@ -228,23 +292,44 @@ class _PartnersScreenState extends State<PartnersScreen> {
                         OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.primary,
-                            side: BorderSide(color: AppColors.primary.withValues(alpha: 0.5)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            side: BorderSide(
+                              color: AppColors.primary.withValues(alpha: 0.5),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
                           onPressed: () {
                             setDialogState(() {
                               showSmartCalculator = !showSmartCalculator;
-                              if (showSmartCalculator && customTotalCapitalCtrl.text.isEmpty) {
-                                final thisCap = (double.tryParse(capitalCtrl.text.trim()) ?? 0.0) * 100;
-                                final estTotal = (otherPartnersCapital + thisCap) / 100.0;
-                                customTotalCapitalCtrl.text = estTotal > 0 ? estTotal.toStringAsFixed(0) : '';
+                              if (showSmartCalculator &&
+                                  customTotalCapitalCtrl.text.isEmpty) {
+                                final thisCap =
+                                    (double.tryParse(capitalCtrl.text.trim()) ??
+                                        0.0) *
+                                    100;
+                                final estTotal =
+                                    (otherPartnersCapital + thisCap) / 100.0;
+                                customTotalCapitalCtrl.text = estTotal > 0
+                                    ? estTotal.toStringAsFixed(0)
+                                    : '';
                               }
                             });
                           },
-                          icon: Icon(showSmartCalculator ? Icons.keyboard_arrow_up_rounded : Icons.calculate_outlined, size: 18),
+                          icon: Icon(
+                            showSmartCalculator
+                                ? Icons.keyboard_arrow_up_rounded
+                                : Icons.calculate_outlined,
+                            size: 18,
+                          ),
                           label: Text(
-                            showSmartCalculator ? 'إخفاء الحاسبة الذكية' : 'احسب النسبة المئوية تلقائياً من رأس المال',
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                            showSmartCalculator
+                                ? 'إخفاء الحاسبة الذكية'
+                                : 'احسب النسبة المئوية تلقائياً من رأس المال',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
 
@@ -263,25 +348,45 @@ class _PartnersScreenState extends State<PartnersScreen> {
                               children: [
                                 const Row(
                                   children: [
-                                    Icon(Icons.auto_graph_rounded, color: Colors.blue, size: 18),
+                                    Icon(
+                                      Icons.auto_graph_rounded,
+                                      color: Colors.blue,
+                                      size: 18,
+                                    ),
                                     SizedBox(width: 6),
-                                    Text('حاسبة النسبة التلقائية حسب رأس المال', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blue)),
+                                    Text(
+                                      'حاسبة النسبة التلقائية حسب رأس المال',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                        color: Colors.blue,
+                                      ),
+                                    ),
                                   ],
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
                                   '• رؤوس أموال باقي الشركاء: ${Money(otherPartnersCapital).toDisplay()} ج.م',
-                                  style: TextStyle(fontSize: 12, color: Colors.grey.shade800),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade800,
+                                  ),
                                 ),
                                 const SizedBox(height: 6),
                                 TextFormField(
                                   controller: customTotalCapitalCtrl,
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                      ),
                                   decoration: InputDecoration(
-                                    labelText: 'إجمالي رأس مال المحل المعتمد (ج.م)',
+                                    labelText:
+                                        'إجمالي رأس مال المحل المعتمد (ج.م)',
                                     isDense: true,
                                     suffixText: 'ج.م',
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
                                     filled: true,
                                     fillColor: Colors.white,
                                   ),
@@ -290,37 +395,71 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                 const SizedBox(height: 10),
                                 Builder(
                                   builder: (c) {
-                                    final thisCap = double.tryParse(capitalCtrl.text.trim()) ?? 0.0;
-                                    final totalCap = double.tryParse(customTotalCapitalCtrl.text.trim()) ?? 0.0;
+                                    final thisCap =
+                                        double.tryParse(
+                                          capitalCtrl.text.trim(),
+                                        ) ??
+                                        0.0;
+                                    final totalCap =
+                                        double.tryParse(
+                                          customTotalCapitalCtrl.text.trim(),
+                                        ) ??
+                                        0.0;
                                     double calcPercent = 0.0;
                                     if (totalCap > 0 && thisCap > 0) {
-                                      calcPercent = (thisCap / totalCap) * 100.0;
+                                      calcPercent =
+                                          (thisCap / totalCap) * 100.0;
                                     }
                                     return Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
                                         Text(
                                           'النسبة المحسوبة: ${calcPercent > 0 ? calcPercent.toStringAsFixed(2) : "0.0"}%',
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blue),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                            color: Colors.blue,
+                                          ),
                                         ),
                                         ElevatedButton(
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.blue.shade700,
-                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                            backgroundColor:
+                                                Colors.blue.shade700,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 6,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
                                           ),
                                           onPressed: calcPercent > 0
                                               ? () {
                                                   setDialogState(() {
-                                                    capitalPercentageCtrl.text = calcPercent.toStringAsFixed(2);
-                                                    if (percentageCtrl.text.isEmpty) {
-                                                      percentageCtrl.text = calcPercent.toStringAsFixed(2);
+                                                    capitalPercentageCtrl.text =
+                                                        calcPercent
+                                                            .toStringAsFixed(2);
+                                                    if (percentageCtrl
+                                                        .text
+                                                        .isEmpty) {
+                                                      percentageCtrl
+                                                          .text = calcPercent
+                                                          .toStringAsFixed(2);
                                                     }
                                                     showSmartCalculator = false;
                                                   });
                                                 }
                                               : null,
-                                          child: const Text('اعتماد هذه النسبة', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                                          child: const Text(
+                                            'اعتماد هذه النسبة',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
                                         ),
                                       ],
                                     );
@@ -334,29 +473,59 @@ class _PartnersScreenState extends State<PartnersScreen> {
                       ],
 
                       // 4. Profit Calculation Mode
-                      const Text('طريقة احتساب أرباح الشريك:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      const Text(
+                        'طريقة احتساب أرباح الشريك:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
                       const SizedBox(height: 8),
                       Row(
                         children: [
                           Expanded(
                             child: InkWell(
                               borderRadius: BorderRadius.circular(10),
-                              onTap: () => setDialogState(() => profitMode = 'net_profit_share'),
+                              onTap: () => setDialogState(
+                                () => profitMode = 'net_profit_share',
+                              ),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                  horizontal: 8,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: profitMode == 'net_profit_share' ? AppColors.surfaceContainer : Colors.transparent,
+                                  color: profitMode == 'net_profit_share'
+                                      ? AppColors.surfaceContainer
+                                      : Colors.transparent,
                                   borderRadius: BorderRadius.circular(10),
                                   border: Border.all(
-                                    color: profitMode == 'net_profit_share' ? AppColors.primary : Colors.grey.shade300,
-                                    width: profitMode == 'net_profit_share' ? 1.5 : 1,
+                                    color: profitMode == 'net_profit_share'
+                                        ? AppColors.primary
+                                        : Colors.grey.shade300,
+                                    width: profitMode == 'net_profit_share'
+                                        ? 1.5
+                                        : 1,
                                   ),
                                 ),
                                 child: const Column(
                                   children: [
-                                    Text('نسبة من صافي الربح', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                    Text(
+                                      'نسبة من صافي الربح',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
                                     SizedBox(height: 2),
-                                    Text('تتغير حسب مبيعات ومصاريف المحل', style: TextStyle(fontSize: 10, color: Colors.grey), textAlign: TextAlign.center),
+                                    Text(
+                                      'تتغير حسب مبيعات ومصاريف المحل',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.grey,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
                                   ],
                                 ),
                               ),
@@ -367,22 +536,46 @@ class _PartnersScreenState extends State<PartnersScreen> {
                             Expanded(
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(10),
-                                onTap: () => setDialogState(() => profitMode = 'fixed_roi'),
+                                onTap: () => setDialogState(
+                                  () => profitMode = 'fixed_roi',
+                                ),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 10,
+                                    horizontal: 8,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: profitMode == 'fixed_roi' ? AppColors.surfaceContainer : Colors.transparent,
+                                    color: profitMode == 'fixed_roi'
+                                        ? AppColors.surfaceContainer
+                                        : Colors.transparent,
                                     borderRadius: BorderRadius.circular(10),
                                     border: Border.all(
-                                      color: profitMode == 'fixed_roi' ? AppColors.primary : Colors.grey.shade300,
-                                      width: profitMode == 'fixed_roi' ? 1.5 : 1,
+                                      color: profitMode == 'fixed_roi'
+                                          ? AppColors.primary
+                                          : Colors.grey.shade300,
+                                      width: profitMode == 'fixed_roi'
+                                          ? 1.5
+                                          : 1,
                                     ),
                                   ),
                                   child: const Column(
                                     children: [
-                                      Text('عائد سنوي محدد على رأس المال', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                      Text(
+                                        'عائد سنوي محدد على رأس المال',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                      ),
                                       SizedBox(height: 2),
-                                      Text('عائد استثماري ثابت % من رأس المال', style: TextStyle(fontSize: 10, color: Colors.grey), textAlign: TextAlign.center),
+                                      Text(
+                                        'عائد استثماري ثابت % من رأس المال',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.grey,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -397,18 +590,26 @@ class _PartnersScreenState extends State<PartnersScreen> {
                       if (!isFixedRoi) ...[
                         TextFormField(
                           controller: percentageCtrl,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
                           decoration: InputDecoration(
                             labelText: 'نسبة الشريك من صافي الأرباح (%) *',
-                            hintText: 'الحد الأقصى المتاح حالياً: ${maxAllowed.toStringAsFixed(1)}%',
-                            helperText: 'النسبة الفعلية التي يُحسب عليها نصيب الشريك عند توزيع الأرباح (مثال: 60%)',
+                            hintText:
+                                'الحد الأقصى المتاح حالياً: ${maxAllowed.toStringAsFixed(1)}%',
+                            helperText:
+                                'النسبة الفعلية التي يُحسب عليها نصيب الشريك عند توزيع الأرباح (مثال: 60%)',
                             suffixText: '%',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
                           validator: (val) {
-                            if (val == null || val.trim().isEmpty) return 'يرجى إدخال النسبة المئوية';
+                            if (val == null || val.trim().isEmpty)
+                              return 'يرجى إدخال النسبة المئوية';
                             final num = double.tryParse(val.trim());
-                            if (num == null || num <= 0) return 'النسبة يجب أن تكون أكبر من الصفر';
+                            if (num == null || num <= 0)
+                              return 'النسبة يجب أن تكون أكبر من الصفر';
                             if (num > maxAllowed + 0.001) {
                               return 'مجموع نسب الشركاء لا يمكن أن يتجاوز 100% (المتاح: ${maxAllowed.toStringAsFixed(1)}%)';
                             }
@@ -421,12 +622,17 @@ class _PartnersScreenState extends State<PartnersScreen> {
                             alignment: Alignment.centerRight,
                             child: TextButton.icon(
                               style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
                                 visualDensity: VisualDensity.compact,
                               ),
                               onPressed: () {
                                 setDialogState(() {
-                                  percentageCtrl.text = capitalPercentageCtrl.text.trim();
+                                  percentageCtrl.text = capitalPercentageCtrl
+                                      .text
+                                      .trim();
                                 });
                               },
                               icon: const Icon(Icons.sync_rounded, size: 16),
@@ -440,17 +646,23 @@ class _PartnersScreenState extends State<PartnersScreen> {
                       ] else ...[
                         TextFormField(
                           controller: roiCtrl,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
                           decoration: InputDecoration(
                             labelText: 'معدل العائد الاستثماري السنوي (%) *',
                             hintText: 'مثال: 15 أو 20',
                             suffixText: '% سنوياً',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
                           validator: (val) {
-                            if (val == null || val.trim().isEmpty) return 'يرجى إدخال معدل العائد';
+                            if (val == null || val.trim().isEmpty)
+                              return 'يرجى إدخال معدل العائد';
                             final num = double.tryParse(val.trim());
-                            if (num == null || num <= 0) return 'المعدل يجب أن يكون أكبر من الصفر';
+                            if (num == null || num <= 0)
+                              return 'المعدل يجب أن يكون أكبر من الصفر';
                             return null;
                           },
                         ),
@@ -460,12 +672,16 @@ class _PartnersScreenState extends State<PartnersScreen> {
                       // Optional Monthly Allowance / Salary
                       TextFormField(
                         controller: salaryCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'بدل / راتب إدارة شهري (اختياري)',
                           hintText: 'مثال: 5000 (للشريك المدير إن وجد)',
                           suffixText: 'ج.م / شهرياً',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 14),
@@ -476,8 +692,11 @@ class _PartnersScreenState extends State<PartnersScreen> {
                         maxLines: 2,
                         decoration: InputDecoration(
                           labelText: 'ملاحظات وتفاصيل الاتفاق (اختياري)',
-                          hintText: 'مثال: تم الاتفاق على توزيع الأرباح كل أول شهر...',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          hintText:
+                              'مثال: تم الاتفاق على توزيع الأرباح كل أول شهر...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                       ),
                     ],
@@ -493,36 +712,55 @@ class _PartnersScreenState extends State<PartnersScreen> {
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
                 onPressed: () async {
                   if (formKey.currentState?.validate() != true) return;
-                  final percent = double.tryParse(percentageCtrl.text.trim()) ?? 0.0;
-                  final capPercent = double.tryParse(capitalPercentageCtrl.text.trim());
-                  final capPounds = double.tryParse(capitalCtrl.text.trim()) ?? 0.0;
-                  final roiVal = double.tryParse(roiCtrl.text.trim()) ?? 0.0;
-                  final salPounds = double.tryParse(salaryCtrl.text.trim()) ?? 0.0;
-
-                  final toSave = (partner ?? PartnerEntity(
-                    id: '',
-                    name: '',
-                    percentage: 0,
-                    createdAt: DateTime.now(),
-                  )).copyWith(
-                    id: partner?.id ?? '',
-                    name: nameCtrl.text.trim(),
-                    phone: phoneCtrl.text.trim().isNotEmpty ? phoneCtrl.text.trim() : null,
-                    percentage: isFixedRoi ? 0.0 : percent,
-                    capitalPercentage: isEffortOnly ? 0.0 : capPercent,
-                    capital: isEffortOnly ? 0 : (capPounds * 100).toInt(),
-                    partnershipType: partnershipType,
-                    profitMode: profitMode,
-                    roiPercentage: isFixedRoi ? roiVal : 0.0,
-                    monthlySalary: (salPounds * 100).toInt(),
-                    notes: notesCtrl.text.trim().isNotEmpty ? notesCtrl.text.trim() : null,
-                    createdAt: partner?.createdAt ?? DateTime.now(),
+                  final percent =
+                      double.tryParse(percentageCtrl.text.trim()) ?? 0.0;
+                  final capPercent = double.tryParse(
+                    capitalPercentageCtrl.text.trim(),
                   );
+                  final capPounds =
+                      double.tryParse(capitalCtrl.text.trim()) ?? 0.0;
+                  final roiVal = double.tryParse(roiCtrl.text.trim()) ?? 0.0;
+                  final salPounds =
+                      double.tryParse(salaryCtrl.text.trim()) ?? 0.0;
+
+                  final toSave =
+                      (partner ??
+                              PartnerEntity(
+                                id: '',
+                                name: '',
+                                percentage: 0,
+                                createdAt: DateTime.now(),
+                              ))
+                          .copyWith(
+                            id: partner?.id ?? '',
+                            name: nameCtrl.text.trim(),
+                            phone: phoneCtrl.text.trim().isNotEmpty
+                                ? phoneCtrl.text.trim()
+                                : null,
+                            percentage: isFixedRoi ? 0.0 : percent,
+                            capitalPercentage: isEffortOnly ? 0.0 : capPercent,
+                            capital: isEffortOnly
+                                ? 0
+                                : (capPounds * 100).toInt(),
+                            partnershipType: partnershipType,
+                            profitMode: profitMode,
+                            roiPercentage: isFixedRoi ? roiVal : 0.0,
+                            monthlySalary: (salPounds * 100).toInt(),
+                            notes: notesCtrl.text.trim().isNotEmpty
+                                ? notesCtrl.text.trim()
+                                : null,
+                            createdAt: partner?.createdAt ?? DateTime.now(),
+                          );
 
                   final ok = await cubit.savePartner(toSave);
                   if (ok && dialogCtx.mounted) {
@@ -531,7 +769,10 @@ class _PartnersScreenState extends State<PartnersScreen> {
                 },
                 child: Text(
                   isEdit ? 'حفظ التعديلات' : 'إضافة الشريك',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -563,10 +804,26 @@ class _PartnersScreenState extends State<PartnersScreen> {
         ),
         child: Column(
           children: [
-            Icon(icon, color: isSelected ? AppColors.primary : Colors.grey.shade600, size: 22),
+            Icon(
+              icon,
+              color: isSelected ? AppColors.primary : Colors.grey.shade600,
+              size: 22,
+            ),
             const SizedBox(height: 4),
-            Text(title, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.w600, fontSize: 11, color: isSelected ? AppColors.primary : AppColors.onSurface), textAlign: TextAlign.center),
-            Text(subtitle, style: TextStyle(fontSize: 9, color: Colors.grey.shade600), textAlign: TextAlign.center),
+            Text(
+              title,
+              style: TextStyle(
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                fontSize: 11,
+                color: isSelected ? AppColors.primary : AppColors.onSurface,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            Text(
+              subtitle,
+              style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
@@ -574,7 +831,11 @@ class _PartnersScreenState extends State<PartnersScreen> {
   }
 
   // Record a withdrawal / payout dialog
-  void _openWithdrawalDialog(BuildContext context, PartnerEntity partner, int currentEarnedProfit) {
+  void _openWithdrawalDialog(
+    BuildContext context,
+    PartnerEntity partner,
+    int currentEarnedProfit,
+  ) {
     final cubit = context.read<PartnersCubit>();
     final amountCtrl = TextEditingController();
     final noteCtrl = TextEditingController();
@@ -586,12 +847,20 @@ class _PartnersScreenState extends State<PartnersScreen> {
       barrierDismissible: false,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Row(
             children: [
               Icon(Icons.payments_rounded, color: AppColors.primary),
               const SizedBox(width: 8),
-              Text('صرف أرباح / مسحوبات: ${partner.name}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text(
+                'صرف أرباح / مسحوبات: ${partner.name}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
             ],
           ),
           content: ConstrainedBox(
@@ -614,15 +883,40 @@ class _PartnersScreenState extends State<PartnersScreen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('الأرباح المستحقة حالياً', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                            Text('${Money(currentEarnedProfit).toDisplay()} ج.م', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.green)),
+                            const Text(
+                              'الأرباح المستحقة حالياً',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            Text(
+                              '${Money(currentEarnedProfit).toDisplay()} ج.م',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: Colors.green,
+                              ),
+                            ),
                           ],
                         ),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            const Text('رأس المال النشط', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                            Text('${Money(partner.currentCapital).toDisplay()} ج.م', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                            const Text(
+                              'رأس المال النشط',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            Text(
+                              '${Money(partner.currentCapital).toDisplay()} ج.م',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -630,7 +924,10 @@ class _PartnersScreenState extends State<PartnersScreen> {
                   ),
                   const SizedBox(height: 14),
 
-                  const Text('نوع الصرف:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  const Text(
+                    'نوع الصرف:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
                   const SizedBox(height: 6),
                   Wrap(
                     spacing: 8,
@@ -639,25 +936,37 @@ class _PartnersScreenState extends State<PartnersScreen> {
                       ChoiceChip(
                         label: const Text('صرف من الأرباح المستحقة'),
                         selected: withdrawalType == 'profit',
-                        onSelected: (val) => setDialogState(() => withdrawalType = 'profit'),
+                        onSelected: (val) =>
+                            setDialogState(() => withdrawalType = 'profit'),
                       ),
                       ChoiceChip(
                         avatar: const Icon(Icons.handshake_outlined, size: 16),
-                        label: const Text('سلفة شخصية مؤقتة (لا تؤثر على الأرباح)'),
+                        label: const Text(
+                          'سلفة شخصية مؤقتة (لا تؤثر على الأرباح)',
+                        ),
                         selected: withdrawalType == 'advance',
-                        onSelected: (val) => setDialogState(() => withdrawalType = 'advance'),
+                        onSelected: (val) =>
+                            setDialogState(() => withdrawalType = 'advance'),
                       ),
                       if (partner.remainingDeposited > 0)
                         ChoiceChip(
-                          avatar: const Icon(Icons.arrow_downward_rounded, size: 16),
-                          label: Text('استرداد تمويل الجيب (${Money(partner.remainingDeposited).toDisplay()} ج.م)'),
+                          avatar: const Icon(
+                            Icons.arrow_downward_rounded,
+                            size: 16,
+                          ),
+                          label: Text(
+                            'استرداد تمويل الجيب (${Money(partner.remainingDeposited).toDisplay()} ج.م)',
+                          ),
                           selected: withdrawalType == 'deposit_refund',
-                          onSelected: (val) => setDialogState(() => withdrawalType = 'deposit_refund'),
+                          onSelected: (val) => setDialogState(
+                            () => withdrawalType = 'deposit_refund',
+                          ),
                         ),
                       ChoiceChip(
                         label: const Text('استرداد من رأس المال'),
                         selected: withdrawalType == 'capital',
-                        onSelected: (val) => setDialogState(() => withdrawalType = 'capital'),
+                        onSelected: (val) =>
+                            setDialogState(() => withdrawalType = 'capital'),
                       ),
                     ],
                   ),
@@ -672,12 +981,19 @@ class _PartnersScreenState extends State<PartnersScreen> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.info_outline_rounded, color: Colors.amber.shade900, size: 16),
+                          Icon(
+                            Icons.info_outline_rounded,
+                            color: Colors.amber.shade900,
+                            size: 16,
+                          ),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
                               'سلفة مؤقتة من الدرج لظرف شخصي، لا تخصم من أرباحك ولا رأس مالك، وتُسوى عند ردها.',
-                              style: TextStyle(fontSize: 11, color: Colors.amber.shade900),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.amber.shade900,
+                              ),
                             ),
                           ),
                         ],
@@ -688,19 +1004,29 @@ class _PartnersScreenState extends State<PartnersScreen> {
 
                   TextFormField(
                     controller: amountCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: InputDecoration(
                       labelText: 'المبلغ المنصرف (ج.م) *',
                       suffixText: 'ج.م',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      prefixIcon: Icon(Icons.attach_money_rounded, color: AppColors.primary),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      prefixIcon: Icon(
+                        Icons.attach_money_rounded,
+                        color: AppColors.primary,
+                      ),
                     ),
                     validator: (val) {
-                      if (val == null || val.trim().isEmpty) return 'يرجى إدخال المبلغ';
+                      if (val == null || val.trim().isEmpty)
+                        return 'يرجى إدخال المبلغ';
                       final num = double.tryParse(val.trim());
-                      if (num == null || num <= 0) return 'المبلغ يجب أن يكون أكبر من الصفر';
+                      if (num == null || num <= 0)
+                        return 'المبلغ يجب أن يكون أكبر من الصفر';
                       final piasters = (num * 100).toInt();
-                      if (withdrawalType == 'deposit_refund' && piasters > partner.remainingDeposited) {
+                      if (withdrawalType == 'deposit_refund' &&
+                          piasters > partner.remainingDeposited) {
                         return 'المبلغ يتجاوز رصيد تمويل الجيب المتبقي (${Money(partner.remainingDeposited).toDisplay()} ج.م)';
                       }
                       return null;
@@ -712,8 +1038,11 @@ class _PartnersScreenState extends State<PartnersScreen> {
                     controller: noteCtrl,
                     decoration: InputDecoration(
                       labelText: 'ملاحظة / بيان الصرف (اختياري)',
-                      hintText: 'مثال: أرباح شهر أكتوبر، استرداد جزء من المساهمة...',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      hintText:
+                          'مثال: أرباح شهر أكتوبر، استرداد جزء من المساهمة...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
                 ],
@@ -728,7 +1057,9 @@ class _PartnersScreenState extends State<PartnersScreen> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               onPressed: () async {
                 if (formKey.currentState?.validate() != true) return;
@@ -740,14 +1071,18 @@ class _PartnersScreenState extends State<PartnersScreen> {
                   ok = await cubit.refundDeposit(
                     partnerId: partner.id,
                     amount: piasters,
-                    note: noteCtrl.text.trim().isNotEmpty ? noteCtrl.text.trim() : null,
+                    note: noteCtrl.text.trim().isNotEmpty
+                        ? noteCtrl.text.trim()
+                        : null,
                   );
                 } else {
                   ok = await cubit.recordWithdrawal(
                     partnerId: partner.id,
                     amount: piasters,
                     type: withdrawalType,
-                    note: noteCtrl.text.trim().isNotEmpty ? noteCtrl.text.trim() : null,
+                    note: noteCtrl.text.trim().isNotEmpty
+                        ? noteCtrl.text.trim()
+                        : null,
                   );
                 }
 
@@ -761,7 +1096,13 @@ class _PartnersScreenState extends State<PartnersScreen> {
                   );
                 }
               },
-              child: const Text('تأكيد الصرف', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text(
+                'تأكيد الصرف',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         ),
@@ -776,12 +1117,17 @@ class _PartnersScreenState extends State<PartnersScreen> {
     String initialCategory = 'goods',
   }) {
     final formKey = GlobalKey<FormState>();
-    final initialAmount = (initialCategory == 'advance_repayment' && partner.remainingAdvance > 0)
-        ? (partner.remainingAdvance / 100.0).toStringAsFixed(partner.remainingAdvance % 100 == 0 ? 0 : 2)
+    final initialAmount =
+        (initialCategory == 'advance_repayment' && partner.remainingAdvance > 0)
+        ? (partner.remainingAdvance / 100.0).toStringAsFixed(
+            partner.remainingAdvance % 100 == 0 ? 0 : 2,
+          )
         : '';
     final amountCtrl = TextEditingController(text: initialAmount);
     final noteCtrl = TextEditingController(
-      text: initialCategory == 'advance_repayment' ? 'رد السلفة الشخصية للدرج' : '',
+      text: initialCategory == 'advance_repayment'
+          ? 'رد السلفة الشخصية للدرج'
+          : '',
     );
     final cubit = context.read<PartnersCubit>();
     String depositCategory = initialCategory;
@@ -791,12 +1137,18 @@ class _PartnersScreenState extends State<PartnersScreen> {
       barrierDismissible: false,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Row(
             children: [
               Icon(
-                depositCategory == 'advance_repayment' ? Icons.assignment_return_outlined : Icons.add_card_rounded,
-                color: depositCategory == 'advance_repayment' ? Colors.amber.shade900 : AppColors.primary,
+                depositCategory == 'advance_repayment'
+                    ? Icons.assignment_return_outlined
+                    : Icons.add_card_rounded,
+                color: depositCategory == 'advance_repayment'
+                    ? Colors.amber.shade900
+                    : AppColors.primary,
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -804,7 +1156,10 @@ class _PartnersScreenState extends State<PartnersScreen> {
                   depositCategory == 'advance_repayment'
                       ? 'رد سلفة شخصية مؤقتة: ${partner.name}'
                       : 'تمويل ودفع من الجيب: ${partner.name}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
               ),
             ],
@@ -829,15 +1184,40 @@ class _PartnersScreenState extends State<PartnersScreen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('إجمالي المدفوع سابقاً من الجيب', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                            Text('${Money(partner.totalDeposited).toDisplay()} ج.م', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary)),
+                            const Text(
+                              'إجمالي المدفوع سابقاً من الجيب',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            Text(
+                              '${Money(partner.totalDeposited).toDisplay()} ج.م',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: AppColors.primary,
+                              ),
+                            ),
                           ],
                         ),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            const Text('رأس المال النشط', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                            Text('${Money(partner.currentCapital).toDisplay()} ج.م', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                            const Text(
+                              'رأس المال النشط',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            Text(
+                              '${Money(partner.currentCapital).toDisplay()} ج.م',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -845,39 +1225,59 @@ class _PartnersScreenState extends State<PartnersScreen> {
                   ),
                   const SizedBox(height: 14),
 
-                  const Text('الغرض من التمويل / الدفع من الجيب:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  const Text(
+                    'الغرض من التمويل / الدفع من الجيب:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
                       ChoiceChip(
-                        avatar: const Icon(Icons.inventory_2_outlined, size: 16),
+                        avatar: const Icon(
+                          Icons.inventory_2_outlined,
+                          size: 16,
+                        ),
                         label: const Text('تكملة / شراء بضاعة'),
                         selected: depositCategory == 'goods',
-                        onSelected: (val) => setDialogState(() => depositCategory = 'goods'),
+                        onSelected: (val) =>
+                            setDialogState(() => depositCategory = 'goods'),
                       ),
                       ChoiceChip(
-                        avatar: const Icon(Icons.receipt_long_outlined, size: 16),
+                        avatar: const Icon(
+                          Icons.receipt_long_outlined,
+                          size: 16,
+                        ),
                         label: const Text('سداد مصروفات / إيجار'),
                         selected: depositCategory == 'expenses',
-                        onSelected: (val) => setDialogState(() => depositCategory = 'expenses'),
+                        onSelected: (val) =>
+                            setDialogState(() => depositCategory = 'expenses'),
                       ),
                       ChoiceChip(
-                        avatar: const Icon(Icons.point_of_sale_outlined, size: 16),
+                        avatar: const Icon(
+                          Icons.point_of_sale_outlined,
+                          size: 16,
+                        ),
                         label: const Text('سيولة نقدية بالدرج'),
                         selected: depositCategory == 'cash',
-                        onSelected: (val) => setDialogState(() => depositCategory = 'cash'),
+                        onSelected: (val) =>
+                            setDialogState(() => depositCategory = 'cash'),
                       ),
                       ChoiceChip(
-                        avatar: const Icon(Icons.assignment_return_outlined, size: 16),
+                        avatar: const Icon(
+                          Icons.assignment_return_outlined,
+                          size: 16,
+                        ),
                         label: Text(
                           partner.remainingAdvance > 0
                               ? 'رد سلفة شخصية مؤقتة (${Money(partner.remainingAdvance).toDisplay()} ج.م)'
                               : 'رد سلفة شخصية مؤقتة',
                         ),
                         selected: depositCategory == 'advance_repayment',
-                        onSelected: (val) => setDialogState(() => depositCategory = 'advance_repayment'),
+                        onSelected: (val) => setDialogState(
+                          () => depositCategory = 'advance_repayment',
+                        ),
                       ),
                     ],
                   ),
@@ -892,12 +1292,19 @@ class _PartnersScreenState extends State<PartnersScreen> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.check_circle_outline_rounded, color: Colors.amber.shade900, size: 16),
+                          Icon(
+                            Icons.check_circle_outline_rounded,
+                            color: Colors.amber.shade900,
+                            size: 16,
+                          ),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
                               'إيداع رد السلفة المؤقتة في الخزينة: يسوي السلفة السابقة ويخلي ذمتك دون اعتباره تمويلاً أو ديناً جديداً على المحل.',
-                              style: TextStyle(fontSize: 11, color: Colors.amber.shade900),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.amber.shade900,
+                              ),
                             ),
                           ),
                         ],
@@ -908,18 +1315,28 @@ class _PartnersScreenState extends State<PartnersScreen> {
 
                   TextFormField(
                     controller: amountCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: InputDecoration(
                       labelText: 'المبلغ المدفوع (ج.م) *',
                       suffixText: 'ج.م',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      prefixIcon: Icon(Icons.attach_money_rounded, color: AppColors.primary),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      prefixIcon: Icon(
+                        Icons.attach_money_rounded,
+                        color: AppColors.primary,
+                      ),
                     ),
                     validator: (val) {
-                      if (val == null || val.trim().isEmpty) return 'يرجى إدخال المبلغ';
+                      if (val == null || val.trim().isEmpty)
+                        return 'يرجى إدخال المبلغ';
                       final num = double.tryParse(val.trim());
-                      if (num == null || num <= 0) return 'المبلغ يجب أن يكون أكبر من الصفر';
-                      if (depositCategory == 'advance_repayment' && partner.remainingAdvance > 0) {
+                      if (num == null || num <= 0)
+                        return 'المبلغ يجب أن يكون أكبر من الصفر';
+                      if (depositCategory == 'advance_repayment' &&
+                          partner.remainingAdvance > 0) {
                         final piasters = (num * 100).toInt();
                         if (piasters > partner.remainingAdvance) {
                           return 'المبلغ يتجاوز السلفة المستحقة عليك (${Money(partner.remainingAdvance).toDisplay()} ج.م)';
@@ -937,7 +1354,9 @@ class _PartnersScreenState extends State<PartnersScreen> {
                       hintText: depositCategory == 'advance_repayment'
                           ? 'مثال: رد كامل السلفة للدرج نقداً...'
                           : 'مثال: دفع تكلفة شحنة قماش كاش من جيبي لعدم توفر سيولة...',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
                 ],
@@ -951,8 +1370,12 @@ class _PartnersScreenState extends State<PartnersScreen> {
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: depositCategory == 'advance_repayment' ? Colors.amber.shade800 : AppColors.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                backgroundColor: depositCategory == 'advance_repayment'
+                    ? Colors.amber.shade800
+                    : AppColors.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               onPressed: () async {
                 if (formKey.currentState?.validate() != true) return;
@@ -963,7 +1386,9 @@ class _PartnersScreenState extends State<PartnersScreen> {
                   partnerId: partner.id,
                   amount: piasters,
                   category: depositCategory,
-                  note: noteCtrl.text.trim().isNotEmpty ? noteCtrl.text.trim() : null,
+                  note: noteCtrl.text.trim().isNotEmpty
+                      ? noteCtrl.text.trim()
+                      : null,
                 );
 
                 if (ok && dialogCtx.mounted) {
@@ -980,8 +1405,13 @@ class _PartnersScreenState extends State<PartnersScreen> {
                 }
               },
               child: Text(
-                depositCategory == 'advance_repayment' ? 'تأكيد رد السلفة' : 'تأكيد الإيداع',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                depositCategory == 'advance_repayment'
+                    ? 'تأكيد رد السلفة'
+                    : 'تأكيد الإيداع',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
@@ -991,9 +1421,15 @@ class _PartnersScreenState extends State<PartnersScreen> {
   }
 
   // Reinvest retained profit into capital dialog (تدوير الأرباح في رأس المال)
-  void _openReinvestDialog(BuildContext context, PartnerEntity partner, int unwithdrawnProfit) {
+  void _openReinvestDialog(
+    BuildContext context,
+    PartnerEntity partner,
+    int unwithdrawnProfit,
+  ) {
     final formKey = GlobalKey<FormState>();
-    final amountCtrl = TextEditingController(text: (unwithdrawnProfit / 100.0).toStringAsFixed(2));
+    final amountCtrl = TextEditingController(
+      text: (unwithdrawnProfit / 100.0).toStringAsFixed(2),
+    );
     final noteCtrl = TextEditingController();
     final cubit = context.read<PartnersCubit>();
 
@@ -1002,7 +1438,9 @@ class _PartnersScreenState extends State<PartnersScreen> {
       barrierDismissible: false,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Row(
             children: [
               const Icon(Icons.autorenew_rounded, color: Colors.teal),
@@ -1010,7 +1448,10 @@ class _PartnersScreenState extends State<PartnersScreen> {
               Expanded(
                 child: Text(
                   'تدوير الأرباح كرأس مال: ${partner.name}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
               ),
             ],
@@ -1046,11 +1487,17 @@ class _PartnersScreenState extends State<PartnersScreen> {
                           children: [
                             Text(
                               'الأرباح المتبقية المتاحة: ${Money(unwithdrawnProfit).toDisplay()} ج.م',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
                             ),
                             Text(
                               'رأس المال الحالي: ${Money(partner.currentCapital).toDisplay()} ج.م',
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade700,
+                              ),
                             ),
                           ],
                         ),
@@ -1061,19 +1508,29 @@ class _PartnersScreenState extends State<PartnersScreen> {
 
                   TextFormField(
                     controller: amountCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: InputDecoration(
                       labelText: 'المبلغ المراد تدويره في رأس المال (ج.م) *',
                       suffixText: 'ج.م',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      prefixIcon: const Icon(Icons.price_change_outlined, color: Colors.teal),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.price_change_outlined,
+                        color: Colors.teal,
+                      ),
                     ),
                     validator: (val) {
-                      if (val == null || val.trim().isEmpty) return 'يرجى إدخال المبلغ';
+                      if (val == null || val.trim().isEmpty)
+                        return 'يرجى إدخال المبلغ';
                       final num = double.tryParse(val.trim());
-                      if (num == null || num <= 0) return 'المبلغ يجب أن يكون أكبر من الصفر';
+                      if (num == null || num <= 0)
+                        return 'المبلغ يجب أن يكون أكبر من الصفر';
                       final piasters = (num * 100).toInt();
-                      if (piasters > unwithdrawnProfit) return 'المبلغ لا يمكن أن يتجاوز الأرباح المتبقية (${Money(unwithdrawnProfit).toDisplay()} ج.م)';
+                      if (piasters > unwithdrawnProfit)
+                        return 'المبلغ لا يمكن أن يتجاوز الأرباح المتبقية (${Money(unwithdrawnProfit).toDisplay()} ج.م)';
                       return null;
                     },
                   ),
@@ -1083,8 +1540,11 @@ class _PartnersScreenState extends State<PartnersScreen> {
                     controller: noteCtrl,
                     decoration: InputDecoration(
                       labelText: 'ملاحظة (اختياري)',
-                      hintText: 'مثال: تدوير أرباح الفترة لزيادة حصة رأس المال...',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      hintText:
+                          'مثال: تدوير أرباح الفترة لزيادة حصة رأس المال...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
                 ],
@@ -1099,7 +1559,9 @@ class _PartnersScreenState extends State<PartnersScreen> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.teal,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               onPressed: () async {
                 if (formKey.currentState?.validate() != true) return;
@@ -1109,20 +1571,30 @@ class _PartnersScreenState extends State<PartnersScreen> {
                 final ok = await cubit.reinvestProfitIntoCapital(
                   partnerId: partner.id,
                   amount: piasters,
-                  note: noteCtrl.text.trim().isNotEmpty ? noteCtrl.text.trim() : null,
+                  note: noteCtrl.text.trim().isNotEmpty
+                      ? noteCtrl.text.trim()
+                      : null,
                 );
 
                 if (ok && dialogCtx.mounted) {
                   Navigator.pop(dialogCtx);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('تم تدوير مبلغ ${Money(piasters).toDisplay()} ج.م وإضافته لرأس مال ${partner.name} بنجاح!'),
+                      content: Text(
+                        'تم تدوير مبلغ ${Money(piasters).toDisplay()} ج.م وإضافته لرأس مال ${partner.name} بنجاح!',
+                      ),
                       backgroundColor: AppColors.success,
                     ),
                   );
                 }
               },
-              child: const Text('تأكيد التدوير كزيادة رأس مال', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text(
+                'تأكيد التدوير كزيادة رأس مال',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         ),
@@ -1133,7 +1605,9 @@ class _PartnersScreenState extends State<PartnersScreen> {
   // Refund out-of-pocket funding dialog (استرداد فلوس الجيب كاش)
   void _openRefundDepositDialog(BuildContext context, PartnerEntity partner) {
     final formKey = GlobalKey<FormState>();
-    final amountCtrl = TextEditingController(text: (partner.remainingDeposited / 100.0).toStringAsFixed(2));
+    final amountCtrl = TextEditingController(
+      text: (partner.remainingDeposited / 100.0).toStringAsFixed(2),
+    );
     final noteCtrl = TextEditingController();
     final cubit = context.read<PartnersCubit>();
 
@@ -1142,7 +1616,9 @@ class _PartnersScreenState extends State<PartnersScreen> {
       barrierDismissible: false,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Row(
             children: [
               const Icon(Icons.arrow_downward_rounded, color: Colors.teal),
@@ -1150,7 +1626,10 @@ class _PartnersScreenState extends State<PartnersScreen> {
               Expanded(
                 child: Text(
                   'استرداد تمويل شخصي من الجيب: ${partner.name}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
               ),
             ],
@@ -1186,11 +1665,17 @@ class _PartnersScreenState extends State<PartnersScreen> {
                           children: [
                             Text(
                               'الرصيد المتاح للاسترداد: ${Money(partner.remainingDeposited).toDisplay()} ج.م',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
                             ),
                             Text(
                               'إجمالي المدفوع: ${Money(partner.totalDeposited).toDisplay()} ج.م',
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade700,
+                              ),
                             ),
                           ],
                         ),
@@ -1201,17 +1686,26 @@ class _PartnersScreenState extends State<PartnersScreen> {
 
                   TextFormField(
                     controller: amountCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: InputDecoration(
                       labelText: 'المبلغ المسترد (ج.م) *',
                       suffixText: 'ج.م',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      prefixIcon: const Icon(Icons.money_rounded, color: Colors.teal),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.money_rounded,
+                        color: Colors.teal,
+                      ),
                     ),
                     validator: (val) {
-                      if (val == null || val.trim().isEmpty) return 'يرجى إدخال المبلغ';
+                      if (val == null || val.trim().isEmpty)
+                        return 'يرجى إدخال المبلغ';
                       final num = double.tryParse(val.trim());
-                      if (num == null || num <= 0) return 'المبلغ يجب أن يكون أكبر من الصفر';
+                      if (num == null || num <= 0)
+                        return 'المبلغ يجب أن يكون أكبر من الصفر';
                       final piasters = (num * 100).toInt();
                       if (piasters > partner.remainingDeposited) {
                         return 'المبلغ يتجاوز رصيد تمويل الجيب المتبقي (${Money(partner.remainingDeposited).toDisplay()} ج.م)';
@@ -1226,7 +1720,9 @@ class _PartnersScreenState extends State<PartnersScreen> {
                     decoration: InputDecoration(
                       labelText: 'ملاحظة (اختياري)',
                       hintText: 'مثال: استرداد كاش من الدرج عن دفعة البضاعة...',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
                 ],
@@ -1241,7 +1737,9 @@ class _PartnersScreenState extends State<PartnersScreen> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.teal.shade800,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               onPressed: () async {
                 if (formKey.currentState?.validate() != true) return;
@@ -1251,20 +1749,30 @@ class _PartnersScreenState extends State<PartnersScreen> {
                 final ok = await cubit.refundDeposit(
                   partnerId: partner.id,
                   amount: piasters,
-                  note: noteCtrl.text.trim().isNotEmpty ? noteCtrl.text.trim() : null,
+                  note: noteCtrl.text.trim().isNotEmpty
+                      ? noteCtrl.text.trim()
+                      : null,
                 );
 
                 if (ok && dialogCtx.mounted) {
                   Navigator.pop(dialogCtx);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('تم استرداد مبلغ ${Money(piasters).toDisplay()} ج.م من تمويل الجيب لـ ${partner.name} بنجاح!'),
+                      content: Text(
+                        'تم استرداد مبلغ ${Money(piasters).toDisplay()} ج.م من تمويل الجيب لـ ${partner.name} بنجاح!',
+                      ),
                       backgroundColor: AppColors.success,
                     ),
                   );
                 }
               },
-              child: const Text('تأكيد الاسترداد كاش', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text(
+                'تأكيد الاسترداد كاش',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         ),
@@ -1273,9 +1781,14 @@ class _PartnersScreenState extends State<PartnersScreen> {
   }
 
   // Convert personal funding to capital dialog (تحويل تمويل الجيب لرأس مال)
-  void _openConvertDepositToCapitalDialog(BuildContext context, PartnerEntity partner) {
+  void _openConvertDepositToCapitalDialog(
+    BuildContext context,
+    PartnerEntity partner,
+  ) {
     final formKey = GlobalKey<FormState>();
-    final amountCtrl = TextEditingController(text: (partner.remainingDeposited / 100.0).toStringAsFixed(2));
+    final amountCtrl = TextEditingController(
+      text: (partner.remainingDeposited / 100.0).toStringAsFixed(2),
+    );
     final noteCtrl = TextEditingController();
     final cubit = context.read<PartnersCubit>();
 
@@ -1284,7 +1797,9 @@ class _PartnersScreenState extends State<PartnersScreen> {
       barrierDismissible: false,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Row(
             children: [
               const Icon(Icons.upgrade_rounded, color: Colors.indigo),
@@ -1292,7 +1807,10 @@ class _PartnersScreenState extends State<PartnersScreen> {
               Expanded(
                 child: Text(
                   'تحويل تمويل الجيب لرأس مال: ${partner.name}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
               ),
             ],
@@ -1328,11 +1846,17 @@ class _PartnersScreenState extends State<PartnersScreen> {
                           children: [
                             Text(
                               'التمويل المتاح للتحويل: ${Money(partner.remainingDeposited).toDisplay()} ج.م',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
                             ),
                             Text(
                               'رأس المال الحالي: ${Money(partner.currentCapital).toDisplay()} ج.م',
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade700,
+                              ),
                             ),
                           ],
                         ),
@@ -1343,17 +1867,26 @@ class _PartnersScreenState extends State<PartnersScreen> {
 
                   TextFormField(
                     controller: amountCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: InputDecoration(
                       labelText: 'المبلغ المراد إضافته لرأس المال (ج.م) *',
                       suffixText: 'ج.م',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      prefixIcon: const Icon(Icons.price_change_outlined, color: Colors.indigo),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.price_change_outlined,
+                        color: Colors.indigo,
+                      ),
                     ),
                     validator: (val) {
-                      if (val == null || val.trim().isEmpty) return 'يرجى إدخال المبلغ';
+                      if (val == null || val.trim().isEmpty)
+                        return 'يرجى إدخال المبلغ';
                       final num = double.tryParse(val.trim());
-                      if (num == null || num <= 0) return 'المبلغ يجب أن يكون أكبر من الصفر';
+                      if (num == null || num <= 0)
+                        return 'المبلغ يجب أن يكون أكبر من الصفر';
                       final piasters = (num * 100).toInt();
                       if (piasters > partner.remainingDeposited) {
                         return 'المبلغ يتجاوز رصيد تمويل الجيب المتبقي (${Money(partner.remainingDeposited).toDisplay()} ج.م)';
@@ -1368,7 +1901,9 @@ class _PartnersScreenState extends State<PartnersScreen> {
                     decoration: InputDecoration(
                       labelText: 'ملاحظة (اختياري)',
                       hintText: 'مثال: ضم دفعة البضاعة لحصة رأس المال...',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
                 ],
@@ -1383,7 +1918,9 @@ class _PartnersScreenState extends State<PartnersScreen> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.indigo.shade700,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               onPressed: () async {
                 if (formKey.currentState?.validate() != true) return;
@@ -1393,20 +1930,30 @@ class _PartnersScreenState extends State<PartnersScreen> {
                 final ok = await cubit.convertDepositToCapital(
                   partnerId: partner.id,
                   amount: piasters,
-                  note: noteCtrl.text.trim().isNotEmpty ? noteCtrl.text.trim() : null,
+                  note: noteCtrl.text.trim().isNotEmpty
+                      ? noteCtrl.text.trim()
+                      : null,
                 );
 
                 if (ok && dialogCtx.mounted) {
                   Navigator.pop(dialogCtx);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('تم تحويل مبلغ ${Money(piasters).toDisplay()} ج.م من تمويل الجيب وإضافته لرأس مال ${partner.name} بنجاح!'),
+                      content: Text(
+                        'تم تحويل مبلغ ${Money(piasters).toDisplay()} ج.م من تمويل الجيب وإضافته لرأس مال ${partner.name} بنجاح!',
+                      ),
                       backgroundColor: AppColors.success,
                     ),
                   );
                 }
               },
-              child: const Text('تأكيد التحويل لرأس المال', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text(
+                'تأكيد التحويل لرأس المال',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         ),
@@ -1415,19 +1962,30 @@ class _PartnersScreenState extends State<PartnersScreen> {
   }
 
   // Unified financial history dialog (سجل الحركات المالية: إيداعات ومسحوبات)
-  void _showFinancialHistoryDialog(BuildContext context, PartnerEntity partner) {
+  void _showFinancialHistoryDialog(
+    BuildContext context,
+    PartnerEntity partner,
+  ) {
     showDialog(
       context: context,
       builder: (ctx) => DefaultTabController(
         length: 2,
         child: AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Row(
             children: [
               Icon(Icons.history_rounded, color: AppColors.primary),
               const SizedBox(width: 8),
               Expanded(
-                child: Text('سجل حركات الشريك: ${partner.name}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                child: Text(
+                  'سجل حركات الشريك: ${partner.name}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
               ),
             ],
           ),
@@ -1457,21 +2015,32 @@ class _PartnersScreenState extends State<PartnersScreen> {
                       // Tab 1: Deposits
                       partner.deposits.isEmpty
                           ? const Center(
-                              child: Text('لا توجد دفعات أو تمويل من الجيب مسجل حتى الآن', style: TextStyle(color: Colors.grey)),
+                              child: Text(
+                                'لا توجد دفعات أو تمويل من الجيب مسجل حتى الآن',
+                                style: TextStyle(color: Colors.grey),
+                              ),
                             )
                           : ListView.separated(
                               itemCount: partner.deposits.length,
-                              separatorBuilder: (_, index) => const Divider(height: 1),
+                              separatorBuilder: (_, index) =>
+                                  const Divider(height: 1),
                               itemBuilder: (context, idx) {
                                 final d = partner.deposits[idx];
-                                final isAdvanceRepaid = d.category == 'advance_repayment';
+                                final isAdvanceRepaid =
+                                    d.category == 'advance_repayment';
                                 return ListTile(
                                   dense: true,
                                   leading: CircleAvatar(
-                                    backgroundColor: isAdvanceRepaid ? Colors.amber.shade50 : Colors.teal.shade50,
+                                    backgroundColor: isAdvanceRepaid
+                                        ? Colors.amber.shade50
+                                        : Colors.teal.shade50,
                                     child: Icon(
-                                      isAdvanceRepaid ? Icons.assignment_return_outlined : Icons.add_circle_outline_rounded,
-                                      color: isAdvanceRepaid ? Colors.amber.shade800 : Colors.teal.shade700,
+                                      isAdvanceRepaid
+                                          ? Icons.assignment_return_outlined
+                                          : Icons.add_circle_outline_rounded,
+                                      color: isAdvanceRepaid
+                                          ? Colors.amber.shade800
+                                          : Colors.teal.shade700,
                                       size: 18,
                                     ),
                                   ),
@@ -1479,22 +2048,38 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                     children: [
                                       Text(
                                         '${Money(d.amount).toDisplay()} ج.م',
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
                                       ),
                                       const SizedBox(width: 8),
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
                                         decoration: BoxDecoration(
-                                          color: isAdvanceRepaid ? Colors.amber.shade50 : Colors.teal.shade50,
-                                          borderRadius: BorderRadius.circular(6),
-                                          border: Border.all(color: isAdvanceRepaid ? Colors.amber.shade300 : Colors.teal.shade200),
+                                          color: isAdvanceRepaid
+                                              ? Colors.amber.shade50
+                                              : Colors.teal.shade50,
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                          border: Border.all(
+                                            color: isAdvanceRepaid
+                                                ? Colors.amber.shade300
+                                                : Colors.teal.shade200,
+                                          ),
                                         ),
                                         child: Text(
                                           d.categoryLabel,
                                           style: TextStyle(
                                             fontSize: 10,
                                             fontWeight: FontWeight.bold,
-                                            color: isAdvanceRepaid ? Colors.amber.shade900 : Colors.teal.shade900,
+                                            color: isAdvanceRepaid
+                                                ? Colors.amber.shade900
+                                                : Colors.teal.shade900,
                                           ),
                                         ),
                                       ),
@@ -1502,12 +2087,23 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                   ),
                                   subtitle: Text(
                                     '${d.date.year}-${d.date.month.toString().padLeft(2, '0')}-${d.date.day.toString().padLeft(2, '0')}${d.note != null ? " • ${d.note}" : ""}',
-                                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey.shade600,
+                                    ),
                                   ),
                                   trailing: IconButton(
-                                    icon: const Icon(Icons.delete_outline_rounded, color: Colors.red, size: 20),
+                                    icon: const Icon(
+                                      Icons.delete_outline_rounded,
+                                      color: Colors.red,
+                                      size: 20,
+                                    ),
                                     tooltip: 'حذف حركة الإيداع',
-                                    onPressed: () => _confirmDeleteDeposit(context, partner, d),
+                                    onPressed: () => _confirmDeleteDeposit(
+                                      context,
+                                      partner,
+                                      d,
+                                    ),
                                   ),
                                 );
                               },
@@ -1516,17 +2112,23 @@ class _PartnersScreenState extends State<PartnersScreen> {
                       // Tab 2: Withdrawals
                       partner.withdrawals.isEmpty
                           ? const Center(
-                              child: Text('لا توجد مسحوبات مسجلة لهذا الشريك حتى الآن', style: TextStyle(color: Colors.grey)),
+                              child: Text(
+                                'لا توجد مسحوبات مسجلة لهذا الشريك حتى الآن',
+                                style: TextStyle(color: Colors.grey),
+                              ),
                             )
                           : ListView.separated(
                               itemCount: partner.withdrawals.length,
-                              separatorBuilder: (_, index) => const Divider(height: 1),
+                              separatorBuilder: (_, index) =>
+                                  const Divider(height: 1),
                               itemBuilder: (context, idx) {
                                 final w = partner.withdrawals[idx];
                                 final isProfit = w.type == 'profit';
                                 final isAdvance = w.type == 'advance';
-                                final isDepositRefund = w.type == 'deposit_refund';
-                                final isDepositToCap = w.type == 'deposit_to_capital';
+                                final isDepositRefund =
+                                    w.type == 'deposit_refund';
+                                final isDepositToCap =
+                                    w.type == 'deposit_to_capital';
 
                                 return ListTile(
                                   dense: true,
@@ -1534,36 +2136,60 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                     backgroundColor: isProfit
                                         ? Colors.green.shade50
                                         : (isAdvance
-                                            ? Colors.amber.shade50
-                                            : (isDepositRefund || isDepositToCap ? Colors.teal.shade50 : Colors.blue.shade50)),
+                                              ? Colors.amber.shade50
+                                              : (isDepositRefund ||
+                                                        isDepositToCap
+                                                    ? Colors.teal.shade50
+                                                    : Colors.blue.shade50)),
                                     child: Icon(
                                       isProfit
                                           ? Icons.arrow_downward_rounded
                                           : (isAdvance
-                                              ? Icons.handshake_outlined
-                                              : (isDepositRefund
-                                                  ? Icons.money_rounded
-                                                  : (isDepositToCap ? Icons.upgrade_rounded : Icons.account_balance_wallet_outlined))),
+                                                ? Icons.handshake_outlined
+                                                : (isDepositRefund
+                                                      ? Icons.money_rounded
+                                                      : (isDepositToCap
+                                                            ? Icons
+                                                                  .upgrade_rounded
+                                                            : Icons
+                                                                  .account_balance_wallet_outlined))),
                                       color: isProfit
                                           ? Colors.green.shade700
                                           : (isAdvance
-                                              ? Colors.amber.shade800
-                                              : (isDepositRefund || isDepositToCap ? Colors.teal.shade700 : Colors.blue.shade700)),
+                                                ? Colors.amber.shade800
+                                                : (isDepositRefund ||
+                                                          isDepositToCap
+                                                      ? Colors.teal.shade700
+                                                      : Colors.blue.shade700)),
                                       size: 18,
                                     ),
                                   ),
                                   title: Text(
                                     '${Money(w.amount).toDisplay()} ج.م (${w.typeLabel})',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                   subtitle: Text(
                                     '${w.date.year}-${w.date.month.toString().padLeft(2, '0')}-${w.date.day.toString().padLeft(2, '0')}${w.note != null ? " • ${w.note}" : ""}',
-                                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey.shade600,
+                                    ),
                                   ),
                                   trailing: IconButton(
-                                    icon: const Icon(Icons.delete_outline_rounded, color: Colors.red, size: 20),
+                                    icon: const Icon(
+                                      Icons.delete_outline_rounded,
+                                      color: Colors.red,
+                                      size: 20,
+                                    ),
                                     tooltip: 'حذف حركة الصرف',
-                                    onPressed: () => _confirmDeleteWithdrawal(context, partner, w),
+                                    onPressed: () => _confirmDeleteWithdrawal(
+                                      context,
+                                      partner,
+                                      w,
+                                    ),
                                   ),
                                 );
                               },
@@ -1600,7 +2226,10 @@ class _PartnersScreenState extends State<PartnersScreen> {
           children: [
             Icon(Icons.warning_amber_rounded, color: AppColors.error),
             SizedBox(width: 8),
-            Text('تأكيد حذف حركة الصرف', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              'تأكيد حذف حركة الصرف',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ],
         ),
         content: Text(
@@ -1614,7 +2243,13 @@ class _PartnersScreenState extends State<PartnersScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('تأكيد الحذف', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text(
+              'تأكيد الحذف',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -1652,7 +2287,10 @@ class _PartnersScreenState extends State<PartnersScreen> {
           children: [
             Icon(Icons.warning_amber_rounded, color: AppColors.error),
             SizedBox(width: 8),
-            Text('تأكيد حذف حركة الإيداع', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              'تأكيد حذف حركة الإيداع',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ],
         ),
         content: Text(
@@ -1666,7 +2304,13 @@ class _PartnersScreenState extends State<PartnersScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('تأكيد الحذف', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text(
+              'تأكيد الحذف',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -1689,7 +2333,10 @@ class _PartnersScreenState extends State<PartnersScreen> {
     }
   }
 
-  Future<void> _confirmDelete(BuildContext context, PartnerEntity partner) async {
+  Future<void> _confirmDelete(
+    BuildContext context,
+    PartnerEntity partner,
+  ) async {
     final cubit = context.read<PartnersCubit>();
     final confirmed = await showDialog<bool>(
       context: context,
@@ -1699,7 +2346,10 @@ class _PartnersScreenState extends State<PartnersScreen> {
           children: [
             Icon(Icons.warning_amber_rounded, color: AppColors.error),
             SizedBox(width: 8),
-            Text('تأكيد حذف الشريك', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              'تأكيد حذف الشريك',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ],
         ),
         content: Text('هل أنت متأكد من حذف الشريك "${partner.name}"؟'),
@@ -1711,7 +2361,10 @@ class _PartnersScreenState extends State<PartnersScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('حذف نهائي', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'حذف نهائي',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -1725,11 +2378,9 @@ class _PartnersScreenState extends State<PartnersScreen> {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => getIt<PartnersCubit>()
-        ..loadData(
-          from: _dateRange?.start,
-          to: _dateRange?.end,
-        ),
+      create: (context) =>
+          getIt<PartnersCubit>()
+            ..loadData(from: _dateRange?.start, to: _dateRange?.end),
       child: Builder(
         builder: (context) {
           return Scaffold(
@@ -1742,7 +2393,11 @@ class _PartnersScreenState extends State<PartnersScreen> {
                 children: [
                   Text(
                     'الشركاء وحساب وتوزيع الأرباح',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.onSurface),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: AppColors.onSurface,
+                    ),
                   ),
                   Text(
                     'إدارة الشركاء، رؤوس الأموال، نسب الأرباح، وحساب صافي الدخل والمسحوبات',
@@ -1754,19 +2409,34 @@ class _PartnersScreenState extends State<PartnersScreen> {
                 BlocBuilder<PartnersCubit, PartnersState>(
                   builder: (context, state) {
                     return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 12,
+                      ),
                       child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                         onPressed: () => _openPartnerDialog(
                           context,
                           currentTotalPercentage: state.totalPercentage,
                           existingPartners: state.partners,
                         ),
-                        icon: const Icon(Icons.person_add_rounded, color: Colors.white, size: 18),
-                        label: const Text('إضافة شريك جديد', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        icon: const Icon(
+                          Icons.person_add_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                        label: const Text(
+                          'إضافة شريك جديد',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     );
                   },
@@ -1789,20 +2459,30 @@ class _PartnersScreenState extends State<PartnersScreen> {
                         children: [
                           Expanded(
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 10,
+                              ),
                               decoration: BoxDecoration(
                                 color: AppColors.surfaceContainer,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.date_range_rounded, color: AppColors.primary, size: 20),
+                                  Icon(
+                                    Icons.date_range_rounded,
+                                    color: AppColors.primary,
+                                    size: 20,
+                                  ),
                                   const SizedBox(width: 8),
                                   Text(
                                     _dateRange != null
                                         ? 'الفترة المحتسبة: ${_dateRange!.start.toLocal().toString().split(' ')[0]} إلى ${_dateRange!.end.toLocal().toString().split(' ')[0]} ($days يوم)'
                                         : 'جميع المبيعات',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1813,7 +2493,9 @@ class _PartnersScreenState extends State<PartnersScreen> {
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.primary,
                               side: BorderSide(color: AppColors.primary),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                             ),
                             onPressed: () async {
                               final picked = await showCustomDateRangeDialog(
@@ -1826,18 +2508,28 @@ class _PartnersScreenState extends State<PartnersScreen> {
                                 setState(() {
                                   _dateRange = DateTimeRange(
                                     start: picked.start,
-                                    end: DateTime(picked.end.year, picked.end.month, picked.end.day, 23, 59, 59),
+                                    end: DateTime(
+                                      picked.end.year,
+                                      picked.end.month,
+                                      picked.end.day,
+                                      23,
+                                      59,
+                                      59,
+                                    ),
                                   );
                                 });
                                 if (context.mounted) {
                                   context.read<PartnersCubit>().loadData(
-                                        from: _dateRange!.start,
-                                        to: _dateRange!.end,
-                                      );
+                                    from: _dateRange!.start,
+                                    to: _dateRange!.end,
+                                  );
                                 }
                               }
                             },
-                            icon: const Icon(Icons.calendar_month_outlined, size: 18),
+                            icon: const Icon(
+                              Icons.calendar_month_outlined,
+                              size: 18,
+                            ),
                             label: const Text('تغيير الفترة'),
                           ),
                         ],
@@ -1853,7 +2545,8 @@ class _PartnersScreenState extends State<PartnersScreen> {
                           Expanded(
                             child: _buildMetricCard(
                               title: 'إجمالي المبيعات',
-                              value: '${Money(summary?.totalRevenue ?? 0).toDisplay()} ج.م',
+                              value:
+                                  '${Money(summary?.totalRevenue ?? 0).toDisplay()} ج.م',
                               icon: Icons.monetization_on_rounded,
                               color: Colors.green.shade700,
                             ),
@@ -1862,7 +2555,8 @@ class _PartnersScreenState extends State<PartnersScreen> {
                           Expanded(
                             child: _buildMetricCard(
                               title: 'تكلفة البضاعة',
-                              value: '${Money(summary?.totalCost ?? 0).toDisplay()} ج.م',
+                              value:
+                                  '${Money(summary?.totalCost ?? 0).toDisplay()} ج.م',
                               icon: Icons.inventory_2_outlined,
                               color: Colors.orange.shade800,
                             ),
@@ -1871,7 +2565,8 @@ class _PartnersScreenState extends State<PartnersScreen> {
                           Expanded(
                             child: _buildMetricCard(
                               title: 'المصروفات التشغيلية',
-                              value: '${Money(summary?.totalExpenses ?? 0).toDisplay()} ج.م',
+                              value:
+                                  '${Money(summary?.totalExpenses ?? 0).toDisplay()} ج.م',
                               icon: Icons.outbox_rounded,
                               color: AppColors.error,
                             ),
@@ -1882,7 +2577,9 @@ class _PartnersScreenState extends State<PartnersScreen> {
                               title: 'صافي الربح القابل للتوزيع',
                               value: '${Money(netProfit).toDisplay()} ج.م',
                               icon: Icons.account_balance_wallet_rounded,
-                              color: netProfit >= 0 ? AppColors.primary : AppColors.error,
+                              color: netProfit >= 0
+                                  ? AppColors.primary
+                                  : AppColors.error,
                               isHighlighted: true,
                             ),
                           ),
@@ -1894,7 +2591,10 @@ class _PartnersScreenState extends State<PartnersScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
@@ -1909,27 +2609,42 @@ class _PartnersScreenState extends State<PartnersScreen> {
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.pie_chart_outline_rounded, color: AppColors.primary, size: 20),
+                                Icon(
+                                  Icons.pie_chart_outline_rounded,
+                                  color: AppColors.primary,
+                                  size: 20,
+                                ),
                                 const SizedBox(width: 8),
                                 Text(
                                   'إجمالي رأس المال المسجل: ${Money(state.totalCapital).toDisplay()} ج.م',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.onSurface),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: AppColors.onSurface,
+                                  ),
                                 ),
                               ],
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFF1F5F9),
                                 borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: AppColors.outlineVariant),
+                                border: Border.all(
+                                  color: AppColors.outlineVariant,
+                                ),
                               ),
                               child: Text(
                                 'توزيع الحصص: ${state.totalPercentage.toStringAsFixed(1)}% من 100%',
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
-                                  color: (state.totalPercentage >= 99.9 && state.totalPercentage <= 100.1)
+                                  color:
+                                      (state.totalPercentage >= 99.9 &&
+                                          state.totalPercentage <= 100.1)
                                       ? AppColors.success
                                       : AppColors.warning,
                                 ),
@@ -1946,474 +2661,1019 @@ class _PartnersScreenState extends State<PartnersScreen> {
                       child: state.status == PartnersStatus.loading
                           ? const Center(child: CircularProgressIndicator())
                           : state.partners.isEmpty
-                              ? Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.handshake_outlined, size: 64, color: Colors.grey.shade400),
-                                      const SizedBox(height: 12),
-                                      const Text(
-                                        'لم يتم تسجيل أي شركاء حتى الآن',
-                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        'سجل الشركاء ونسبهم من الأرباح ورؤوس أموالهم ليقوم النظام باحتساب وتوزيع الأرباح تلقائياً',
-                                        style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      ElevatedButton.icon(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: AppColors.primary,
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                        ),
-                                        onPressed: () => _openPartnerDialog(
-                                          context,
-                                          currentTotalPercentage: state.totalPercentage,
-                                          existingPartners: state.partners,
-                                        ),
-                                        icon: const Icon(Icons.add, color: Colors.white),
-                                        label: const Text('إضافة أول شريك الآن', style: TextStyle(color: Colors.white)),
-                                      ),
-                                    ],
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.handshake_outlined,
+                                    size: 64,
+                                    color: Colors.grey.shade400,
                                   ),
-                                )
-                              : ListView.separated(
-                                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                                  itemCount: state.partners.length,
-                                  separatorBuilder: (_, index) => const SizedBox(height: 10),
-                                  itemBuilder: (context, index) {
-                                    final partner = state.partners[index];
-                                    final partnerShare = partner.calculateProfitShare(netProfit, days: days);
-                                    final totalWithdrawn = partner.totalProfitWithdrawn;
-
-                                    return Container(
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: AppColors.outlineVariant),
+                                  const SizedBox(height: 12),
+                                  const Text(
+                                    'لم يتم تسجيل أي شركاء حتى الآن',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'سجل الشركاء ونسبهم من الأرباح ورؤوس أموالهم ليقوم النظام باحتساب وتوزيع الأرباح تلقائياً',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.primary,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
                                       ),
-                                      padding: const EdgeInsets.all(14),
-                                      child: Column(
-                                        children: [
-                                          // 1. Header: Avatar, Name, Clean Badges, Edit & Delete
-                                          Row(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              CircleAvatar(
-                                                radius: 22,
-                                                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                                                child: Text(
-                                                  partner.name.isNotEmpty ? partner.name[0] : 'ش',
-                                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 12),
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                    Wrap(
-                                                      crossAxisAlignment: WrapCrossAlignment.center,
-                                                      spacing: 8,
-                                                      runSpacing: 4,
-                                                      children: [
-                                                        Text(partner.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.onSurface)),
-                                                        Container(
-                                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                                          decoration: BoxDecoration(
-                                                            color: const Color(0xFFF1F5F9),
-                                                            borderRadius: BorderRadius.circular(8),
-                                                            border: Border.all(color: AppColors.outlineVariant),
-                                                          ),
-                                                          child: Text(
-                                                            partner.typeLabel,
-                                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppColors.onSurfaceVariant),
-                                                          ),
-                                                        ),
-                                                        if (partner.partnershipType != 'effort_only' && (partner.capital > 0 || partner.capitalPercentage != null))
-                                                          Container(
-                                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                                            decoration: BoxDecoration(
-                                                              color: const Color(0xFFF1F5F9),
-                                                              borderRadius: BorderRadius.circular(8),
-                                                              border: Border.all(color: AppColors.outlineVariant),
-                                                            ),
-                                                            child: Row(
-                                                              mainAxisSize: MainAxisSize.min,
-                                                              children: [
-                                                                const Icon(Icons.pie_chart_outline_rounded, size: 12, color: AppColors.onSurfaceVariant),
-                                                                const SizedBox(width: 4),
-                                                                Text(
-                                                                  'حصة رأس المال: ${partner.effectiveCapitalPercentage.toStringAsFixed(1)}%',
-                                                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppColors.onSurfaceVariant),
-                                                                ),
-                                                              ],
-                                                            ),
-                                                          ),
-                                                        Container(
-                                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                                          decoration: BoxDecoration(
-                                                            color: const Color(0xFFF1F5F9),
-                                                            borderRadius: BorderRadius.circular(8),
-                                                            border: Border.all(color: AppColors.outlineVariant),
-                                                          ),
-                                                          child: Row(
-                                                            mainAxisSize: MainAxisSize.min,
-                                                            children: [
-                                                              const Icon(Icons.monetization_on_outlined, size: 12, color: Color(0xFF334155)),
-                                                              const SizedBox(width: 4),
-                                                              Text(
-                                                                partner.profitMode == 'fixed_roi'
-                                                                    ? 'عائد سنوي: ${partner.roiPercentage.toStringAsFixed(1)}%'
-                                                                    : 'نسبة الأرباح: ${partner.percentage.toStringAsFixed(1)}%',
-                                                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xFF334155)),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    const SizedBox(height: 6),
-                                                    Wrap(
-                                                      spacing: 16,
-                                                      runSpacing: 4,
-                                                      children: [
-                                                        if (partner.currentCapital > 0)
-                                                          Text(
-                                                            'رأس المال النشط: ${Money(partner.currentCapital).toDisplay()} ج.م',
-                                                            style: TextStyle(fontSize: 12, color: Colors.grey.shade800, fontWeight: FontWeight.w600),
-                                                          ),
-                                                        if (partner.phone != null && partner.phone!.isNotEmpty)
-                                                          Text(
-                                                            'الهاتف: ${partner.phone}',
-                                                            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                                                          ),
-                                                        if (partner.monthlySalary > 0)
-                                                          Text(
-                                                            'بدل إدارة شهري: ${Money(partner.monthlySalary).toDisplay()} ج.م',
-                                                            style: TextStyle(fontSize: 12, color: Colors.indigo.shade700, fontWeight: FontWeight.bold),
-                                                          ),
-                                                        if (partner.notes != null && partner.notes!.isNotEmpty)
-                                                          Text(
-                                                            '• ${partner.notes!}',
-                                                            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                                                          ),
-                                                      ],
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              IconButton(
-                                                icon: Icon(Icons.edit_outlined, color: AppColors.primary, size: 20),
-                                                tooltip: 'تعديل الشريك',
-                                                visualDensity: VisualDensity.compact,
-                                                onPressed: () => _openPartnerDialog(
-                                                  context,
-                                                  partner: partner,
-                                                  currentTotalPercentage: state.totalPercentage,
-                                                  existingPartners: state.partners,
-                                                ),
-                                              ),
-                                              IconButton(
-                                                icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 20),
-                                                tooltip: 'حذف الشريك',
-                                                visualDensity: VisualDensity.compact,
-                                                onPressed: () => _confirmDelete(context, partner),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 10),
-                                          const Divider(height: 1),
-                                          const SizedBox(height: 10),
+                                    ),
+                                    onPressed: () => _openPartnerDialog(
+                                      context,
+                                      currentTotalPercentage:
+                                          state.totalPercentage,
+                                      existingPartners: state.partners,
+                                    ),
+                                    icon: const Icon(
+                                      Icons.add,
+                                      color: Colors.white,
+                                    ),
+                                    label: const Text(
+                                      'إضافة أول شريك الآن',
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView.separated(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                              itemCount: state.partners.length,
+                              separatorBuilder: (_, index) =>
+                                  const SizedBox(height: 10),
+                              itemBuilder: (context, index) {
+                                final partner = state.partners[index];
+                                final partnerShare = partner
+                                    .calculateProfitShare(
+                                      netProfit,
+                                      days: days,
+                                    );
+                                final totalWithdrawn =
+                                    partner.totalProfitWithdrawn;
 
-                                          // 2. Compact Financial Strip for Funding & Advances (شريط التمويل والسلف المدمج)
-                                          if (partner.totalDeposited > 0 || partner.remainingAdvance > 0) ...[
-                                            Container(
-                                              margin: const EdgeInsets.only(bottom: 12),
-                                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                              decoration: BoxDecoration(
-                                                color: Colors.grey.shade50,
-                                                borderRadius: BorderRadius.circular(10),
-                                                border: Border.all(color: Colors.grey.shade200),
-                                              ),
-                                              child: Column(
-                                                children: [
-                                                  // Personal funding row
-                                                  if (partner.totalDeposited > 0) ...[
-                                                    Row(
-                                                      children: [
-                                                        Icon(Icons.account_balance_wallet_outlined, size: 16, color: Colors.teal.shade700),
-                                                        const SizedBox(width: 8),
-                                                        Text(
-                                                          'تمويل شخصي من الجيب (لك عند المحل):',
-                                                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Colors.teal.shade900),
-                                                        ),
-                                                        const SizedBox(width: 6),
-                                                        Text(
-                                                          '${Money(partner.remainingDeposited).toDisplay()} ج.م',
-                                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.teal.shade900),
-                                                        ),
-                                                        if (partner.totalDepositsRefunded > 0) ...[
-                                                          const SizedBox(width: 6),
-                                                          Text(
-                                                            '(متبقي من ${Money(partner.totalDeposited).toDisplay()} ج.م)',
-                                                            style: TextStyle(fontSize: 11, color: Colors.teal.shade700),
-                                                          ),
-                                                        ],
-                                                        const Spacer(),
-                                                        if (partner.remainingDeposited > 0) ...[
-                                                          ElevatedButton.icon(
-                                                            style: ElevatedButton.styleFrom(
-                                                              backgroundColor: Colors.teal.shade700,
-                                                              foregroundColor: Colors.white,
-                                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                                              minimumSize: Size.zero,
-                                                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                                                            ),
-                                                            onPressed: () => _openRefundDepositDialog(context, partner),
-                                                            icon: const Icon(Icons.arrow_downward_rounded, size: 12),
-                                                            label: const Text('استرداد كاش', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                                          ),
-                                                          const SizedBox(width: 8),
-                                                          OutlinedButton.icon(
-                                                            style: OutlinedButton.styleFrom(
-                                                              foregroundColor: Colors.indigo.shade800,
-                                                              side: BorderSide(color: Colors.indigo.shade300),
-                                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                                              minimumSize: Size.zero,
-                                                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                                                            ),
-                                                            onPressed: () => _openConvertDepositToCapitalDialog(context, partner),
-                                                            icon: const Icon(Icons.upgrade_rounded, size: 12),
-                                                            label: const Text('ضمه لرأس المال', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                                          ),
-                                                        ],
-                                                      ],
-                                                    ),
-                                                  ],
-                                                  if (partner.totalDeposited > 0 && partner.remainingAdvance > 0)
-                                                    const Padding(
-                                                      padding: EdgeInsets.symmetric(vertical: 6.0),
-                                                      child: Divider(height: 1),
-                                                    ),
-                                                  // Temporary advance row
-                                                  if (partner.remainingAdvance > 0) ...[
-                                                    Row(
-                                                      children: [
-                                                        Icon(Icons.handshake_outlined, size: 16, color: Colors.amber.shade900),
-                                                        const SizedBox(width: 8),
-                                                        Text(
-                                                          'سلفة شخصية مؤقتة (عليك للمحل):',
-                                                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Colors.amber.shade900),
-                                                        ),
-                                                        const SizedBox(width: 6),
-                                                        Text(
-                                                          '${Money(partner.remainingAdvance).toDisplay()} ج.م',
-                                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.amber.shade900),
-                                                        ),
-                                                        const Spacer(),
-                                                        ElevatedButton.icon(
-                                                          style: ElevatedButton.styleFrom(
-                                                            backgroundColor: Colors.amber.shade800,
-                                                            foregroundColor: Colors.white,
-                                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                                            minimumSize: Size.zero,
-                                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                                                          ),
-                                                          onPressed: () => _openDepositDialog(
-                                                            context,
-                                                            partner,
-                                                            initialCategory: 'advance_repayment',
-                                                          ),
-                                                          icon: const Icon(Icons.assignment_return_outlined, size: 12),
-                                                          label: const Text('رد السلفة للدرج', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ],
-                                                ],
+                                return Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: AppColors.outlineVariant,
+                                    ),
+                                  ),
+                                  padding: const EdgeInsets.all(14),
+                                  child: Column(
+                                    children: [
+                                      // 1. Header: Avatar, Name, Clean Badges, Edit & Delete
+                                      Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 22,
+                                            backgroundColor: AppColors.primary
+                                                .withValues(alpha: 0.1),
+                                            child: Text(
+                                              partner.name.isNotEmpty
+                                                  ? partner.name[0]
+                                                  : 'ش',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                                color: AppColors.primary,
                                               ),
                                             ),
-                                          ],
-
-                                          // 3. Financial Stat Grid (أرقام الأرباح والمسحوبات والمستحق)
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.white,
-                                                    borderRadius: BorderRadius.circular(10),
-                                                    border: Border.all(color: AppColors.outlineVariant),
-                                                  ),
-                                                  child: Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    children: [
-                                                      Row(
-                                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                        children: [
-                                                          Text('نصيب الأرباح ($days يوم)', style: const TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
-                                                          const Icon(Icons.trending_up_rounded, size: 14, color: AppColors.onSurfaceVariant),
-                                                        ],
-                                                      ),
-                                                      const SizedBox(height: 4),
-                                                      Text(
-                                                        '${Money(partnerShare).toDisplay()} ج.م',
-                                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.onSurface),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Expanded(
-                                                child: Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.white,
-                                                    borderRadius: BorderRadius.circular(10),
-                                                    border: Border.all(color: AppColors.outlineVariant),
-                                                  ),
-                                                  child: Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    children: [
-                                                      Row(
-                                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                        children: [
-                                                          const Text('أرباح تم استلامها', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
-                                                          const Icon(Icons.arrow_downward_rounded, size: 14, color: AppColors.onSurfaceVariant),
-                                                        ],
-                                                      ),
-                                                      const SizedBox(height: 4),
-                                                      Text(
-                                                        '${Money(totalWithdrawn).toDisplay()} ج.م',
-                                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.onSurface),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Expanded(
-                                                child: Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.white,
-                                                    borderRadius: BorderRadius.circular(10),
-                                                    border: Border.all(color: AppColors.outlineVariant),
-                                                  ),
-                                                  child: Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    children: [
-                                                      Row(
-                                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                        children: [
-                                                          const Text('أرباح باقية بالمحل', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
-                                                          const Icon(Icons.savings_outlined, size: 14, color: AppColors.onSurfaceVariant),
-                                                        ],
-                                                      ),
-                                                      const SizedBox(height: 4),
-                                                      Text(
-                                                        '${Money(partner.getUnwithdrawnProfit(partnerShare)).toDisplay()} ج.م',
-                                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.onSurface),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Expanded(
-                                                child: Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                                  decoration: BoxDecoration(
-                                                    color: const Color(0xFFF1F5F9),
-                                                    borderRadius: BorderRadius.circular(10),
-                                                    border: Border.all(color: AppColors.outlineVariant),
-                                                  ),
-                                                  child: Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    children: [
-                                                      Row(
-                                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                        children: const [
-                                                          Text('صافي المستحق الكلي', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.onSurface)),
-                                                          Icon(Icons.account_balance_wallet_rounded, size: 14, color: AppColors.onSurface),
-                                                        ],
-                                                      ),
-                                                      const SizedBox(height: 4),
-                                                      Text(
-                                                        '${Money(partner.calculateNetBalance(partnerShare)).toDisplay()} ج.م',
-                                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.onSurface),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
                                           ),
-                                          const SizedBox(height: 12),
-
-                                          // 4. Action buttons row
-                                          Wrap(
-                                            spacing: 8,
-                                            runSpacing: 6,
-                                            crossAxisAlignment: WrapCrossAlignment.center,
-                                            children: [
-                                              ElevatedButton.icon(
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor: AppColors.primary,
-                                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Wrap(
+                                                  crossAxisAlignment:
+                                                      WrapCrossAlignment.center,
+                                                  spacing: 8,
+                                                  runSpacing: 4,
+                                                  children: [
+                                                    Text(
+                                                      partner.name,
+                                                      style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 16,
+                                                        color:
+                                                            AppColors.onSurface,
+                                                      ),
+                                                    ),
+                                                    Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 8,
+                                                            vertical: 3,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(
+                                                          0xFFF1F5F9,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              8,
+                                                            ),
+                                                        border: Border.all(
+                                                          color: AppColors
+                                                              .outlineVariant,
+                                                        ),
+                                                      ),
+                                                      child: Text(
+                                                        partner.typeLabel,
+                                                        style: const TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          fontSize: 11,
+                                                          color: AppColors
+                                                              .onSurfaceVariant,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    if (partner.partnershipType !=
+                                                            'effort_only' &&
+                                                        (partner.capital > 0 ||
+                                                            partner.capitalPercentage !=
+                                                                null))
+                                                      Container(
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 8,
+                                                              vertical: 3,
+                                                            ),
+                                                        decoration: BoxDecoration(
+                                                          color: const Color(
+                                                            0xFFF1F5F9,
+                                                          ),
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                8,
+                                                              ),
+                                                          border: Border.all(
+                                                            color: AppColors
+                                                                .outlineVariant,
+                                                          ),
+                                                        ),
+                                                        child: Row(
+                                                          mainAxisSize:
+                                                              MainAxisSize.min,
+                                                          children: [
+                                                            const Icon(
+                                                              Icons
+                                                                  .pie_chart_outline_rounded,
+                                                              size: 12,
+                                                              color: AppColors
+                                                                  .onSurfaceVariant,
+                                                            ),
+                                                            const SizedBox(
+                                                              width: 4,
+                                                            ),
+                                                            Text(
+                                                              'حصة رأس المال: ${partner.effectiveCapitalPercentage.toStringAsFixed(1)}%',
+                                                              style: const TextStyle(
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                                fontSize: 11,
+                                                                color: AppColors
+                                                                    .onSurfaceVariant,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 8,
+                                                            vertical: 3,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(
+                                                          0xFFF1F5F9,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              8,
+                                                            ),
+                                                        border: Border.all(
+                                                          color: AppColors
+                                                              .outlineVariant,
+                                                        ),
+                                                      ),
+                                                      child: Row(
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        children: [
+                                                          const Icon(
+                                                            Icons
+                                                                .monetization_on_outlined,
+                                                            size: 12,
+                                                            color: Color(
+                                                              0xFF334155,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 4,
+                                                          ),
+                                                          Text(
+                                                            partner.profitMode ==
+                                                                    'fixed_roi'
+                                                                ? 'عائد سنوي: ${partner.roiPercentage.toStringAsFixed(1)}%'
+                                                                : 'نسبة الأرباح: ${partner.percentage.toStringAsFixed(1)}%',
+                                                            style:
+                                                                const TextStyle(
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                  fontSize: 11,
+                                                                  color: Color(
+                                                                    0xFF334155,
+                                                                  ),
+                                                                ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
-                                                onPressed: () => _openWithdrawalDialog(context, partner, partnerShare),
-                                                icon: const Icon(Icons.payments_outlined, color: Colors.white, size: 16),
-                                                label: const Text('صرف أرباح ومسحوبات', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                                              ),
-                                              OutlinedButton.icon(
-                                                style: OutlinedButton.styleFrom(
-                                                  foregroundColor: AppColors.onSurface,
-                                                  side: const BorderSide(color: AppColors.outlineVariant),
-                                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                                const SizedBox(height: 6),
+                                                Wrap(
+                                                  spacing: 16,
+                                                  runSpacing: 4,
+                                                  children: [
+                                                    if (partner.currentCapital >
+                                                        0)
+                                                      Text(
+                                                        'رأس المال النشط: ${Money(partner.currentCapital).toDisplay()} ج.م',
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                          color: Colors
+                                                              .grey
+                                                              .shade800,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    if (partner.phone != null &&
+                                                        partner
+                                                            .phone!
+                                                            .isNotEmpty)
+                                                      Text(
+                                                        'الهاتف: ${partner.phone}',
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                          color: Colors
+                                                              .grey
+                                                              .shade600,
+                                                        ),
+                                                      ),
+                                                    if (partner.monthlySalary >
+                                                        0)
+                                                      Text(
+                                                        'بدل إدارة شهري: ${Money(partner.monthlySalary).toDisplay()} ج.م',
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                          color: Colors
+                                                              .indigo
+                                                              .shade700,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    if (partner.notes != null &&
+                                                        partner
+                                                            .notes!
+                                                            .isNotEmpty)
+                                                      Text(
+                                                        '• ${partner.notes!}',
+                                                        style: TextStyle(
+                                                          fontSize: 11,
+                                                          color: Colors
+                                                              .grey
+                                                              .shade600,
+                                                        ),
+                                                      ),
+                                                  ],
                                                 ),
-                                                onPressed: () => _openDepositDialog(context, partner),
-                                                icon: const Icon(Icons.add_card_rounded, size: 16),
-                                                label: const Text('تمويل ودفع من الجيب', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                              ),
-                                              if (partner.getUnwithdrawnProfit(partnerShare) > 0)
-                                                OutlinedButton.icon(
-                                                  style: OutlinedButton.styleFrom(
-                                                    foregroundColor: AppColors.onSurface,
-                                                    side: const BorderSide(color: AppColors.outlineVariant),
-                                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                                  ),
-                                                  onPressed: () => _openReinvestDialog(context, partner, partner.getUnwithdrawnProfit(partnerShare)),
-                                                  icon: const Icon(Icons.autorenew_rounded, size: 16),
-                                                  label: const Text('تدوير الأرباح كرأس مال', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                                ),
-                                              TextButton.icon(
-                                                style: TextButton.styleFrom(
-                                                  foregroundColor: AppColors.onSurfaceVariant,
-                                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                                ),
-                                                onPressed: () => _showFinancialHistoryDialog(context, partner),
-                                                icon: const Icon(Icons.history_rounded, size: 16),
-                                                label: const Text('سجل الحركات', style: TextStyle(fontSize: 11)),
-                                              ),
-                                            ],
+                                              ],
+                                            ),
+                                          ),
+                                          IconButton(
+                                            icon: Icon(
+                                              Icons.edit_outlined,
+                                              color: AppColors.primary,
+                                              size: 20,
+                                            ),
+                                            tooltip: 'تعديل الشريك',
+                                            visualDensity:
+                                                VisualDensity.compact,
+                                            onPressed: () => _openPartnerDialog(
+                                              context,
+                                              partner: partner,
+                                              currentTotalPercentage:
+                                                  state.totalPercentage,
+                                              existingPartners: state.partners,
+                                            ),
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(
+                                              Icons.delete_outline_rounded,
+                                              color: AppColors.error,
+                                              size: 20,
+                                            ),
+                                            tooltip: 'حذف الشريك',
+                                            visualDensity:
+                                                VisualDensity.compact,
+                                            onPressed: () => _confirmDelete(
+                                              context,
+                                              partner,
+                                            ),
                                           ),
                                         ],
                                       ),
-                                    );
-                                  },
-                                ),
+                                      const SizedBox(height: 10),
+                                      const Divider(height: 1),
+                                      const SizedBox(height: 10),
+
+                                      // 2. Compact Financial Strip for Funding & Advances (شريط التمويل والسلف المدمج)
+                                      if (partner.totalDeposited > 0 ||
+                                          partner.remainingAdvance > 0) ...[
+                                        Container(
+                                          margin: const EdgeInsets.only(
+                                            bottom: 12,
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 14,
+                                            vertical: 8,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey.shade50,
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
+                                            border: Border.all(
+                                              color: Colors.grey.shade200,
+                                            ),
+                                          ),
+                                          child: Column(
+                                            children: [
+                                              // Personal funding row
+                                              if (partner.totalDeposited >
+                                                  0) ...[
+                                                Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons
+                                                          .account_balance_wallet_outlined,
+                                                      size: 16,
+                                                      color:
+                                                          Colors.teal.shade700,
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Text(
+                                                      'تمويل شخصي من الجيب (لك عند المحل):',
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        fontSize: 12,
+                                                        color: Colors
+                                                            .teal
+                                                            .shade900,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 6),
+                                                    Text(
+                                                      '${Money(partner.remainingDeposited).toDisplay()} ج.م',
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 13,
+                                                        color: Colors
+                                                            .teal
+                                                            .shade900,
+                                                      ),
+                                                    ),
+                                                    if (partner
+                                                            .totalDepositsRefunded >
+                                                        0) ...[
+                                                      const SizedBox(width: 6),
+                                                      Text(
+                                                        '(متبقي من ${Money(partner.totalDeposited).toDisplay()} ج.م)',
+                                                        style: TextStyle(
+                                                          fontSize: 11,
+                                                          color: Colors
+                                                              .teal
+                                                              .shade700,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                    const Spacer(),
+                                                    if (partner
+                                                            .remainingDeposited >
+                                                        0) ...[
+                                                      ElevatedButton.icon(
+                                                        style: ElevatedButton.styleFrom(
+                                                          backgroundColor:
+                                                              Colors
+                                                                  .teal
+                                                                  .shade700,
+                                                          foregroundColor:
+                                                              Colors.white,
+                                                          padding:
+                                                              const EdgeInsets.symmetric(
+                                                                horizontal: 10,
+                                                                vertical: 6,
+                                                              ),
+                                                          minimumSize:
+                                                              Size.zero,
+                                                          tapTargetSize:
+                                                              MaterialTapTargetSize
+                                                                  .shrinkWrap,
+                                                          shape: RoundedRectangleBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  6,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                        onPressed: () =>
+                                                            _openRefundDepositDialog(
+                                                              context,
+                                                              partner,
+                                                            ),
+                                                        icon: const Icon(
+                                                          Icons
+                                                              .arrow_downward_rounded,
+                                                          size: 12,
+                                                        ),
+                                                        label: const Text(
+                                                          'استرداد كاش',
+                                                          style: TextStyle(
+                                                            fontSize: 11,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                      OutlinedButton.icon(
+                                                        style: OutlinedButton.styleFrom(
+                                                          foregroundColor:
+                                                              Colors
+                                                                  .indigo
+                                                                  .shade800,
+                                                          side: BorderSide(
+                                                            color: Colors
+                                                                .indigo
+                                                                .shade300,
+                                                          ),
+                                                          padding:
+                                                              const EdgeInsets.symmetric(
+                                                                horizontal: 10,
+                                                                vertical: 6,
+                                                              ),
+                                                          minimumSize:
+                                                              Size.zero,
+                                                          tapTargetSize:
+                                                              MaterialTapTargetSize
+                                                                  .shrinkWrap,
+                                                          shape: RoundedRectangleBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  6,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                        onPressed: () =>
+                                                            _openConvertDepositToCapitalDialog(
+                                                              context,
+                                                              partner,
+                                                            ),
+                                                        icon: const Icon(
+                                                          Icons.upgrade_rounded,
+                                                          size: 12,
+                                                        ),
+                                                        label: const Text(
+                                                          'ضمه لرأس المال',
+                                                          style: TextStyle(
+                                                            fontSize: 11,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ],
+                                                ),
+                                              ],
+                                              if (partner.totalDeposited > 0 &&
+                                                  partner.remainingAdvance > 0)
+                                                const Padding(
+                                                  padding: EdgeInsets.symmetric(
+                                                    vertical: 6.0,
+                                                  ),
+                                                  child: Divider(height: 1),
+                                                ),
+                                              // Temporary advance row
+                                              if (partner.remainingAdvance >
+                                                  0) ...[
+                                                Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons.handshake_outlined,
+                                                      size: 16,
+                                                      color:
+                                                          Colors.amber.shade900,
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Text(
+                                                      'سلفة شخصية مؤقتة (عليك للمحل):',
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        fontSize: 12,
+                                                        color: Colors
+                                                            .amber
+                                                            .shade900,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 6),
+                                                    Text(
+                                                      '${Money(partner.remainingAdvance).toDisplay()} ج.م',
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 13,
+                                                        color: Colors
+                                                            .amber
+                                                            .shade900,
+                                                      ),
+                                                    ),
+                                                    const Spacer(),
+                                                    ElevatedButton.icon(
+                                                      style: ElevatedButton.styleFrom(
+                                                        backgroundColor: Colors
+                                                            .amber
+                                                            .shade800,
+                                                        foregroundColor:
+                                                            Colors.white,
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 10,
+                                                              vertical: 6,
+                                                            ),
+                                                        minimumSize: Size.zero,
+                                                        tapTargetSize:
+                                                            MaterialTapTargetSize
+                                                                .shrinkWrap,
+                                                        shape: RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                6,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                      onPressed: () =>
+                                                          _openDepositDialog(
+                                                            context,
+                                                            partner,
+                                                            initialCategory:
+                                                                'advance_repayment',
+                                                          ),
+                                                      icon: const Icon(
+                                                        Icons
+                                                            .assignment_return_outlined,
+                                                        size: 12,
+                                                      ),
+                                                      label: const Text(
+                                                        'رد السلفة للدرج',
+                                                        style: TextStyle(
+                                                          fontSize: 11,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+
+                                      // 3. Financial Stat Grid (أرقام الأرباح والمسحوبات والمستحق)
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 10,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                border: Border.all(
+                                                  color:
+                                                      AppColors.outlineVariant,
+                                                ),
+                                              ),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .spaceBetween,
+                                                    children: [
+                                                      Text(
+                                                        'نصيب الأرباح ($days يوم)',
+                                                        style: const TextStyle(
+                                                          fontSize: 11,
+                                                          color: AppColors
+                                                              .onSurfaceVariant,
+                                                        ),
+                                                      ),
+                                                      const Icon(
+                                                        Icons
+                                                            .trending_up_rounded,
+                                                        size: 14,
+                                                        color: AppColors
+                                                            .onSurfaceVariant,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    '${Money(partnerShare).toDisplay()} ج.م',
+                                                    style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 13,
+                                                      color:
+                                                          AppColors.onSurface,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 10,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                border: Border.all(
+                                                  color:
+                                                      AppColors.outlineVariant,
+                                                ),
+                                              ),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .spaceBetween,
+                                                    children: [
+                                                      const Text(
+                                                        'أرباح تم استلامها',
+                                                        style: TextStyle(
+                                                          fontSize: 11,
+                                                          color: AppColors
+                                                              .onSurfaceVariant,
+                                                        ),
+                                                      ),
+                                                      const Icon(
+                                                        Icons
+                                                            .arrow_downward_rounded,
+                                                        size: 14,
+                                                        color: AppColors
+                                                            .onSurfaceVariant,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    '${Money(totalWithdrawn).toDisplay()} ج.م',
+                                                    style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 13,
+                                                      color:
+                                                          AppColors.onSurface,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 10,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                border: Border.all(
+                                                  color:
+                                                      AppColors.outlineVariant,
+                                                ),
+                                              ),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .spaceBetween,
+                                                    children: [
+                                                      const Text(
+                                                        'أرباح باقية بالمحل',
+                                                        style: TextStyle(
+                                                          fontSize: 11,
+                                                          color: AppColors
+                                                              .onSurfaceVariant,
+                                                        ),
+                                                      ),
+                                                      const Icon(
+                                                        Icons.savings_outlined,
+                                                        size: 14,
+                                                        color: AppColors
+                                                            .onSurfaceVariant,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    '${Money(partner.getUnwithdrawnProfit(partnerShare)).toDisplay()} ج.م',
+                                                    style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 13,
+                                                      color:
+                                                          AppColors.onSurface,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 10,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFF1F5F9),
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                border: Border.all(
+                                                  color:
+                                                      AppColors.outlineVariant,
+                                                ),
+                                              ),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .spaceBetween,
+                                                    children: const [
+                                                      Text(
+                                                        'صافي المستحق الكلي',
+                                                        style: TextStyle(
+                                                          fontSize: 11,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          color: AppColors
+                                                              .onSurface,
+                                                        ),
+                                                      ),
+                                                      Icon(
+                                                        Icons
+                                                            .account_balance_wallet_rounded,
+                                                        size: 14,
+                                                        color:
+                                                            AppColors.onSurface,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    '${Money(partner.calculateNetBalance(partnerShare)).toDisplay()} ج.م',
+                                                    style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 14,
+                                                      color:
+                                                          AppColors.onSurface,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 12),
+
+                                      // 4. Action buttons row
+                                      Wrap(
+                                        spacing: 8,
+                                        runSpacing: 6,
+                                        crossAxisAlignment:
+                                            WrapCrossAlignment.center,
+                                        children: [
+                                          ElevatedButton.icon(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor:
+                                                  AppColors.primary,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 14,
+                                                    vertical: 10,
+                                                  ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                            onPressed: () =>
+                                                _openWithdrawalDialog(
+                                                  context,
+                                                  partner,
+                                                  partnerShare,
+                                                ),
+                                            icon: const Icon(
+                                              Icons.payments_outlined,
+                                              color: Colors.white,
+                                              size: 16,
+                                            ),
+                                            label: const Text(
+                                              'صرف أرباح ومسحوبات',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                          OutlinedButton.icon(
+                                            style: OutlinedButton.styleFrom(
+                                              foregroundColor:
+                                                  AppColors.onSurface,
+                                              side: const BorderSide(
+                                                color: AppColors.outlineVariant,
+                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 14,
+                                                    vertical: 10,
+                                                  ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                            onPressed: () => _openDepositDialog(
+                                              context,
+                                              partner,
+                                            ),
+                                            icon: const Icon(
+                                              Icons.add_card_rounded,
+                                              size: 16,
+                                            ),
+                                            label: const Text(
+                                              'تمويل ودفع من الجيب',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                          if (partner.getUnwithdrawnProfit(
+                                                partnerShare,
+                                              ) >
+                                              0)
+                                            OutlinedButton.icon(
+                                              style: OutlinedButton.styleFrom(
+                                                foregroundColor:
+                                                    AppColors.onSurface,
+                                                side: const BorderSide(
+                                                  color:
+                                                      AppColors.outlineVariant,
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 10,
+                                                    ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                              ),
+                                              onPressed: () =>
+                                                  _openReinvestDialog(
+                                                    context,
+                                                    partner,
+                                                    partner
+                                                        .getUnwithdrawnProfit(
+                                                          partnerShare,
+                                                        ),
+                                                  ),
+                                              icon: const Icon(
+                                                Icons.autorenew_rounded,
+                                                size: 16,
+                                              ),
+                                              label: const Text(
+                                                'تدوير الأرباح كرأس مال',
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                          TextButton.icon(
+                                            style: TextButton.styleFrom(
+                                              foregroundColor:
+                                                  AppColors.onSurfaceVariant,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 10,
+                                                  ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                            onPressed: () =>
+                                                _showFinancialHistoryDialog(
+                                                  context,
+                                                  partner,
+                                                ),
+                                            icon: const Icon(
+                                              Icons.history_rounded,
+                                              size: 16,
+                                            ),
+                                            label: const Text(
+                                              'سجل الحركات',
+                                              style: TextStyle(fontSize: 11),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
                     ),
                   ],
                 );
@@ -2437,9 +3697,7 @@ class _PartnersScreenState extends State<PartnersScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.outlineVariant,
-        ),
+        border: Border.all(color: AppColors.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2458,7 +3716,11 @@ class _PartnersScreenState extends State<PartnersScreen> {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.onSurfaceVariant,
+                    fontWeight: FontWeight.bold,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -2468,7 +3730,11 @@ class _PartnersScreenState extends State<PartnersScreen> {
           const SizedBox(height: 10),
           Text(
             value,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.onSurface),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppColors.onSurface,
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

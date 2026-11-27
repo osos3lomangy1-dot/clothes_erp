@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -13,6 +14,7 @@ import '../../../employees/presentation/screens/employee_list_screen.dart';
 import '../../../expenses/presentation/screens/expenses_screen.dart';
 import '../../../installments/presentation/screens/installments_list_screen.dart';
 import '../../../invoices/presentation/screens/receipt_customizer_screen.dart';
+import '../../../inventory/presentation/screens/inventory_screen.dart';
 import '../../../partners/presentation/screens/partners_screen.dart';
 import '../../../products/presentation/screens/product_list_screen.dart';
 import '../../../purchases/presentation/screens/purchases_screen.dart';
@@ -33,6 +35,59 @@ class _AssistantChatEntry {
     this.headerLabel,
     required this.insights,
   });
+}
+
+/// Enables mouse-drag and mouse-wheel horizontal scrolling for desktop tabs/chips.
+class _DesktopHorizontalScroll extends StatefulWidget {
+  const _DesktopHorizontalScroll({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_DesktopHorizontalScroll> createState() =>
+      _DesktopHorizontalScrollState();
+}
+
+class _DesktopHorizontalScrollState extends State<_DesktopHorizontalScroll> {
+  final ScrollController _controller = ScrollController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      onPointerSignal: (event) {
+        if (event is PointerScrollEvent && _controller.hasClients) {
+          final delta = event.scrollDelta.dy != 0
+              ? event.scrollDelta.dy
+              : event.scrollDelta.dx;
+          final target = (_controller.offset + delta).clamp(
+            0.0,
+            _controller.position.maxScrollExtent,
+          );
+          _controller.jumpTo(target);
+        }
+      },
+      child: ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(
+          dragDevices: const {
+            PointerDeviceKind.touch,
+            PointerDeviceKind.mouse,
+            PointerDeviceKind.trackpad,
+          },
+        ),
+        child: SingleChildScrollView(
+          controller: _controller,
+          scrollDirection: Axis.horizontal,
+          child: widget.child,
+        ),
+      ),
+    );
+  }
 }
 
 class OfflineSmartAssistantDialog extends StatefulWidget {
@@ -123,6 +178,7 @@ class _OfflineSmartAssistantDialogState
   final List<_AssistantChatEntry> _history = [];
   final Set<AssistantInsight> _resolvedCommands =
       Set<AssistantInsight>.identity();
+  final Set<String> _dismissedAlertIds = {};
   Map<String, bool> _enabledFeatures = const {};
   bool _isLoading = true;
   String _selectedCategory = 'all';
@@ -408,6 +464,20 @@ class _OfflineSmartAssistantDialogState
     return _enabledFeatures[key] ?? false;
   }
 
+  Future<void> _dismissAlert(AssistantInsight item) async {
+    final service = _resolveService();
+    if (item.id == 'stockout_alerts') {
+      await service.dismissStockoutAlerts();
+    } else if (item.id == 'overdue_installments') {
+      await service.dismissOverdueInstallmentAlerts();
+    }
+    if (!mounted) return;
+    setState(() {
+      _dismissedAlertIds.add(item.id);
+      service.sessionHistory.clear();
+    });
+  }
+
   void _navigateToRoute(AssistantActionRoute route) {
     if (widget.onNavigateRoute != null) {
       Navigator.of(context).pop();
@@ -421,6 +491,9 @@ class _OfflineSmartAssistantDialogState
         break;
       case AssistantActionRoute.products:
         screen = const ProductListScreen();
+        break;
+      case AssistantActionRoute.inventory:
+        screen = const InventoryScreen();
         break;
       case AssistantActionRoute.purchases:
         screen = const PurchasesScreen();
@@ -648,8 +721,9 @@ class _OfflineSmartAssistantDialogState
                           ),
                           if (!widget.isBottomSheet)
                             Tooltip(
-                              message:
-                                  _isExpanded ? 'تصغير النافذة' : 'تكبير النافذة',
+                              message: _isExpanded
+                                  ? 'تصغير النافذة'
+                                  : 'تكبير النافذة',
                               child: InkWell(
                                 key: const Key('smart_assistant_expand_btn'),
                                 borderRadius: BorderRadius.circular(8),
@@ -768,8 +842,7 @@ class _OfflineSmartAssistantDialogState
                         bottom: BorderSide(color: AppColors.outlineVariant),
                       ),
                     ),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
+                    child: _DesktopHorizontalScroll(
                       child: Row(
                         children: [
                           Text(
@@ -839,8 +912,7 @@ class _OfflineSmartAssistantDialogState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
+                      _DesktopHorizontalScroll(
                         child: Row(
                           children: [
                             for (final cat in const [
@@ -887,8 +959,7 @@ class _OfflineSmartAssistantDialogState
                         ),
                       ),
                       const SizedBox(height: 5),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
+                      _DesktopHorizontalScroll(
                         child: Row(
                           children: [
                             for (int i = 0; i < quickPrompts.length; i++) ...[
@@ -933,365 +1004,879 @@ class _OfflineSmartAssistantDialogState
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              for (int idx = 0; idx < _history.length; idx++) ...[
+                              for (
+                                int idx = 0;
+                                idx < _history.length;
+                                idx++
+                              ) ...[
                                 if (idx > 0) const SizedBox(height: 12),
                                 Builder(
                                   builder: (context) {
                                     final entry = _history[idx];
                                     return Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                if (entry.userPrompt != null)
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: Container(
-                                      margin: const EdgeInsets.only(bottom: 8),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 11,
-                                        vertical: 7,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary.withValues(
-                                          alpha: 0.12,
-                                        ),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Text(
-                                        entry.userPrompt!,
-                                        style: TextStyle(
-                                          fontFamily: 'Cairo',
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.primary,
-                                          fontSize: 12.5,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                if (entry.headerLabel != null)
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 6),
-                                    child: Text(
-                                      entry.headerLabel!,
-                                      key: const Key(
-                                        'smart_assistant_briefing_header',
-                                      ),
-                                      style: TextStyle(
-                                        fontFamily: 'Cairo',
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                        color: AppColors.primary,
-                                      ),
-                                    ),
-                                  ),
-                                for (final item in entry.insights)
-                                  Container(
-                                    margin: const EdgeInsets.only(bottom: 8),
-                                    padding: const EdgeInsets.all(11),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.surface,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color:
-                                            (item.isAlert
-                                                    ? AppColors.warning
-                                                    : AppColors.primary)
-                                                .withValues(alpha: 0.35),
-                                      ),
-                                    ),
-                                    child: Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        Text(
-                                          item.title,
-                                          style: const TextStyle(
-                                            fontFamily: 'Cairo',
-                                            fontSize: 11.5,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.onSurfaceVariant,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 3),
-                                        Text(
-                                          item.summary,
-                                          style: TextStyle(
-                                            fontFamily: 'Cairo',
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.bold,
-                                            color: item.isAlert
-                                                ? AppColors.warning
-                                                : AppColors.primary,
-                                          ),
-                                        ),
-                                        if (item.details.isNotEmpty) ...[
-                                          const SizedBox(height: 5),
-                                          for (final line in item.details)
-                                            _buildDetailLine(
-                                              context,
-                                              line,
-                                              isPost:
-                                                  item.id.startsWith(
-                                                    'promo_post',
-                                                  ) ||
-                                                  item.id.startsWith(
-                                                    'customer_re_engagement',
-                                                  ) ||
-                                                  item.id.startsWith(
-                                                    'installment_reminder',
-                                                  ) ||
-                                                  item.id.startsWith(
-                                                    'customer_objection_replies',
-                                                  ),
-                                              isSuggestion:
-                                                  item.id == 'no_direct_match',
-                                            ),
-                                        ],
-                                        if (item.pendingCommand != null &&
-                                            !_resolvedCommands.contains(
-                                              item,
-                                            )) ...[
-                                          const SizedBox(height: 8),
-                                          Row(
-                                            children: [
-                                              ElevatedButton(
-                                                key: Key(
-                                                  'assistant_confirm_${item.id}',
-                                                ),
-                                                onPressed: () =>
-                                                    _confirmCommand(item),
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor:
-                                                      AppColors.primary,
-                                                  foregroundColor: Colors.white,
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 12,
-                                                        vertical: 6,
-                                                      ),
-                                                ),
-                                                child: const Text(
-                                                  'تنفيذ الآن',
-                                                  style: TextStyle(
-                                                    fontFamily: 'Cairo',
-                                                    fontSize: 12,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              OutlinedButton(
-                                                key: Key(
-                                                  'assistant_cancel_${item.id}',
-                                                ),
-                                                onPressed: () =>
-                                                    _cancelCommand(item),
-                                                style: OutlinedButton.styleFrom(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 12,
-                                                        vertical: 6,
-                                                      ),
-                                                ),
-                                                child: const Text(
-                                                  'إلغاء',
-                                                  style: TextStyle(
-                                                    fontFamily: 'Cairo',
-                                                    fontSize: 12,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                        if (item.id == 'cmd_success' &&
-                                            item.actionLabel != null &&
-                                            _resolveService().lastUndoToken !=
-                                                null) ...[
-                                          const SizedBox(height: 6),
-                                          OutlinedButton.icon(
-                                            key: const Key(
-                                              'assistant_undo_btn',
-                                            ),
-                                            onPressed: () async {
-                                              final authState = context
-                                                  .read<AuthCubit>()
-                                                  .state;
-                                              final userId =
-                                                  authState is AuthAuthenticated
-                                                  ? authState.user.id
-                                                  : 'admin';
-                                              final userRole =
-                                                  authState is AuthAuthenticated
-                                                  ? authState.user.role
-                                                  : 'admin';
-                                              final undoMsg =
-                                                  await _resolveService()
-                                                      .undoLastCommand(
-                                                        userId: userId,
-                                                        userRole: userRole,
-                                                      );
-                                              if (!mounted) return;
-                                              setState(() {
-                                                _history.add(
-                                                  _AssistantChatEntry(
-                                                    insights: [
-                                                      AssistantInsight(
-                                                        id: 'cmd_undone',
-                                                        title: 'تم التراجع',
-                                                        summary: undoMsg,
-                                                      ),
-                                                    ],
-                                                  ),
-                                                );
-                                              });
-                                              _scrollToLatest();
-                                            },
-                                            icon: const Icon(
-                                              Icons.undo_rounded,
-                                              size: 14,
-                                            ),
-                                            label: Text(
-                                              item.actionLabel!,
-                                              style: const TextStyle(
-                                                fontFamily: 'Cairo',
-                                                fontSize: 11.5,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                        if (_canNavigate(item) &&
-                                            item.actionLabel != null) ...[
-                                          const SizedBox(height: 6),
+                                        if (entry.userPrompt != null)
                                           Align(
-                                            alignment: Alignment.centerLeft,
-                                            child: TextButton.icon(
-                                              key: Key(
-                                                'assistant_action_${item.id}',
+                                            alignment: Alignment.centerRight,
+                                            child: ConstrainedBox(
+                                              constraints: const BoxConstraints(
+                                                maxWidth: 420,
                                               ),
-                                              onPressed: () => _navigateToRoute(
-                                                item.actionRoute!,
-                                              ),
-                                              icon: const Icon(
-                                                Icons.open_in_new_rounded,
-                                                size: 14,
-                                              ),
-                                              label: Text(
-                                                item.actionLabel!,
-                                                style: const TextStyle(
-                                                  fontFamily: 'Cairo',
-                                                  fontSize: 11.5,
+                                              child: Container(
+                                                margin: const EdgeInsets.only(
+                                                  bottom: 10,
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 13,
+                                                      vertical: 8,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.primary,
+                                                  borderRadius:
+                                                      const BorderRadius.only(
+                                                        topLeft:
+                                                            Radius.circular(14),
+                                                        topRight:
+                                                            Radius.circular(14),
+                                                        bottomLeft:
+                                                            Radius.circular(14),
+                                                        bottomRight:
+                                                            Radius.circular(4),
+                                                      ),
+                                                ),
+                                                child: Text(
+                                                  entry.userPrompt!,
+                                                  style: const TextStyle(
+                                                    fontFamily: 'Cairo',
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
+                                                    fontSize: 12.5,
+                                                    height: 1.45,
+                                                  ),
                                                 ),
                                               ),
                                             ),
                                           ),
-                                        ],
-                                        if (item.id == 'eod_report') ...[
-                                          const SizedBox(height: 6),
-                                          Align(
-                                            alignment: Alignment.centerLeft,
-                                            child: TextButton.icon(
+                                        if (entry.headerLabel != null)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: 6,
+                                            ),
+                                            child: Text(
+                                              entry.headerLabel!,
                                               key: const Key(
-                                                'assistant_copy_eod_btn',
+                                                'smart_assistant_briefing_header',
                                               ),
-                                              onPressed: () {
-                                                final text = [
-                                                  item.title,
-                                                  item.summary,
-                                                  ...item.details,
-                                                ].join('\n');
-                                                Clipboard.setData(
-                                                  ClipboardData(text: text),
-                                                );
-                                                ScaffoldMessenger.of(
-                                                  context,
-                                                ).showSnackBar(
-                                                  const SnackBar(
-                                                    content: Text(
-                                                      'تم نسخ تقرير قفلة اليوم للواتساب',
-                                                      style: TextStyle(
-                                                        fontFamily: 'Cairo',
-                                                      ),
-                                                    ),
-                                                    duration: Duration(
-                                                      seconds: 2,
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                              icon: const Icon(
-                                                Icons.copy_rounded,
-                                                size: 14,
-                                              ),
-                                              label: const Text(
-                                                'نسخ لواتساب',
-                                                style: TextStyle(
-                                                  fontFamily: 'Cairo',
-                                                  fontSize: 11.5,
-                                                ),
+                                              style: TextStyle(
+                                                fontFamily: 'Cairo',
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 12,
+                                                color: AppColors.primary,
                                               ),
                                             ),
                                           ),
-                                        ],
-                                        if (item
-                                            .followUpPrompts
-                                            .isNotEmpty) ...[
-                                          const SizedBox(height: 6),
-                                          Wrap(
-                                            spacing: 6,
-                                            runSpacing: 4,
-                                            children: [
-                                              for (final nextPrompt
-                                                  in item.followUpPrompts)
-                                                ActionChip(
-                                                  materialTapTargetSize:
-                                                      MaterialTapTargetSize
-                                                          .shrinkWrap,
-                                                  visualDensity:
-                                                      VisualDensity.compact,
-                                                  backgroundColor: AppColors
-                                                      .primary
-                                                      .withValues(alpha: 0.08),
-                                                  side: BorderSide(
+                                        for (final item in entry.insights)
+                                          if (item.id.startsWith('chitchat_') &&
+                                              item.details.isEmpty &&
+                                              item.pendingCommand == null)
+                                            Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: ConstrainedBox(
+                                                constraints:
+                                                    const BoxConstraints(
+                                                      maxWidth: 440,
+                                                    ),
+                                                child: Container(
+                                                  margin: const EdgeInsets.only(
+                                                    bottom: 10,
+                                                  ),
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 13,
+                                                        vertical: 10,
+                                                      ),
+                                                  decoration: BoxDecoration(
                                                     color: AppColors.primary
                                                         .withValues(
-                                                          alpha: 0.25,
+                                                          alpha: 0.06,
                                                         ),
-                                                  ),
-                                                  label: Text(
-                                                    nextPrompt,
-                                                    style: TextStyle(
-                                                      fontFamily: 'Cairo',
-                                                      fontSize: 10.5,
-                                                      color: AppColors.primary,
-                                                      fontWeight:
-                                                          FontWeight.w600,
+                                                    borderRadius:
+                                                        const BorderRadius.only(
+                                                          topLeft:
+                                                              Radius.circular(
+                                                                14,
+                                                              ),
+                                                          topRight:
+                                                              Radius.circular(
+                                                                14,
+                                                              ),
+                                                          bottomRight:
+                                                              Radius.circular(
+                                                                14,
+                                                              ),
+                                                          bottomLeft:
+                                                              Radius.circular(
+                                                                4,
+                                                              ),
+                                                        ),
+                                                    border: Border.all(
+                                                      color: AppColors.primary
+                                                          .withValues(
+                                                            alpha: 0.18,
+                                                          ),
                                                     ),
                                                   ),
-                                                  onPressed: () {
-                                                    if (nextPrompt ==
-                                                            'عدل السعر' &&
-                                                        _lastBarcodeProductName !=
-                                                            null) {
-                                                      _runQuery(
-                                                        'عدل سعر $_lastBarcodeProductName',
-                                                      );
-                                                    } else if (nextPrompt ==
-                                                            'زود الرصيد' &&
-                                                        _lastBarcodeProductName !=
-                                                            null) {
-                                                      _runQuery(
-                                                        'زود رصيد $_lastBarcodeProductName',
-                                                      );
-                                                    } else {
-                                                      _runQuery(nextPrompt);
-                                                    }
-                                                  },
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        item.title,
+                                                        style: TextStyle(
+                                                          fontFamily: 'Cairo',
+                                                          fontSize: 12,
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          color:
+                                                              AppColors.primary,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 3),
+                                                      Text(
+                                                        item.summary,
+                                                        style: const TextStyle(
+                                                          fontFamily: 'Cairo',
+                                                          fontSize: 12.5,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                          color: AppColors
+                                                              .onSurface,
+                                                          height: 1.5,
+                                                        ),
+                                                      ),
+                                                      if (item
+                                                          .followUpPrompts
+                                                          .isNotEmpty) ...[
+                                                        const SizedBox(
+                                                          height: 6,
+                                                        ),
+                                                        Wrap(
+                                                          spacing: 6,
+                                                          runSpacing: 4,
+                                                          children: [
+                                                            for (final nextPrompt
+                                                                in item
+                                                                    .followUpPrompts)
+                                                              ActionChip(
+                                                                materialTapTargetSize:
+                                                                    MaterialTapTargetSize
+                                                                        .shrinkWrap,
+                                                                visualDensity:
+                                                                    VisualDensity
+                                                                        .compact,
+                                                                backgroundColor:
+                                                                    AppColors
+                                                                        .surface,
+                                                                side: BorderSide(
+                                                                  color: AppColors
+                                                                      .primary
+                                                                      .withValues(
+                                                                        alpha:
+                                                                            0.25,
+                                                                      ),
+                                                                ),
+                                                                label: Text(
+                                                                  nextPrompt,
+                                                                  style: TextStyle(
+                                                                    fontFamily:
+                                                                        'Cairo',
+                                                                    fontSize:
+                                                                        11,
+                                                                    color: AppColors
+                                                                        .primary,
+                                                                  ),
+                                                                ),
+                                                                onPressed: () {
+                                                                  _queryCtrl
+                                                                          .text =
+                                                                      nextPrompt;
+                                                                  _runQuery(
+                                                                    nextPrompt,
+                                                                  );
+                                                                },
+                                                              ),
+                                                          ],
+                                                        ),
+                                                      ],
+                                                    ],
+                                                  ),
                                                 ),
-                                            ],
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
+                                              ),
+                                            )
+                                          else
+                                            Container(
+                                              margin: const EdgeInsets.only(
+                                                bottom: 10,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.surface,
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                border: Border.all(
+                                                  color:
+                                                      (item.isAlert
+                                                              ? AppColors
+                                                                    .warning
+                                                              : AppColors
+                                                                    .primary)
+                                                          .withValues(
+                                                            alpha: 0.22,
+                                                          ),
+                                                ),
+                                              ),
+                                              child: Container(
+                                                padding: const EdgeInsets.all(
+                                                  12,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  border: Border(
+                                                    right: BorderSide(
+                                                      width: 3,
+                                                      color: item.isAlert
+                                                          ? AppColors.warning
+                                                          : AppColors.primary,
+                                                    ),
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(11),
+                                                ),
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Row(
+                                                      children: [
+                                                        Icon(
+                                                          item.isAlert
+                                                              ? Icons
+                                                                    .warning_amber_rounded
+                                                              : item.id
+                                                                    .startsWith(
+                                                                      'kb_',
+                                                                    )
+                                                              ? Icons
+                                                                    .auto_stories_outlined
+                                                              : item.id ==
+                                                                    'cmd_success'
+                                                              ? Icons
+                                                                    .check_circle_outline_rounded
+                                                              : Icons
+                                                                    .analytics_outlined,
+                                                          size: 15,
+                                                          color: item.isAlert
+                                                              ? AppColors
+                                                                    .warning
+                                                              : AppColors
+                                                                    .primary,
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 6,
+                                                        ),
+                                                        Expanded(
+                                                          child: Text(
+                                                            item.title,
+                                                            style: const TextStyle(
+                                                              fontFamily:
+                                                                  'Cairo',
+                                                              fontSize: 12,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w700,
+                                                              color: AppColors
+                                                                  .onSurfaceVariant,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    const SizedBox(height: 5),
+                                                    Text(
+                                                      item.summary,
+                                                      style: TextStyle(
+                                                        fontFamily: 'Cairo',
+                                                        fontSize: 13,
+                                                        fontWeight:
+                                                            item.id.startsWith(
+                                                              'kb_',
+                                                            )
+                                                            ? FontWeight.w600
+                                                            : FontWeight.bold,
+                                                        height: 1.5,
+                                                        color: item.isAlert
+                                                            ? AppColors.warning
+                                                            : AppColors.primary,
+                                                      ),
+                                                    ),
+                                                    if (item
+                                                        .details
+                                                        .isNotEmpty) ...[
+                                                      const SizedBox(height: 5),
+                                                      for (final line
+                                                          in item.details)
+                                                        _buildDetailLine(
+                                                          context,
+                                                          line,
+                                                          isPost:
+                                                              item.id.startsWith(
+                                                                'promo_post',
+                                                              ) ||
+                                                              item.id.startsWith(
+                                                                'customer_re_engagement',
+                                                              ) ||
+                                                              item.id.startsWith(
+                                                                'installment_reminder',
+                                                              ) ||
+                                                              item.id.startsWith(
+                                                                'customer_objection_replies',
+                                                              ),
+                                                          isSuggestion:
+                                                              item.id ==
+                                                                  'no_direct_match' &&
+                                                              item
+                                                                  .followUpPrompts
+                                                                  .isEmpty,
+                                                        ),
+                                                    ],
+                                                    if (item.pendingCommand !=
+                                                            null &&
+                                                        !_resolvedCommands
+                                                            .contains(
+                                                              item,
+                                                            )) ...[
+                                                      const SizedBox(height: 8),
+                                                      Row(
+                                                        children: [
+                                                          ElevatedButton(
+                                                            key: Key(
+                                                              'assistant_confirm_${item.id}',
+                                                            ),
+                                                            onPressed: () =>
+                                                                _confirmCommand(
+                                                                  item,
+                                                                ),
+                                                            style: ElevatedButton.styleFrom(
+                                                              backgroundColor:
+                                                                  AppColors
+                                                                      .primary,
+                                                              foregroundColor:
+                                                                  Colors.white,
+                                                              padding:
+                                                                  const EdgeInsets.symmetric(
+                                                                    horizontal:
+                                                                        12,
+                                                                    vertical: 6,
+                                                                  ),
+                                                            ),
+                                                            child: const Text(
+                                                              'تنفيذ الآن',
+                                                              style: TextStyle(
+                                                                fontFamily:
+                                                                    'Cairo',
+                                                                fontSize: 12,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 8,
+                                                          ),
+                                                          OutlinedButton(
+                                                            key: Key(
+                                                              'assistant_cancel_${item.id}',
+                                                            ),
+                                                            onPressed: () =>
+                                                                _cancelCommand(
+                                                                  item,
+                                                                ),
+                                                            style: OutlinedButton.styleFrom(
+                                                              padding:
+                                                                  const EdgeInsets.symmetric(
+                                                                    horizontal:
+                                                                        12,
+                                                                    vertical: 6,
+                                                                  ),
+                                                            ),
+                                                            child: const Text(
+                                                              'إلغاء',
+                                                              style: TextStyle(
+                                                                fontFamily:
+                                                                    'Cairo',
+                                                                fontSize: 12,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                    if (item.id ==
+                                                            'cmd_success' &&
+                                                        item.actionLabel !=
+                                                            null &&
+                                                        _resolveService()
+                                                                .lastUndoToken !=
+                                                            null) ...[
+                                                      const SizedBox(height: 6),
+                                                      OutlinedButton.icon(
+                                                        key: const Key(
+                                                          'assistant_undo_btn',
+                                                        ),
+                                                        onPressed: () async {
+                                                          final authState =
+                                                              context
+                                                                  .read<
+                                                                    AuthCubit
+                                                                  >()
+                                                                  .state;
+                                                          final userId =
+                                                              authState
+                                                                  is AuthAuthenticated
+                                                              ? authState
+                                                                    .user
+                                                                    .id
+                                                              : 'admin';
+                                                          final userRole =
+                                                              authState
+                                                                  is AuthAuthenticated
+                                                              ? authState
+                                                                    .user
+                                                                    .role
+                                                              : 'admin';
+                                                          final undoMsg =
+                                                              await _resolveService()
+                                                                  .undoLastCommand(
+                                                                    userId:
+                                                                        userId,
+                                                                    userRole:
+                                                                        userRole,
+                                                                  );
+                                                          if (!mounted) return;
+                                                          setState(() {
+                                                            _history.add(
+                                                              _AssistantChatEntry(
+                                                                insights: [
+                                                                  AssistantInsight(
+                                                                    id: 'cmd_undone',
+                                                                    title:
+                                                                        'تم التراجع',
+                                                                    summary:
+                                                                        undoMsg,
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            );
+                                                          });
+                                                          _scrollToLatest();
+                                                        },
+                                                        icon: const Icon(
+                                                          Icons.undo_rounded,
+                                                          size: 14,
+                                                        ),
+                                                        label: Text(
+                                                          item.actionLabel!,
+                                                          style:
+                                                              const TextStyle(
+                                                                fontFamily:
+                                                                    'Cairo',
+                                                                fontSize: 11.5,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                    if ((_canNavigate(item) &&
+                                                            item.actionLabel !=
+                                                                null) ||
+                                                        item.id.startsWith(
+                                                          'kb_',
+                                                        )) ...[
+                                                      const SizedBox(height: 8),
+                                                      Wrap(
+                                                        spacing: 8,
+                                                        runSpacing: 6,
+                                                        children: [
+                                                          if (_canNavigate(
+                                                                item,
+                                                              ) &&
+                                                              item.actionLabel !=
+                                                                  null)
+                                                            TextButton.icon(
+                                                              key: Key(
+                                                                'assistant_action_${item.id}',
+                                                              ),
+                                                              style: TextButton.styleFrom(
+                                                                backgroundColor:
+                                                                    AppColors
+                                                                        .primary
+                                                                        .withValues(
+                                                                          alpha:
+                                                                              0.08,
+                                                                        ),
+                                                                foregroundColor:
+                                                                    AppColors
+                                                                        .primary,
+                                                                padding:
+                                                                    const EdgeInsets.symmetric(
+                                                                      horizontal:
+                                                                          10,
+                                                                      vertical:
+                                                                          6,
+                                                                    ),
+                                                                minimumSize:
+                                                                    Size.zero,
+                                                                tapTargetSize:
+                                                                    MaterialTapTargetSize
+                                                                        .shrinkWrap,
+                                                                shape: RoundedRectangleBorder(
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                        8,
+                                                                      ),
+                                                                ),
+                                                              ),
+                                                              onPressed: () =>
+                                                                  _navigateToRoute(
+                                                                    item.actionRoute!,
+                                                                  ),
+                                                              icon: const Icon(
+                                                                Icons
+                                                                    .open_in_new_rounded,
+                                                                size: 14,
+                                                              ),
+                                                              label: Text(
+                                                                item.actionLabel!,
+                                                                style: const TextStyle(
+                                                                  fontFamily:
+                                                                      'Cairo',
+                                                                  fontSize:
+                                                                      11.5,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          if (item.isAlert &&
+                                                              (item.id ==
+                                                                      'stockout_alerts' ||
+                                                                  item.id ==
+                                                                      'overdue_installments') &&
+                                                              !_dismissedAlertIds
+                                                                  .contains(
+                                                                    item.id,
+                                                                  ))
+                                                            TextButton.icon(
+                                                              key: Key(
+                                                                'assistant_dismiss_${item.id}',
+                                                              ),
+                                                              style: TextButton.styleFrom(
+                                                                backgroundColor:
+                                                                    AppColors
+                                                                        .warning
+                                                                        .withValues(
+                                                                          alpha:
+                                                                              0.10,
+                                                                        ),
+                                                                foregroundColor:
+                                                                    AppColors
+                                                                        .warning,
+                                                                padding:
+                                                                    const EdgeInsets.symmetric(
+                                                                      horizontal:
+                                                                          10,
+                                                                      vertical:
+                                                                          6,
+                                                                    ),
+                                                                minimumSize:
+                                                                    Size.zero,
+                                                                tapTargetSize:
+                                                                    MaterialTapTargetSize
+                                                                        .shrinkWrap,
+                                                                shape: RoundedRectangleBorder(
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                        8,
+                                                                      ),
+                                                                ),
+                                                              ),
+                                                              onPressed: () =>
+                                                                  _dismissAlert(
+                                                                    item,
+                                                                  ),
+                                                              icon: const Icon(
+                                                                Icons
+                                                                    .notifications_off_outlined,
+                                                                size: 14,
+                                                              ),
+                                                              label: const Text(
+                                                                'تجاهل وإخفاء البادج',
+                                                                style: TextStyle(
+                                                                  fontFamily:
+                                                                      'Cairo',
+                                                                  fontSize:
+                                                                      11.5,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                ),
+                                                              ),
+                                                            )
+                                                          else if (item.isAlert &&
+                                                              _dismissedAlertIds
+                                                                  .contains(
+                                                                    item.id,
+                                                                  ))
+                                                            const Padding(
+                                                              padding:
+                                                                  EdgeInsets.symmetric(
+                                                                    horizontal:
+                                                                        8,
+                                                                    vertical: 6,
+                                                                  ),
+                                                              child: Text(
+                                                                'تم التجاهل وإخفاء البادج ✓',
+                                                                style: TextStyle(
+                                                                  fontFamily:
+                                                                      'Cairo',
+                                                                  fontSize:
+                                                                      11.5,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                  color: AppColors
+                                                                      .success,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          if (item.id
+                                                              .startsWith(
+                                                                'kb_',
+                                                              ))
+                                                            TextButton.icon(
+                                                              style: TextButton.styleFrom(
+                                                                backgroundColor:
+                                                                    AppColors
+                                                                        .primary
+                                                                        .withValues(
+                                                                          alpha:
+                                                                              0.06,
+                                                                        ),
+                                                                foregroundColor:
+                                                                    AppColors
+                                                                        .primary,
+                                                                padding:
+                                                                    const EdgeInsets.symmetric(
+                                                                      horizontal:
+                                                                          10,
+                                                                      vertical:
+                                                                          6,
+                                                                    ),
+                                                                minimumSize:
+                                                                    Size.zero,
+                                                                tapTargetSize:
+                                                                    MaterialTapTargetSize
+                                                                        .shrinkWrap,
+                                                                shape: RoundedRectangleBorder(
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                        8,
+                                                                      ),
+                                                                ),
+                                                              ),
+                                                              onPressed: () {
+                                                                final text = [
+                                                                  item.title,
+                                                                  item.summary,
+                                                                  ...item
+                                                                      .details,
+                                                                ].join('\n');
+                                                                Clipboard.setData(
+                                                                  ClipboardData(
+                                                                    text: text,
+                                                                  ),
+                                                                );
+                                                                ScaffoldMessenger.of(
+                                                                  context,
+                                                                ).showSnackBar(
+                                                                  const SnackBar(
+                                                                    content: Text(
+                                                                      'تم نسخ الشرح',
+                                                                      style: TextStyle(
+                                                                        fontFamily:
+                                                                            'Cairo',
+                                                                      ),
+                                                                    ),
+                                                                    duration:
+                                                                        Duration(
+                                                                          seconds:
+                                                                              2,
+                                                                        ),
+                                                                  ),
+                                                                );
+                                                              },
+                                                              icon: const Icon(
+                                                                Icons
+                                                                    .copy_rounded,
+                                                                size: 14,
+                                                              ),
+                                                              label: const Text(
+                                                                'نسخ الشرح',
+                                                                style: TextStyle(
+                                                                  fontFamily:
+                                                                      'Cairo',
+                                                                  fontSize:
+                                                                      11.5,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                    if (item.id ==
+                                                        'eod_report') ...[
+                                                      const SizedBox(height: 6),
+                                                      Align(
+                                                        alignment: Alignment
+                                                            .centerLeft,
+                                                        child: TextButton.icon(
+                                                          key: const Key(
+                                                            'assistant_copy_eod_btn',
+                                                          ),
+                                                          onPressed: () {
+                                                            final text = [
+                                                              item.title,
+                                                              item.summary,
+                                                              ...item.details,
+                                                            ].join('\n');
+                                                            Clipboard.setData(
+                                                              ClipboardData(
+                                                                text: text,
+                                                              ),
+                                                            );
+                                                            ScaffoldMessenger.of(
+                                                              context,
+                                                            ).showSnackBar(
+                                                              const SnackBar(
+                                                                content: Text(
+                                                                  'تم نسخ تقرير قفلة اليوم للواتساب',
+                                                                  style: TextStyle(
+                                                                    fontFamily:
+                                                                        'Cairo',
+                                                                  ),
+                                                                ),
+                                                                duration:
+                                                                    Duration(
+                                                                      seconds:
+                                                                          2,
+                                                                    ),
+                                                              ),
+                                                            );
+                                                          },
+                                                          icon: const Icon(
+                                                            Icons.copy_rounded,
+                                                            size: 14,
+                                                          ),
+                                                          label: const Text(
+                                                            'نسخ لواتساب',
+                                                            style: TextStyle(
+                                                              fontFamily:
+                                                                  'Cairo',
+                                                              fontSize: 11.5,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                    if (item
+                                                        .followUpPrompts
+                                                        .isNotEmpty) ...[
+                                                      const SizedBox(height: 6),
+                                                      Wrap(
+                                                        spacing: 6,
+                                                        runSpacing: 4,
+                                                        children: [
+                                                          for (final nextPrompt
+                                                              in item
+                                                                  .followUpPrompts)
+                                                            ActionChip(
+                                                              materialTapTargetSize:
+                                                                  MaterialTapTargetSize
+                                                                      .shrinkWrap,
+                                                              visualDensity:
+                                                                  VisualDensity
+                                                                      .compact,
+                                                              backgroundColor:
+                                                                  AppColors
+                                                                      .primary
+                                                                      .withValues(
+                                                                        alpha:
+                                                                            0.08,
+                                                                      ),
+                                                              side: BorderSide(
+                                                                color: AppColors
+                                                                    .primary
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.25,
+                                                                    ),
+                                                              ),
+                                                              label: Text(
+                                                                nextPrompt,
+                                                                style: TextStyle(
+                                                                  fontFamily:
+                                                                      'Cairo',
+                                                                  fontSize:
+                                                                      10.5,
+                                                                  color: AppColors
+                                                                      .primary,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                ),
+                                                              ),
+                                                              onPressed: () {
+                                                                if (nextPrompt ==
+                                                                        'عدل السعر' &&
+                                                                    _lastBarcodeProductName !=
+                                                                        null) {
+                                                                  _runQuery(
+                                                                    'عدل سعر $_lastBarcodeProductName',
+                                                                  );
+                                                                } else if (nextPrompt ==
+                                                                        'زود الرصيد' &&
+                                                                    _lastBarcodeProductName !=
+                                                                        null) {
+                                                                  _runQuery(
+                                                                    'زود رصيد $_lastBarcodeProductName',
+                                                                  );
+                                                                } else {
+                                                                  _runQuery(
+                                                                    nextPrompt,
+                                                                  );
+                                                                }
+                                                              },
+                                                            ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
                                       ],
                                     );
                                   },
@@ -1317,10 +1902,14 @@ class _OfflineSmartAssistantDialogState
                         child: TextField(
                           key: const Key('smart_assistant_query_field'),
                           controller: _queryCtrl,
+                          minLines: 1,
+                          maxLines: 3,
+                          textInputAction: TextInputAction.send,
                           onSubmitted: _runQuery,
                           style: const TextStyle(
                             fontFamily: 'Cairo',
                             fontSize: 12.5,
+                            height: 1.4,
                           ),
                           decoration: InputDecoration(
                             hintText:
@@ -1332,9 +1921,8 @@ class _OfflineSmartAssistantDialogState
                             ),
                             filled: true,
                             fillColor: AppColors.surfaceContainerLowest,
-                            isDense: true,
                             contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 10,
+                              horizontal: 12,
                               vertical: 10,
                             ),
                             border: OutlineInputBorder(

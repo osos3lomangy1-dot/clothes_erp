@@ -2,7 +2,7 @@ name: clothes_erp
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 1.0.2+3
+version: 1.0.3+4
 
 environment:
   sdk: ^3.11.4
@@ -53,6 +53,7 @@ flutter:
     - assets/assistant_knowledge_ar.json
     - assets/assistant_nlu_model.json
 
+
   fonts:
     - family: Cairo
       fonts:
@@ -69,7 +70,7 @@ msix_config:
   display_name: Bay3ah - بيعة
   publisher_display_name: Bay3ah
   identity_name: com.bay3ah.erp
-  msix_version: 1.0.2.0
+  msix_version: 1.0.3.0
   logo_path: windows/runner/resources/app_icon.ico
   capabilities: internetClient
 

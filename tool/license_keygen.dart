@@ -1,10 +1,17 @@
 import 'dart:io';
+
 import 'package:clothes_erp/core/services/license_crypto_codec.dart';
 
 void main(List<String> args) {
-  stdout.writeln('================================================================');
-  stdout.writeln(' مولد مفاتيح وتراخيص نظام بيعة للمطور (BAY3AH ERP LICENSE KEYGEN) ');
-  stdout.writeln('================================================================\n');
+  stdout.writeln(
+    '================================================================',
+  );
+  stdout.writeln(
+    ' مولد مفاتيح وتراخيص نظام بيعة للمطور (BAY3AH ERP LICENSE KEYGEN) ',
+  );
+  stdout.writeln(
+    '================================================================\n',
+  );
 
   String machineId = '';
   String type = 'lifetime';
@@ -36,13 +43,17 @@ void main(List<String> args) {
   // Interactive Mode
   if (args.isEmpty) {
     stdout.writeln('اختر العملية المطلوبة:');
-    stdout.writeln('  1: توليد مفتاح ترخيص وتفعيل للنظام (License Key) [افتراضي]');
+    stdout.writeln(
+      '  1: توليد مفتاح ترخيص وتفعيل للنظام (License Key) [افتراضي]',
+    );
     stdout.writeln('  2: حساب رمز الإنقاذ والطوارئ للآدمن (Master Rescue PIN)');
     stdout.write('  اختيارك [1-2]: ');
     final opChoice = stdin.readLineSync()?.trim();
 
     if (opChoice == '2') {
-      stdout.write('\nأدخل كود الطوارئ (Challenge) المأخوذ من العميل (مثال: RESCUE-XXXX-YYYY): ');
+      stdout.write(
+        '\nأدخل كود الطوارئ (Challenge) المأخوذ من العميل (مثال: RESCUE-XXXX-YYYY): ',
+      );
       final input = stdin.readLineSync()?.trim();
       if (input == null || input.isEmpty) {
         stderr.writeln('خطأ: كود الطوارئ مطلوب.');
@@ -84,7 +95,9 @@ void main(List<String> args) {
     }
 
     stdout.writeln('\n3. اختر باقة الميزات:');
-    stdout.writeln('   1: باقة Enterprise الشاملة (كافة الأنشطة والمزايا) [افتراضي]');
+    stdout.writeln(
+      '   1: باقة Enterprise الشاملة (كافة الأنشطة والمزايا) [افتراضي]',
+    );
     stdout.writeln('   2: باقة Pro الاحترافية');
     stdout.writeln('   3: باقة Basic الأساسية');
     stdout.write('   اختيارك [1-3]: ');
@@ -118,33 +131,49 @@ void main(List<String> args) {
       ? '${expiryDate.year}-${expiryDate.month.toString().padLeft(2, '0')}-${expiryDate.day.toString().padLeft(2, '0')} ($days يوم)'
       : 'غير منتهي الصلاحية (ترخيص دائم مدى الحياة)';
 
-  stdout.writeln('\n================================================================');
+  stdout.writeln(
+    '\n================================================================',
+  );
   stdout.writeln(' تفاصيل الترخيص المُنشأ:');
   stdout.writeln(' - معرّف الجهاز: $machineId');
   stdout.writeln(' - نوع الترخيص:  ${_typeDisplay(type)}');
   stdout.writeln(' - باقة النظام:  ${tier.toUpperCase()}');
   stdout.writeln(' - الصلاحية:     $expiryLabel');
-  stdout.writeln('----------------------------------------------------------------');
+  stdout.writeln(
+    '----------------------------------------------------------------',
+  );
   stdout.writeln(' كود التفعيل المعتمد (License Key):');
   stdout.writeln('\n$key\n');
-  stdout.writeln('================================================================');
+  stdout.writeln(
+    '================================================================',
+  );
   stdout.writeln('تعليمات: انسخ كود التفعيل أعلاه وأرسله للعميل لتفعيله داخل');
   stdout.writeln('إعدادات النظام -> ترخيص وتفعيل النظام.');
-  stdout.writeln('================================================================\n');
+  stdout.writeln(
+    '================================================================\n',
+  );
 }
 
 void _printRescuePin(String challenge) {
   final pin = LicenseCryptoCodec.computeMasterRescuePin(challenge);
-  stdout.writeln('================================================================');
+  stdout.writeln(
+    '================================================================',
+  );
   stdout.writeln(' رمز الإنقاذ والطوارئ للآدمن (MASTER RESCUE PIN) ');
-  stdout.writeln('================================================================');
+  stdout.writeln(
+    '================================================================',
+  );
   stdout.writeln(' - كود التحدي:  $challenge');
   stdout.writeln(' - رمز الإنقاذ: $pin');
   stdout.writeln(' - الصلاحية:    صالح لنفس تاريخ اليوم فقط');
-  stdout.writeln('----------------------------------------------------------------');
+  stdout.writeln(
+    '----------------------------------------------------------------',
+  );
   stdout.writeln('تعليمات: زوّد العميل بالرمز أعلاه ($pin) لإدخاله في نافذة');
   stdout.writeln('طوارئ الحساب لإعادة تعيين كلمة مرور الآدمن فوراً.');
-  stdout.writeln('================================================================\n');
+  stdout.writeln(
+    '================================================================\n',
+  );
 }
 
 String _typeDisplay(String type) {

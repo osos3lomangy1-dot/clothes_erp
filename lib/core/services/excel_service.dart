@@ -9,6 +9,7 @@ import '../database/app_database.dart';
 import '../database/branch_provider.dart';
 import '../database/tx_writer.dart';
 import '../di/injection.dart';
+import 'excel_style_helper.dart';
 
 class ExcelProductRow {
   final String productName;
@@ -88,17 +89,20 @@ class ExcelService {
     const sheetName = 'المنتجات';
     final sheet = excel[sheetName];
     excel.setDefaultSheet(sheetName);
+    if (excel.tables.containsKey('Sheet1')) {
+      excel.delete('Sheet1');
+    }
 
-    sheet.appendRow([
-      TextCellValue('اسم المنتج'),
-      TextCellValue('التصنيف'),
-      TextCellValue('كود الصنف (SKU)'),
-      TextCellValue('المقاس'),
-      TextCellValue('اللون'),
-      TextCellValue('سعر التكلفة'),
-      TextCellValue('سعر البيع'),
-      TextCellValue('الكمية'),
-      TextCellValue('حد الطلب'),
+    ExcelStyleHelper.appendStyledHeader(sheet, const [
+      'اسم المنتج',
+      'التصنيف',
+      'كود الصنف (SKU)',
+      'المقاس',
+      'اللون',
+      'سعر التكلفة',
+      'سعر البيع',
+      'الكمية',
+      'حد الطلب',
     ]);
 
     for (final v in variants) {
@@ -118,6 +122,55 @@ class ExcelService {
         IntCellValue(prod?.minStock ?? 5),
       ]);
     }
+    ExcelStyleHelper.styleDataRows(
+      sheet,
+      startRow: 1,
+      rowCount: variants.length,
+      colCount: 9,
+      currencyCols: {5, 6},
+      centerCols: {2, 3, 4, 7, 8},
+    );
+    for (var i = 0; i < variants.length; i++) {
+      final v = variants[i];
+      final minS = prodMap[v.productId]?.minStock ?? 5;
+      if (v.quantity <= 0) {
+        ExcelStyleHelper.styleRow(
+          sheet,
+          i + 1,
+          9,
+          ExcelStyleHelper.dangerRowStyle(),
+        );
+      } else if (v.quantity <= minS) {
+        ExcelStyleHelper.styleRow(
+          sheet,
+          i + 1,
+          9,
+          ExcelStyleHelper.warningRowStyle(),
+        );
+      }
+    }
+    if (variants.isNotEmpty) {
+      final pEnd = variants.length + 1;
+      ExcelStyleHelper.appendTotalsRow(
+        sheet,
+        rowIndex: variants.length + 1,
+        cells: [
+          TextCellValue('الإجمالي (${variants.length} صنف)'),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          FormulaCellValue('SUM(H2:H$pEnd)'),
+          TextCellValue(''),
+        ],
+      );
+    }
+    ExcelStyleHelper.setColumnWidths(
+      sheet,
+      const [26, 18, 20, 12, 14, 16, 16, 12, 12],
+    );
 
     final bytes = excel.encode();
     if (bytes == null) throw Exception('فشل ترميز ملف الإكسيل');

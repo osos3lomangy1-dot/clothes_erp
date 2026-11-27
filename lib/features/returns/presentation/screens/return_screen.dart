@@ -8,19 +8,26 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/features/feature_gate.dart';
 import '../../../../core/utils/money.dart';
+import '../../../../core/widgets/standard_date_filter_chips.dart';
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
 import '../../../auth/presentation/widgets/manager_auth_dialog.dart';
 import '../../../pos/domain/entities/sale_entity.dart';
 import '../../domain/entities/return_entity.dart';
-import '../../domain/entities/return_item_entity.dart';
 import '../cubits/returns_cubit.dart';
 import '../cubits/returns_state.dart';
 
 class ReturnScreen extends StatefulWidget {
   final String? initialInvoiceRef;
+  final bool embedded;
+  final int? forcedTabIndex;
 
-  const ReturnScreen({super.key, this.initialInvoiceRef});
+  const ReturnScreen({
+    super.key,
+    this.initialInvoiceRef,
+    this.embedded = false,
+    this.forcedTabIndex,
+  });
 
   @override
   State<ReturnScreen> createState() => _ReturnScreenState();
@@ -35,6 +42,9 @@ class _ReturnScreenState extends State<ReturnScreen> {
   final _dateFormat = DateFormat('yyyy/MM/dd - hh:mm a');
   String _historyQuery = '';
   String _activeDateFilter = 'all';
+  DateTimeRange? _customRange;
+  String _historyDateFilter = 'all';
+  DateTimeRange? _historyCustomRange;
   Timer? _searchDebounce;
   bool _mobileImeiEnabled = false;
   int _activeTab = 0;
@@ -50,6 +60,7 @@ class _ReturnScreenState extends State<ReturnScreen> {
   @override
   void initState() {
     super.initState();
+    _activeTab = widget.forcedTabIndex ?? 0;
     _loadFeatureFlags();
     if (widget.initialInvoiceRef != null &&
         widget.initialInvoiceRef!.trim().isNotEmpty) {
@@ -57,62 +68,24 @@ class _ReturnScreenState extends State<ReturnScreen> {
     }
   }
 
-  Future<void> _loadFeatureFlags() async {
-    if (!getIt.isRegistered<FeatureGate>()) return;
-    final enabled =
-        await getIt<FeatureGate>().isEnabled(FeatureKeys.mobileImeiUsed);
-    if (mounted && enabled != _mobileImeiEnabled) {
-      setState(() => _mobileImeiEnabled = enabled);
+  @override
+  void didUpdateWidget(covariant ReturnScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.forcedTabIndex != null &&
+        widget.forcedTabIndex != oldWidget.forcedTabIndex &&
+        widget.forcedTabIndex != _activeTab) {
+      setState(() => _activeTab = widget.forcedTabIndex!);
     }
   }
 
-  Future<bool> _verifyReturnedImeisIfNeeded(
-    SaleEntity sale,
-    List<ReturnItemEntity> returnItems,
-  ) async {
-    if (!_mobileImeiEnabled && getIt.isRegistered<FeatureGate>()) {
-      final enabled =
-          await getIt<FeatureGate>().isEnabled(FeatureKeys.mobileImeiUsed);
-      if (!enabled) return true;
-    } else if (!_mobileImeiEnabled) {
-      return true;
+  Future<void> _loadFeatureFlags() async {
+    if (!getIt.isRegistered<FeatureGate>()) return;
+    final enabled = await getIt<FeatureGate>().isEnabled(
+      FeatureKeys.mobileImeiUsed,
+    );
+    if (mounted && enabled != _mobileImeiEnabled) {
+      setState(() => _mobileImeiEnabled = enabled);
     }
-    if (!getIt.isRegistered<AppDatabase>()) return true;
-
-    final selectedSaleItemIds = returnItems
-        .where((i) => i.qty > 0 && i.saleItemId != null)
-        .map((i) => i.saleItemId!)
-        .toSet();
-    if (selectedSaleItemIds.isEmpty) return true;
-
-    final db = getIt<AppDatabase>();
-    final saleItems = await (db.select(db.saleItems)
-          ..where((t) => t.saleId.equals(sale.id)))
-        .get();
-    final soldImeis = saleItems
-        .where((si) =>
-            selectedSaleItemIds.contains(si.id) &&
-            si.imei != null &&
-            si.imei!.trim().isNotEmpty)
-        .map((si) => si.imei!.trim())
-        .toSet();
-    if (soldImeis.isEmpty) return true;
-
-    final enteredImei = _imeiVerifyCtrl.text.trim();
-    if (enteredImei.isEmpty || !soldImeis.contains(enteredImei)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text(
-              'يرجى مسح أو إدخال رقم IMEI المطابق للجهاز المباع في الفاتورة',
-            ),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-      return false;
-    }
-    return true;
   }
 
   @override
@@ -127,46 +100,14 @@ class _ReturnScreenState extends State<ReturnScreen> {
   }
 
   Future<void> _submitReturn(BuildContext context, ReturnsState state) async {
-    final sale = state.selectedSale;
-    if (sale == null || state.isProcessing || state.totalRefund == 0) return;
-
-    String cashierId = 'cashier';
-    bool isCashier = false;
-    try {
-      final authState = this.context.read<AuthCubit>().state;
-      if (authState is AuthAuthenticated) {
-        cashierId = authState.user.id;
-        isCashier = authState.user.role.toLowerCase() == 'cashier';
-      }
-    } catch (_) {}
-
-    final imeiValid = await _verifyReturnedImeisIfNeeded(
-      sale,
-      state.returnItems,
+    await _submitReturnShared(
+      dialogContext: context,
+      authContext: this.context,
+      state: state,
+      reasonCtrl: _reasonCtrl,
+      imeiVerifyCtrl: _imeiVerifyCtrl,
+      mobileImeiEnabled: _mobileImeiEnabled,
     );
-    if (!imeiValid || !context.mounted) return;
-
-    if (isCashier && getIt.isRegistered<FeatureGate>()) {
-      final pinProtected = await getIt<FeatureGate>()
-          .isEnabled(FeatureKeys.managerPinProtection);
-      if (pinProtected) {
-        if (!context.mounted) return;
-        final approved = await ManagerAuthHelper.requestManagerApproval(
-          context,
-          title: 'اعتماد المرتجع النقدي (صلاحية مدير)',
-          message:
-              'يتطلب تنفيذ المرتجع واسترداد النقدية موافقة المدير أو المشرف.',
-        );
-        if (!approved || !context.mounted) return;
-      }
-    }
-
-    if (!context.mounted) return;
-    context.read<ReturnsCubit>().processReturn(
-          reason: _reasonCtrl.text,
-          userId: cashierId,
-          paymentMethod: sale.paymentMethod,
-        );
   }
 
   void _openReturnDetailsDialog(BuildContext screenContext) {
@@ -250,20 +191,15 @@ class _ReturnScreenState extends State<ReturnScreen> {
 
   List<SaleEntity> _applyDateFilter(List<SaleEntity> sales) {
     if (_activeDateFilter == 'all') return sales;
-    final now = DateTime.now();
-    final todayStart = DateTime(now.year, now.month, now.day);
-    if (_activeDateFilter == 'today') {
-      return sales.where((s) => !s.date.isBefore(todayStart)).toList();
-    }
-    if (_activeDateFilter == 'week') {
-      final weekStart = todayStart.subtract(const Duration(days: 6));
-      return sales.where((s) => !s.date.isBefore(weekStart)).toList();
-    }
-    if (_activeDateFilter == 'month') {
-      final monthStart = DateTime(now.year, now.month, 1);
-      return sales.where((s) => !s.date.isBefore(monthStart)).toList();
-    }
-    return sales;
+    return sales
+        .where(
+          (s) => StandardDateFilterChips.matchesDate(
+            s.date,
+            _activeDateFilter,
+            _customRange,
+          ),
+        )
+        .toList();
   }
 
   @override
@@ -365,28 +301,17 @@ class _ReturnScreenState extends State<ReturnScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    final canPop = Navigator.canPop(context);
+    if (widget.embedded) {
+      return const SizedBox.shrink();
+    }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLowest,
-        border: Border(
-          bottom: BorderSide(color: AppColors.outlineVariant),
-        ),
+        border: Border(bottom: BorderSide(color: AppColors.outlineVariant)),
       ),
       child: Row(
         children: [
-          if (canPop) ...[
-            IconButton(
-              icon: const Icon(
-                Icons.arrow_back_rounded,
-                color: AppColors.onSurface,
-              ),
-              tooltip: 'رجوع',
-              onPressed: () => Navigator.of(context).maybePop(),
-            ),
-            const SizedBox(width: 4),
-          ],
           const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -496,10 +421,12 @@ class _ReturnScreenState extends State<ReturnScreen> {
     final filteredSales = _applyDateFilter(state.recentSales);
     final now = DateTime.now();
     final todayRefundTotal = state.returnsHistory
-        .where((r) =>
-            r.date.year == now.year &&
-            r.date.month == now.month &&
-            r.date.day == now.day)
+        .where(
+          (r) =>
+              r.date.year == now.year &&
+              r.date.month == now.month &&
+              r.date.day == now.day,
+        )
         .fold<int>(0, (sum, r) => sum + r.refundAmount);
 
     return Padding(
@@ -515,7 +442,7 @@ class _ReturnScreenState extends State<ReturnScreen> {
                 focusNode: _searchFocus,
                 decoration: InputDecoration(
                   hintText:
-                      'ابحث برقم الفاتورة (#S...) أو اسم العميل أو الموبايل... [F2]',
+                      'ابحث برقم الفاتورة (#S...)، المبلغ، اسم العميل، أو الموبايل... [F2]',
                   hintStyle: const TextStyle(
                     fontFamily: 'Cairo',
                     fontSize: 12.5,
@@ -570,16 +497,14 @@ class _ReturnScreenState extends State<ReturnScreen> {
                 },
               );
 
-              final dateChips = Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  _dateFilterChip('الكل', 'all'),
-                  _dateFilterChip('اليوم', 'today'),
-                  _dateFilterChip('آخر 7 أيام', 'week'),
-                  _dateFilterChip('هذا الشهر', 'month'),
-                ],
+              final dateChips = StandardDateFilterChips(
+                activeFilter: _activeDateFilter,
+                customRange: _customRange,
+                onFilterChanged: (v) => setState(() => _activeDateFilter = v),
+                onCustomRangePicked: (picked) => setState(() {
+                  _customRange = picked;
+                  _activeDateFilter = 'custom';
+                }),
               );
 
               if (constraints.maxWidth >= 880) {
@@ -594,11 +519,7 @@ class _ReturnScreenState extends State<ReturnScreen> {
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  searchField,
-                  const SizedBox(height: 10),
-                  dateChips,
-                ],
+                children: [searchField, const SizedBox(height: 10), dateChips],
               );
             },
           ),
@@ -638,28 +559,6 @@ class _ReturnScreenState extends State<ReturnScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _dateFilterChip(String label, String value) {
-    final active = _activeDateFilter == value;
-    return ChoiceChip(
-      label: Text(
-        label,
-        style: TextStyle(
-          fontFamily: 'Cairo',
-          fontSize: 12,
-          fontWeight: active ? FontWeight.bold : FontWeight.w500,
-          color: active ? Colors.white : AppColors.onSurface,
-        ),
-      ),
-      selected: active,
-      selectedColor: AppColors.primary,
-      backgroundColor: AppColors.surfaceContainerLowest,
-      side: BorderSide(
-        color: active ? AppColors.primary : AppColors.outlineVariant,
-      ),
-      onSelected: (_) => setState(() => _activeDateFilter = value),
     );
   }
 
@@ -728,8 +627,11 @@ class _ReturnScreenState extends State<ReturnScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline_rounded,
-                size: 54, color: AppColors.error),
+            const Icon(
+              Icons.error_outline_rounded,
+              size: 54,
+              color: AppColors.error,
+            ),
             const SizedBox(height: 10),
             Text(
               state.errorMessage!,
@@ -763,9 +665,7 @@ class _ReturnScreenState extends State<ReturnScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              hasQuery
-                  ? Icons.search_off_rounded
-                  : Icons.receipt_long_outlined,
+              hasQuery ? Icons.search_off_rounded : Icons.receipt_long_outlined,
               size: 54,
               color: AppColors.outline,
             ),
@@ -825,8 +725,8 @@ class _ReturnScreenState extends State<ReturnScreen> {
     final refDisplay = (sale.shortRef != null && sale.shortRef!.isNotEmpty)
         ? sale.shortRef!
         : (sale.id.length > 8 ? sale.id.substring(0, 8) : sale.id);
-    final custLabel = (sale.customerName != null &&
-            sale.customerName!.isNotEmpty)
+    final custLabel =
+        (sale.customerName != null && sale.customerName!.isNotEmpty)
         ? '${sale.customerName}${sale.customerPhone != null && sale.customerPhone!.isNotEmpty ? ' (${sale.customerPhone})' : ''}'
         : 'عميل نقدي';
 
@@ -974,45 +874,117 @@ class _ReturnScreenState extends State<ReturnScreen> {
   // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildReturnsHistoryTab(BuildContext context, ReturnsState state) {
-    final q = _historyQuery.trim().toLowerCase().replaceFirst(RegExp(r'^#'), '');
+    final q = _historyQuery.trim().toLowerCase().replaceFirst(
+      RegExp(r'^#'),
+      '',
+    );
     final numVal = double.tryParse(q.replaceAll(',', ''));
-    final filtered = q.isEmpty
-        ? state.returnsHistory
-        : state.returnsHistory.where((ret) {
-            final matchAmount = numVal != null &&
-                ((ret.refundAmount == (numVal * 100).round()) ||
-                    (ret.refundAmount.toString() == q) ||
-                    ((ret.refundAmount / 100).toStringAsFixed(2).contains(q)) ||
-                    ((ret.refundAmount / 100).toString().contains(q)));
-            return ret.id.toLowerCase().contains(q) ||
-                (ret.saleShortRef?.toLowerCase().contains(q) ?? false) ||
-                (ret.customerName?.toLowerCase().contains(q) ?? false) ||
-                (ret.customerPhone?.toLowerCase().contains(q) ?? false) ||
-                ret.reason.toLowerCase().contains(q) ||
-                matchAmount;
-          }).toList();
+    final filtered = state.returnsHistory.where((ret) {
+      if (_historyDateFilter != 'all' &&
+          !StandardDateFilterChips.matchesDate(
+            ret.date,
+            _historyDateFilter,
+            _historyCustomRange,
+          )) {
+        return false;
+      }
+      if (q.isEmpty) return true;
+      final matchAmount =
+          numVal != null &&
+          ((ret.refundAmount == (numVal * 100).round()) ||
+              (ret.refundAmount.toString() == q) ||
+              ((ret.refundAmount / 100).toStringAsFixed(2).contains(q)) ||
+              ((ret.refundAmount / 100).toString().contains(q)));
+      return ret.id.toLowerCase().contains(q) ||
+          (ret.saleShortRef?.toLowerCase().contains(q) ?? false) ||
+          (ret.customerName?.toLowerCase().contains(q) ?? false) ||
+          (ret.customerPhone?.toLowerCase().contains(q) ?? false) ||
+          ret.reason.toLowerCase().contains(q) ||
+          matchAmount;
+    }).toList();
 
-    final now = DateTime.now();
-    final todayReturns = state.returnsHistory
-        .where((r) =>
-            r.date.year == now.year &&
-            r.date.month == now.month &&
-            r.date.day == now.day)
-        .toList();
-    final todayRefundTotal =
-        todayReturns.fold<int>(0, (sum, r) => sum + r.refundAmount);
+    final filteredRefundTotal = filtered.fold<int>(
+      0,
+      (sum, r) => sum + r.refundAmount,
+    );
 
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final searchField = TextField(
+                controller: _historySearchCtrl,
+                decoration: InputDecoration(
+                  hintText:
+                      'ابحث في سجل المرتجعات برقم الفاتورة، المبلغ، اسم العميل، الهاتف، أو السبب...',
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    color: AppColors.primary,
+                  ),
+                  suffixIcon: _historyQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear_rounded, size: 18),
+                          onPressed: () {
+                            _historySearchCtrl.clear();
+                            setState(() => _historyQuery = '');
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: AppColors.surfaceContainerLowest,
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: AppColors.outlineVariant),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: AppColors.outlineVariant),
+                  ),
+                ),
+                onChanged: (val) => setState(() => _historyQuery = val),
+              );
+
+              final dateChips = StandardDateFilterChips(
+                activeFilter: _historyDateFilter,
+                customRange: _historyCustomRange,
+                onFilterChanged: (v) => setState(() => _historyDateFilter = v),
+                onCustomRangePicked: (picked) => setState(() {
+                  _historyCustomRange = picked;
+                  _historyDateFilter = 'custom';
+                }),
+              );
+
+              if (constraints.maxWidth >= 880) {
+                return Row(
+                  children: [
+                    Expanded(child: searchField),
+                    const SizedBox(width: 12),
+                    dateChips,
+                  ],
+                );
+              }
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [searchField, const SizedBox(height: 10), dateChips],
+              );
+            },
+          ),
+          const SizedBox(height: 14),
           Row(
             key: const Key('returns_history_summary_cards'),
             children: [
               Expanded(
                 child: _buildStatsCard(
-                  'مرتجعات اليوم',
-                  '${todayReturns.length}',
+                  'عدد المرتجعات المعروضة',
+                  '${filtered.length} مرتجع',
                   Icons.assignment_return_rounded,
                   AppColors.primary,
                 ),
@@ -1020,39 +992,13 @@ class _ReturnScreenState extends State<ReturnScreen> {
               const SizedBox(width: 14),
               Expanded(
                 child: _buildStatsCard(
-                  'إجمالي المسترد اليوم',
-                  '${Money(todayRefundTotal).toDisplay()} ج.م',
+                  'إجمالي المسترد',
+                  '${Money(filteredRefundTotal).toDisplay()} ج.م',
                   Icons.payments_outlined,
                   AppColors.warning,
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 14),
-          TextField(
-            controller: _historySearchCtrl,
-            decoration: InputDecoration(
-              hintText:
-                  'ابحث في سجل المرتجعات برقم الفاتورة، المبلغ، اسم العميل، الهاتف، أو السبب...',
-              prefixIcon: Icon(Icons.search_rounded, color: AppColors.primary),
-              suffixIcon: _historyQuery.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear_rounded, size: 18),
-                      onPressed: () {
-                        _historySearchCtrl.clear();
-                        setState(() => _historyQuery = '');
-                      },
-                    )
-                  : null,
-              filled: true,
-              fillColor: AppColors.surfaceContainerLowest,
-              isDense: true,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: AppColors.outlineVariant),
-              ),
-            ),
-            onChanged: (val) => setState(() => _historyQuery = val),
           ),
           const SizedBox(height: 14),
           Expanded(
@@ -1122,7 +1068,8 @@ class _ReturnScreenState extends State<ReturnScreen> {
 
   Widget _buildReturnHistoryCard(ReturnEntity ret) {
     final dateStr = _dateFormat.format(ret.date);
-    final isCash = ret.paymentMethod.toLowerCase().contains('cash') ||
+    final isCash =
+        ret.paymentMethod.toLowerCase().contains('cash') ||
         ret.paymentMethod.contains('كاش');
 
     return Container(
@@ -1255,8 +1202,11 @@ class _ReturnScreenState extends State<ReturnScreen> {
                 const Divider(),
                 Row(
                   children: [
-                    const Icon(Icons.info_outline_rounded,
-                        size: 16, color: AppColors.onSurfaceVariant),
+                    const Icon(
+                      Icons.info_outline_rounded,
+                      size: 16,
+                      color: AppColors.onSurfaceVariant,
+                    ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
@@ -1365,12 +1315,11 @@ class _ReturnDetailsDialogState extends State<_ReturnDetailsDialog> {
           return const SizedBox.shrink();
         }
         final dateStr = widget.dateFormat.format(sale.date);
-        final refDisplay =
-            (sale.shortRef != null && sale.shortRef!.isNotEmpty)
-                ? sale.shortRef!
-                : (sale.id.length > 8 ? sale.id.substring(0, 8) : sale.id);
-        final custDisplay = (sale.customerName != null &&
-                sale.customerName!.isNotEmpty)
+        final refDisplay = (sale.shortRef != null && sale.shortRef!.isNotEmpty)
+            ? sale.shortRef!
+            : (sale.id.length > 8 ? sale.id.substring(0, 8) : sale.id);
+        final custDisplay =
+            (sale.customerName != null && sale.customerName!.isNotEmpty)
             ? '${sale.customerName}${sale.customerPhone != null && sale.customerPhone!.isNotEmpty ? ' (${sale.customerPhone})' : ''}'
             : 'عميل نقدي';
 
@@ -1510,9 +1459,10 @@ class _ReturnDetailsDialogState extends State<_ReturnDetailsDialog> {
                               color: isFullyReturned
                                   ? AppColors.error.withValues(alpha: 0.35)
                                   : (item.qty > 0
-                                      ? AppColors.primary
-                                          .withValues(alpha: 0.45)
-                                      : AppColors.outlineVariant),
+                                        ? AppColors.primary.withValues(
+                                            alpha: 0.45,
+                                          )
+                                        : AppColors.outlineVariant),
                             ),
                           ),
                           child: Row(
@@ -1551,10 +1501,12 @@ class _ReturnDetailsDialogState extends State<_ReturnDetailsDialog> {
                                           vertical: 2,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: AppColors.error
-                                              .withValues(alpha: 0.1),
-                                          borderRadius:
-                                              BorderRadius.circular(6),
+                                          color: AppColors.error.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
                                         ),
                                         child: const Text(
                                           'تم إرجاع هذا الصنف بالكامل سابقاً',
@@ -1607,9 +1559,11 @@ class _ReturnDetailsDialogState extends State<_ReturnDetailsDialog> {
                                         ),
                                         onPressed: item.qty > 0
                                             ? () => context
-                                                .read<ReturnsCubit>()
-                                                .updateItemQty(
-                                                    item.variantId, item.qty - 1)
+                                                  .read<ReturnsCubit>()
+                                                  .updateItemQty(
+                                                    item.variantId,
+                                                    item.qty - 1,
+                                                  )
                                             : null,
                                       ),
                                       SizedBox(
@@ -1640,9 +1594,11 @@ class _ReturnDetailsDialogState extends State<_ReturnDetailsDialog> {
                                         ),
                                         onPressed: item.qty < item.maxQty
                                             ? () => context
-                                                .read<ReturnsCubit>()
-                                                .updateItemQty(
-                                                    item.variantId, item.qty + 1)
+                                                  .read<ReturnsCubit>()
+                                                  .updateItemQty(
+                                                    item.variantId,
+                                                    item.qty + 1,
+                                                  )
                                             : null,
                                       ),
                                     ],
@@ -1694,8 +1650,9 @@ class _ReturnDetailsDialogState extends State<_ReturnDetailsDialog> {
                             decoration: InputDecoration(
                               labelText:
                                   'تأكيد رقم IMEI للجهاز المرتجع (للأجهزة المتسلسلة)',
-                              prefixIcon:
-                                  const Icon(Icons.qr_code_scanner_rounded),
+                              prefixIcon: const Icon(
+                                Icons.qr_code_scanner_rounded,
+                              ),
                               filled: true,
                               fillColor: AppColors.surfaceContainerLowest,
                               isDense: true,
@@ -1729,8 +1686,9 @@ class _ReturnDetailsDialogState extends State<_ReturnDetailsDialog> {
                                 visualDensity: VisualDensity.compact,
                                 backgroundColor:
                                     AppColors.surfaceContainerLowest,
-                                side:
-                                    BorderSide(color: AppColors.outlineVariant),
+                                side: BorderSide(
+                                  color: AppColors.outlineVariant,
+                                ),
                                 label: Text(
                                   reason,
                                   style: const TextStyle(
@@ -1775,8 +1733,9 @@ class _ReturnDetailsDialogState extends State<_ReturnDetailsDialog> {
                                   color: AppColors.surfaceContainerLowest,
                                   borderRadius: BorderRadius.circular(10),
                                   border: Border.all(
-                                    color: AppColors.primary
-                                        .withValues(alpha: 0.3),
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.3,
+                                    ),
                                   ),
                                 ),
                                 child: Row(
@@ -1839,8 +1798,8 @@ class _ReturnDetailsDialogState extends State<_ReturnDetailsDialog> {
                               height: 46,
                               child: ElevatedButton.icon(
                                 key: const Key('return_confirm_btn'),
-                                onPressed: state.isProcessing ||
-                                        state.totalRefund == 0
+                                onPressed:
+                                    state.isProcessing || state.totalRefund == 0
                                     ? null
                                     : () => widget.onSubmit(context, state),
                                 style: ElevatedButton.styleFrom(
@@ -1889,6 +1848,250 @@ class _ReturnDetailsDialogState extends State<_ReturnDetailsDialog> {
           ),
         );
       },
+    );
+  }
+}
+
+Future<void> _submitReturnShared({
+  required BuildContext dialogContext,
+  required BuildContext authContext,
+  required ReturnsState state,
+  required TextEditingController reasonCtrl,
+  required TextEditingController imeiVerifyCtrl,
+  required bool mobileImeiEnabled,
+}) async {
+  final sale = state.selectedSale;
+  if (sale == null || state.isProcessing || state.totalRefund == 0) return;
+
+  String cashierId = 'cashier';
+  bool isCashier = false;
+  try {
+    final authState = authContext.read<AuthCubit>().state;
+    if (authState is AuthAuthenticated) {
+      cashierId = authState.user.id;
+      isCashier = authState.user.role.toLowerCase() == 'cashier';
+    }
+  } catch (_) {}
+
+  if (mobileImeiEnabled) {
+    final selectedSaleItemIds = state.returnItems
+        .where((i) => i.qty > 0 && i.saleItemId != null)
+        .map((i) => i.saleItemId!)
+        .toSet();
+    if (selectedSaleItemIds.isNotEmpty) {
+      final db = getIt<AppDatabase>();
+      final saleItems = await (db.select(
+        db.saleItems,
+      )..where((t) => t.saleId.equals(sale.id))).get();
+      final soldImeis = saleItems
+          .where(
+            (si) =>
+                selectedSaleItemIds.contains(si.id) &&
+                si.imei != null &&
+                si.imei!.trim().isNotEmpty,
+          )
+          .map((si) => si.imei!.trim())
+          .toSet();
+      if (soldImeis.isNotEmpty) {
+        final enteredImei = imeiVerifyCtrl.text.trim();
+        if (enteredImei.isEmpty || !soldImeis.contains(enteredImei)) {
+          if (dialogContext.mounted) {
+            ScaffoldMessenger.of(dialogContext).showSnackBar(
+              SnackBar(
+                content: const Text(
+                  'يرجى مسح أو إدخال رقم IMEI المطابق للجهاز المباع في الفاتورة',
+                ),
+                backgroundColor: AppColors.error,
+              ),
+            );
+          }
+          return;
+        }
+      }
+    }
+  }
+
+  if (!dialogContext.mounted) return;
+  if (isCashier && getIt.isRegistered<FeatureGate>()) {
+    final pinProtected = await getIt<FeatureGate>().isEnabled(
+      FeatureKeys.managerPinProtection,
+    );
+    if (pinProtected) {
+      if (!dialogContext.mounted) return;
+      final approved = await ManagerAuthHelper.requestManagerApproval(
+        dialogContext,
+        title: 'اعتماد المرتجع النقدي (صلاحية مدير)',
+        message:
+            'يتطلب تنفيذ المرتجع واسترداد النقدية موافقة المدير أو المشرف.',
+      );
+      if (!approved || !dialogContext.mounted) return;
+    }
+  }
+
+  if (!dialogContext.mounted) return;
+  dialogContext.read<ReturnsCubit>().processReturn(
+    reason: reasonCtrl.text,
+    userId: cashierId,
+    paymentMethod: sale.paymentMethod,
+  );
+}
+
+/// Standalone dialog for returning an invoice directly from InvoicesScreen
+/// without switching to a separate screen or tab.
+class QuickReturnDialog extends StatefulWidget {
+  final String invoiceRef;
+
+  const QuickReturnDialog({super.key, required this.invoiceRef});
+
+  static Future<bool?> show(BuildContext context, String invoiceRef) {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => QuickReturnDialog(invoiceRef: invoiceRef),
+    );
+  }
+
+  @override
+  State<QuickReturnDialog> createState() => _QuickReturnDialogState();
+}
+
+class _QuickReturnDialogState extends State<QuickReturnDialog> {
+  final _reasonCtrl = TextEditingController();
+  final _imeiVerifyCtrl = TextEditingController();
+  final _dateFormat = DateFormat('yyyy/MM/dd - hh:mm a');
+  bool _mobileImeiEnabled = false;
+
+  static const _quickReasons = [
+    'عيب صناعة',
+    'مقاس/نوع غير مناسب',
+    'رغبة العميل',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFlag();
+  }
+
+  Future<void> _loadFlag() async {
+    try {
+      if (getIt.isRegistered<FeatureGate>()) {
+        final enabled = await getIt<FeatureGate>().isEnabled(
+          FeatureKeys.mobileImeiUsed,
+        );
+        if (mounted) setState(() => _mobileImeiEnabled = enabled);
+      }
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _reasonCtrl.dispose();
+    _imeiVerifyCtrl.dispose();
+    super.dispose();
+  }
+
+  String _formatPayment(String raw) {
+    switch (raw.toLowerCase().trim()) {
+      case 'cash':
+        return 'نقدي';
+      case 'card':
+      case 'visa':
+        return 'بطاقة';
+      case 'installment':
+        return 'تقسيط';
+      case 'mixed':
+        return 'مختلط';
+      default:
+        return raw;
+    }
+  }
+
+  String _formatVariantSubtitle(String color, String size, int unitPrice) {
+    final parts = <String>[];
+    final cleanColor = color.trim();
+    final cleanSize = size.trim();
+    if (cleanColor.isNotEmpty && cleanColor != '-') {
+      parts.add(cleanColor);
+    }
+    if (cleanSize.isNotEmpty && cleanSize != '-') {
+      parts.add('مقاس $cleanSize');
+    }
+    if (parts.isEmpty) return '';
+    return ' (${parts.join(' - ')})';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => getIt<ReturnsCubit>()..searchSale(widget.invoiceRef),
+      child: BlocConsumer<ReturnsCubit, ReturnsState>(
+        listener: (ctx, state) {
+          if (state.errorMessage != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.errorMessage!),
+                backgroundColor: AppColors.error,
+              ),
+            );
+            if (state.selectedSale == null && Navigator.of(context).canPop()) {
+              Navigator.of(context).pop(false);
+            }
+          }
+          if (state.successMessage != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                backgroundColor: AppColors.success,
+                content: Text(state.successMessage!),
+              ),
+            );
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop(true);
+            }
+          }
+        },
+        builder: (ctx, state) {
+          if (state.selectedSale != null) {
+            return _ReturnDetailsDialog(
+              reasonCtrl: _reasonCtrl,
+              imeiVerifyCtrl: _imeiVerifyCtrl,
+              mobileImeiEnabled: _mobileImeiEnabled,
+              quickReasons: _quickReasons,
+              dateFormat: _dateFormat,
+              formatPayment: _formatPayment,
+              formatVariantSubtitle: _formatVariantSubtitle,
+              onSubmit: (dialogCtx, st) => _submitReturnShared(
+                dialogContext: dialogCtx,
+                authContext: context,
+                state: st,
+                reasonCtrl: _reasonCtrl,
+                imeiVerifyCtrl: _imeiVerifyCtrl,
+                mobileImeiEnabled: _mobileImeiEnabled,
+              ),
+            );
+          }
+
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Padding(
+              padding: EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 14),
+                  Text(
+                    'جارِ تحميل بيانات الفاتورة للمرتجع...',
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

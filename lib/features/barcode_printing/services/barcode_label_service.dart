@@ -2,7 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import '../../../../core/utils/money.dart';
+import '../../../core/utils/money.dart';
 import '../domain/models/barcode_label_item.dart';
 
 class BarcodeLabelService {
@@ -12,10 +12,14 @@ class BarcodeLabelService {
   static Future<void> _loadFonts() async {
     if (_cairoRegular != null && _cairoBold != null) return;
     try {
-      final regData = await rootBundle.load('assets/fonts/static/Cairo-Regular.ttf');
+      final regData = await rootBundle.load(
+        'assets/fonts/static/Cairo-Regular.ttf',
+      );
       _cairoRegular = pw.Font.ttf(regData);
 
-      final boldData = await rootBundle.load('assets/fonts/static/Cairo-Bold.ttf');
+      final boldData = await rootBundle.load(
+        'assets/fonts/static/Cairo-Bold.ttf',
+      );
       _cairoBold = pw.Font.ttf(boldData);
     } catch (_) {
       // Fallback to default sans
@@ -37,10 +41,7 @@ class BarcodeLabelService {
     await _loadFonts();
 
     final doc = pw.Document();
-    final theme = pw.ThemeData.withFont(
-      base: _cairoRegular,
-      bold: _cairoBold,
-    );
+    final theme = pw.ThemeData.withFont(base: _cairoRegular, bold: _cairoBold);
 
     // Expand items by copies
     final List<BarcodeLabelItem> flatLabels = [];
@@ -74,16 +75,20 @@ class BarcodeLabelService {
               childAspectRatio: 1.8,
               crossAxisSpacing: 6 * PdfPageFormat.mm,
               mainAxisSpacing: 6 * PdfPageFormat.mm,
-              children: flatLabels.map((lbl) => _buildSingleLabelContent(
-                item: lbl,
-                storeName: storeName,
-                showStoreName: showStoreName,
-                showPrice: showPrice,
-                showColorAndSize: showColorAndSize,
-                showProductName: showProductName,
-                showBarcodeText: showBarcodeText,
-                isSheet: true,
-              )).toList(),
+              children: flatLabels
+                  .map(
+                    (lbl) => _buildSingleLabelContent(
+                      item: lbl,
+                      storeName: storeName,
+                      showStoreName: showStoreName,
+                      showPrice: showPrice,
+                      showColorAndSize: showColorAndSize,
+                      showProductName: showProductName,
+                      showBarcodeText: showBarcodeText,
+                      isSheet: true,
+                    ),
+                  )
+                  .toList(),
             ),
           ],
         ),
@@ -162,18 +167,19 @@ class BarcodeLabelService {
           if (showProductName) ...[
             pw.Text(
               item.productName,
-              style: pw.TextStyle(
-                fontSize: 8,
-                fontWeight: pw.FontWeight.bold,
-              ),
+              style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold),
               maxLines: 1,
               overflow: pw.TextOverflow.clip,
             ),
           ],
-          if (showColorAndSize && (item.color.isNotEmpty || item.size.isNotEmpty)) ...[
+          if (showColorAndSize &&
+              (item.color.isNotEmpty || item.size.isNotEmpty)) ...[
             pw.Text(
               colorSizeStr,
-              style: const pw.TextStyle(fontSize: 6.5, color: PdfColors.grey700),
+              style: const pw.TextStyle(
+                fontSize: 6.5,
+                color: PdfColors.grey700,
+              ),
               maxLines: 1,
             ),
           ],
@@ -230,4 +236,3 @@ class BarcodeLabelService {
     );
   }
 }
-

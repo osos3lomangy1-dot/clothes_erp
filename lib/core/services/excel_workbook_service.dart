@@ -17,6 +17,7 @@ import '../database/app_database.dart';
 import '../database/branch_provider.dart';
 import '../database/tx_writer.dart';
 import '../di/injection.dart';
+import 'excel_style_helper.dart';
 import 'excel_workbook_models.dart';
 
 /// Full Linked Excel Workbook Exporter + Shop Migration & Smart Column Mapper.
@@ -43,6 +44,13 @@ class ExcelWorkbookService {
   static const sheetExpenses = 'المصروفات';
   static const sheetPurchases = 'المشتريات';
   static const sheetReturns = 'المرتجعات';
+  static const sheetLowStock = 'نواقص_المخزون';
+  static const sheetShifts = 'الورديات_والدرج';
+  static const sheetWallets = 'المحافظ_الإلكترونية';
+  static const sheetInventoryLogs = 'حركات_المخزن';
+  static const sheetPartyPayments = 'تحصيلات_العملاء_والموردين';
+  static const sheetCashMovements = 'حركات_الدرج';
+  static const sheetStagnant = 'الأصناف_الراكدة';
   static const sheetInstructions = 'التعليمات';
 
   ExcelWorkbookService(
@@ -329,6 +337,34 @@ class ExcelWorkbookService {
               ..where((r) => r.deletedAt.isNull())
               ..orderBy([(r) => drift.OrderingTerm.desc(r.date)]))
             .get();
+    final shifts =
+        await (_db.select(_db.shifts)
+              ..where((s) => s.deletedAt.isNull())
+              ..orderBy([(s) => drift.OrderingTerm.desc(s.openedAt)]))
+            .get();
+    final wallets = await (_db.select(
+      _db.cashWallets,
+    )..where((w) => w.deletedAt.isNull())).get();
+    final inventoryLogs =
+        await (_db.select(_db.inventoryLogs)
+              ..orderBy([(l) => drift.OrderingTerm.desc(l.createdAt)])
+              ..limit(2000))
+            .get();
+    final customerPayments =
+        await (_db.select(_db.customerPayments)
+              ..where((p) => p.deletedAt.isNull())
+              ..orderBy([(p) => drift.OrderingTerm.desc(p.paymentDate)]))
+            .get();
+    final supplierPayments =
+        await (_db.select(_db.supplierPayments)
+              ..orderBy([(p) => drift.OrderingTerm.desc(p.paymentDate)]))
+            .get();
+    final cashMovements =
+        await (_db.select(_db.cashMovements)
+              ..where((m) => m.deletedAt.isNull())
+              ..orderBy([(m) => drift.OrderingTerm.desc(m.createdAt)])
+              ..limit(2000))
+            .get();
     final partners = await _loadPartners();
 
     final catMap = {for (final c in categories) c.id: c.name};
@@ -363,6 +399,13 @@ class ExcelWorkbookService {
     final expSheet = excel[sheetExpenses];
     final purSheet = excel[sheetPurchases];
     final retSheet = excel[sheetReturns];
+    final lowStockSheet = excel[sheetLowStock];
+    final shiftsSheet = excel[sheetShifts];
+    final walletsSheet = excel[sheetWallets];
+    final invLogsSheet = excel[sheetInventoryLogs];
+    final partyPaySheet = excel[sheetPartyPayments];
+    final cashMovSheet = excel[sheetCashMovements];
+    final stagnantSheet = excel[sheetStagnant];
 
     excel.setDefaultSheet(sheetDashboard);
     if (excel.tables.containsKey('Sheet1')) {
@@ -494,6 +537,15 @@ class ExcelWorkbookService {
     for (var i = 0; i < dashRows.length; i++) {
       final r = dashRows[i];
       dashSheet.appendRow([TextCellValue(r.$1), r.$2, TextCellValue(r.$3)]);
+    }
+    ExcelStyleHelper.styleDataRows(
+      dashSheet,
+      startRow: 1,
+      rowCount: dashRows.length,
+      colCount: 3,
+      currencyCols: {1},
+    );
+    for (var i = 0; i < dashRows.length; i++) {
       // Highlight key profit rows (row index 3 = Gross Profit, 5 = Net Profit)
       if (i == 2 || i == 4) {
         _styleRow(dashSheet, i + 1, 3, highlightStyle);
@@ -536,6 +588,54 @@ class ExcelWorkbookService {
         FormulaCellValue('F$rowNum*I$rowNum'),
         FormulaCellValue('G$rowNum*I$rowNum'),
       ]);
+    }
+    ExcelStyleHelper.styleDataRows(
+      prodSheet,
+      startRow: 1,
+      rowCount: variants.length,
+      colCount: 12,
+      currencyCols: {5, 6, 7, 10, 11},
+      centerCols: {2, 3, 4, 8, 9},
+    );
+    for (var i = 0; i < variants.length; i++) {
+      final v = variants[i];
+      final minS = prodMap[v.productId]?.minStock ?? 5;
+      if (v.quantity <= 0) {
+        _styleRow(
+          prodSheet,
+          i + 1,
+          12,
+          ExcelStyleHelper.dangerRowStyle(isCurrency: false),
+        );
+      } else if (v.quantity <= minS) {
+        _styleRow(
+          prodSheet,
+          i + 1,
+          12,
+          ExcelStyleHelper.warningRowStyle(isCurrency: false),
+        );
+      }
+    }
+    if (variants.isNotEmpty) {
+      ExcelStyleHelper.appendTotalsRow(
+        prodSheet,
+        rowIndex: variants.length + 1,
+        cells: [
+          TextCellValue('الإجمالي (${variants.length} صنف)'),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          FormulaCellValue('SUM(I2:I$pEnd)'),
+          TextCellValue(''),
+          FormulaCellValue('SUM(K2:K$pEnd)'),
+          FormulaCellValue('SUM(L2:L$pEnd)'),
+        ],
+        currencyCols: {10, 11},
+      );
     }
     _setColumnWidths(prodSheet, const [
       26,
@@ -587,6 +687,31 @@ class ExcelWorkbookService {
               ),
       ]);
     }
+    ExcelStyleHelper.styleDataRows(
+      custSheet,
+      startRow: 1,
+      rowCount: customers.length,
+      colCount: 8,
+      currencyCols: {6, 7},
+      centerCols: {0, 2, 3, 4, 5},
+    );
+    if (customers.isNotEmpty) {
+      ExcelStyleHelper.appendTotalsRow(
+        custSheet,
+        rowIndex: customers.length + 1,
+        cells: [
+          TextCellValue('الإجمالي (${customers.length} عميل)'),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          FormulaCellValue('SUM(E2:E$cEnd)'),
+          FormulaCellValue('SUM(F2:F$cEnd)'),
+          FormulaCellValue('SUM(G2:G$cEnd)'),
+          FormulaCellValue('SUM(H2:H$cEnd)'),
+        ],
+        currencyCols: {6, 7},
+      );
+    }
     _setColumnWidths(custSheet, const [18, 24, 12, 15, 14, 14, 20, 20]);
 
     // ─── Sheet 4: الموردين (Linked to Purchases) ────────────────────────────
@@ -620,6 +745,30 @@ class ExcelWorkbookService {
               ),
       ]);
     }
+    ExcelStyleHelper.styleDataRows(
+      supSheet,
+      startRow: 1,
+      rowCount: suppliers.length,
+      colCount: 7,
+      currencyCols: {4, 6},
+      centerCols: {1, 5},
+    );
+    if (suppliers.isNotEmpty) {
+      ExcelStyleHelper.appendTotalsRow(
+        supSheet,
+        rowIndex: suppliers.length + 1,
+        cells: [
+          TextCellValue('الإجمالي (${suppliers.length} مورد)'),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          FormulaCellValue('SUM(E2:E$supEnd)'),
+          FormulaCellValue('SUM(F2:F$supEnd)'),
+          FormulaCellValue('SUM(G2:G$supEnd)'),
+        ],
+        currencyCols: {4, 6},
+      );
+    }
     _setColumnWidths(supSheet, const [24, 18, 22, 26, 20, 16, 20]);
 
     // ─── Sheet 5: الشركاء (Live Linked to Dashboard Net Profit) ──────────────
@@ -642,6 +791,30 @@ class ExcelWorkbookService {
         DoubleCellValue(p.totalProfitWithdrawn / 100.0),
         FormulaCellValue("'$sheetDashboard'!B6*(C$rowNum/100)"),
       ]);
+    }
+    ExcelStyleHelper.styleDataRows(
+      partnerSheet,
+      startRow: 1,
+      rowCount: partners.length,
+      colCount: 6,
+      currencyCols: {3, 4, 5},
+      centerCols: {1, 2},
+    );
+    if (partners.isNotEmpty) {
+      final partEnd = partners.length + 1;
+      ExcelStyleHelper.appendTotalsRow(
+        partnerSheet,
+        rowIndex: partners.length + 1,
+        cells: [
+          TextCellValue('الإجمالي (${partners.length} شريك)'),
+          TextCellValue(''),
+          FormulaCellValue('SUM(C2:C$partEnd)'),
+          FormulaCellValue('SUM(D2:D$partEnd)'),
+          FormulaCellValue('SUM(E2:E$partEnd)'),
+          FormulaCellValue('SUM(F2:F$partEnd)'),
+        ],
+        currencyCols: {3, 4, 5},
+      );
     }
     _setColumnWidths(partnerSheet, const [24, 18, 16, 22, 22, 24]);
 
@@ -674,6 +847,44 @@ class ExcelWorkbookService {
         TextCellValue(s.status == 'cancelled' ? 'ملغاة' : 'مكتملة'),
         TextCellValue(s.note ?? ''),
       ]);
+    }
+    ExcelStyleHelper.styleDataRows(
+      salesSheet,
+      startRow: 1,
+      rowCount: sales.length,
+      colCount: 11,
+      currencyCols: {5, 6, 7},
+      centerCols: {0, 1, 3, 8, 9},
+    );
+    for (var i = 0; i < sales.length; i++) {
+      if (sales[i].status == 'cancelled') {
+        _styleRow(
+          salesSheet,
+          i + 1,
+          11,
+          ExcelStyleHelper.dangerRowStyle(isCurrency: false),
+        );
+      }
+    }
+    if (sales.isNotEmpty) {
+      ExcelStyleHelper.appendTotalsRow(
+        salesSheet,
+        rowIndex: sales.length + 1,
+        cells: [
+          TextCellValue('الإجمالي (${sales.length} فاتورة)'),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          FormulaCellValue('SUM(F2:F$sEnd)'),
+          FormulaCellValue('SUM(G2:G$sEnd)'),
+          FormulaCellValue('SUM(H2:H$sEnd)'),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+        ],
+        currencyCols: {5, 6, 7},
+      );
     }
     _setColumnWidths(salesSheet, const [
       18,
@@ -727,6 +938,37 @@ class ExcelWorkbookService {
         FormulaCellValue('G$rowNum*I$rowNum'),
         FormulaCellValue('K$rowNum-L$rowNum'),
       ]);
+    }
+    ExcelStyleHelper.styleDataRows(
+      itemsSheet,
+      startRow: 1,
+      rowCount: validSaleItems.length,
+      colCount: 13,
+      currencyCols: {7, 8, 9, 10, 11, 12},
+      centerCols: {0, 1, 2, 4, 5, 6},
+    );
+    if (validSaleItems.isNotEmpty) {
+      final itEnd = validSaleItems.length + 1;
+      ExcelStyleHelper.appendTotalsRow(
+        itemsSheet,
+        rowIndex: validSaleItems.length + 1,
+        cells: [
+          TextCellValue('الإجمالي (${validSaleItems.length} سطر)'),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          FormulaCellValue('SUM(G2:G$itEnd)'),
+          TextCellValue(''),
+          TextCellValue(''),
+          FormulaCellValue('SUM(J2:J$itEnd)'),
+          FormulaCellValue('SUM(K2:K$itEnd)'),
+          FormulaCellValue('SUM(L2:L$itEnd)'),
+          FormulaCellValue('SUM(M2:M$itEnd)'),
+        ],
+        currencyCols: {9, 10, 11, 12},
+      );
     }
     _setColumnWidths(itemsSheet, const [
       18,
@@ -789,6 +1031,48 @@ class ExcelWorkbookService {
         TextCellValue(_formatInstallmentStatus(c.status)),
       ]);
     }
+    ExcelStyleHelper.styleDataRows(
+      instSheet,
+      startRow: 1,
+      rowCount: installments.length,
+      colCount: 15,
+      currencyCols: {4, 5, 6, 9, 10, 11},
+      centerCols: {0, 1, 3, 7, 8, 12, 13, 14},
+    );
+    for (var i = 0; i < installments.length; i++) {
+      if (installments[i].status == 'overdue') {
+        _styleRow(
+          instSheet,
+          i + 1,
+          15,
+          ExcelStyleHelper.dangerRowStyle(isCurrency: false),
+        );
+      }
+    }
+    if (installments.isNotEmpty) {
+      ExcelStyleHelper.appendTotalsRow(
+        instSheet,
+        rowIndex: installments.length + 1,
+        cells: [
+          TextCellValue('الإجمالي (${installments.length} عقد)'),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          FormulaCellValue('SUM(E2:E$insEnd)'),
+          FormulaCellValue('SUM(F2:F$insEnd)'),
+          FormulaCellValue('SUM(G2:G$insEnd)'),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          FormulaCellValue('SUM(K2:K$insEnd)'),
+          FormulaCellValue('SUM(L2:L$insEnd)'),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+        ],
+        currencyCols: {4, 5, 6, 10, 11},
+      );
+    }
     _setColumnWidths(instSheet, const [
       20,
       18,
@@ -830,6 +1114,30 @@ class ExcelWorkbookService {
         TextCellValue(p.notes ?? ''),
       ]);
     }
+    ExcelStyleHelper.styleDataRows(
+      paySheet,
+      startRow: 1,
+      rowCount: installmentPayments.length,
+      colCount: 7,
+      currencyCols: {3},
+      centerCols: {0, 2, 4, 5},
+    );
+    if (installmentPayments.isNotEmpty) {
+      ExcelStyleHelper.appendTotalsRow(
+        paySheet,
+        rowIndex: installmentPayments.length + 1,
+        cells: [
+          TextCellValue('الإجمالي (${installmentPayments.length} دفعة)'),
+          TextCellValue(''),
+          TextCellValue(''),
+          FormulaCellValue('SUM(D2:D$payEnd)'),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+        ],
+        currencyCols: {3},
+      );
+    }
     _setColumnWidths(paySheet, const [20, 22, 20, 16, 14, 18, 26]);
 
     // ─── Sheet 10: المصروفات ────────────────────────────────────────────────
@@ -852,6 +1160,29 @@ class ExcelWorkbookService {
         TextCellValue(e.note ?? ''),
         TextCellValue(userMap[e.userId] ?? e.userId),
       ]);
+    }
+    ExcelStyleHelper.styleDataRows(
+      expSheet,
+      startRow: 1,
+      rowCount: expenses.length,
+      colCount: 6,
+      currencyCols: {3},
+      centerCols: {0, 2},
+    );
+    if (expenses.isNotEmpty) {
+      ExcelStyleHelper.appendTotalsRow(
+        expSheet,
+        rowIndex: expenses.length + 1,
+        cells: [
+          TextCellValue('الإجمالي (${expenses.length} مصروف)'),
+          TextCellValue(''),
+          TextCellValue(''),
+          FormulaCellValue('SUM(D2:D$expEnd)'),
+          TextCellValue(''),
+          TextCellValue(''),
+        ],
+        currencyCols: {3},
+      );
     }
     _setColumnWidths(expSheet, const [14, 22, 16, 16, 28, 18]);
 
@@ -882,6 +1213,32 @@ class ExcelWorkbookService {
         TextCellValue(p.notes ?? ''),
       ]);
     }
+    ExcelStyleHelper.styleDataRows(
+      purSheet,
+      startRow: 1,
+      rowCount: purchases.length,
+      colCount: 9,
+      currencyCols: {4, 5, 6},
+      centerCols: {0, 1, 3, 7},
+    );
+    if (purchases.isNotEmpty) {
+      ExcelStyleHelper.appendTotalsRow(
+        purSheet,
+        rowIndex: purchases.length + 1,
+        cells: [
+          TextCellValue('الإجمالي (${purchases.length} فاتورة)'),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          FormulaCellValue('SUM(E2:E$purEnd)'),
+          FormulaCellValue('SUM(F2:F$purEnd)'),
+          FormulaCellValue('SUM(G2:G$purEnd)'),
+          TextCellValue(''),
+          TextCellValue(''),
+        ],
+        currencyCols: {4, 5, 6},
+      );
+    }
     _setColumnWidths(purSheet, const [18, 14, 22, 14, 16, 16, 16, 14, 26]);
 
     // ─── Sheet 12: المرتجعات ────────────────────────────────────────────────
@@ -906,7 +1263,434 @@ class ExcelWorkbookService {
         TextCellValue(userMap[r.cashierId] ?? r.cashierId),
       ]);
     }
+    ExcelStyleHelper.styleDataRows(
+      retSheet,
+      startRow: 1,
+      rowCount: returns.length,
+      colCount: 7,
+      currencyCols: {4},
+      centerCols: {0, 1, 2, 5},
+    );
+    if (returns.isNotEmpty) {
+      ExcelStyleHelper.appendTotalsRow(
+        retSheet,
+        rowIndex: returns.length + 1,
+        cells: [
+          TextCellValue('الإجمالي (${returns.length} مرتجع)'),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          FormulaCellValue('SUM(E2:E$retEnd)'),
+          TextCellValue(''),
+          TextCellValue(''),
+        ],
+        currencyCols: {4},
+      );
+    }
     _setColumnWidths(retSheet, const [20, 18, 20, 26, 18, 16, 18]);
+
+    // ─── Sheet 13: نواقص_المخزون (Ready-to-Reorder List) ─────────────────────
+    final lowStockVariants = variants.where((v) {
+      final minS = prodMap[v.productId]?.minStock ?? 5;
+      return v.quantity <= minS;
+    }).toList();
+    _appendStyledHeader(lowStockSheet, const [
+      'اسم المنتج',
+      'التصنيف',
+      'كود الصنف (SKU)',
+      'المقاس',
+      'اللون',
+      'الرصيد الحالي',
+      'حد الطلب',
+      'العجز المطلوب',
+      'سعر التكلفة (ج.م)',
+      'تكلفة التوريد التقديرية (ج.م)',
+    ], accentHeaderStyle);
+    for (var i = 0; i < lowStockVariants.length; i++) {
+      final v = lowStockVariants[i];
+      final prod = prodMap[v.productId];
+      final minS = prod?.minStock ?? 5;
+      final rowNum = i + 2;
+      lowStockSheet.appendRow([
+        TextCellValue(prod?.name ?? v.productId),
+        TextCellValue(
+          prod != null ? (catMap[prod.categoryId] ?? 'عام') : 'عام',
+        ),
+        TextCellValue(v.sku),
+        TextCellValue(v.size),
+        TextCellValue(v.color),
+        IntCellValue(v.quantity),
+        IntCellValue(minS),
+        FormulaCellValue('MAX(1,G$rowNum-F$rowNum)'),
+        DoubleCellValue(v.costPrice / 100.0),
+        FormulaCellValue('H$rowNum*I$rowNum'),
+      ]);
+    }
+    ExcelStyleHelper.styleDataRows(
+      lowStockSheet,
+      startRow: 1,
+      rowCount: lowStockVariants.length,
+      colCount: 10,
+      currencyCols: {8, 9},
+      centerCols: {2, 3, 4, 5, 6, 7},
+    );
+    for (var i = 0; i < lowStockVariants.length; i++) {
+      if (lowStockVariants[i].quantity <= 0) {
+        _styleRow(
+          lowStockSheet,
+          i + 1,
+          10,
+          ExcelStyleHelper.dangerRowStyle(isCurrency: false),
+        );
+      }
+    }
+    if (lowStockVariants.isNotEmpty) {
+      final lowEnd = lowStockVariants.length + 1;
+      ExcelStyleHelper.appendTotalsRow(
+        lowStockSheet,
+        rowIndex: lowStockVariants.length + 1,
+        cells: [
+          TextCellValue('الإجمالي (${lowStockVariants.length} صنف ناقص)'),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          FormulaCellValue('SUM(F2:F$lowEnd)'),
+          TextCellValue(''),
+          FormulaCellValue('SUM(H2:H$lowEnd)'),
+          TextCellValue(''),
+          FormulaCellValue('SUM(J2:J$lowEnd)'),
+        ],
+        currencyCols: {9},
+      );
+    }
+    _setColumnWidths(lowStockSheet, const [
+      26,
+      18,
+      20,
+      12,
+      14,
+      14,
+      12,
+      14,
+      18,
+      22,
+    ]);
+
+    // ─── Sheet 14: الورديات_والدرج ───────────────────────────────────────────
+    _appendStyledHeader(shiftsSheet, const [
+      'رقم الوردية',
+      'الكاشير',
+      'تاريخ الفتح',
+      'تاريخ الإغلاق',
+      'رصيد الافتتاح (ج.م)',
+      'الرصيد المتوقع (ج.م)',
+      'الرصيد الفعلي (ج.م)',
+      'العجز / الزيادة (ج.م)',
+      'الحالة',
+    ], headerStyle);
+    for (final sh in shifts) {
+      shiftsSheet.appendRow([
+        TextCellValue(sh.id.length >= 8 ? sh.id.substring(0, 8) : sh.id),
+        TextCellValue(userMap[sh.cashierId] ?? sh.cashierId),
+        TextCellValue(_formatDateTime(sh.openedAt)),
+        TextCellValue(sh.closedAt != null ? _formatDateTime(sh.closedAt!) : '-'),
+        DoubleCellValue(sh.openingBalance / 100.0),
+        DoubleCellValue((sh.expectedBalance ?? 0) / 100.0),
+        DoubleCellValue((sh.countedBalance ?? 0) / 100.0),
+        DoubleCellValue((sh.difference ?? 0) / 100.0),
+        TextCellValue(sh.closedAt == null ? 'مفتوحة' : 'مغلقة'),
+      ]);
+    }
+    ExcelStyleHelper.styleDataRows(
+      shiftsSheet,
+      startRow: 1,
+      rowCount: shifts.length,
+      colCount: 9,
+      currencyCols: {4, 5, 6, 7},
+      centerCols: {0, 2, 3, 8},
+    );
+    if (shifts.isNotEmpty) {
+      final shEnd = shifts.length + 1;
+      ExcelStyleHelper.appendTotalsRow(
+        shiftsSheet,
+        rowIndex: shifts.length + 1,
+        cells: [
+          TextCellValue('الإجمالي (${shifts.length} وردية)'),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          FormulaCellValue('SUM(E2:E$shEnd)'),
+          FormulaCellValue('SUM(F2:F$shEnd)'),
+          FormulaCellValue('SUM(G2:G$shEnd)'),
+          FormulaCellValue('SUM(H2:H$shEnd)'),
+          TextCellValue(''),
+        ],
+        currencyCols: {4, 5, 6, 7},
+      );
+    }
+    _setColumnWidths(shiftsSheet, const [14, 20, 20, 20, 18, 18, 18, 18, 12]);
+
+    // ─── Sheet 15: المحافظ_الإلكترونية ──────────────────────────────────────
+    _appendStyledHeader(walletsSheet, const [
+      'اسم المحفظة',
+      'النوع',
+      'رقم الحساب / الهاتف',
+      'الرصيد الحالي (ج.م)',
+      'الحد الشهري (ج.م)',
+      'المستخدم شهرياً (ج.م)',
+      'الحالة',
+    ], headerStyle);
+    for (final w in wallets) {
+      walletsSheet.appendRow([
+        TextCellValue(w.name),
+        TextCellValue(w.providerType),
+        TextCellValue(w.phoneOrTerminal),
+        DoubleCellValue(w.currentBalance / 100.0),
+        DoubleCellValue(w.monthlyLimit / 100.0),
+        DoubleCellValue(w.monthlyUsed / 100.0),
+        TextCellValue(w.isActive ? 'نشطة' : 'متوقفة'),
+      ]);
+    }
+    ExcelStyleHelper.styleDataRows(
+      walletsSheet,
+      startRow: 1,
+      rowCount: wallets.length,
+      colCount: 7,
+      currencyCols: {3, 4, 5},
+      centerCols: {1, 2, 6},
+    );
+    if (wallets.isNotEmpty) {
+      final walEnd = wallets.length + 1;
+      ExcelStyleHelper.appendTotalsRow(
+        walletsSheet,
+        rowIndex: wallets.length + 1,
+        cells: [
+          TextCellValue('الإجمالي (${wallets.length} محفظة)'),
+          TextCellValue(''),
+          TextCellValue(''),
+          FormulaCellValue('SUM(D2:D$walEnd)'),
+          FormulaCellValue('SUM(E2:E$walEnd)'),
+          FormulaCellValue('SUM(F2:F$walEnd)'),
+          TextCellValue(''),
+        ],
+        currencyCols: {3, 4, 5},
+      );
+    }
+    _setColumnWidths(walletsSheet, const [24, 18, 20, 18, 18, 20, 12]);
+
+    // ─── Sheet 16: حركات_المخزن ──────────────────────────────────────────────
+    _appendStyledHeader(invLogsSheet, const [
+      'التاريخ والوقت',
+      'المنتج',
+      'كود الصنف (SKU)',
+      'نوع الحركة',
+      'التغير في الكمية',
+      'السبب / المرجع',
+      'المستخدم',
+    ], headerStyle);
+    for (final l in inventoryLogs) {
+      final v = variantMap[l.variantId];
+      final prod = v != null ? prodMap[v.productId] : null;
+      invLogsSheet.appendRow([
+        TextCellValue(_formatDateTime(l.createdAt)),
+        TextCellValue(prod?.name ?? l.variantId),
+        TextCellValue(v?.sku ?? ''),
+        TextCellValue(l.type),
+        IntCellValue(l.qtyDelta),
+        TextCellValue(l.reason ?? l.refType),
+        TextCellValue(userMap[l.userId] ?? l.userId),
+      ]);
+    }
+    ExcelStyleHelper.styleDataRows(
+      invLogsSheet,
+      startRow: 1,
+      rowCount: inventoryLogs.length,
+      colCount: 7,
+      centerCols: {0, 2, 3, 4},
+    );
+    _setColumnWidths(invLogsSheet, const [20, 24, 18, 16, 16, 28, 18]);
+
+    // ─── Sheet 17: تحصيلات_العملاء_والموردين ─────────────────────────────────
+    _appendStyledHeader(partyPaySheet, const [
+      'النوع',
+      'التاريخ والوقت',
+      'العميل / المورد',
+      'المبلغ (ج.م)',
+      'طريقة الدفع',
+      'رقم المرجع',
+      'ملاحظات',
+    ], headerStyle);
+    int partyPayCount = 0;
+    for (final cp in customerPayments) {
+      partyPaySheet.appendRow([
+        TextCellValue('تحصيل من عميل'),
+        TextCellValue(_formatDateTime(cp.paymentDate)),
+        TextCellValue(custMap[cp.customerId]?.name ?? cp.customerId),
+        DoubleCellValue(cp.amount / 100.0),
+        TextCellValue(_formatPaymentMethod(cp.paymentMethod)),
+        TextCellValue(cp.referenceNumber ?? ''),
+        TextCellValue(cp.notes ?? ''),
+      ]);
+      partyPayCount++;
+    }
+    for (final sp in supplierPayments) {
+      partyPaySheet.appendRow([
+        TextCellValue('سداد لمورد'),
+        TextCellValue(_formatDateTime(sp.paymentDate)),
+        TextCellValue(supMap[sp.supplierId]?.name ?? sp.supplierId),
+        DoubleCellValue(sp.amount / 100.0),
+        TextCellValue(_formatPaymentMethod(sp.paymentMethod)),
+        TextCellValue(sp.referenceNumber ?? ''),
+        TextCellValue(sp.notes ?? ''),
+      ]);
+      partyPayCount++;
+    }
+    ExcelStyleHelper.styleDataRows(
+      partyPaySheet,
+      startRow: 1,
+      rowCount: partyPayCount,
+      colCount: 7,
+      currencyCols: {3},
+      centerCols: {0, 1, 4, 5},
+    );
+    if (partyPayCount > 0) {
+      final ppEnd = partyPayCount + 1;
+      ExcelStyleHelper.appendTotalsRow(
+        partyPaySheet,
+        rowIndex: ppEnd,
+        cells: [
+          TextCellValue('الإجمالي ($partyPayCount سند)'),
+          TextCellValue(''),
+          TextCellValue(''),
+          FormulaCellValue('SUM(D2:D$ppEnd)'),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+        ],
+        currencyCols: {3},
+      );
+    }
+    _setColumnWidths(partyPaySheet, const [18, 20, 24, 18, 16, 18, 26]);
+
+    // ─── Sheet 18: حركات_الدرج ───────────────────────────────────────────────
+    _appendStyledHeader(cashMovSheet, const [
+      'التاريخ والوقت',
+      'الاتجاه',
+      'النوع',
+      'الطريقة',
+      'المبلغ (ج.م)',
+      'البيان / الملاحظات',
+    ], headerStyle);
+    for (final cm in cashMovements) {
+      final dt = DateTime.fromMillisecondsSinceEpoch(cm.createdAt);
+      cashMovSheet.appendRow([
+        TextCellValue(_formatDateTime(dt)),
+        TextCellValue(cm.direction == 'in' ? 'وارد للدرج' : 'صادر من الدرج'),
+        TextCellValue(cm.type),
+        TextCellValue(_formatPaymentMethod(cm.method)),
+        DoubleCellValue(cm.amountPiasters / 100.0),
+        TextCellValue(cm.notes ?? ''),
+      ]);
+    }
+    ExcelStyleHelper.styleDataRows(
+      cashMovSheet,
+      startRow: 1,
+      rowCount: cashMovements.length,
+      colCount: 6,
+      currencyCols: {4},
+      centerCols: {0, 1, 2, 3},
+    );
+    if (cashMovements.isNotEmpty) {
+      final cmEnd = cashMovements.length + 1;
+      ExcelStyleHelper.appendTotalsRow(
+        cashMovSheet,
+        rowIndex: cmEnd,
+        cells: [
+          TextCellValue('الإجمالي (${cashMovements.length} حركة)'),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          FormulaCellValue('SUM(E2:E$cmEnd)'),
+          TextCellValue(''),
+        ],
+        currencyCols: {4},
+      );
+    }
+    _setColumnWidths(cashMovSheet, const [20, 16, 18, 16, 18, 30]);
+
+    // ─── Sheet 19: الأصناف_الراكدة (0 مبيعات آخر 30 يوم) ──────────────────────
+    final since30d = DateTime.now().subtract(const Duration(days: 30));
+    final recentVariantIds = <String>{};
+    for (final si in validSaleItems) {
+      final sale = saleMap[si.saleId];
+      if (sale != null && sale.date.isAfter(since30d)) {
+        recentVariantIds.add(si.variantId);
+      }
+    }
+    final stagnantVariants = variants
+        .where((v) => v.quantity > 0 && !recentVariantIds.contains(v.id))
+        .toList();
+    _appendStyledHeader(stagnantSheet, const [
+      'اسم المنتج',
+      'التصنيف',
+      'كود الصنف (SKU)',
+      'المقاس',
+      'اللون',
+      'الرصيد المتاح',
+      'سعر التكلفة (ج.م)',
+      'سعر البيع (ج.م)',
+      'رأس المال المجمد (ج.م)',
+    ], accentHeaderStyle);
+    for (var i = 0; i < stagnantVariants.length; i++) {
+      final v = stagnantVariants[i];
+      final prod = prodMap[v.productId];
+      final rowNum = i + 2;
+      stagnantSheet.appendRow([
+        TextCellValue(prod?.name ?? v.productId),
+        TextCellValue(
+          prod != null ? (catMap[prod.categoryId] ?? 'عام') : 'عام',
+        ),
+        TextCellValue(v.sku),
+        TextCellValue(v.size),
+        TextCellValue(v.color),
+        IntCellValue(v.quantity),
+        DoubleCellValue(v.costPrice / 100.0),
+        DoubleCellValue(v.sellPrice / 100.0),
+        FormulaCellValue('F$rowNum*G$rowNum'),
+      ]);
+    }
+    ExcelStyleHelper.styleDataRows(
+      stagnantSheet,
+      startRow: 1,
+      rowCount: stagnantVariants.length,
+      colCount: 9,
+      currencyCols: {6, 7, 8},
+      centerCols: {2, 3, 4, 5},
+    );
+    if (stagnantVariants.isNotEmpty) {
+      final stEnd = stagnantVariants.length + 1;
+      ExcelStyleHelper.appendTotalsRow(
+        stagnantSheet,
+        rowIndex: stEnd,
+        cells: [
+          TextCellValue('الإجمالي (${stagnantVariants.length} صنف راكد)'),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          FormulaCellValue('SUM(F2:F$stEnd)'),
+          TextCellValue(''),
+          TextCellValue(''),
+          FormulaCellValue('SUM(I2:I$stEnd)'),
+        ],
+        currencyCols: {8},
+      );
+    }
+    _setColumnWidths(
+      stagnantSheet,
+      const [26, 18, 20, 12, 14, 14, 18, 18, 22],
+    );
 
     final encoded = excel.encode();
     if (encoded == null) {
@@ -919,7 +1703,7 @@ class ExcelWorkbookService {
       meta: ExcelFullExportResult(
         filePath: '',
         sizeBytes: bytes.length,
-        sheetCount: 12,
+        sheetCount: 19,
         productsCount: variants.length,
         customersCount: customers.length,
         suppliersCount: suppliers.length,
@@ -2800,45 +3584,23 @@ class ExcelWorkbookService {
     return null;
   }
 
-  CellStyle _headerStyle() => CellStyle(
-    bold: true,
-    fontColorHex: ExcelColor.white,
-    backgroundColorHex: ExcelColor.fromHexString('#0A2E5C'),
-    horizontalAlign: HorizontalAlign.Center,
-    verticalAlign: VerticalAlign.Center,
-  );
+  CellStyle _headerStyle() => ExcelStyleHelper.headerStyle();
 
-  CellStyle _accentHeaderStyle() => CellStyle(
-    bold: true,
-    fontColorHex: ExcelColor.white,
-    backgroundColorHex: ExcelColor.fromHexString('#1FB5A8'),
-    horizontalAlign: HorizontalAlign.Center,
-    verticalAlign: VerticalAlign.Center,
-  );
+  CellStyle _accentHeaderStyle() => ExcelStyleHelper.accentHeaderStyle();
 
-  CellStyle _highlightRowStyle() => CellStyle(
-    bold: true,
-    backgroundColorHex: ExcelColor.fromHexString('#E6F7F5'),
-  );
+  CellStyle _highlightRowStyle() =>
+      ExcelStyleHelper.highlightRowStyle(isCurrency: true);
 
   void _appendStyledHeader(Sheet sheet, List<String> titles, CellStyle style) {
-    sheet.appendRow(titles.map((t) => TextCellValue(t)).toList());
-    _styleRow(sheet, 0, titles.length, style);
+    ExcelStyleHelper.appendStyledHeader(sheet, titles, style: style);
   }
 
   void _styleRow(Sheet sheet, int rowIndex, int colCount, CellStyle style) {
-    for (var col = 0; col < colCount; col++) {
-      final cell = sheet.cell(
-        CellIndex.indexByColumnRow(columnIndex: col, rowIndex: rowIndex),
-      );
-      cell.cellStyle = style;
-    }
+    ExcelStyleHelper.styleRow(sheet, rowIndex, colCount, style);
   }
 
   void _setColumnWidths(Sheet sheet, List<double> widths) {
-    for (var col = 0; col < widths.length; col++) {
-      sheet.setColumnWidth(col, widths[col]);
-    }
+    ExcelStyleHelper.setColumnWidths(sheet, widths);
   }
 
   String _valueAt(List<Data?> row, int? colIndex) {
@@ -2846,7 +3608,11 @@ class ExcelWorkbookService {
     return _cellText(row[colIndex]);
   }
 
-  bool _isRowEmpty(List<Data?> row) => row.every((c) => _cellText(c).isEmpty);
+  bool _isRowEmpty(List<Data?> row) {
+    if (row.every((c) => _cellText(c).isEmpty)) return true;
+    final firstCell = _cellText(row.firstOrNull);
+    return firstCell.startsWith('الإجمالي');
+  }
 
   String _cellText(Data? data) {
     final val = data?.value;

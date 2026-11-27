@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/services/excel_style_helper.dart';
 import '../../domain/entities/pre_order_batch_entity.dart';
 import '../../domain/entities/pre_order_entity.dart';
 import '../../domain/entities/pre_order_item_entity.dart';
@@ -18,17 +19,20 @@ class PreOrderExcelService {
     const sheetName = 'قالب_أصناف_الحجز';
     final sheet = excel[sheetName];
     excel.setDefaultSheet(sheetName);
+    if (excel.tables.containsKey('Sheet1')) {
+      excel.delete('Sheet1');
+    }
 
     // الرأس (Headers)
-    sheet.appendRow([
-      TextCellValue('اسم الصنف أو كود شي إن *'),
-      TextCellValue('المقاس واللون والمواصفات'),
-      TextCellValue('الكمية'),
-      TextCellValue('تكلفة المندوب (ج.م)'),
-      TextCellValue('عمولة التاجر (ج.م)'),
-      TextCellValue('سعر البيع للعميل (ج.م)'),
-      TextCellValue('رابط المنتج (شي إن/المورد)'),
-      TextCellValue('ملاحظات'),
+    ExcelStyleHelper.appendStyledHeader(sheet, const [
+      'اسم الصنف أو كود شي إن *',
+      'المقاس واللون والمواصفات',
+      'الكمية',
+      'تكلفة المندوب (ج.م)',
+      'عمولة التاجر (ج.م)',
+      'سعر البيع للعميل (ج.م)',
+      'رابط المنتج (شي إن/المورد)',
+      'ملاحظات',
     ]);
 
     // أمثلة توضيحية للمستخدم
@@ -53,6 +57,19 @@ class PreOrderExcelService {
       TextCellValue('https://shein.com/item-sample-2'),
       TextCellValue('قطن 100%'),
     ]);
+
+    ExcelStyleHelper.styleDataRows(
+      sheet,
+      startRow: 1,
+      rowCount: 2,
+      colCount: 8,
+      currencyCols: {3, 4, 5},
+      centerCols: {1, 2},
+    );
+    ExcelStyleHelper.setColumnWidths(
+      sheet,
+      const [28, 22, 10, 18, 18, 20, 30, 24],
+    );
 
     final bytes = excel.encode();
     if (bytes == null) return null;
@@ -210,9 +227,14 @@ class PreOrderExcelService {
     final sheetName = 'طلبية_$safeOrderNum';
     final sheet = excel[sheetName];
     excel.setDefaultSheet(sheetName);
+    if (excel.tables.containsKey('Sheet1')) {
+      excel.delete('Sheet1');
+    }
 
     // ترويسة الطلبية للمندوب
     sheet.appendRow([TextCellValue('كشف طلبية وشحن للمندوب / وسيط الاستيراد')]);
+    ExcelStyleHelper.styleRow(sheet, 0, 6, ExcelStyleHelper.accentHeaderStyle());
+    sheet.setRowHeight(0, 28);
     sheet.appendRow([TextCellValue('رقم الأوردر:'), TextCellValue(order.orderNumber)]);
     sheet.appendRow([TextCellValue('اسم المندوب:'), TextCellValue(order.agentName ?? 'غير محدد')]);
     sheet.appendRow([TextCellValue('رقم البوليصة / التتبع:'), TextCellValue(order.trackingNumber ?? 'غير محدد')]);
@@ -222,6 +244,7 @@ class PreOrderExcelService {
       TextCellValue('تاريخ الطلب:'),
       TextCellValue('${order.createdAt.year}-${order.createdAt.month.toString().padLeft(2, '0')}-${order.createdAt.day.toString().padLeft(2, '0')}'),
     ]);
+    ExcelStyleHelper.styleDataRows(sheet, startRow: 1, rowCount: 6, colCount: 2);
     sheet.appendRow([TextCellValue('')]); // سطر فارغ
 
     // رأس جدول الأصناف
@@ -233,6 +256,8 @@ class PreOrderExcelService {
       TextCellValue('رابط المنتج على الموقع'),
       TextCellValue('ملاحظات خاصة'),
     ]);
+    ExcelStyleHelper.styleRow(sheet, 8, 6, ExcelStyleHelper.headerStyle());
+    sheet.setRowHeight(8, 26);
 
     // الأصناف (بدون سعر البيع وبدون الربح)
     for (int i = 0; i < order.items.length; i++) {
@@ -246,6 +271,14 @@ class PreOrderExcelService {
         TextCellValue(it.notes ?? '-'),
       ]);
     }
+    ExcelStyleHelper.styleDataRows(
+      sheet,
+      startRow: 9,
+      rowCount: order.items.length,
+      colCount: 6,
+      centerCols: {0, 2, 3},
+    );
+    ExcelStyleHelper.setColumnWidths(sheet, const [8, 28, 22, 16, 32, 24]);
 
     final bytes = excel.encode();
     if (bytes == null) return null;
@@ -261,9 +294,14 @@ class PreOrderExcelService {
     final sheetName = 'شحنة_$safeBatchNum';
     final sheet = excel[sheetName];
     excel.setDefaultSheet(sheetName);
+    if (excel.tables.containsKey('Sheet1')) {
+      excel.delete('Sheet1');
+    }
 
     // ترويسة الشحنة للمندوب
     sheet.appendRow([TextCellValue('كشف شحنة مجمعة للمندوب / وسيط الاستيراد')]);
+    ExcelStyleHelper.styleRow(sheet, 0, 11, ExcelStyleHelper.accentHeaderStyle());
+    sheet.setRowHeight(0, 28);
     sheet.appendRow([TextCellValue('كود / اسم الشحنة:'), TextCellValue(batch.batchNumber)]);
     sheet.appendRow([TextCellValue('اسم المندوب / الوسيط:'), TextCellValue(batch.agentName ?? 'غير محدد')]);
     sheet.appendRow([TextCellValue('رقم البوليصة / التتبع:'), TextCellValue(batch.trackingNumber ?? 'غير محدد')]);
@@ -275,6 +313,7 @@ class PreOrderExcelService {
         '${batch.createdAt.year}-${batch.createdAt.month.toString().padLeft(2, '0')}-${batch.createdAt.day.toString().padLeft(2, '0')}',
       ),
     ]);
+    ExcelStyleHelper.styleDataRows(sheet, startRow: 1, rowCount: 6, colCount: 2);
     sheet.appendRow([TextCellValue('')]); // سطر فارغ
 
     // رأس جدول أصناف الشحنة
@@ -291,6 +330,8 @@ class PreOrderExcelService {
       TextCellValue('رابط المنتج على الموقع'),
       TextCellValue('ملاحظات خاصة'),
     ]);
+    ExcelStyleHelper.styleRow(sheet, 8, 11, ExcelStyleHelper.headerStyle());
+    sheet.setRowHeight(8, 26);
 
     int itemIndex = 1;
     for (final order in batch.orders) {
@@ -312,6 +353,40 @@ class PreOrderExcelService {
         ]);
       }
     }
+    final exportedItems = itemIndex - 1;
+    ExcelStyleHelper.styleDataRows(
+      sheet,
+      startRow: 9,
+      rowCount: exportedItems,
+      colCount: 11,
+      currencyCols: {7, 8},
+      centerCols: {0, 2, 3, 5, 6},
+    );
+    if (exportedItems > 0) {
+      final endRow = 9 + exportedItems;
+      ExcelStyleHelper.appendTotalsRow(
+        sheet,
+        rowIndex: endRow,
+        cells: [
+          TextCellValue('الإجمالي'),
+          TextCellValue('$exportedItems صنف'),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          TextCellValue(''),
+          FormulaCellValue('SUM(G10:G$endRow)'),
+          TextCellValue(''),
+          FormulaCellValue('SUM(I10:I$endRow)'),
+          TextCellValue(''),
+          TextCellValue(''),
+        ],
+        currencyCols: {8},
+      );
+    }
+    ExcelStyleHelper.setColumnWidths(
+      sheet,
+      const [8, 22, 16, 16, 26, 20, 14, 20, 18, 28, 22],
+    );
 
     final bytes = excel.encode();
     if (bytes == null) return null;

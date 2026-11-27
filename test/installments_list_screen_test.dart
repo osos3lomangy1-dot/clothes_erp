@@ -106,7 +106,7 @@ void main() {
 
     expect(find.text('إدارة عقود التقسيط'), findsOneWidget);
     expect(find.text('لا توجد عقود تقسيط مسجلة حتى الآن'), findsOneWidget);
-    expect(find.byType(FloatingActionButton), findsOneWidget);
+    expect(find.byType(FloatingActionButton), findsNothing);
   });
 
   testWidgets('2. renders list of contracts when contracts exist', (tester) async {

@@ -14,8 +14,13 @@ import '../services/receipt_pdf_service.dart';
 
 class InvoiceDetailsDialog extends StatelessWidget {
   final InvoiceDetailsEntity invoice;
+  final void Function(String invoiceRef)? onRequestReturn;
 
-  const InvoiceDetailsDialog({super.key, required this.invoice});
+  const InvoiceDetailsDialog({
+    super.key,
+    required this.invoice,
+    this.onRequestReturn,
+  });
 
   String _formatPaymentLabel(String method) {
     switch (method.toLowerCase().trim()) {
@@ -106,6 +111,10 @@ class InvoiceDetailsDialog extends StatelessWidget {
     }
 
     Navigator.of(context).pop();
+    if (onRequestReturn != null) {
+      onRequestReturn!(invoice.shortRef);
+      return;
+    }
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ReturnScreen(initialInvoiceRef: invoice.shortRef),

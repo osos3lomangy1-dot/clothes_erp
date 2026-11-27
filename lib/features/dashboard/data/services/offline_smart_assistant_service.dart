@@ -21,6 +21,7 @@ part 'assistant_marketing_advisor_part.dart';
 enum AssistantActionRoute {
   reports,
   products,
+  inventory,
   purchases,
   installments,
   expenses,
@@ -588,19 +589,7 @@ class OfflineSmartAssistantService {
             results.add(await getPartnersProfitSharesInsight());
             break;
           case AssistantNluIntent.outOfScope:
-            results.add(
-              const AssistantInsight(
-                id: 'assistant_out_of_scope',
-                title: 'سؤال خارج نطاق إدارة المحل',
-                summary:
-                    'أنا مساعد متخصص في حسابات المحل، المبيعات، المخزون، المشتريات، والزكاة أوفلاين 100%.',
-                followUpPrompts: [
-                  'بتعرف تعمل ايه؟',
-                  'كسبت كام النهارده؟',
-                  'تقرير قفلة اليوم',
-                ],
-              ),
-            );
+            results.add(_buildOutOfScopeInsight());
             break;
           case AssistantNluIntent.undoLast:
             final token = lastUndoToken;
@@ -684,6 +673,9 @@ class OfflineSmartAssistantService {
               results.addAll(await getMarketingClarificationInsights(query));
             }
             results.addAll(await searchKnowledgeBase(query));
+            break;
+          case AssistantNluIntent.confirm:
+            results.add(_buildChitchatInsight(const {'subIntent': 'fine'}));
             break;
           default:
             break;
@@ -1074,8 +1066,10 @@ class OfflineSmartAssistantService {
         query,
         minConfidence: 0.72,
       );
-      if (trainedPred != null &&
-          trainedPred.intent != AssistantNluIntent.outOfScope) {
+      if (trainedPred != null) {
+        if (trainedPred.intent == AssistantNluIntent.outOfScope) {
+          return [_buildOutOfScopeInsight()];
+        }
         final trainedInsights = await _dispatchTrainedIntent(
           trainedPred.intent,
           query,
@@ -1089,14 +1083,10 @@ class OfflineSmartAssistantService {
       await _recordUnmatchedQuery(query);
       final suggestions = _buildDidYouMeanSuggestions(q);
       return [
-        AssistantInsight(
+        _buildOutOfScopeInsight(
           id: 'no_direct_match',
-          title: 'لم أفهم سؤالك بالكامل — هل تقصد؟',
-          summary: 'جرب إحدى هذه الأسئلة أو اكتب بكلام مختلف:',
-          details: suggestions,
+          suggestions: suggestions,
         ),
-        await getTodayProfitInsight(),
-        await getStockoutVelocityInsight(),
       ];
     }
     return results;
@@ -1217,6 +1207,38 @@ class OfflineSmartAssistantService {
     '6. السياق والذاكرة: بفهم المتابعات مثل "طيب وامبارح؟"، "نفس المورد"، "خلي السعر 400"، وبحفظ اسمك خلال الجلسة ("اسمي أحمد").',
   ];
 
+  AssistantInsight _buildOutOfScopeInsight({
+    String id = 'assistant_out_of_scope',
+    List<String>? suggestions,
+  }) {
+    final name = contextMemory.userName;
+    final greetPrefix = name != null ? 'يا $name' : 'يا فندم';
+    final followUps = <String>[
+      if (suggestions != null && suggestions.isNotEmpty)
+        ...suggestions.take(2),
+      'كسبت كام النهارده؟',
+      'تقرير قفلة اليوم',
+      'ايه البضاعة الراكدة عندي؟',
+      'ازاي اتفاوض مع المورد؟',
+      'اديني سكريبت الرد على الفصال',
+      'اكتب بوست تسويقي',
+    ];
+    return AssistantInsight(
+      id: id,
+      title: 'سؤال خارج اختصاصي التجاري والمحاسبي',
+      summary:
+          'عفواً $greetPrefix، أنا مساعد تجاري ومحاسبي مخصص لإدارة محلك ونشاطك فقط (أوفلاين 100%). مقدرش أساعدك في المواضيع العامة أو الترفيهية أو الخارجة عن المحل، لكن أقدر أساعدك فوراً في الآتي:',
+      details: const [
+        'تسجيل العمليات اليومية: فواتير الشراء، المصروفات، سداد الموردين، وإضافة وتعديل الأصناف بالعامية.',
+        'الحسابات والأرباح والتقفيل: صافي أرباح اليوم، تقرير تقفيل الوردية، حركة الخزينة، وزكاة التجارة.',
+        'المخزون ونواقص المحل: كشف البضاعة الراكدة، نواقص المحل والأصناف التي قاربت تخلص، ومقارنة أسعار الموردين.',
+        'البيع والتفاوض والتسويق: سكريبتات الرد على فصال الزبون، فن التفاوض مع المورد، وصياغة بوستات تسويقية.',
+        'استشارات التجارة والتسعير: استراتيجيات التسعير، تنظيم المعرض، وتطبيق 150 كتاباً عالمياً في إدارة التجزئة.',
+      ],
+      followUpPrompts: followUps,
+    );
+  }
+
   AssistantInsight _buildChitchatInsight(Map<String, dynamic> slots) {
     final sub = slots['subIntent'] as String? ?? 'capabilities';
     final name = contextMemory.userName;
@@ -1264,6 +1286,24 @@ class OfflineSmartAssistantService {
           id: 'chitchat_thanks',
           title: 'العفو، تحت أمرك',
           summary: 'لا شكر على واجب $greetPrefix، بالتوفيق في شغلك دايماً.',
+        );
+      case 'politeReply':
+        return AssistantInsight(
+          id: 'chitchat_politeReply',
+          title: 'على الرحب والسعة',
+          summary: 'تحت أمرك في أي وقت $greetPrefix، قولي تحب نراجع إيه دلوقتي؟',
+        );
+      case 'praise':
+        return AssistantInsight(
+          id: 'chitchat_praise',
+          title: 'ده من ذوقك والله',
+          summary: 'الله يكرمك $greetPrefix! أنا دايماً جاهز أساعدك في كل شغل المحل.',
+        );
+      case 'vocative':
+        return AssistantInsight(
+          id: 'chitchat_vocative',
+          title: 'أيوة، معاك وتحت أمرك',
+          summary: 'سامعك وجاهز $greetPrefix! قولي تحب نحسب إيه أو نراجع إيه في المحل؟',
         );
       case 'bye':
         return AssistantInsight(

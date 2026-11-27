@@ -8,6 +8,7 @@ import '../../../../core/di/injection.dart';
 import '../../../../core/features/feature_gate.dart';
 import '../../../../core/utils/keyboard_focus_helper.dart';
 import '../../../../core/widgets/app_feedback.dart';
+import '../../../../core/widgets/standard_date_filter_chips.dart';
 
 import '../../../auth/presentation/cubits/auth_cubit.dart';
 import '../../../auth/presentation/cubits/auth_state.dart';
@@ -57,6 +58,8 @@ class _PurchasesViewState extends State<_PurchasesView> with TickerProviderState
   String _sectorMode = RetailSector.apparel;
   StreamSubscription<String?>? _sectorSub;
   StreamSubscription<List<ActivityType>>? _activitySub;
+  String _activeDateFilter = 'all';
+  DateTimeRange? _customRange;
 
   void _showToast(String message, {bool isError = false}) {
     if (!mounted) return;
@@ -916,17 +919,56 @@ class _PurchasesViewState extends State<_PurchasesView> with TickerProviderState
           );
         }
 
-        return RefreshIndicator(
-          onRefresh: () async => context.read<PurchasesCubit>().loadPurchases(),
-          child: ListView.separated(
-            padding: const EdgeInsets.all(20),
-            itemCount: state.purchases.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
-            itemBuilder: (context, idx) {
-              final p = state.purchases[idx];
-              return _buildPurchaseCard(p);
-            },
-          ),
+        final filteredPurchases = state.purchases
+            .where(
+              (p) => StandardDateFilterChips.matchesDate(
+                p.purchaseDate,
+                _activeDateFilter,
+                _customRange,
+              ),
+            )
+            .toList();
+
+        return Column(
+          children: [
+            Container(
+              width: double.infinity,
+              color: Colors.white,
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
+              child: StandardDateFilterChips(
+                activeFilter: _activeDateFilter,
+                customRange: _customRange,
+                onFilterChanged: (v) => setState(() => _activeDateFilter = v),
+                onCustomRangePicked: (picked) => setState(() {
+                  _customRange = picked;
+                  _activeDateFilter = 'custom';
+                }),
+              ),
+            ),
+            Expanded(
+              child: filteredPurchases.isEmpty
+                  ? Center(
+                      child: Text(
+                        'لا توجد فواتير مشتريات في هذه الفترة',
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 15),
+                      ),
+                    )
+                  : RefreshIndicator(
+                      onRefresh: () async =>
+                          context.read<PurchasesCubit>().loadPurchases(),
+                      child: ListView.separated(
+                        padding: const EdgeInsets.all(20),
+                        itemCount: filteredPurchases.length,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: 12),
+                        itemBuilder: (context, idx) {
+                          final p = filteredPurchases[idx];
+                          return _buildPurchaseCard(p);
+                        },
+                      ),
+                    ),
+            ),
+          ],
         );
       },
     );

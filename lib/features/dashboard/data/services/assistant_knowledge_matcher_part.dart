@@ -42,6 +42,33 @@ class OfflineKnowledgeMatcher {
     'عند',
     'بعد',
     'قبل',
+    // Conversational explain/teach filler words so KB matching focuses on the topic
+    'اشرح',
+    'اشرحلي',
+    'فهمني',
+    'فهميني',
+    'علمني',
+    'علميني',
+    'اتعلم',
+    'افهم',
+    'عرفني',
+    'عرفيني',
+    'وضح',
+    'وضحلي',
+    'بسط',
+    'بسطلي',
+    'كلمني',
+    'احكيلي',
+    'قولي',
+    'عايز',
+    'عاوز',
+    'ممكن',
+    'يعني',
+    'ايه',
+    'هو',
+    'هي',
+    'لي',
+    'ازاي',
   };
 
   static List<String> _tokenizeArabic(String text) {
@@ -98,22 +125,30 @@ class OfflineKnowledgeMatcher {
     final scored = <_ScoredKnowledgeTopic>[];
     for (final topic in kb.topics) {
       double score = 0;
+      var hasPhraseMatch = false;
+      final matchedQueryStems = <String>{};
 
       for (final sq in topic.sampleQuestions) {
         final normSq = OfflineSmartAssistantService.normalizeArabic(sq);
         if (normSq == normQuery) {
           score += 20;
+          hasPhraseMatch = true;
         } else if (normSq.contains(normQuery) || normQuery.contains(normSq)) {
           score += 10;
+          hasPhraseMatch = true;
         }
         for (final t in _tokenizeArabic(sq)) {
           final st = _stemArabicToken(t);
           if (queryTokens.contains(t) || queryTokens.contains(st)) {
-            score += 4.5;
+            if (matchedQueryStems.add('sq:$st')) {
+              score += 4.5;
+            }
           } else {
             final gid = kb.groupIndexFor(t) ?? kb.groupIndexFor(st);
             if (gid != null && queryGroupIds.contains(gid)) {
-              score += 3.5;
+              if (matchedQueryStems.add('sq:g$gid')) {
+                score += 3.5;
+              }
             }
           }
         }
@@ -123,15 +158,20 @@ class OfflineKnowledgeMatcher {
         final normKw = OfflineSmartAssistantService.normalizeArabic(kw);
         if (normQuery.contains(normKw)) {
           score += 6;
+          hasPhraseMatch = true;
         }
         for (final t in _tokenizeArabic(kw)) {
           final st = _stemArabicToken(t);
           if (queryTokens.contains(t) || queryTokens.contains(st)) {
-            score += 4.0;
+            if (matchedQueryStems.add('kw:$st')) {
+              score += 4.0;
+            }
           } else {
             final gid = kb.groupIndexFor(t) ?? kb.groupIndexFor(st);
             if (gid != null && queryGroupIds.contains(gid)) {
-              score += 3.0;
+              if (matchedQueryStems.add('kw:g$gid')) {
+                score += 3.0;
+              }
             }
           }
         }
@@ -140,18 +180,33 @@ class OfflineKnowledgeMatcher {
       for (final t in _tokenizeArabic('${topic.title} ${topic.summary}')) {
         final st = _stemArabicToken(t);
         if (queryTokens.contains(t) || queryTokens.contains(st)) {
-          score += 2.0;
+          if (matchedQueryStems.add('ts:$st')) {
+            score += 2.0;
+          }
         } else {
           final gid = kb.groupIndexFor(t) ?? kb.groupIndexFor(st);
           if (gid != null && queryGroupIds.contains(gid)) {
-            score += 1.5;
+            if (matchedQueryStems.add('ts:g$gid')) {
+              score += 1.5;
+            }
           } else if (st.length >= 4) {
             final prefix = st.substring(0, 3);
             if (queryTokens.any((qt) => qt.length >= 4 && qt.startsWith(prefix))) {
-              score += 1.0;
+              if (matchedQueryStems.add('pf:$prefix')) {
+                score += 1.0;
+              }
             }
           }
         }
+      }
+
+      // Count distinct query concepts matched (strip section prefix)
+      final distinctMatched = matchedQueryStems
+          .map((s) => s.substring(s.indexOf(':') + 1))
+          .toSet()
+          .length;
+      if (!hasPhraseMatch && rawTokens.length >= 3 && distinctMatched < 2) {
+        continue;
       }
 
       if (score > 0 && activeSector != 'all') {

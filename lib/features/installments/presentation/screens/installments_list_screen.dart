@@ -7,6 +7,7 @@ import '../../../../core/features/feature_gate.dart';
 import '../../../../core/utils/money.dart';
 import '../../../../core/widgets/custom_date_range_dialog.dart';
 import '../../domain/entities/customer_installment_entity.dart';
+import '../../../reports/presentation/widgets/installments_report_section.dart';
 import '../../domain/entities/customer_installments_summary.dart';
 import '../../domain/facades/installments_facade.dart';
 import '../../data/services/manager_pin_service.dart';
@@ -66,70 +67,74 @@ class _InstallmentsListViewState extends State<_InstallmentsListView> {
   Widget build(BuildContext context) {
     final cubit = context.read<InstallmentsListCubit>();
 
-    return Scaffold(
-      backgroundColor: AppColors.surface,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: Navigator.canPop(context)
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back_rounded,
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: AppColors.surface,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: Navigator.canPop(context)
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded,
+                      color: AppColors.onSurface),
+                  tooltip: 'رجوع',
+                  onPressed: () => Navigator.of(context).maybePop(),
+                )
+              : null,
+          title: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'إدارة عقود التقسيط',
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
                     color: AppColors.onSurface),
-                tooltip: 'رجوع',
-                onPressed: () => Navigator.of(context).maybePop(),
-              )
-            : null,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'إدارة عقود التقسيط',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  color: AppColors.onSurface),
+              ),
+              Text(
+                'متابعة الأقساط، الدفعات، والتحصيل',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
+          actions: [
+            IconButton(
+              icon: Icon(Icons.list_alt_rounded, color: AppColors.primary),
+              tooltip: 'خطط التقسيط',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (_) => const InstallmentPlansScreen()),
+                );
+              },
             ),
-            Text(
-              'متابعة الأقساط، الدفعات، والتحصيل',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+            IconButton(
+              icon: const Icon(Icons.refresh_rounded, color: AppColors.onSurface),
+              tooltip: 'تحديث',
+              onPressed: () => cubit.loadGrouped(),
             ),
           ],
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.list_alt_rounded, color: AppColors.primary),
-            tooltip: 'خطط التقسيط',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                    builder: (_) => const InstallmentPlansScreen()),
-              );
-            },
+          bottom: TabBar(
+            labelColor: AppColors.primary,
+            unselectedLabelColor: Colors.grey.shade600,
+            indicatorColor: AppColors.primary,
+            indicatorWeight: 2.5,
+            tabs: const [
+              Tab(
+                icon: Icon(Icons.receipt_long_rounded, size: 18),
+                text: 'عقود التقسيط',
+              ),
+              Tab(
+                icon: Icon(Icons.analytics_outlined, size: 18),
+                text: 'إحصائيات والتحصيل',
+              ),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: AppColors.onSurface),
-            tooltip: 'تحديث',
-            onPressed: () => cubit.loadGrouped(),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                  'إنشاء عقود التقسيط متاح عبر شاشة نقطة البيع وقريباً هنا'),
-            ),
-          );
-        },
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text(
-          'عقد جديد',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-      ),
-      body: Column(
+        body: TabBarView(
+          children: [
+            Column(
         children: [
           // Header: Search & Filter chips
           Container(
@@ -359,6 +364,13 @@ class _InstallmentsListViewState extends State<_InstallmentsListView> {
             ),
           ),
         ],
+      ),
+            ListView(
+              padding: const EdgeInsets.all(16),
+              children: const [InstallmentsReportSection()],
+            ),
+          ],
+        ),
       ),
     );
   }

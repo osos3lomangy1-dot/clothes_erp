@@ -9,6 +9,7 @@ import '../../../../core/database/tx_writer.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/keyboard_focus_helper.dart';
 import '../../../../core/utils/money.dart';
+import '../../../../core/widgets/standard_date_filter_chips.dart';
 import '../../data/services/mobile_wallets_service.dart';
 
 class WalletsScreen extends StatefulWidget {
@@ -26,6 +27,8 @@ class _WalletsScreenState extends State<WalletsScreen> {
   List<CashWallet> _wallets = [];
   List<WalletTransaction> _transactions = [];
   bool _isLoading = true;
+  String _activeDateFilter = 'all';
+  DateTimeRange? _customRange;
 
   @override
   void initState() {
@@ -466,22 +469,45 @@ class _WalletsScreenState extends State<WalletsScreen> {
                                     ),
                                   ),
                                   const Divider(height: 18),
+                                  StandardDateFilterChips(
+                                    activeFilter: _activeDateFilter,
+                                    customRange: _customRange,
+                                    onFilterChanged: (v) =>
+                                        setState(() => _activeDateFilter = v),
+                                    onCustomRangePicked: (picked) => setState(() {
+                                      _customRange = picked;
+                                      _activeDateFilter = 'custom';
+                                    }),
+                                  ),
+                                  const SizedBox(height: 8),
                                   Expanded(
-                                    child: _transactions.isEmpty
-                                        ? Center(
+                                    child: Builder(
+                                      builder: (context) {
+                                        final filteredTxs = _transactions
+                                            .where(
+                                              (tx) => StandardDateFilterChips.matchesDate(
+                                                tx.createdAt,
+                                                _activeDateFilter,
+                                                _customRange,
+                                              ),
+                                            )
+                                            .toList();
+                                        if (filteredTxs.isEmpty) {
+                                          return Center(
                                             child: Text(
                                               'لا توجد عمليات مسجلة',
                                               style: TextStyle(
                                                 color: AppColors.onSurfaceVariant,
                                               ),
                                             ),
-                                          )
-                                        : ListView.separated(
-                                            itemCount: _transactions.length,
-                                            separatorBuilder: (_, _) =>
-                                                const Divider(height: 1),
-                                            itemBuilder: (context, index) {
-                                              final tx = _transactions[index];
+                                          );
+                                        }
+                                        return ListView.separated(
+                                          itemCount: filteredTxs.length,
+                                          separatorBuilder: (_, _) =>
+                                              const Divider(height: 1),
+                                          itemBuilder: (context, index) {
+                                            final tx = filteredTxs[index];
                                               final walletName =
                                                   walletById[tx.walletId]?.name ??
                                                       'محفظة';
@@ -528,9 +554,11 @@ class _WalletsScreenState extends State<WalletsScreen> {
                                                       ),
                                                   ],
                                                 ),
-                                              );
-                                            },
-                                          ),
+                                            );
+                                          },
+                                        );
+                                      },
+                                    ),
                                   ),
                                 ],
                               ),

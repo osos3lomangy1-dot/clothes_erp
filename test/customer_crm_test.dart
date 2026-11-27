@@ -248,7 +248,7 @@ void main() {
         ], summaries);
         final decoded = Excel.decodeBytes(bytes);
         expect(decoded.tables.containsKey('سجل_العملاء'), isTrue);
-        expect(decoded.tables['سجل_العملاء']!.rows.length, 2);
+        expect(decoded.tables['سجل_العملاء']!.rows.length, 3);
       },
     );
   });

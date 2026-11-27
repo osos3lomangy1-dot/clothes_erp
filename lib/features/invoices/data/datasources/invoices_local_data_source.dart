@@ -53,12 +53,20 @@ class InvoicesLocalDataSourceImpl implements InvoicesLocalDataSource {
       query.where(_db.sales.paymentMethod.equals(paymentMethod));
     }
     if (search != null && search.trim().isNotEmpty) {
-      final q = search.trim();
-      query.where(
-        _db.sales.shortRef.contains(q) |
-            _db.customers.name.contains(q) |
-            _db.customers.phone.contains(q),
-      );
+      final q = search.trim().replaceFirst(RegExp(r'^#'), '').trim();
+      final numVal = double.tryParse(q.replaceAll(',', ''));
+      Expression<bool> predicate = _db.sales.shortRef.contains(q) |
+          _db.customers.name.contains(q) |
+          _db.customers.phone.contains(q);
+      if (numVal != null) {
+        final piasters = (numVal * 100).round();
+        predicate = predicate | _db.sales.total.equals(piasters);
+        final intVal = int.tryParse(q);
+        if (intVal != null && intVal != piasters) {
+          predicate = predicate | _db.sales.total.equals(intVal);
+        }
+      }
+      query.where(predicate);
     }
 
     query.orderBy([OrderingTerm.desc(_db.sales.date)]);

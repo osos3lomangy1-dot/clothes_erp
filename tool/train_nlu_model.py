@@ -148,10 +148,17 @@ def _discover_corpus_files() -> list[Path]:
             if p.suffix.lower() not in (".jsonl", ".json"):
                 continue
             name = p.name.lower()
-            if "numbers" in name:
+            if "numbers" in name or "nlu_model" in name or "knowledge" in name:
                 continue
             files.append(p)
     return files
+
+
+_CATEGORY_INTENT_MAP = {
+    "greetings_and_chitchat": "chitchat",
+    "bills_and_shop_utilities": "recordExpense",
+    "out_of_scope_daily_life": "out_of_scope",
+}
 
 
 def _iter_records(path: Path):
@@ -162,12 +169,30 @@ def _iter_records(path: Path):
                 if line:
                     yield json.loads(line)
     else:
-        with path.open("r", encoding="utf-8") as f:
-            data = json.load(f)
-            if isinstance(data, list):
-                for item in data:
-                    if isinstance(item, dict):
-                        yield item
+        raw = path.read_text(encoding="utf-8").strip()
+        if not raw:
+            return
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            # Fallback for JSONL files saved with a .json extension
+            for line in raw.splitlines():
+                line = line.strip()
+                if line:
+                    yield json.loads(line)
+            return
+        if isinstance(data, list):
+            for item in data:
+                if isinstance(item, dict):
+                    yield item
+        elif isinstance(data, dict) and isinstance(data.get("categories"), dict):
+            for cat_name, cat_obj in data["categories"].items():
+                mapped_intent = _CATEGORY_INTENT_MAP.get(cat_name)
+                if not mapped_intent or not isinstance(cat_obj, dict):
+                    continue
+                for term in cat_obj.get("terms", []):
+                    if isinstance(term, str) and term.strip():
+                        yield {"text": term.strip(), "intent": mapped_intent, "split": "train"}
 
 
 def main() -> None:
@@ -233,47 +258,97 @@ def main() -> None:
             class_feat_counts[label][ft] += 1
             class_total_feats[label] += 1
 
-    # Keep top 5000 features with df >= 3 for compact JSON size
+    # Keep top 4500 features with df >= 3 for compact JSON size & strong coverage
     vocab = [
         ft
         for ft, df in feat_df.most_common(6000)
         if df >= 3
-    ][:5000]
-    vocab_set = set(vocab)
+    ][:4500]
+    vocab_idx = {ft: i for i, ft in enumerate(vocab)}
     vocab_size = len(vocab)
     labels = sorted(class_counts.keys())
-    total_docs = sum(class_counts.values())
-    alpha = 0.25
+    lbl_idx = {lbl: i for i, lbl in enumerate(labels)}
+    num_classes = len(labels)
 
-    # Use balanced (uniform) priors so high-frequency classes don't drown out rare intents
-    priors = {lbl: 0.0 for lbl in labels}
-
-    # Compute IDF weighting and log-probabilities
-    idf = {
-        ft: math.log((1 + total_docs) / (1 + feat_df[ft])) + 1.0
-        for ft in vocab
+    # Encode docs as integer feature lists + class-balanced sample weights
+    encoded_train: list[tuple[int, list[int], float]] = []
+    median_cnt = sorted(class_counts.values())[num_classes // 2]
+    class_sample_w = {
+        lbl: min(4.0, max(0.35, math.sqrt(median_cnt / max(1, class_counts[lbl]))))
+        for lbl in labels
     }
+    for lbl, feats in train_docs:
+        f_ids = [vocab_idx[ft] for ft in feats if ft in vocab_idx]
+        if f_ids:
+            encoded_train.append((lbl_idx[lbl], f_ids, class_sample_w[lbl]))
 
-    baselines = {}
-    weights: dict[str, dict[str, float]] = {}
-    for lbl in labels:
-        denom = class_total_feats[lbl] + alpha * vocab_size
-        base = math.log(alpha / denom)
-        baselines[lbl] = round(base, 4)
-        lbl_weights: dict[str, float] = {}
-        counts = class_feat_counts[lbl]
-        for ft, cnt in counts.items():
-            if ft in vocab_set and cnt > 0:
-                delta = (math.log((cnt + alpha) / denom) - base) * idf[ft]
-                lbl_weights[ft] = round(delta, 4)
-        weights[lbl] = lbl_weights
+    # Train Multinomial Logistic Regression (Softmax + AdaGrad + L2) in pure Python
+    import random
+    rng = random.Random(42)
 
-    # Evaluate on held-out test set
+    W = [[0.0] * num_classes for _ in range(vocab_size)]
+    G_W = [[1e-6] * num_classes for _ in range(vocab_size)]
+    B = [0.0] * num_classes
+    G_B = [1e-6] * num_classes
+
+    lr = 0.35
+    l1 = 5e-5
+    l2 = 1e-5
+    epochs = 3
+
+    for epoch in range(epochs):
+        rng.shuffle(encoded_train)
+        total_loss = 0.0
+        for y, f_ids, sw in encoded_train:
+            scores = B[:]
+            for fid in f_ids:
+                wf = W[fid]
+                for c in range(num_classes):
+                    scores[c] += wf[c]
+
+            m_s = max(scores)
+            exps = [math.exp(s - m_s) for s in scores]
+            inv_sum = 1.0 / sum(exps)
+
+            total_loss -= sw * math.log(max(exps[y] * inv_sum, 1e-12))
+
+            # Sparse active-class gradient update (skips near-zero probabilities for ~10x speedup)
+            active_c: list[tuple[int, float]] = []
+            for c in range(num_classes):
+                g = (exps[c] * inv_sum - (1.0 if c == y else 0.0)) * sw
+                if abs(g) > 1e-4:
+                    G_B[c] += g * g
+                    B[c] -= (lr / math.sqrt(G_B[c])) * g
+                    active_c.append((c, g))
+
+            for fid in f_ids:
+                wf = W[fid]
+                gf = G_W[fid]
+                for c, g_base in active_c:
+                    w_val = wf[c]
+                    g = g_base + l2 * w_val + (l1 if w_val > 0.0 else (-l1 if w_val < 0.0 else 0.0))
+                    gf[c] += g * g
+                    wf[c] -= (lr / math.sqrt(gf[c])) * g
+
+        avg_loss = total_loss / max(1, len(encoded_train))
+        print(f"Epoch {epoch + 1}/{epochs} - loss: {avg_loss:.4f}", flush=True)
+
+    # Export in Dart-compatible format (baselines = 0.0, priors = B, pruned small weights)
+    priors = {labels[c]: round(B[c], 3) for c in range(num_classes)}
+    baselines = {lbl: 0.0 for lbl in labels}
+    weights: dict[str, dict[str, float]] = {lbl: {} for lbl in labels}
+    for fid, ft in enumerate(vocab):
+        wf = W[fid]
+        for c, lbl in enumerate(labels):
+            val = wf[c]
+            if abs(val) >= 0.05:
+                weights[lbl][ft] = round(val, 3)
+
+    # Evaluate on held-out test set using exact Dart scoring logic
     correct = 0
     for true_lbl, feats in test_docs:
-        in_vocab = [ft for ft in feats if ft in vocab_set]
-        n_hits = len(in_vocab)
-        scores = {lbl: baselines[lbl] * n_hits for lbl in labels}
+        in_vocab = [ft for ft in feats if ft in vocab_idx]
+        scores = {lbl: priors[lbl] for lbl in labels}
         for ft in in_vocab:
             for lbl in labels:
                 w = weights[lbl].get(ft)

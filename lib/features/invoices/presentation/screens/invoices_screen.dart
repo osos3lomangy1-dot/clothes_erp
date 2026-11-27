@@ -4,7 +4,8 @@ import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/money.dart';
-import '../../../../core/widgets/custom_date_range_dialog.dart';
+import '../../../../core/widgets/standard_date_filter_chips.dart';
+import '../../../returns/presentation/screens/return_screen.dart';
 import '../../domain/entities/invoice_details_entity.dart';
 import '../cubits/invoices_cubit.dart';
 import '../cubits/invoices_state.dart';
@@ -12,19 +13,35 @@ import '../services/receipt_pdf_service.dart';
 import '../widgets/invoice_details_dialog.dart';
 
 class InvoicesScreen extends StatelessWidget {
-  const InvoicesScreen({super.key});
+  final bool embedded;
+  final VoidCallback? onReturnCompleted;
+
+  const InvoicesScreen({
+    super.key,
+    this.embedded = false,
+    this.onReturnCompleted,
+  });
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => getIt<InvoicesCubit>()..loadInvoices(),
-      child: const _InvoicesView(),
+      child: _InvoicesView(
+        embedded: embedded,
+        onReturnCompleted: onReturnCompleted,
+      ),
     );
   }
 }
 
 class _InvoicesView extends StatefulWidget {
-  const _InvoicesView();
+  final bool embedded;
+  final VoidCallback? onReturnCompleted;
+
+  const _InvoicesView({
+    this.embedded = false,
+    this.onReturnCompleted,
+  });
 
   @override
   State<_InvoicesView> createState() => _InvoicesViewState();
@@ -33,6 +50,7 @@ class _InvoicesView extends StatefulWidget {
 class _InvoicesViewState extends State<_InvoicesView> {
   final _searchController = TextEditingController();
   String _activeDateFilter = 'all';
+  DateTimeRange? _customRange;
 
   @override
   void dispose() {
@@ -69,27 +87,33 @@ class _InvoicesViewState extends State<_InvoicesView> {
     }
   }
 
-  Future<void> _pickCustomDateRange() async {
-    final picked = await showCustomDateRangeDialog(
-      context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
+  void _applyCustomDateRange(DateTimeRange picked) {
+    setState(() {
+      _customRange = picked;
+      _activeDateFilter = 'custom';
+    });
+    context.read<InvoicesCubit>().filterDate(
+      from: picked.start,
+      to: picked.end,
     );
-    if (picked != null) {
-      setState(() => _activeDateFilter = 'custom');
-      if (mounted) {
-        context.read<InvoicesCubit>().filterDate(
-          from: picked.start,
-          to: picked.end,
-        );
-      }
+  }
+
+  Future<void> _openQuickReturn(BuildContext context, String invoiceRef) async {
+    final cubit = context.read<InvoicesCubit>();
+    final ok = await QuickReturnDialog.show(context, invoiceRef);
+    if (ok == true && mounted) {
+      cubit.loadInvoices();
+      widget.onReturnCompleted?.call();
     }
   }
 
-  void _openDetails(InvoiceDetailsEntity invoice) {
+  void _openDetails(BuildContext screenContext, InvoiceDetailsEntity invoice) {
     showDialog(
-      context: context,
-      builder: (_) => InvoiceDetailsDialog(invoice: invoice),
+      context: screenContext,
+      builder: (_) => InvoiceDetailsDialog(
+        invoice: invoice,
+        onRequestReturn: (ref) => _openQuickReturn(screenContext, ref),
+      ),
     );
   }
 
@@ -99,24 +123,17 @@ class _InvoicesViewState extends State<_InvoicesView> {
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(
+      appBar: widget.embedded
+          ? null
+          : AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: Navigator.canPop(context)
-            ? IconButton(
-                icon: const Icon(
-                  Icons.arrow_back_rounded,
-                  color: AppColors.onSurface,
-                ),
-                tooltip: 'رجوع',
-                onPressed: () => Navigator.of(context).maybePop(),
-              )
-            : null,
+        automaticallyImplyLeading: false,
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'سجل فواتير المبيعات',
+              'الفواتير والمرتجعات',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
@@ -124,7 +141,7 @@ class _InvoicesViewState extends State<_InvoicesView> {
               ),
             ),
             Text(
-              'البحث في فواتير الكاشير، متابعة المرتجعات، وإعادة الطباعة وتنزيل PDF',
+              'البحث في فواتير الكاشير، متابعة المرتجعات، الاسترجاع السريع، والطباعة وتنزيل PDF',
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ],
@@ -142,7 +159,7 @@ class _InvoicesViewState extends State<_InvoicesView> {
                   onChanged: (q) => context.read<InvoicesCubit>().search(q),
                   decoration: InputDecoration(
                     hintText:
-                        'ابحث برقم الفاتورة (#S...) أو اسم العميل أو الموبايل...',
+                        'ابحث برقم الفاتورة (#S...)، المبلغ، اسم العميل، أو الموبايل...',
                     prefixIcon: const Icon(Icons.search_rounded),
                     suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
@@ -163,51 +180,11 @@ class _InvoicesViewState extends State<_InvoicesView> {
                   ),
                 );
 
-                final customDateBtn = OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    side: BorderSide(
-                      color: _activeDateFilter == 'custom'
-                          ? AppColors.primary
-                          : Colors.grey.shade300,
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                  ),
-                  onPressed: _pickCustomDateRange,
-                  icon: Icon(
-                    Icons.calendar_month_rounded,
-                    size: 18,
-                    color: _activeDateFilter == 'custom'
-                        ? AppColors.primary
-                        : Colors.grey.shade700,
-                  ),
-                  label: Text(
-                    'تاريخ مخصص',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: _activeDateFilter == 'custom'
-                          ? AppColors.primary
-                          : Colors.grey.shade700,
-                    ),
-                  ),
-                );
-
-                final dateChips = Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    _filterChip('الكل', 'all'),
-                    _filterChip('اليوم', 'today'),
-                    _filterChip('آخر 7 أيام', 'week'),
-                    _filterChip('هذا الشهر', 'month'),
-                    customDateBtn,
-                  ],
+                final dateChips = StandardDateFilterChips(
+                  activeFilter: _activeDateFilter,
+                  customRange: _customRange,
+                  onFilterChanged: _setDateFilter,
+                  onCustomRangePicked: _applyCustomDateRange,
                 );
 
                 if (constraints.maxWidth >= 880) {
@@ -381,7 +358,7 @@ class _InvoicesViewState extends State<_InvoicesView> {
       ),
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: InkWell(
-        onTap: () => _openDetails(invoice),
+        onTap: () => _openDetails(context, invoice),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -589,6 +566,21 @@ class _InvoicesViewState extends State<_InvoicesView> {
                     ),
                     onPressed: () => ReceiptPdfService.printReceipt(invoice),
                   ),
+                  if (invoice.status != 'returned' &&
+                      invoice.status != 'cancelled')
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      padding: const EdgeInsets.all(4),
+                      tooltip: 'استرجاع الفاتورة',
+                      icon: const Icon(
+                        Icons.assignment_return_outlined,
+                        color: AppColors.warning,
+                        size: 18,
+                      ),
+                      onPressed: () =>
+                          _openQuickReturn(context, invoice.shortRef),
+                    ),
                   IconButton(
                     visualDensity: VisualDensity.compact,
                     constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -599,7 +591,7 @@ class _InvoicesViewState extends State<_InvoicesView> {
                       color: Color(0xFF94A3B8),
                       size: 20,
                     ),
-                    onPressed: () => _openDetails(invoice),
+                    onPressed: () => _openDetails(context, invoice),
                   ),
                 ],
               ),
@@ -655,22 +647,6 @@ class _InvoicesViewState extends State<_InvoicesView> {
         ],
       ),
       onSelected: (_) => cubit.filterStatus(value),
-    );
-  }
-
-  Widget _filterChip(String label, String value) {
-    final isSelected = _activeDateFilter == value;
-    return ChoiceChip(
-      label: Text(
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        ),
-      ),
-      selected: isSelected,
-      selectedColor: AppColors.primary.withValues(alpha: 0.15),
-      onSelected: (_) => _setDateFilter(value),
     );
   }
 

@@ -382,11 +382,17 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
                       ),
                     ),
                     onPressed: () {
-                      Navigator.of(innerCtx).push(
-                        MaterialPageRoute(
-                          builder: (_) => const ReportsScreen(),
-                        ),
-                      );
+                      if (!MainLayout.navigateToSidebarScreen(
+                        context,
+                        title: 'تقارير المبيعات',
+                        screen: const ReportsScreen(),
+                      )) {
+                        Navigator.of(innerCtx).push(
+                          MaterialPageRoute(
+                            builder: (_) => const ReportsScreen(),
+                          ),
+                        );
+                      }
                     },
                   );
                 }
@@ -421,11 +427,17 @@ class _AdminDashboardViewState extends State<_AdminDashboardView> {
                       ),
                     ),
                     onPressed: () {
-                      Navigator.of(innerCtx).push(
-                        MaterialPageRoute(
-                          builder: (_) => const ReportsScreen(),
-                        ),
-                      );
+                      if (!MainLayout.navigateToSidebarScreen(
+                        context,
+                        title: 'تقارير المبيعات',
+                        screen: const ReportsScreen(),
+                      )) {
+                        Navigator.of(innerCtx).push(
+                          MaterialPageRoute(
+                            builder: (_) => const ReportsScreen(),
+                          ),
+                        );
+                      }
                     },
                   ),
                 );

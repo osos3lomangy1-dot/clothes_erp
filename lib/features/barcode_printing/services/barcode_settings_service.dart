@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
-import '../../../../core/features/feature_gate.dart';
-import '../../../../core/theme/app_branding.dart';
+import '../../../core/features/feature_gate.dart';
+import '../../../core/theme/app_branding.dart';
 import '../domain/models/barcode_config.dart';
 import '../domain/models/barcode_label_item.dart';
 
@@ -41,18 +41,20 @@ class BarcodeSettingsService {
             ? storeName.trim()
             : AppBranding.current.appName,
         showStoreName: showStoreName == null ? true : showStoreName == '1',
-        showProductName: showProductName == null ? true : showProductName == '1',
+        showProductName: showProductName == null
+            ? true
+            : showProductName == '1',
         showColorAndSize: showColorSize == null ? true : showColorSize == '1',
         showPrice: showPrice == null ? true : showPrice == '1',
-        showBarcodeText: showBarcodeText == null ? true : showBarcodeText == '1',
+        showBarcodeText: showBarcodeText == null
+            ? true
+            : showBarcodeText == '1',
         defaultCopies: int.tryParse(defaultCopies ?? '') ?? 1,
       );
 
       notifier.value = loaded;
     } catch (_) {
-      notifier.value = BarcodeConfig(
-        storeName: AppBranding.current.appName,
-      );
+      notifier.value = BarcodeConfig(storeName: AppBranding.current.appName);
     }
   }
 
@@ -63,12 +65,36 @@ class BarcodeSettingsService {
   }) async {
     await gate.setMeta(keyLabelSize, config.selectedSize.name, userId: userId);
     await gate.setMeta(keyStoreName, config.storeName, userId: userId);
-    await gate.setMeta(keyShowStoreName, config.showStoreName ? '1' : '0', userId: userId);
-    await gate.setMeta(keyShowProductName, config.showProductName ? '1' : '0', userId: userId);
-    await gate.setMeta(keyShowColorSize, config.showColorAndSize ? '1' : '0', userId: userId);
-    await gate.setMeta(keyShowPrice, config.showPrice ? '1' : '0', userId: userId);
-    await gate.setMeta(keyShowBarcodeText, config.showBarcodeText ? '1' : '0', userId: userId);
-    await gate.setMeta(keyDefaultCopies, config.defaultCopies.toString(), userId: userId);
+    await gate.setMeta(
+      keyShowStoreName,
+      config.showStoreName ? '1' : '0',
+      userId: userId,
+    );
+    await gate.setMeta(
+      keyShowProductName,
+      config.showProductName ? '1' : '0',
+      userId: userId,
+    );
+    await gate.setMeta(
+      keyShowColorSize,
+      config.showColorAndSize ? '1' : '0',
+      userId: userId,
+    );
+    await gate.setMeta(
+      keyShowPrice,
+      config.showPrice ? '1' : '0',
+      userId: userId,
+    );
+    await gate.setMeta(
+      keyShowBarcodeText,
+      config.showBarcodeText ? '1' : '0',
+      userId: userId,
+    );
+    await gate.setMeta(
+      keyDefaultCopies,
+      config.defaultCopies.toString(),
+      userId: userId,
+    );
 
     notifier.value = config;
   }
@@ -77,10 +103,7 @@ class BarcodeSettingsService {
     FeatureGate gate, {
     required String userId,
   }) async {
-    final defaultConfig = BarcodeConfig(
-      storeName: AppBranding.current.appName,
-    );
+    final defaultConfig = BarcodeConfig(storeName: AppBranding.current.appName);
     await save(defaultConfig, gate, userId: userId);
   }
 }
-

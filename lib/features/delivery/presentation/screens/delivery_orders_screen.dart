@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/money.dart';
+import '../../../../core/widgets/standard_date_filter_chips.dart';
 import '../cubits/delivery_cubit.dart';
 import '../cubits/delivery_state.dart';
 import '../../domain/entities/delivery_courier_entity.dart';
@@ -498,10 +499,18 @@ class _DeliveryOrdersViewState extends State<_DeliveryOrdersView>
 // TAB 1: DELIVERY ORDERS LIST & STATUS TRACKING
 // =============================================================================
 
-class _DeliveryOrdersListTab extends StatelessWidget {
+class _DeliveryOrdersListTab extends StatefulWidget {
   final TextEditingController searchCtrl;
 
   const _DeliveryOrdersListTab({required this.searchCtrl});
+
+  @override
+  State<_DeliveryOrdersListTab> createState() => _DeliveryOrdersListTabState();
+}
+
+class _DeliveryOrdersListTabState extends State<_DeliveryOrdersListTab> {
+  String _activeDateFilter = 'all';
+  DateTimeRange? _customRange;
 
   void _assignCourierModal(
     BuildContext context,
@@ -604,6 +613,13 @@ class _DeliveryOrdersListTab extends StatelessWidget {
         }
 
         final filteredOrders = state.orders.where((o) {
+          if (!StandardDateFilterChips.matchesDate(
+            o.createdAt,
+            _activeDateFilter,
+            _customRange,
+          )) {
+            return false;
+          }
           if (state.providerTypeFilter != 'all' &&
               o.providerType != state.providerTypeFilter) {
             return false;
@@ -621,6 +637,16 @@ class _DeliveryOrdersListTab extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            StandardDateFilterChips(
+              activeFilter: _activeDateFilter,
+              customRange: _customRange,
+              onFilterChanged: (v) => setState(() => _activeDateFilter = v),
+              onCustomRangePicked: (picked) => setState(() {
+                _customRange = picked;
+                _activeDateFilter = 'custom';
+              }),
+            ),
+            const SizedBox(height: 12),
             // Top Summary Cards
             Row(
               children: [
@@ -675,17 +701,17 @@ class _DeliveryOrdersListTab extends StatelessWidget {
               child: Column(
                 children: [
                   TextField(
-                    controller: searchCtrl,
+                    controller: widget.searchCtrl,
                     onChanged: cubit.setSearchQuery,
                     decoration: InputDecoration(
                       hintText:
                           'ابحث باسم العميل، الهاتف، العنوان، رقم الطلب، البوليصة، أو الطيار...',
                       prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                      suffixIcon: searchCtrl.text.isNotEmpty
+                      suffixIcon: widget.searchCtrl.text.isNotEmpty
                           ? IconButton(
                               icon: const Icon(Icons.clear, size: 18),
                               onPressed: () {
-                                searchCtrl.clear();
+                                widget.searchCtrl.clear();
                                 cubit.setSearchQuery('');
                               },
                             )
