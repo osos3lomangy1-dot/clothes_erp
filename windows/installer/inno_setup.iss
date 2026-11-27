@@ -4,7 +4,9 @@
 
 #define MyAppName "Bay3ah ERP"
 #define MyAppArabicName "بيعة - نظام إدارة المتاجر ونقاط البيع"
-#define MyAppVersion "1.0.2"
+#ifndef MyAppVersion
+#define MyAppVersion "1.0.3"
+#endif
 #define MyAppPublisher "Bay3ah ERP"
 #define MyAppExeName "bay3ah.exe"
 #define MyAppSourceDir "..\..\build\windows\x64\runner\Release"

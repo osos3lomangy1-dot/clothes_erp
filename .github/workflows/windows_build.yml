@@ -203,7 +203,7 @@ jobs:
             Write-Host "Installing Inno Setup via choco..."
             choco install innosetup -y --no-progress
           }
-          & "$isccPath" "windows\installer\inno_setup.iss"
+          & "$isccPath" "/DMyAppVersion=${{ env.APP_VERSION }}" "windows\installer\inno_setup.iss"
         continue-on-error: true
 
       - name: Upload Inno Setup Installer
