@@ -996,7 +996,7 @@ class _ProductsAndCategoriesViewState
                     title: cat.name,
                     count: catCount,
                     isSelected: isSelected,
-                    icon: Icons.checkroom_rounded,
+                    icon: Icons.category_rounded,
                     color: catColor,
                     onTap: () {
                       setState(() {

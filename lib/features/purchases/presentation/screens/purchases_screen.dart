@@ -820,7 +820,7 @@ class _PurchasesViewState extends State<_PurchasesView> with TickerProviderState
                     children: r.items.map((it) {
                       return Chip(
                         backgroundColor: Colors.grey.shade100,
-                        avatar: Icon(Icons.checkroom_rounded, size: 16, color: AppColors.primary),
+                        avatar: Icon(Icons.inventory_2_outlined, size: 16, color: AppColors.primary),
                         label: Text(
                           '${it.productName ?? 'منتج'} (${it.size} - ${it.color}): ${it.quantity} قطع',
                           style: const TextStyle(fontSize: 12),

@@ -289,7 +289,7 @@ class _BlindReceiveViewState extends State<_BlindReceiveView> {
                                   children: [
                                     CircleAvatar(
                                       backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                                      child: Icon(Icons.checkroom_rounded, color: AppColors.primary),
+                                      child: Icon(Icons.inventory_2_rounded, color: AppColors.primary),
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(

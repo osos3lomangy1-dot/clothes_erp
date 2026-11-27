@@ -998,11 +998,11 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                         labelText: 'اسم المنتج *',
                                         hintText: state.activityTypeEnum == ActivityType.restaurantsCafes
                                             ? 'مثال: برجر دبل تشيز / بيتزا مارجريتا / كابتشينو'
-                                            : 'مثال: بنطلون جينز سليم فيت',
+                                            : state.activityTypeEnum == ActivityType.clothing
+                                                ? 'مثال: بنطلون جينز سليم فيت'
+                                                : 'مثال: اسم الصنف أو الموديل',
                                         prefixIcon: Icon(
-                                          state.activityTypeEnum == ActivityType.restaurantsCafes
-                                              ? Icons.restaurant_menu_rounded
-                                              : Icons.checkroom,
+                                          state.activityTypeEnum.icon,
                                         ),
                                         filled: true,
                                         fillColor: Colors.grey.shade50,
@@ -1121,7 +1121,11 @@ class _ProductFormInternalState extends State<_ProductFormInternal> {
                                             visualDensity: VisualDensity.compact,
                                             backgroundColor: Colors.white,
                                             side: BorderSide(color: Colors.amber.shade300),
-                                            avatar: Icon(Icons.checkroom, size: 14, color: AppColors.primary),
+                                            avatar: Icon(
+                                              state.activityTypeEnum.icon,
+                                              size: 14,
+                                              color: AppColors.primary,
+                                            ),
                                             label: Text(
                                               '${p.name} (${p.categoryName})',
                                               style: const TextStyle(fontSize: 11),
